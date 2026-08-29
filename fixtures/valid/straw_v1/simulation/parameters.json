@@ -1,0 +1,16 @@
+{
+  "mass_sa": 0.05,
+  "c_sa": 3000.0,
+  "mass_bev": 0.02,
+  "c_bev": 4184.0,
+  "R_wall": 0.45,
+  "R_env": 2.2,
+  "T_sa_peak": 54.0,
+  "T_inlet": 5.0,
+  "T_env": 21.0,
+  "sip_duration": 3,
+  "sip_interval": 15,
+  "peak_flow": 0.006,
+  "time_steps": 300,
+  "dt": 1.0
+}

@@ -1,20 +1,119 @@
 {
   "version": "1.0.0",
   "title": "Sodium Acetate Heat-Releasing Drink Straw",
-  "summary": "Reusable drink straw concept incorporating a sodium acetate heat-storage system intended to provide controlled thermal energy to a beverage.",
+  "summary": "Phase-change thermal straw incorporating a supersaturated sodium acetate crystallization jacket and dynamic lumped capacitance simulation model.",
   "license": "CERN-OHL-S-2.0",
   "ontology_class": "PhysicalObject",
   "properties": [
-    { "key": "estimated_bom_usd", "value": 4.50, "type": "number", "unit": "USD", "label": "Estimated BOM" },
-    { "key": "weight_grams", "value": 45, "type": "number", "unit": "g", "label": "Weight" },
-    { "key": "difficulty", "value": "intermediate", "type": "string", "label": "Difficulty" }
+    {
+      "key": "estimated_bom_usd",
+      "value": 4.5,
+      "type": "number",
+      "unit": "USD",
+      "label": "Estimated BOM"
+    },
+    {
+      "key": "weight_grams",
+      "value": 45,
+      "type": "number",
+      "unit": "g",
+      "label": "Weight"
+    },
+    {
+      "key": "difficulty",
+      "value": "intermediate",
+      "type": "string",
+      "label": "Difficulty"
+    },
+    {
+      "key": "pcm_core_mass",
+      "value": 50,
+      "type": "number",
+      "unit": "g",
+      "label": "PCM Core Mass"
+    },
+    {
+      "key": "latent_heat_release",
+      "value": 13.2,
+      "type": "number",
+      "unit": "kJ",
+      "label": "Latent Heat Capacity"
+    },
+    {
+      "key": "peak_core_temp",
+      "value": 54.0,
+      "type": "number",
+      "unit": "\u00b0C",
+      "label": "Peak Core Temp"
+    }
   ],
+  "simulation": {
+    "engine": "lumped_euler_v1",
+    "entrypoint": "simulation/model.py",
+    "parameters": "simulation/parameters.json",
+    "results": "simulation/simulation_results.json"
+  },
   "relationships": [],
   "assets": [
-    { "relative_path": "README.md", "media_type": "text/markdown", "is_entrypoint": 1, "entrypoint_name": "readme" },
-    { "relative_path": "spec.md", "media_type": "text/markdown", "is_entrypoint": 1, "entrypoint_name": "spec" },
-    { "relative_path": "bom.csv", "media_type": "text/csv", "is_entrypoint": 1, "entrypoint_name": "bom" },
-    { "relative_path": "cad/preview.glb", "media_type": "model/gltf-binary", "is_entrypoint": 1, "entrypoint_name": "cad_preview" },
-    { "relative_path": "testing/test-results.md", "media_type": "text/markdown", "is_entrypoint": 0, "entrypoint_name": "" }
+    {
+      "relative_path": "README.md",
+      "media_type": "text/markdown",
+      "is_entrypoint": 1,
+      "entrypoint_name": "readme"
+    },
+    {
+      "relative_path": "spec.md",
+      "media_type": "text/markdown",
+      "is_entrypoint": 1,
+      "entrypoint_name": "spec"
+    },
+    {
+      "relative_path": "bom.csv",
+      "media_type": "text/csv",
+      "is_entrypoint": 1,
+      "entrypoint_name": "bom"
+    },
+    {
+      "relative_path": "cad/preview.glb",
+      "media_type": "model/gltf-binary",
+      "is_entrypoint": 1,
+      "entrypoint_name": "cad_preview"
+    },
+    {
+      "relative_path": "cad/primary.step",
+      "media_type": "application/step",
+      "is_entrypoint": 1,
+      "entrypoint_name": "cad_step"
+    },
+    {
+      "relative_path": "simulation/model.py",
+      "media_type": "text/x-python",
+      "is_entrypoint": 1,
+      "entrypoint_name": "sim_model"
+    },
+    {
+      "relative_path": "simulation/parameters.json",
+      "media_type": "application/json",
+      "is_entrypoint": 1,
+      "entrypoint_name": "sim_params"
+    },
+    {
+      "relative_path": "simulation/simulation_results.json",
+      "media_type": "application/json",
+      "is_entrypoint": 1,
+      "entrypoint_name": "sim_results"
+    },
+    {
+      "relative_path": "testing/test-results.csv",
+      "media_type": "text/csv",
+      "is_entrypoint": 1,
+      "entrypoint_name": "test_data"
+    },
+    {
+      "relative_path": "testing/calibration.json",
+      "media_type": "application/json",
+      "is_entrypoint": 0,
+      "entrypoint_name": ""
+    }
   ]
 }

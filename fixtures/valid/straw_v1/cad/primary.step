@@ -1,0 +1,8 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('Sodium Acetate Drink Straw CAD Primary'),'2;1');
+FILE_NAME('primary.step','2026-08-29',('TwinThink'),'','','','');
+ENDSEC;
+DATA;
+ENDSEC;
+END-ISO-10303-21;

@@ -1,0 +1,6 @@
+{
+  "calibration_status": "Lumped Model Baseline",
+  "calibrated_against": "Water Flow Bench Rig v0.1",
+  "r_squared_fit": 0.942,
+  "primary_limiting_factor": "Inner wall thermal boundary layer resistance during fast sips"
+}
