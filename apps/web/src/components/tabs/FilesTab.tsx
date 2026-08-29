@@ -44,7 +44,7 @@ export default function FilesTab({ twin }: TabProps) {
             <div className={styles.fileActions}>
               <span className={styles.fileSize}>{formatBytes(asset.size_bytes)}</span>
               <a 
-                href={`http://127.0.0.1:8001/api/twins/${twin.id}/assets/${asset.relative_path}`}
+                href={`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001'}/api/twins/${twin.id}/assets/${asset.relative_path}`}
                 target="_blank"
                 rel="noreferrer"
                 className="button-secondary" 
@@ -54,7 +54,7 @@ export default function FilesTab({ twin }: TabProps) {
                 <Eye size={14} />
               </a>
               <a 
-                href={`http://127.0.0.1:8001/api/twins/${twin.id}/assets/${asset.relative_path}`}
+                href={`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001'}/api/twins/${twin.id}/assets/${asset.relative_path}`}
                 download
                 className="button-secondary" 
                 style={{ padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center' }} 

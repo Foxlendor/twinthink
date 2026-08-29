@@ -16,7 +16,8 @@ export default async function TwinPage({ params }: { params: Promise<{ id: strin
   let twin: TwinData | null = null;
   
   try {
-    const res = await fetch(`http://127.0.0.1:8001/api/twins/${id}`, { cache: 'no-store' });
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001';
+    const res = await fetch(`${apiUrl}/api/twins/${id}`, { cache: 'no-store' });
     if (res.ok) {
       twin = await res.json();
     }

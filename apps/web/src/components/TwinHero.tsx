@@ -19,7 +19,7 @@ export default function TwinHero({ twin }: TwinHeroProps) {
         
         <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
           <a 
-            href={`http://127.0.0.1:8001/api/twins/${twin.id}/download`} 
+            href={`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001'}/api/twins/${twin.id}/download`} 
             download 
             className="button-secondary" 
             style={{ flex: 1, textAlign: 'center', padding: '1rem', textDecoration: 'none' }}
