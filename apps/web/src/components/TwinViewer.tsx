@@ -5,6 +5,14 @@ import styles from './TwinViewer.module.css';
 import { Maximize, RotateCcw, Code, Network, FileText } from 'lucide-react';
 import { TwinData } from '@/lib/types';
 
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'model-viewer': any;
+    }
+  }
+}
+
 interface TwinViewerProps {
   twin: TwinData;
   fallbackText?: string;
