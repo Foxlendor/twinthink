@@ -13,13 +13,16 @@ def validate_bundle(zip_path: str):
         with zipfile.ZipFile(zip_path, 'r') as zf:
             namelist = zf.namelist()
             
+            # Normalize slashes for cross-platform (Windows zip on Linux)
+            normalized_namelist = [name.replace('\\', '/') for name in namelist]
+            
             # 1. Path Traversal Check
-            for name in namelist:
+            for name in normalized_namelist:
                 if '..' in name or name.startswith('/'):
                     return f"PATH_TRAVERSAL_DETECTED: {name}"
 
             # 2. Manifest Check
-            if 'manifest.json' not in namelist:
+            if 'manifest.json' not in normalized_namelist:
                 return "MANIFEST MISSING"
 
             with zf.open('manifest.json') as f:
@@ -36,7 +39,7 @@ def validate_bundle(zip_path: str):
             
             # 3. Entrypoints & Assets Check
             for asset in manifest.get('assets', []):
-                if asset['relative_path'] not in namelist:
+                if asset['relative_path'] not in normalized_namelist:
                     return f"ASSET MISSING: {asset['relative_path']}"
             
             # 5. Integrity
