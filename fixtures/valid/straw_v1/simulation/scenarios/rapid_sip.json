@@ -1,0 +1,10 @@
+{
+  "name": "Continuous Rapid Draw",
+  "description": "Fast draw pace: 4-second sip every 15 seconds at 10 mL/s flow.",
+  "initial_beverage_temperature_C": 5.0,
+  "ambient_temperature_C": 21.0,
+  "flow_rate_ml_s": 10.0,
+  "sip_duration_s": 4,
+  "sip_interval_s": 15,
+  "simulation_duration_s": 300
+}

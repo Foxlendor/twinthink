@@ -1,0 +1,10 @@
+{
+  "name": "Extended Thermal Soak",
+  "description": "Leisurely pace: 2-second sip every 45 seconds at 5 mL/s flow.",
+  "initial_beverage_temperature_C": 5.0,
+  "ambient_temperature_C": 21.0,
+  "flow_rate_ml_s": 5.0,
+  "sip_duration_s": 2,
+  "sip_interval_s": 45,
+  "simulation_duration_s": 300
+}

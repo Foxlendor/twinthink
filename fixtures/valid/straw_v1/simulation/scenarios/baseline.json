@@ -1,0 +1,10 @@
+{
+  "name": "Standard Human Sip Cycle",
+  "description": "Standard drinking pace: 3-second sip every 30 seconds at 8 mL/s flow.",
+  "initial_beverage_temperature_C": 5.0,
+  "ambient_temperature_C": 21.0,
+  "flow_rate_ml_s": 8.0,
+  "sip_duration_s": 3,
+  "sip_interval_s": 30,
+  "simulation_duration_s": 300
+}

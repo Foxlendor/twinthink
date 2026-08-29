@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "title": "Sodium Acetate Heat-Releasing Drink Straw",
-  "summary": "Phase-change thermal straw incorporating a supersaturated sodium acetate crystallization jacket and dynamic lumped capacitance simulation model.",
+  "summary": "Phase-change thermal straw incorporating a supersaturated sodium acetate crystallization jacket, reproducible sip scenario experiments, and multi-node thermal simulation.",
   "license": "CERN-OHL-S-2.0",
   "ontology_class": "PhysicalObject",
   "properties": [
@@ -34,7 +34,7 @@
     },
     {
       "key": "latent_heat_release",
-      "value": 13.2,
+      "value": 12.05,
       "type": "number",
       "unit": "kJ",
       "label": "Latent Heat Capacity"
@@ -48,10 +48,11 @@
     }
   ],
   "simulation": {
-    "engine": "lumped_euler_v1",
-    "entrypoint": "simulation/model.py",
+    "engine": "twinthink.simulation.thermal",
+    "entrypoint": "simulation/thermal.py",
     "parameters": "simulation/parameters.json",
-    "results": "simulation/simulation_results.json"
+    "results": "simulation/simulation_results.json",
+    "scenarios_dir": "simulation/scenarios"
   },
   "relationships": [],
   "assets": [
@@ -86,10 +87,34 @@
       "entrypoint_name": "cad_step"
     },
     {
-      "relative_path": "simulation/model.py",
+      "relative_path": "simulation/thermal.py",
       "media_type": "text/x-python",
       "is_entrypoint": 1,
-      "entrypoint_name": "sim_model"
+      "entrypoint_name": "sim_engine"
+    },
+    {
+      "relative_path": "simulation/pcm.py",
+      "media_type": "text/x-python",
+      "is_entrypoint": 0,
+      "entrypoint_name": ""
+    },
+    {
+      "relative_path": "simulation/flow.py",
+      "media_type": "text/x-python",
+      "is_entrypoint": 0,
+      "entrypoint_name": ""
+    },
+    {
+      "relative_path": "simulation/calibration.py",
+      "media_type": "text/x-python",
+      "is_entrypoint": 0,
+      "entrypoint_name": ""
+    },
+    {
+      "relative_path": "simulation/metrics.py",
+      "media_type": "text/x-python",
+      "is_entrypoint": 0,
+      "entrypoint_name": ""
     },
     {
       "relative_path": "simulation/parameters.json",
@@ -102,6 +127,24 @@
       "media_type": "application/json",
       "is_entrypoint": 1,
       "entrypoint_name": "sim_results"
+    },
+    {
+      "relative_path": "simulation/scenarios/baseline.json",
+      "media_type": "application/json",
+      "is_entrypoint": 0,
+      "entrypoint_name": ""
+    },
+    {
+      "relative_path": "simulation/scenarios/rapid_sip.json",
+      "media_type": "application/json",
+      "is_entrypoint": 0,
+      "entrypoint_name": ""
+    },
+    {
+      "relative_path": "simulation/scenarios/slow_sip.json",
+      "media_type": "application/json",
+      "is_entrypoint": 0,
+      "entrypoint_name": ""
     },
     {
       "relative_path": "testing/test-results.csv",
