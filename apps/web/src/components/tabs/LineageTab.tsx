@@ -66,7 +66,7 @@ export default function LineageTab({ twin }: TabProps) {
             <GitFork size={14} />
             CURRENT TWIN #{twin.id}
           </div>
-          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>v{twin.current_version.semver}</div>
+          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>v{twin.current_version.version || twin.current_version.semver || '1.0.0'}</div>
         </div>
 
         {/* Descendants Mock */}

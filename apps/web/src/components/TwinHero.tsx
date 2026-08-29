@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { TwinData } from '@/lib/types';
 import { getApiUrl } from '@/lib/api';

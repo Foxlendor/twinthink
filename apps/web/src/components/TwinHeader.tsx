@@ -40,7 +40,7 @@ export default function TwinHeader({ twin }: TwinHeaderProps) {
       <div className={styles.metaRow}>
         <span className={styles.creator}>@{twin.creator}</span>
         <span className={styles.divider}>•</span>
-        <span className={styles.version}>v{version.semver}</span>
+        <span className={styles.version}>v{version.version || version.semver || '1.0.0'}</span>
         <span className={styles.divider}>•</span>
         <span className={styles.license}>{version.license}</span>
       </div>

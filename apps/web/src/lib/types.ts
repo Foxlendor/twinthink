@@ -25,11 +25,13 @@ export interface TwinAsset {
 }
 
 export interface TwinVersion {
-  semver: string;
+  semver?: string;
+  version?: string;
   title: string;
   summary: string;
   license: string;
   ontology_class: OntologyClass;
+  manifest_metadata?: any;
   
   // Legacy specific keys (can be moved to properties or kept as shortcuts)
   bundle_storage_key?: string;
