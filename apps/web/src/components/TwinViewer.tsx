@@ -5,13 +5,6 @@ import styles from './TwinViewer.module.css';
 import { Maximize, RotateCcw, Code, Network, FileText } from 'lucide-react';
 import { TwinData } from '@/lib/types';
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'model-viewer': any;
-    }
-  }
-}
 
 interface TwinViewerProps {
   twin: TwinData;
@@ -53,23 +46,23 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
       <div className={styles.viewerContainer}>
         {mounted ? (
           <div className={styles.viewerWrapper}>
-            {/* @ts-ignore - model-viewer is a custom element */}
-            <model-viewer
-              ref={viewerRef}
-              src={url}
-              alt={`3D Preview of ${twin.current_version.title}`}
-              camera-controls
-              auto-rotate
-              ar
-              shadow-intensity="1"
-              environment-image="neutral"
-              exposure="1"
-              className={styles.modelViewer}
-              style={{ width: '100%', height: '100%', backgroundColor: '#1a1a1a' }}
-            >
+            {/* Bypass TS type checking for custom element */}
+            {React.createElement('model-viewer', {
+              ref: viewerRef,
+              src: url,
+              alt: `3D Preview of ${twin.current_version.title}`,
+              "camera-controls": true,
+              "auto-rotate": true,
+              ar: true,
+              "shadow-intensity": "1",
+              "environment-image": "neutral",
+              exposure: "1",
+              className: styles.modelViewer,
+              style: { width: '100%', height: '100%', backgroundColor: '#1a1a1a' }
+            }, (
               <div className={styles.controlsOverlay} slot="poster">
               </div>
-            </model-viewer>
+            ))}
             
             <div className={styles.viewerActions}>
               <button className={styles.iconButton} onClick={handleReset} title="Reset Camera">
