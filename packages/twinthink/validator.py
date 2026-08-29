@@ -7,8 +7,7 @@ from pathlib import Path
 
 def validate_bundle(zip_path: str):
     if not os.path.exists(zip_path):
-        print(f"✗ ERROR: File not found: {zip_path}")
-        return False
+        return f"File not found: {zip_path}"
 
     try:
         with zipfile.ZipFile(zip_path, 'r') as zf:
@@ -17,66 +16,38 @@ def validate_bundle(zip_path: str):
             # 1. Path Traversal Check
             for name in namelist:
                 if '..' in name or name.startswith('/'):
-                    print(f"[X] PATH_TRAVERSAL_DETECTED: {name}")
-                    print("\nSTATUS: VALIDATION_FAILED")
-                    return False
-
-            print("[OK] ZIP VALID")
+                    return f"PATH_TRAVERSAL_DETECTED: {name}"
 
             # 2. Manifest Check
             if 'manifest.json' not in namelist:
-                print("[X] MANIFEST MISSING")
-                print("\nSTATUS: VALIDATION_FAILED")
-                return False
+                return "MANIFEST MISSING"
 
             with zf.open('manifest.json') as f:
                 try:
                     manifest = json.load(f)
                 except json.JSONDecodeError:
-                    print("[X] MANIFEST INVALID (Bad JSON)")
-                    print("\nSTATUS: VALIDATION_FAILED")
-                    return False
+                    return "MANIFEST INVALID (Bad JSON)"
 
             # Minimal structural validation for Alpha
             required_keys = ['version', 'title', 'summary', 'license', 'assets']
             for key in required_keys:
                 if key not in manifest:
-                    print(f"[X] MANIFEST INVALID (Missing {key})")
-                    print("\nSTATUS: VALIDATION_FAILED")
-                    return False
+                    return f"MANIFEST INVALID (Missing {key})"
             
-            print("[OK] MANIFEST VALID")
-
             # 3. Entrypoints & Assets Check
             for asset in manifest.get('assets', []):
                 if asset['relative_path'] not in namelist:
-                    print(f"[X] ASSET MISSING: {asset['relative_path']}")
-                    print("\nSTATUS: VALIDATION_FAILED")
-                    return False
-
-            print("[OK] ENTRYPOINTS VALID")
+                    return f"ASSET MISSING: {asset['relative_path']}"
             
-            # 4. Lineage Check
-            if 'parent_twin' in manifest:
-                print("[OK] LINEAGE VALID")
-            else:
-                # Lineage is optional, but if present we'd validate it
-                print("[OK] LINEAGE VALID (Root)")
-
             # 5. Integrity
-            # For alpha, just calculate the hash of the manifest
             with zf.open('manifest.json') as f:
                 content = f.read()
                 hash_val = hashlib.sha256(content).hexdigest()
-                print(f"[OK] INTEGRITY CALCULATED ({hash_val[:8]}...)")
 
-            print("\nSTATUS: VALIDATED")
             return True
 
     except zipfile.BadZipFile:
-        print("[X] INVALID ZIP FORMAT")
-        print("\nSTATUS: VALIDATION_FAILED")
-        return False
+        return "INVALID ZIP FORMAT"
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

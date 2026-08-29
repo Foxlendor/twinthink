@@ -111,9 +111,9 @@ async def upload_twin(file: UploadFile = File(...)):
         
     try:
         # Validate
-        is_valid = validate_bundle(str(temp_zip_path))
-        if not is_valid:
-            raise HTTPException(status_code=400, detail="Invalid Twin Bundle")
+        validation_error = validate_bundle(str(temp_zip_path))
+        if validation_error is not True:
+            raise HTTPException(status_code=400, detail=f"Invalid Twin Bundle: {validation_error}")
             
         import zipfile
         with zipfile.ZipFile(temp_zip_path, 'r') as zf:
