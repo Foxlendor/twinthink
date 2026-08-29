@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import styles from './TwinViewer.module.css';
 import { Maximize, RotateCcw, Code, Network, FileText } from 'lucide-react';
 import { TwinData } from '@/lib/types';
+import { getApiUrl } from '@/lib/api';
 
 
 interface TwinViewerProps {
@@ -33,7 +34,7 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
   // 1. If it's a PhysicalObject, try to render the 3D model
   if (ontologyClass === 'PhysicalObject') {
     const glbAsset = twin.current_version.assets.find(a => a.relative_path.endsWith('.glb'));
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001';
+    const apiUrl = getApiUrl();
     const url = glbAsset ? `${apiUrl}/api/twins/${twin.id}/assets/${glbAsset.relative_path}` : undefined;
     
     if (!url) {

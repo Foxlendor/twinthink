@@ -1,5 +1,6 @@
 import React from 'react';
 import { TwinData } from '@/lib/types';
+import { getApiUrl } from '@/lib/api';
 import TwinViewer from './TwinViewer';
 import TwinMetrics from './TwinMetrics';
 import styles from './TwinHero.module.css';
@@ -9,6 +10,8 @@ interface TwinHeroProps {
 }
 
 export default function TwinHero({ twin }: TwinHeroProps) {
+  const apiUrl = getApiUrl();
+
   return (
     <div className={styles.heroContainer}>
       <div className={styles.viewerSection}>
@@ -19,7 +22,7 @@ export default function TwinHero({ twin }: TwinHeroProps) {
         
         <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
           <a 
-            href={`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001'}/api/twins/${twin.id}/download`} 
+            href={`${apiUrl}/api/twins/${twin.id}/download`} 
             download 
             className="button-secondary" 
             style={{ flex: 1, textAlign: 'center', padding: '1rem', textDecoration: 'none' }}
