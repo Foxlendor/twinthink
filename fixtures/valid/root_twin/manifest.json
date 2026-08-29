@@ -1,0 +1,18 @@
+{
+  "version": "1.0.0",
+  "title": "TwinThink Test Device #1",
+  "summary": "A simple test device to prove the bundle format works.",
+  "license": "MIT",
+  "ontology_class": "PhysicalObject",
+  "properties": [
+    { "key": "estimated_bom_usd", "value": 15.50, "type": "number", "unit": "USD", "label": "Estimated BOM" },
+    { "key": "weight_grams", "value": 50, "type": "number", "unit": "g", "label": "Weight" }
+  ],
+  "relationships": [],
+  "assets": [
+    { "relative_path": "README.md", "media_type": "text/markdown", "is_entrypoint": 1, "entrypoint_name": "readme" },
+    { "relative_path": "spec.md", "media_type": "text/markdown", "is_entrypoint": 1, "entrypoint_name": "spec" },
+    { "relative_path": "bom.csv", "media_type": "text/csv", "is_entrypoint": 1, "entrypoint_name": "bom" },
+    { "relative_path": "cad/preview.glb", "media_type": "model/gltf-binary", "is_entrypoint": 1, "entrypoint_name": "cad_preview" }
+  ]
+}

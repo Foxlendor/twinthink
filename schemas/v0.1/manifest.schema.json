@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Twin Bundle Manifest",
+  "description": "Manifest for a TWINTH.INK invention bundle",
+  "type": "object",
+  "required": ["version", "title", "summary", "license", "assets"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Semantic version of the Twin"
+    },
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "license": {
+      "type": "string"
+    },
+    "ontology_class": {
+      "type": "string",
+      "default": "PhysicalObject"
+    },
+    "properties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "value", "type"],
+        "properties": {
+          "key": { "type": "string" },
+          "value": {},
+          "type": { "enum": ["string", "number", "boolean", "json", "reference"] },
+          "unit": { "type": "string" },
+          "label": { "type": "string" }
+        }
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "target_twin_id"],
+        "properties": {
+          "type": { "type": "string" },
+          "target_twin_id": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["relative_path", "media_type"],
+        "properties": {
+          "relative_path": { "type": "string" },
+          "media_type": { "type": "string" },
+          "is_entrypoint": { "type": "integer" },
+          "entrypoint_name": { "type": "string" }
+        }
+      }
+    },
+    "parent_twin": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "version": { "type": "string" },
+        "mutation_notes": { "type": "string" }
+      }
+    }
+  }
+}

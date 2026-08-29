@@ -1,0 +1,24 @@
+{
+  "version": "1.1.0",
+  "title": "Sodium Acetate Straw / Isolated Thermal Chamber",
+  "summary": "Modified thermal architecture to isolate the heat-storage chamber from the beverage pathway.",
+  "license": "CERN-OHL-S-2.0",
+  "ontology_class": "PhysicalObject",
+  "properties": [
+    { "key": "estimated_bom_usd", "value": 5.20, "type": "number", "unit": "USD", "label": "Estimated BOM" },
+    { "key": "weight_grams", "value": 55, "type": "number", "unit": "g", "label": "Weight" },
+    { "key": "difficulty", "value": "intermediate", "type": "string", "label": "Difficulty" }
+  ],
+  "relationships": [],
+  "assets": [
+    { "relative_path": "README.md", "media_type": "text/markdown", "is_entrypoint": 1, "entrypoint_name": "readme" },
+    { "relative_path": "spec.md", "media_type": "text/markdown", "is_entrypoint": 1, "entrypoint_name": "spec" },
+    { "relative_path": "bom.csv", "media_type": "text/csv", "is_entrypoint": 1, "entrypoint_name": "bom" },
+    { "relative_path": "cad/preview.glb", "media_type": "model/gltf-binary", "is_entrypoint": 1, "entrypoint_name": "cad_preview" }
+  ],
+  "parent_twin": {
+    "id": "0001",
+    "version": "1.0.0",
+    "mutation_notes": "Modified thermal architecture to isolate the heat-storage chamber from the beverage pathway."
+  }
+}
