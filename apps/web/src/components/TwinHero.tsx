@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { GitFork, Download } from 'lucide-react';
 import { TwinData } from '@/lib/types';
 import { getApiUrl } from '@/lib/api';
 import TwinViewer from './TwinViewer';
@@ -22,20 +23,22 @@ export default function TwinHero({ twin }: TwinHeroProps) {
       <div className={styles.metricsSection}>
         <TwinMetrics properties={twin.current_version.properties} />
         
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+        <div className={styles.heroActions}>
           <a 
             href={`${apiUrl}/api/twins/${twin.id}/download`} 
             download 
             className="button-secondary" 
-            style={{ flex: 1, textAlign: 'center', padding: '1rem', textDecoration: 'none' }}
+            style={{ flex: 1, textAlign: 'center', textDecoration: 'none' }}
           >
+            <Download size={16} />
             Download Bundle
           </a>
           <button 
             className="button-primary" 
-            style={{ flex: 1, padding: '1rem' }}
+            style={{ flex: 1 }}
             onClick={() => alert('Fork functionality coming soon!')}
           >
+            <GitFork size={16} />
             Fork Twin
           </button>
         </div>

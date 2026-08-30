@@ -6,7 +6,7 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  height: 100%;
+  flex: 1;
 }
 
 .title {
