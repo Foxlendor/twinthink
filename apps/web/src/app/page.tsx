@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import TwinRealityEngine from '@/components/TwinRealityEngine';
 
 export default function Home() {
-  redirect('/twins/0001');
+  return <TwinRealityEngine initialTwinId="0001" />;
 }
