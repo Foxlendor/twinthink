@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twinth.ink/schemas/twin.v0.1.json",
+  "title": "TwinThink Digital Twin",
+  "description": "Canonical TwinThink Idea Reality Engine graph. Evidence and epistemic state are first-class data.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "identity", "reality_state", "claims", "object", "structure", "behavior", "evidence", "history", "lineage", "unknowns"],
+  "properties": {
+    "$schema": { "type": "string", "const": "https://twinth.ink/schemas/twin.v0.1.json" },
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["twin_id", "slug", "title", "version", "author", "license"],
+      "properties": {
+        "twin_id": { "type": "string", "pattern": "^twin_[a-zA-Z0-9_-]+$" },
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "subtitle": { "type": "string" },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$" },
+        "author": { "type": "object", "additionalProperties": false, "required": ["name"], "properties": { "name": { "type": "string" }, "handle": { "type": "string" } } },
+        "license": { "type": "string" },
+        "status": { "type": "string" }
+      }
+    },
+    "reality_state": {
+      "type": "object", "additionalProperties": false,
+      "required": ["composite_score", "derived_dimensions"],
+      "properties": {
+        "composite_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "derived_dimensions": {
+          "type": "object", "additionalProperties": false,
+          "required": ["structure", "thermal", "materials", "safety", "manufacturing"],
+          "patternProperties": {
+            "^(structure|thermal|materials|safety|manufacturing)$": {
+              "type": "object", "additionalProperties": false,
+              "required": ["status", "confidence", "reason"],
+              "properties": {
+                "status": { "type": "string", "enum": ["UNKNOWN", "CONCEPTUAL", "ASSUMED", "ESTIMATED", "EXPERIMENTAL", "PARTIALLY_ESTABLISHED", "ESTABLISHED", "VERIFIED"] },
+                "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+                "reason": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "target_node", "statement", "epistemic_status", "confidence", "source", "evidence_ids", "relationships"],
+        "properties": {
+          "id": { "type": "string" },
+          "target_node": { "type": "string" },
+          "statement": { "type": "string", "minLength": 1 },
+          "value": { "type": "object" },
+          "epistemic_status": { "type": "string", "enum": ["VERIFIED", "EXPERIMENTAL", "ESTIMATED", "ASSUMED", "UNKNOWN"] },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "source": { "type": "object", "additionalProperties": false, "required": ["type", "reference"], "properties": { "type": { "type": "string" }, "reference": { "type": "string" } } },
+          "evidence_ids": { "type": "array", "items": { "type": "string" } },
+          "relationships": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "object": {
+      "type": "object", "additionalProperties": false,
+      "required": ["layers"],
+      "properties": {
+        "primary_3d": { "type": "string" }, "cad_source": { "type": "string" },
+        "layers": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["id", "name", "role"], "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "role": { "type": "string" } } } }
+      }
+    },
+    "structure": {
+      "type": "object", "additionalProperties": false,
+      "required": ["components"],
+      "properties": {
+        "bom_file": { "type": "string" }, "component_count": { "type": "integer", "minimum": 0 },
+        "components": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["id", "name", "qty"], "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "qty": { "type": "number", "exclusiveMinimum": 0 }, "unit_cost": { "type": "number", "minimum": 0 }, "material": { "type": "string" } } } }
+      }
+    },
+    "behavior": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "solver": { "type": "string" }, "governing_equations": { "type": "array", "items": { "type": "string" } }, "parameters": { "type": "object", "additionalProperties": { "type": "object", "required": ["val", "status"], "properties": { "val": {}, "status": { "type": "string" } } } }
+      }
+    },
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "test_runs": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["id", "date", "file", "type"], "properties": { "id": { "type": "string" }, "date": { "type": "string" }, "file": { "type": "string" }, "type": { "type": "string" }, "rmse": { "type": "number", "minimum": 0 } } } }
+      }
+    },
+    "history": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "curated_manifest": { "type": "string" }, "established_nodes": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["date", "title", "source", "provenance_level"], "properties": { "date": { "type": "string" }, "title": { "type": "string" }, "source": { "type": "string" }, "provenance_level": { "type": "string", "enum": ["ESTABLISHED", "PROPOSED", "UNESTABLISHED"] } } } }
+      }
+    },
+    "lineage": {
+      "type": "object", "additionalProperties": false,
+      "properties": { "parent": { "type": ["object", "null"] }, "forks_count": { "type": "integer", "minimum": 0 }, "mutations": { "type": "array", "items": { "type": "object" } } }
+    },
+    "unknowns": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["id", "category", "issue"], "properties": { "id": { "type": "string" }, "category": { "type": "string" }, "issue": { "type": "string" } } } }
+  }
+}
