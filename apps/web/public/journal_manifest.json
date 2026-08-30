@@ -1,0 +1,361 @@
+{
+  "schema_version": "0.1",
+  "collection_id": "invention_journal_archive",
+  "title": "Invention Journal Archive",
+  "description": "Curated index of the 27-slide invention-journal archive. Captions are preserved verbatim from the supplied archive.",
+  "entry_count": 27,
+  "curation_note": "The supplied archive contains 27 journal images spanning multiple invention concepts. The source does not establish that every page is part of RESIP's direct lineage, so RESIP relationships are intentionally left unestablished pending human review.",
+  "entries": [
+    {
+      "page": 1,
+      "filename": "009-e1628076754664.png",
+      "asset_path": "/journal/009-e1628076754664.png",
+      "archive_caption": "Under Water “Perpetual Motion Theory” third draft  *doesn’t really work*",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/009-e1628076754664.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 2,
+      "filename": "024-e1628076713809.png",
+      "asset_path": "/journal/024-e1628076713809.png",
+      "archive_caption": "Mini PC Keyboard & Trackpad + Arm Carrier Included",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/024-e1628076713809.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 3,
+      "filename": "016-e1628076618752.png",
+      "asset_path": "/journal/016-e1628076618752.png",
+      "archive_caption": "Electromagnetic Suspension for three Rimmed Wheel",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/016-e1628076618752.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 4,
+      "filename": "015-e1628076586611.png",
+      "asset_path": "/journal/015-e1628076586611.png",
+      "archive_caption": "individual suspension module Draft",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/015-e1628076586611.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 5,
+      "filename": "014.png",
+      "asset_path": "/journal/014.png",
+      "archive_caption": "Electromagnetic Suspension individual suspension module",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/014.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 6,
+      "filename": "013-e1628076560787.png",
+      "asset_path": "/journal/013-e1628076560787.png",
+      "archive_caption": "Electromagnetic Suspension for a wheel Draft",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/013-e1628076560787.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 7,
+      "filename": "012-1-e1628076480801.png",
+      "asset_path": "/journal/012-1-e1628076480801.png",
+      "archive_caption": "Electromagnetic Suspension for a wheel Draft",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/012-1-e1628076480801.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 8,
+      "filename": "027-e1628076436310.png",
+      "asset_path": "/journal/027-e1628076436310.png",
+      "archive_caption": "Renewable Breaking Energy Top View",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/027-e1628076436310.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 9,
+      "filename": "028-e1628076408328.png",
+      "asset_path": "/journal/028-e1628076408328.png",
+      "archive_caption": "Renewable Breaking Energy Practical View",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/028-e1628076408328.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 10,
+      "filename": "029-e1628076360204.png",
+      "asset_path": "/journal/029-e1628076360204.png",
+      "archive_caption": "Renewable Breaking Energy SideView",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/029-e1628076360204.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 11,
+      "filename": "031.png",
+      "asset_path": "/journal/031.png",
+      "archive_caption": "New Engine",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/031.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 12,
+      "filename": "020-e1628076238962.png",
+      "asset_path": "/journal/020-e1628076238962.png",
+      "archive_caption": "ScienceFair2016 Drawing",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/020-e1628076238962.png"
+      },
+      "resip_relationship": "ancestor_candidate",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 13,
+      "filename": "021-e1628076098948.png",
+      "asset_path": "/journal/021-e1628076098948.png",
+      "archive_caption": "ScienceFair2016 Chart",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/021-e1628076098948.png"
+      },
+      "resip_relationship": "ancestor_candidate",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 14,
+      "filename": "022-e1628076121431.png",
+      "asset_path": "/journal/022-e1628076121431.png",
+      "archive_caption": "ScienceFair2016 Graph",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/022-e1628076121431.png"
+      },
+      "resip_relationship": "ancestor_candidate",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 15,
+      "filename": "023-e1628076070228.png",
+      "asset_path": "/journal/023-e1628076070228.png",
+      "archive_caption": "Radiation Notes",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/023-e1628076070228.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 16,
+      "filename": "033-e1628077446877.png",
+      "asset_path": "/journal/033-e1628077446877.png",
+      "archive_caption": "Electromagnetically Operated Packaging Drone",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/033-e1628077446877.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 17,
+      "filename": "039-e1628077349406.png",
+      "asset_path": "/journal/039-e1628077349406.png",
+      "archive_caption": "Drone Dynamic Propeller",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/039-e1628077349406.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 18,
+      "filename": "032-e1628077323171.png",
+      "asset_path": "/journal/032-e1628077323171.png",
+      "archive_caption": "Electromagnetically Operated Packaging Drone Notes",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/032-e1628077323171.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 19,
+      "filename": "035-e1628077202618.png",
+      "asset_path": "/journal/035-e1628077202618.png",
+      "archive_caption": "3D Projector Hologram",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/035-e1628077202618.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 20,
+      "filename": "025-e1628077104651.png",
+      "asset_path": "/journal/025-e1628077104651.png",
+      "archive_caption": "Paper Fed 3D Printer Pen",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/025-e1628077104651.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 21,
+      "filename": "004-e1628077057909.png",
+      "asset_path": "/journal/004-e1628077057909.png",
+      "archive_caption": "Xylem Thread for dynamic camouflage",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/004-e1628077057909.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 22,
+      "filename": "038-e1628077015860.png",
+      "asset_path": "/journal/038-e1628077015860.png",
+      "archive_caption": "FerroPenV2",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/038-e1628077015860.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 23,
+      "filename": "037-e1628076970180.png",
+      "asset_path": "/journal/037-e1628076970180.png",
+      "archive_caption": "FerroPenV1",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/037-e1628076970180.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 24,
+      "filename": "003-1-e1628076904523.png",
+      "asset_path": "/journal/003-1-e1628076904523.png",
+      "archive_caption": "Ferro/Crystalline Display",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/003-1-e1628076904523.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 25,
+      "filename": "005-e1628076851640.png",
+      "asset_path": "/journal/005-e1628076851640.png",
+      "archive_caption": "Gaseous Combustion for Controled Dynamic Expansion",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/005-e1628076851640.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 26,
+      "filename": "007.png",
+      "asset_path": "/journal/007.png",
+      "archive_caption": "Under Water “Perpetual Motion Theory” *doesn’t really work*",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/007.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    },
+    {
+      "page": 27,
+      "filename": "008.png",
+      "asset_path": "/journal/008.png",
+      "archive_caption": "Under Water “Perpetual Motion Theory” second draft *doesn’t really work*",
+      "provenance": {
+        "source": "Inventions Journals – Coinceit.html",
+        "original_archive_path": "Inventions Journals #U2013 Coinceit_files/008.png"
+      },
+      "resip_relationship": "not_established",
+      "transcription_status": "not_transcribed",
+      "metadata_status": "caption_only"
+    }
+  ]
+}
