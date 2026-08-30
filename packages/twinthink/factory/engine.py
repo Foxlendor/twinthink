@@ -1,15 +1,13 @@
-"""
-TwinThink Factory Ingestion & Compilation Engine
-Transforms raw files (CAD, Markdown, CSVs, Images) into structured living digital twins.
-"""
+"""Twin Factory: evidence-preserving compilation of source material into a Twin."""
 
-import os
-import io
+from __future__ import annotations
+
 import csv
+import io
 import json
 import re
-from typing import List, Dict, Any, Tuple
-from pathlib import Path
+from pathlib import PurePosixPath
+from typing import Dict, Any
 
 from ..schema import (
     TwinDocument,
@@ -20,198 +18,213 @@ from ..schema import (
     TwinEvidence,
     TwinHistoryEntry,
     TwinLineage,
-    Claim,
-    ComponentItem
+    ComponentItem,
 )
 from ..reality.calculator import derive_reality_state
 
+
 class TwinFactoryEngine:
+    """Compile raw invention material without fabricating technical facts.
+
+    The factory performs deterministic extraction only. Claims that require
+    interpretation are left empty for a later proposal/review stage.
+    """
+
     @staticmethod
-    def process_bundle(file_map: Dict[str, bytes], twin_id: str = "0001") -> TwinDocument:
-        """
-        Parses a dictionary of {relative_path: raw_bytes} and compiles a complete TwinDocument.
-        """
-        filenames = list(file_map.keys())
-        
-        # 1. Identity & Overview extraction
-        title = "Untitled Physical Invention"
-        summary = "Living digital twin compiled from engineering files."
-        classification = "PhysicalObject"
-        
-        readme_content = ""
-        spec_content = ""
-        
+    def _text(file_map: Dict[str, bytes], suffixes: tuple[str, ...]) -> str:
         for name, data in file_map.items():
-            if name.lower().endswith("readme.md"):
-                try:
-                    readme_content = data.decode("utf-8", errors="ignore")
-                    lines = [l.strip() for l in readme_content.splitlines() if l.strip()]
-                    if lines and lines[0].startswith("#"):
-                        title = lines[0].lstrip("#").strip()
-                    if len(lines) > 1:
-                        summary = lines[1].lstrip(">").strip()
-                except Exception:
-                    pass
-            elif name.lower().endswith("spec.md"):
-                try:
-                    spec_content = data.decode("utf-8", errors="ignore")
-                except Exception:
-                    pass
+            if name.lower().endswith(suffixes):
+                return data.decode("utf-8", errors="replace")
+        return ""
 
-        # 2. Extract Components & BOM
-        components = []
-        bom_items = []
-        estimated_bom = None
-        
+    @staticmethod
+    def _title_and_summary(file_map: Dict[str, bytes], fallback: str) -> tuple[str, str]:
+        readme = TwinFactoryEngine._text(file_map, ("readme.md", "readme.txt"))
+        spec = TwinFactoryEngine._text(file_map, ("spec.md", "specification.md"))
+        source = readme or spec
+        lines = [line.strip() for line in source.splitlines() if line.strip()]
+        title = fallback
+        summary = "Living digital twin compiled from supplied source material."
+        for line in lines:
+            if line.startswith("#"):
+                title = line.lstrip("#").strip() or fallback
+                break
+        for line in lines:
+            cleaned = line.lstrip(">-*").strip()
+            if cleaned and not cleaned.startswith("#"):
+                summary = cleaned[:500]
+                break
+        return title, summary
+
+    @staticmethod
+    def _safe_name(name: str) -> str:
+        # Normalize zip paths for deterministic output and provenance.
+        return str(PurePosixPath(name.replace("\\", "/")))
+
+    @staticmethod
+    def _bom(file_map: Dict[str, bytes]) -> tuple[list[ComponentItem], float | None, str | None]:
         for name, data in file_map.items():
-            if name.lower().endswith("bom.csv"):
-                try:
-                    text = data.decode("utf-8", errors="ignore")
-                    reader = csv.DictReader(io.StringIO(text))
-                    for row in reader:
-                        # Normalize keys
-                        row_lower = {k.lower().strip(): v.strip() for k, v in row.items() if k}
-                        c_name = row_lower.get("part", row_lower.get("component", row_lower.get("name", "Component")))
-                        c_mat = row_lower.get("material", "Standard")
-                        c_desc = row_lower.get("specification", row_lower.get("desc", ""))
-                        c_qty = int(row_lower.get("qty", 1))
-                        
-                        cost_str = row_lower.get("total", row_lower.get("unit_cost_usd", "0")).replace("$", "")
+            if not name.lower().endswith("bom.csv"):
+                continue
+            try:
+                reader = csv.DictReader(io.StringIO(data.decode("utf-8", errors="replace")))
+                components: list[ComponentItem] = []
+                for raw in reader:
+                    row = {str(k).strip().lower(): (v or "").strip() for k, v in raw.items() if k}
+                    component_name = row.get("part") or row.get("component") or row.get("name")
+                    if not component_name:
+                        continue
+                    try:
+                        qty = max(1, int(float(row.get("qty") or row.get("quantity") or 1)))
+                    except ValueError:
+                        qty = 1
+                    cost_raw = row.get("unit_cost_usd") or row.get("unit cost") or row.get("unit_cost")
+                    unit_cost = None
+                    if cost_raw:
                         try:
-                            c_cost = float(cost_str)
+                            unit_cost = float(re.sub(r"[^0-9.\-]", "", cost_raw))
                         except ValueError:
-                            c_cost = 0.0
-                            
-                        components.append(ComponentItem(
-                            name=c_name,
-                            description=c_desc,
-                            material=c_mat,
-                            qty=c_qty,
-                            unit_cost_usd=c_cost,
-                            supplier=row_lower.get("supplier")
-                        ))
-                    if components:
-                        estimated_bom = sum(c.unit_cost_usd or 0 for c in components)
-                except Exception:
-                    pass
+                            unit_cost = None
+                    components.append(ComponentItem(
+                        name=component_name,
+                        description=row.get("description") or row.get("specification") or row.get("desc") or "",
+                        material=row.get("material") or "Unspecified",
+                        qty=qty,
+                        unit_cost_usd=unit_cost,
+                        supplier=row.get("supplier") or None,
+                        cad_body_name=row.get("cad_body_name") or None,
+                    ))
+                if components:
+                    total = sum((c.unit_cost_usd or 0) * c.qty for c in components)
+                    return components, round(total, 4), name
+            except (UnicodeError, csv.Error):
+                pass
+        return [], None, None
 
-        # Fallback default components if no BOM found
-        if not components:
-            components = [
-                ComponentItem(name="Main Body Housing", description="Enclosing chassis", material="Aluminum / Polymer", qty=1),
-                ComponentItem(name="Internal Core", description="Primary operational mechanism", material="Stainless Steel", qty=1)
-            ]
+    @staticmethod
+    def process_bundle(
+        file_map: Dict[str, bytes],
+        twin_id: str = "0001",
+        title: str | None = None,
+        author: str = "Unknown",
+    ) -> TwinDocument:
+        filenames = sorted(TwinFactoryEngine._safe_name(name) for name in file_map)
+        fallback_title = title or "Untitled Physical Invention"
+        extracted_title, summary = TwinFactoryEngine._title_and_summary(file_map, fallback_title)
+        if title:
+            extracted_title = title
 
-        # 3. CAD & Solid Geometry
-        has_step = any(f.endswith('.step') or f.endswith('.stp') for f in filenames)
-        has_glb = any(f.endswith('.glb') for f in filenames)
-        
-        step_path = next((f for f in filenames if f.endswith(('.step', '.stp'))), None)
-        glb_path = next((f for f in filenames if f.endswith('.glb')), None)
-        
-        obj_geom = TwinObjectGeometry(
+        components, bom_total, bom_file = TwinFactoryEngine._bom(file_map)
+
+        step_path = next((f for f in filenames if f.lower().endswith((".step", ".stp"))), None)
+        glb_path = next((f for f in filenames if f.lower().endswith(".glb")), None)
+        object_geometry = TwinObjectGeometry(
             cad_step_path=step_path,
             cad_preview_glb_path=glb_path,
-            bounding_box_mm=[16.0, 16.0, 220.0],
-            mass_grams=45.0
         )
 
-        # 4. Claims Extraction
-        claims = [
-            Claim(
-                key="activation_temp",
-                name="Activation Temperature",
-                value="54.0 °C",
-                unit="°C",
-                status="LITERATURE",
-                confidence_pct=95,
-                origin="NIST standard reference database for trihydrate crystallization equilibrium.",
-                source_file="spec.md",
-                evidence_paths=[f for f in filenames if 'sim' in f or 'param' in f],
-                relationships=["Sodium Acetate Trihydrate", "Exothermic Phase Change"]
-            ),
-            Claim(
-                key="latent_heat_capacity",
-                name="Latent Heat Capacity",
-                value="12.05 kJ",
-                unit="kJ",
-                status="CALIBRATED",
-                confidence_pct=82,
-                origin="Calibrated from 50g mass ODE model against physical thermocouple logs.",
-                source_file="simulation/thermal.py",
-                evidence_paths=[f for f in filenames if 'test' in f or 'calib' in f],
-                relationships=["Thermal Enthalpy", "Beverage Heat Transfer"]
-            ),
-            Claim(
-                key="estimated_bom_usd",
-                name="Unit BOM (COGS)",
-                value=f"${estimated_bom:.2f} USD" if estimated_bom else "$4.50 USD",
-                unit="USD",
-                status="MEASURED",
-                confidence_pct=88,
-                origin="Sourced from off-the-shelf component suppliers for 100-unit pilot batch.",
-                source_file="bom.csv",
-                evidence_paths=[f for f in filenames if 'bom' in f],
-                relationships=["316L Conduit", "Silicone Sleeve", "Snap Disc"]
-            )
-        ]
+        thermal_script = next((f for f in filenames if f.lower().endswith("thermal.py")), None)
+        parameters = next((f for f in filenames if "param" in f.lower() and f.lower().endswith((".json", ".csv", ".txt"))), None)
+        simulation_results = next((f for f in filenames if "result" in f.lower() and f.lower().endswith((".json", ".csv"))), None)
+        test_files = [f for f in filenames if f.lower().endswith(".csv") and ("test" in f.lower() or "telemetry" in f.lower())]
 
-        # 5. Behavior & ODE Simulator
         behavior = TwinBehavior(
-            engine_name="twinthink.simulation.thermal",
-            entrypoint_script=next((f for f in filenames if f.endswith('thermal.py')), None),
-            parameters_path=next((f for f in filenames if 'param' in f), None),
-            simulation_results_path=next((f for f in filenames if 'results' in f), None),
-            operating_envelope={"inlet_temp_min_C": 0.0, "inlet_temp_max_C": 25.0, "flow_rate_ml_s": 8.0}
+            engine_name="twinthink.simulation.thermal" if thermal_script else None,
+            entrypoint_script=thermal_script,
+            parameters_path=parameters,
+            simulation_results_path=simulation_results,
         )
 
-        # 6. Physical Evidence & Calibration
-        evidence_files = [f for f in filenames if f.endswith(('.csv', '.step', '.py', '.json'))]
-        has_tests = any('test' in f.lower() for f in filenames)
-        
         evidence = TwinEvidence(
-            test_runs_count=3 if has_tests else 0,
-            calibration_rmse=1.60 if has_tests else None,
-            sensor_channels=["T_ambient", "T_pcm_core", "T_drink_inlet", "T_drink_outlet", "Flow_rate"],
-            verified_files=evidence_files
+            test_runs_count=len(test_files),
+            calibration_rmse=None,
+            sensor_channels=[],
+            verified_files=[f for f in filenames if f.lower().endswith((".csv", ".step", ".stp", ".glb", ".py", ".json"))],
         )
 
-        # 7. Reality State Calculation
+        history: list[TwinHistoryEntry] = []
+        for name, data in file_map.items():
+            if not name.lower().endswith("journal_manifest.json"):
+                continue
+            try:
+                manifest = json.loads(data.decode("utf-8", errors="replace"))
+                for entry in manifest.get("entries", []):
+                    history.append(TwinHistoryEntry(
+                        page=entry.get("page"),
+                        year=entry.get("year"),
+                        title=entry.get("title") or "Archive page",
+                        caption=entry.get("archive_caption") or entry.get("caption") or "",
+                        asset_path=entry.get("asset_path") or entry.get("filename") or "",
+                        relationship_to_twin="not_established",
+                    ))
+            except (ValueError, UnicodeError):
+                pass
+            break
+
+        unknowns = []
+        if not step_path and not glb_path:
+            unknowns.append("Native or preview 3D geometry has not been supplied.")
+        if not components:
+            unknowns.append("No structured BOM was found; component structure remains unestablished.")
+        if not thermal_script:
+            unknowns.append("No governing simulation entrypoint was identified.")
+        if not test_files:
+            unknowns.append("No physical telemetry/test CSV was identified.")
+        if not history:
+            unknowns.append("No curated journal manifest was supplied.")
+        unknowns.append("Technical claims have not been human-established by this deterministic ingestion pass.")
+
+        claims: list = []
+        draft = {
+            "identity": {
+                "title": extracted_title,
+                "summary": summary,
+                "version": "0.1.0",
+                "creator": author,
+                "license": "UNSPECIFIED",
+            },
+            "object": object_geometry.model_dump(),
+            "structure": {
+                "components": [c.model_dump() for c in components],
+                "materials": sorted({c.material for c in components if c.material}),
+                "estimated_bom_usd": bom_total,
+            },
+            "behavior": behavior.model_dump(),
+            "evidence": evidence.model_dump(),
+            "claims": claims,
+            "unknowns_and_assumptions": unknowns,
+        }
+
         reality_state = derive_reality_state(
             files=filenames,
             claims=claims,
-            has_step_cad=has_step,
-            has_test_telemetry=has_tests,
-            has_simulation_ode=bool(behavior.entrypoint_script),
-            rmse_error=evidence.calibration_rmse
+            has_step_cad=bool(step_path),
+            has_test_telemetry=bool(test_files),
+            has_simulation_ode=bool(thermal_script),
+            rmse_error=None,
         )
 
-        # 8. Compile Final Document
-        doc = TwinDocument(
+        return TwinDocument(
+            schema_version="0.1.0",
             identity=TwinIdentity(
-                title=title,
+                title=extracted_title,
                 summary=summary,
-                classification=classification,
-                creator="Foxlendor",
-                license="CERN-OHL-S-2.0",
-                version="1.0.0"
+                classification="PhysicalObject",
+                creator=author,
+                license="UNSPECIFIED",
+                version="0.1.0",
             ),
-            object=obj_geom,
+            object=object_geometry,
             structure=TwinStructure(
                 components=components,
-                materials=list(set(c.material for c in components)),
-                estimated_bom_usd=estimated_bom or 4.50,
-                target_msrp_usd=25.00
+                materials=sorted({c.material for c in components if c.material}),
+                estimated_bom_usd=bom_total,
             ),
             behavior=behavior,
             evidence=evidence,
-            history=[],
+            history=history,
             lineage=TwinLineage(parent_twin_id=None),
             claims=claims,
             reality_state=reality_state,
-            unknowns_and_assumptions=[
-                "Long-term supercooling nucleation stability beyond 500 reset cycles is pending validation.",
-                "FDA / LFGB formal food contact laboratory extraction assay pending."
-            ]
+            unknowns_and_assumptions=unknowns,
         )
-        return doc
