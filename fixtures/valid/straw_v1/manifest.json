@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "title": "Sodium Acetate Heat-Releasing Drink Straw",
-  "summary": "Phase-change thermal straw incorporating a supersaturated sodium acetate crystallization jacket, reproducible sip scenario experiments, and multi-node thermal simulation.",
+  "title": "Resip\u2122 Thermal Drink Straw (Outdoor Edition)",
+  "summary": "Solid-state, battery-free thermal exchange drink straw for backcountry recreation. Releases 12.05 kJ latent crystallization enthalpy on-demand via mechanical snap-disc trigger.",
   "license": "CERN-OHL-S-2.0",
   "ontology_class": "PhysicalObject",
   "properties": [
@@ -10,7 +10,14 @@
       "value": 4.5,
       "type": "number",
       "unit": "USD",
-      "label": "Estimated BOM"
+      "label": "Estimated Unit BOM"
+    },
+    {
+      "key": "target_retail_msrp",
+      "value": 25.0,
+      "type": "number",
+      "unit": "USD",
+      "label": "Target MSRP"
     },
     {
       "key": "weight_grams",

@@ -1,5 +1,8 @@
+'use client';
+
 import React from 'react';
 import { TwinData } from '@/lib/types';
+import { Layers, ShieldCheck, DollarSign, ExternalLink } from 'lucide-react';
 import styles from './Tabs.module.css';
 
 interface TabProps {
@@ -47,51 +50,137 @@ export default function BomTab({ twin }: TabProps) {
     );
   }
 
-  // Standard Physical Object BOM
-  const mockBomItems = [
-    { component: 'MG90S Servo', qty: 5, unitCost: 8.50, supplier: 'Adafruit' },
-    { component: 'ESP32-S3', qty: 1, unitCost: 7.00, supplier: 'Mouser' },
-    { component: 'TPU Filament (1kg)', qty: 0.1, unitCost: 35.00, supplier: 'MatterHackers' },
-    { component: 'Rotary Encoders', qty: 5, unitCost: 1.20, supplier: 'DigiKey' },
-    { component: 'Misc Screws/Bearings', qty: 1, unitCost: 5.00, supplier: 'McMaster-Carr' },
+  // Physical Object BOM for Sodium Acetate Thermal Straw
+  const strawBomItems = [
+    { 
+      component: '316L Stainless Fluid Conduit Tube', 
+      spec: '6.0mm ID x 7.0mm OD x 220mm (Food-Contact)', 
+      qty: 1, 
+      material: '316L Stainless Steel', 
+      unitCost: 1.20, 
+      supplier: 'McMaster-Carr',
+      partNumber: '8988K42'
+    },
+    { 
+      component: 'Sodium Acetate Trihydrate (SAT Core)', 
+      spec: '50g sealed supersaturated aqueous solution', 
+      qty: 1, 
+      material: 'CH3COONa·3H2O (Analytical Grade)', 
+      unitCost: 0.65, 
+      supplier: 'Bulk Chem Source',
+      partNumber: 'SAT-50G-PRO'
+    },
+    { 
+      component: 'Bistable Snap-Disc Nucleation Trigger', 
+      spec: '0.15mm thickness x 12mm dia. spring disc', 
+      qty: 1, 
+      material: '301 Full-Hard Stainless Spring Steel', 
+      unitCost: 0.35, 
+      supplier: 'Precision Stamping',
+      partNumber: 'SNAP-301-12'
+    },
+    { 
+      component: 'Outer Thermal Insulation Sleeve', 
+      spec: '1.5mm wall silicone jacket with grip ribbing', 
+      qty: 1, 
+      material: 'Food-Grade Medical Silicone', 
+      unitCost: 0.85, 
+      supplier: 'Silicone Molding',
+      partNumber: 'SIL-JKT-120'
+    },
+    { 
+      component: 'Hermetic End Cap Collars & O-Rings', 
+      spec: 'Dual radial O-ring chamber seals & nozzle ring', 
+      qty: 2, 
+      material: 'Anodized 6061-T6 + FDA Viton O-Rings', 
+      unitCost: 0.725, 
+      supplier: 'CNC Prototyping',
+      partNumber: 'EC-VIT-02'
+    }
   ];
 
-  const total = mockBomItems.reduce((acc, item) => acc + (item.qty * item.unitCost), 0);
+  const totalCost = strawBomItems.reduce((acc, item) => acc + (item.qty * item.unitCost), 0);
 
   return (
     <div className={styles.tabContentContainer}>
-      <h2 className={styles.sectionTitle}>Bill of Materials</h2>
       
+      {/* Header & BOM Summary */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Bill of Materials (BOM)</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.35rem' }}>
+            Production-grade parts list with food-contact grade specifications, materials, and prototyping sourcing.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '0.5rem 1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Estimated Unit BOM:</span>
+            <span style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)' }}>
+              ${totalCost.toFixed(2)} USD
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* BOM Table */}
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>Component</th>
+              <th>Component & Specification</th>
+              <th>Material</th>
               <th>Qty</th>
               <th>Unit Cost</th>
-              <th>Total</th>
-              <th>Supplier</th>
+              <th>Extended</th>
+              <th>Supplier / Part #</th>
             </tr>
           </thead>
           <tbody>
-            {mockBomItems.map((item, idx) => (
+            {strawBomItems.map((item, idx) => (
               <tr key={idx}>
-                <td>{item.component}</td>
-                <td>{item.qty}</td>
-                <td>${item.unitCost.toFixed(2)}</td>
-                <td>${(item.qty * item.unitCost).toFixed(2)}</td>
-                <td>{item.supplier}</td>
+                <td>
+                  <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.component}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{item.spec}</div>
+                </td>
+                <td style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                  {item.material}
+                </td>
+                <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+                  {item.qty}
+                </td>
+                <td style={{ fontFamily: 'var(--font-mono)' }}>
+                  ${item.unitCost.toFixed(2)}
+                </td>
+                <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  ${(item.qty * item.unitCost).toFixed(2)}
+                </td>
+                <td>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-primary)' }}>{item.supplier}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{item.partNumber}</div>
+                </td>
               </tr>
             ))}
-            <tr>
-              <td colSpan={3} style={{ textAlign: 'right', fontWeight: 600 }}>Estimated Total:</td>
-              <td colSpan={2} style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>
-                ${total.toFixed(2)}
+            <tr style={{ background: 'rgba(0, 204, 255, 0.05)', borderTop: '2px solid var(--border-subtle)' }}>
+              <td colSpan={4} style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Total Estimated Unit Cost (Quantity: 1 Proto):
+              </td>
+              <td colSpan={2} style={{ fontWeight: 700, color: 'var(--accent-primary)', fontSize: '1rem', fontFamily: 'var(--font-mono)' }}>
+                ${totalCost.toFixed(2)} USD
               </td>
             </tr>
           </tbody>
         </table>
       </div>
+
     </div>
   );
 }

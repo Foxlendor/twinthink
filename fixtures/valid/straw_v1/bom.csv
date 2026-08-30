@@ -1,4 +1,6 @@
-Component,Qty,Material,Cost
-Silicone straw body,1,Food-grade silicone,1.50
-Thermal chamber,1,PETG,0.50
-Sodium acetate system,1,Sodium Acetate Trihydrate,2.50
+Component,Qty,Material,UnitCost,Total,Supplier
+316L Stainless Fluid Conduit Tube (6mm ID x 220mm),1,Food-Grade 316L Stainless Steel,1.20,1.20,McMaster-Carr
+Sodium Acetate Trihydrate (SAT Core 50g),1,CH3COONa·3H2O Supersaturated Solution,0.65,0.65,Bulk Chemical
+Bistable Stainless Snap-Disc Nucleation Trigger,1,301 Full-Hard Stainless Spring Steel,0.35,0.35,Precision Stamping
+Outer Thermal Insulation Sleeve,1,Food-Grade Medical Silicone,0.85,0.85,Silicone Molding
+Hermetic End Cap Collars & O-Rings,2,Food-Contact Viton / Anodized Al,0.725,1.45,CNC Prototyping

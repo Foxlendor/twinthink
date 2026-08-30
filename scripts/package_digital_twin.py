@@ -1,6 +1,5 @@
 import os
 import json
-import csv
 import zipfile
 import shutil
 import sys
@@ -13,7 +12,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUNDLE_DIR = os.path.join(ROOT_DIR, 'fixtures', 'valid', 'straw_v1')
 ZIP_OUT = os.path.join(ROOT_DIR, 'fixtures', 'valid', 'straw_v1.zip')
 
-# Copy modular simulation files into bundle
+# Copy simulation engine modules
 sim_src = os.path.join(ROOT_DIR, 'packages', 'twinthink', 'simulation')
 sim_dst = os.path.join(BUNDLE_DIR, 'simulation')
 os.makedirs(sim_dst, exist_ok=True)
@@ -31,7 +30,6 @@ sim_res = sim.simulate(timeline, duration_s=300)
 with open(os.path.join(BUNDLE_DIR, 'simulation', 'simulation_results.json'), 'w', encoding='utf-8') as f:
     json.dump(sim_res, f, indent=2)
 
-# Generate assets array for manifest
 assets = [
     { "relative_path": "README.md", "media_type": "text/markdown", "is_entrypoint": 1, "entrypoint_name": "readme" },
     { "relative_path": "spec.md", "media_type": "text/markdown", "is_entrypoint": 1, "entrypoint_name": "spec" },
@@ -54,12 +52,13 @@ assets = [
 
 manifest = {
     "version": "1.0.0",
-    "title": "Sodium Acetate Heat-Releasing Drink Straw",
-    "summary": "Phase-change thermal straw incorporating a supersaturated sodium acetate crystallization jacket, reproducible sip scenario experiments, and multi-node thermal simulation.",
+    "title": "Resip™ Thermal Drink Straw (Outdoor Edition)",
+    "summary": "Solid-state, battery-free thermal exchange drink straw for backcountry recreation. Releases 12.05 kJ latent crystallization enthalpy on-demand via mechanical snap-disc trigger.",
     "license": "CERN-OHL-S-2.0",
     "ontology_class": "PhysicalObject",
     "properties": [
-        { "key": "estimated_bom_usd", "value": 4.50, "type": "number", "unit": "USD", "label": "Estimated BOM" },
+        { "key": "estimated_bom_usd", "value": 4.50, "type": "number", "unit": "USD", "label": "Estimated Unit BOM" },
+        { "key": "target_retail_msrp", "value": 25.00, "type": "number", "unit": "USD", "label": "Target MSRP" },
         { "key": "weight_grams", "value": 45, "type": "number", "unit": "g", "label": "Weight" },
         { "key": "difficulty", "value": "intermediate", "type": "string", "label": "Difficulty" },
         { "key": "pcm_core_mass", "value": 50, "type": "number", "unit": "g", "label": "PCM Core Mass" },
@@ -80,7 +79,6 @@ manifest = {
 with open(os.path.join(BUNDLE_DIR, 'manifest.json'), 'w', encoding='utf-8') as f:
     json.dump(manifest, f, indent=2)
 
-# Write clean ZIP with normalized paths
 with zipfile.ZipFile(ZIP_OUT, 'w', zipfile.ZIP_DEFLATED) as zf:
     for root, dirs, files in os.walk(BUNDLE_DIR):
         for file in files:
@@ -88,4 +86,4 @@ with zipfile.ZipFile(ZIP_OUT, 'w', zipfile.ZIP_DEFLATED) as zf:
             rel_path = os.path.relpath(full_path, BUNDLE_DIR).replace('\\', '/')
             zf.write(full_path, rel_path)
 
-print("Modular Digital Twin Bundle packaged successfully!")
+print("Packaged Resip™ Outdoor Edition bundle successfully!")
