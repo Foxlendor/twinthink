@@ -3,56 +3,69 @@
 import React, { useState } from 'react';
 import { TwinData } from '@/lib/types';
 import styles from './TwinTabs.module.css';
+import { getApiUrl } from '@/lib/api';
 
-// Tabs
-import OverviewTab from './tabs/OverviewTab';
-import SimulationTab from './tabs/SimulationTab';
-import TestsTab from './tabs/TestsTab';
-import BomTab from './tabs/BomTab';
-import FilesTab from './tabs/FilesTab';
+// Reality Protocol Tabs
+import ObjectTab from './tabs/ObjectTab';
+import StructureTab from './tabs/StructureTab';
+import BehaviorTab from './tabs/BehaviorTab';
+import EvidenceTab from './tabs/EvidenceTab';
+import HistoryTab from './tabs/HistoryTab';
 import LineageTab from './tabs/LineageTab';
-import BuildsTab from './tabs/BuildsTab';
+import FilesTab from './tabs/FilesTab';
+
+// WHY? Claim Inspector Modal
+import ClaimInspectorModal from './ClaimInspectorModal';
 
 interface TwinTabsProps {
   twin: TwinData;
 }
 
+export type RealityTabKey = 'object' | 'structure' | 'behavior' | 'evidence' | 'history' | 'lineage' | 'files';
+
 export default function TwinTabs({ twin }: TwinTabsProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'simulation' | 'tests' | 'bom' | 'files' | 'lineage' | 'builds'>('overview');
+  const [activeTab, setActiveTab] = useState<RealityTabKey>('object');
+  const [inspectedClaim, setInspectedClaim] = useState<string | null>(null);
+
+  const apiUrl = getApiUrl();
+  const stepAsset = twin.current_version.assets.find(a => a.entrypoint_name === 'cad_step');
+  const stepDownloadUrl = stepAsset ? `${apiUrl}/api/twins/${twin.id}/assets/${stepAsset.relative_path}` : undefined;
 
   return (
     <div className={styles.tabsContainer}>
-      <div className={styles.tabList}>
+      {/* Reality Protocol Navigation Tabs */}
+      <div className={styles.tabList} style={{ borderBottom: '2px solid #1f293d', paddingBottom: '0.25rem' }}>
         <button 
-          className={`${styles.tab} ${activeTab === 'overview' ? styles.active : ''}`}
-          onClick={() => setActiveTab('overview')}
+          className={`${styles.tab} ${activeTab === 'object' ? styles.active : ''}`}
+          onClick={() => setActiveTab('object')}
         >
-          OVERVIEW
+          OBJECT
         </button>
         <button 
-          className={`${styles.tab} ${activeTab === 'simulation' ? styles.active : ''}`}
-          onClick={() => setActiveTab('simulation')}
+          className={`${styles.tab} ${activeTab === 'structure' ? styles.active : ''}`}
+          onClick={() => setActiveTab('structure')}
         >
-          SIMULATION
+          STRUCTURE
         </button>
         <button 
-          className={`${styles.tab} ${activeTab === 'tests' ? styles.active : ''}`}
-          onClick={() => setActiveTab('tests')}
-          style={{ color: activeTab === 'tests' ? '#00e5a3' : undefined }}
+          className={`${styles.tab} ${activeTab === 'behavior' ? styles.active : ''}`}
+          onClick={() => setActiveTab('behavior')}
+          style={{ color: activeTab === 'behavior' ? '#3b82f6' : undefined }}
         >
-          TESTS
+          BEHAVIOR
         </button>
         <button 
-          className={`${styles.tab} ${activeTab === 'bom' ? styles.active : ''}`}
-          onClick={() => setActiveTab('bom')}
+          className={`${styles.tab} ${activeTab === 'evidence' ? styles.active : ''}`}
+          onClick={() => setActiveTab('evidence')}
+          style={{ color: activeTab === 'evidence' ? '#00e5a3' : undefined }}
         >
-          BOM
+          EVIDENCE
         </button>
         <button 
-          className={`${styles.tab} ${activeTab === 'files' ? styles.active : ''}`}
-          onClick={() => setActiveTab('files')}
+          className={`${styles.tab} ${activeTab === 'history' ? styles.active : ''}`}
+          onClick={() => setActiveTab('history')}
         >
-          FILES
+          HISTORY
         </button>
         <button 
           className={`${styles.tab} ${activeTab === 'lineage' ? styles.active : ''}`}
@@ -61,22 +74,47 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
           LINEAGE
         </button>
         <button 
-          className={`${styles.tab} ${activeTab === 'builds' ? styles.active : ''}`}
-          onClick={() => setActiveTab('builds')}
+          className={`${styles.tab} ${activeTab === 'files' ? styles.active : ''}`}
+          onClick={() => setActiveTab('files')}
+          style={{ fontSize: '0.75rem', opacity: 0.7 }}
         >
-          BUILDS
+          RAW ASSETS
         </button>
       </div>
       
-      <div className={styles.tabContent}>
-        {activeTab === 'overview' && <OverviewTab twin={twin} />}
-        {activeTab === 'simulation' && <SimulationTab twin={twin} />}
-        {activeTab === 'tests' && <TestsTab twin={twin} />}
-        {activeTab === 'bom' && <BomTab twin={twin} />}
-        {activeTab === 'files' && <FilesTab twin={twin} />}
+      {/* Tab Panels */}
+      <div className={styles.tabContent} style={{ paddingTop: '1.5rem' }}>
+        {activeTab === 'object' && (
+          <ObjectTab 
+            twin={twin} 
+            onInspectClaim={(claimKey) => setInspectedClaim(claimKey)} 
+          />
+        )}
+        {activeTab === 'structure' && (
+          <StructureTab 
+            twinId={twin.id} 
+            stepDownloadUrl={stepDownloadUrl} 
+            onInspectClaim={(claimKey) => setInspectedClaim(claimKey)} 
+          />
+        )}
+        {activeTab === 'behavior' && <BehaviorTab twin={twin} />}
+        {activeTab === 'evidence' && (
+          <EvidenceTab 
+            twin={twin} 
+            onInspectClaim={(claimKey) => setInspectedClaim(claimKey)} 
+          />
+        )}
+        {activeTab === 'history' && <HistoryTab twin={twin} />}
         {activeTab === 'lineage' && <LineageTab twin={twin} />}
-        {activeTab === 'builds' && <BuildsTab twin={twin} />}
+        {activeTab === 'files' && <FilesTab twin={twin} />}
       </div>
+
+      {/* Interactive WHY? Claim Inspector Modal */}
+      <ClaimInspectorModal
+        claimKey={inspectedClaim}
+        onClose={() => setInspectedClaim(null)}
+        twinId={twin.id}
+      />
     </div>
   );
 }
