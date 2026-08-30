@@ -7,6 +7,7 @@ import styles from './TwinTabs.module.css';
 // Tabs
 import OverviewTab from './tabs/OverviewTab';
 import SimulationTab from './tabs/SimulationTab';
+import TestsTab from './tabs/TestsTab';
 import BomTab from './tabs/BomTab';
 import FilesTab from './tabs/FilesTab';
 import LineageTab from './tabs/LineageTab';
@@ -17,7 +18,7 @@ interface TwinTabsProps {
 }
 
 export default function TwinTabs({ twin }: TwinTabsProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'simulation' | 'bom' | 'files' | 'lineage' | 'builds'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'simulation' | 'tests' | 'bom' | 'files' | 'lineage' | 'builds'>('overview');
 
   return (
     <div className={styles.tabsContainer}>
@@ -31,9 +32,15 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
         <button 
           className={`${styles.tab} ${activeTab === 'simulation' ? styles.active : ''}`}
           onClick={() => setActiveTab('simulation')}
-          style={{ color: activeTab === 'simulation' ? 'var(--accent-primary)' : undefined }}
         >
           SIMULATION
+        </button>
+        <button 
+          className={`${styles.tab} ${activeTab === 'tests' ? styles.active : ''}`}
+          onClick={() => setActiveTab('tests')}
+          style={{ color: activeTab === 'tests' ? '#00e5a3' : undefined }}
+        >
+          TESTS
         </button>
         <button 
           className={`${styles.tab} ${activeTab === 'bom' ? styles.active : ''}`}
@@ -64,6 +71,7 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
       <div className={styles.tabContent}>
         {activeTab === 'overview' && <OverviewTab twin={twin} />}
         {activeTab === 'simulation' && <SimulationTab twin={twin} />}
+        {activeTab === 'tests' && <TestsTab twin={twin} />}
         {activeTab === 'bom' && <BomTab twin={twin} />}
         {activeTab === 'files' && <FilesTab twin={twin} />}
         {activeTab === 'lineage' && <LineageTab twin={twin} />}
