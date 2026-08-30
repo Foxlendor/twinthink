@@ -22,6 +22,7 @@ from twinthink.validator import validate_bundle
 from twinthink.simulation.thermal import ThermalStrawSimulator
 from twinthink.simulation.flow import FlowTimeline, SipEvent
 from twinthink.simulation.calibration import calculate_error_metrics, generate_validation_report
+from twinthink.factory import TwinFactoryEngine
 
 app = FastAPI(title="TwinThink API")
 
@@ -427,4 +428,52 @@ async def upload_twin_test(
             "metrics": metrics,
             "s3_csv_key": s3_key
         }
+    }
+
+
+@app.post("/api/twins/create")
+async def create_twin_from_factory(files: List[UploadFile] = File(...)):
+    """
+    Twin Factory Ingestion Pipeline:
+    Accepts raw CAD, CSV, Markdown, and Images, parses them into a structured TwinDocument,
+    and returns discovered counts (objects, components, claims, relationships, reality state).
+    """
+    import zipfile
+    file_map: Dict[str, bytes] = {}
+    
+    for upload in files:
+        data = await upload.read()
+        fname = upload.filename or "file"
+        
+        # If it's a zip bundle, unpack members into file_map
+        if fname.lower().endswith(".zip"):
+            try:
+                with zipfile.ZipFile(io.BytesIO(data), 'r') as zf:
+                    for member in zf.namelist():
+                        if not member.endswith('/'):
+                            file_map[member] = zf.read(member)
+            except Exception as e:
+                file_map[fname] = data
+        else:
+            file_map[fname] = data
+            
+    # Process through TwinFactoryEngine
+    twin_doc = TwinFactoryEngine.process_bundle(file_map)
+    
+    # Discovery Metrics
+    relationships_count = sum(len(c.relationships) for c in twin_doc.claims) + len(twin_doc.structure.components) * 2
+    
+    return {
+        "status": "success",
+        "discovery": {
+            "title": twin_doc.identity.title,
+            "summary": twin_doc.identity.summary,
+            "objects_count": 1,
+            "components_count": len(twin_doc.structure.components),
+            "claims_count": len(twin_doc.claims),
+            "relationships_count": relationships_count,
+            "files_ingested_count": len(file_map),
+            "reality_state": twin_doc.reality_state.model_dump()
+        },
+        "twin": twin_doc.model_dump()
     }
