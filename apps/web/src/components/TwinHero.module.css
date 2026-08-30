@@ -9,9 +9,15 @@
 @media (max-width: 1024px) {
   .heroContainer {
     grid-template-columns: 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    min-height: auto;
   }
-  
-  .viewerSection {
-    min-height: 500px;
+}
+
+@media (max-width: 640px) {
+  .heroContainer {
+    gap: 1rem;
+    margin-bottom: 1.25rem;
   }
 }

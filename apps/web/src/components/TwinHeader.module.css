@@ -1,7 +1,7 @@
 .headerContainer {
-  padding: 2rem 0;
+  padding: 1.75rem 0 1.25rem 0;
   border-bottom: 1px solid var(--border-subtle);
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .topRow {
@@ -9,31 +9,34 @@
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 1rem;
+  gap: 1rem;
 }
 
 .titleSection {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
 .twinId {
   font-family: var(--font-mono);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--accent-primary);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .title {
-  font-size: 2.5rem;
+  font-size: 2.25rem;
   color: var(--text-primary);
   margin: 0;
+  line-height: 1.2;
 }
 
 .actionSection {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 .metaRow {
@@ -41,8 +44,9 @@
   align-items: center;
   gap: 0.75rem;
   color: var(--text-secondary);
-  font-size: 1rem;
+  font-size: 0.9375rem;
   margin-bottom: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .creator {
@@ -56,9 +60,9 @@
 
 .license {
   font-family: var(--font-mono);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   background: var(--bg-elevated);
-  padding: 0.25rem 0.5rem;
+  padding: 0.2rem 0.5rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
 }
@@ -68,6 +72,42 @@
   align-items: center;
   gap: 0.5rem;
   color: var(--text-muted);
-  font-size: 0.875rem;
-  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+  margin-top: 0.5rem;
+}
+
+/* Mobile & Tablet Responsiveness */
+@media (max-width: 768px) {
+  .headerContainer {
+    padding: 1.25rem 0 1rem 0;
+    margin-bottom: 1.25rem;
+  }
+
+  .topRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .title {
+    font-size: 1.625rem;
+  }
+
+  .actionSection {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .actionSection button {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+
+  .metaRow {
+    font-size: 0.8125rem;
+    gap: 0.4rem;
+  }
 }
