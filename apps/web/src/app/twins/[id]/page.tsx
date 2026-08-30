@@ -1,6 +1,4 @@
 import { TwinData } from '@/lib/types';
-import TwinHeader from '@/components/TwinHeader';
-import TwinHero from '@/components/TwinHero';
 import TwinTabs from '@/components/TwinTabs';
 import { getApiUrl } from '@/lib/api';
 import { notFound } from 'next/navigation';
@@ -25,10 +23,8 @@ export default async function TwinPage({ params }: { params: Promise<{ id: strin
   }
 
   return (
-    <main className="container" style={{ paddingBottom: '4rem' }}>
-      <TwinHeader twin={twin} />
-      <TwinHero twin={twin} />
+    <div style={{ width: '100%' }}>
       <TwinTabs twin={twin} />
-    </main>
+    </div>
   );
 }

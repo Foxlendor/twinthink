@@ -1,187 +1,439 @@
 'use client';
 
-import React from 'react';
-import styles from './Tabs.module.css';
-import { Download, Layers, ShieldCheck, Box } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronRight, ArrowRight, Download, Box } from 'lucide-react';
+import ClaimInspectorModal from '../ClaimInspectorModal';
 
 interface StructureTabProps {
   twinId: string;
   stepDownloadUrl?: string;
-  onInspectClaim: (claimKey: string) => void;
+  onInspectClaim?: (claimKey: string) => void;
 }
 
 export default function StructureTab({ twinId, stepDownloadUrl, onInspectClaim }: StructureTabProps) {
-  const bomItems = [
+  const [showBomModal, setShowBomModal] = useState(false);
+  const [showMaterialsModal, setShowMaterialsModal] = useState(false);
+
+  const explodedParts = [
     {
-      part: '316L Stainless Conduit',
-      spec: '6.0mm ID × 7.0mm OD × 220mm (Food-Contact)',
-      material: '316L Stainless Steel',
-      qty: 1,
-      cost: '$1.20',
-      total: '$1.20',
-      supplier: 'McMaster-Carr #8988K42'
+      name: 'Silicone Body',
+      desc: 'Food-grade silicone jacket',
+      material: 'Silicone (Shore 40A)'
     },
     {
-      part: 'Sodium Acetate Trihydrate (SAT)',
-      spec: '50g sealed supersaturated aqueous charge',
-      material: 'NaC2H3O2 · 3H2O',
-      qty: 1,
-      cost: '$0.65',
-      total: '$0.65',
-      supplier: 'Bulk Chemical Source #SAT-50G-PRO'
+      name: 'Sodium Acetate Chamber',
+      desc: 'Phase change heat storage',
+      material: 'NaC2H3O2 · 3H2O'
     },
     {
-      part: 'Bistable Snap-Disc Trigger',
-      spec: '0.15mm thickness × 12mm dia. tactile disc',
-      material: '301 Full-Hard Stainless',
-      qty: 1,
-      cost: '$0.35',
-      total: '$0.35',
-      supplier: 'Precision Stamping #SNAP-301-12'
+      name: 'Metal Activation Disc',
+      desc: 'Snap to start crystallization',
+      material: '301 Full-Hard Stainless'
     },
     {
-      part: 'Thermochromic Insulation Jacket',
-      spec: '1.5mm wall overmold (Orange status shift)',
-      material: 'Food-Grade Silicone',
-      qty: 1,
-      cost: '$0.85',
-      total: '$0.85',
-      supplier: 'Silicone Molding #SIL-JKT-120'
+      name: 'Inner Fluid Conduit',
+      desc: 'Transfers heat to drink channel',
+      material: '316L Stainless Steel'
     },
     {
-      part: 'Hermetic End Caps & O-Rings',
-      spec: 'Dual radial Viton chamber seals & nozzle',
-      material: 'Viton / Food-Grade Poly',
-      qty: 2,
-      cost: '$0.725',
-      total: '$1.45',
-      supplier: 'CNC Prototyping #EC-VIT-02'
+      name: 'Mouthpiece Tip',
+      desc: 'Comfortable silicone tip',
+      material: 'Medical-grade Silicone'
     }
   ];
 
+  const realityDerived = [
+    { label: 'Structural', status: 'Verified', color: '#10B981' },
+    { label: 'Thermal', status: 'Experimental', color: '#F59E0B' },
+    { label: 'Material', status: 'Partial', color: '#F59E0B' },
+    { label: 'Safety', status: 'Unvalidated', color: '#EF4444' },
+    { label: 'Manufacturing', status: 'Concept', color: '#EF4444' }
+  ];
+
   return (
-    <div className={styles.tabContent}>
-      {/* CAD / Engineering Geometry Callout */}
-      <div className={styles.section} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <Box size={16} color="var(--accent-primary)" />
-            <h3 style={{ margin: 0, fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Authoritative CAD Solid Model (STEP AP214)
-            </h3>
-          </div>
-          <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-            Parametric multi-body solid geometry with verified wall thicknesses, fluid conduit, and chamber seals.
-          </p>
+    <div style={{ maxWidth: '840px', width: '100%' }}>
+      
+      {/* Tab Section Header */}
+      <div style={{ marginBottom: '2rem' }}>
+        <div style={{
+          fontSize: '0.6875rem',
+          fontWeight: 700,
+          color: '#6B7280',
+          textTransform: 'uppercase',
+          letterSpacing: '0.75px',
+          marginBottom: '0.4rem'
+        }}>
+          STRUCTURE
+        </div>
+        <h2 style={{
+          fontSize: '1.75rem',
+          fontWeight: 800,
+          color: '#111827',
+          letterSpacing: '-0.5px',
+          margin: '0 0 0.4rem 0'
+        }}>
+          What is it made of?
+        </h2>
+        <p style={{
+          fontSize: '0.9375rem',
+          color: '#6B7280',
+          margin: 0
+        }}>
+          The physical components that make up RESIP™.
+        </p>
+      </div>
+
+      {/* Exploded Parts Lineup Banner */}
+      <div style={{
+        background: '#FFFFFF',
+        border: '1px solid #E5E7EB',
+        borderRadius: '16px',
+        padding: '2rem 1.5rem',
+        marginBottom: '2rem',
+        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)'
+      }}>
+        <div style={{
+          width: '100%',
+          height: '180px',
+          position: 'relative',
+          marginBottom: '1.5rem',
+          overflow: 'hidden'
+        }}>
+          <img
+            src="/resip_exploded_parts.jpg"
+            alt="RESIP™ Exploded Components"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain'
+            }}
+          />
         </div>
 
-        {stepDownloadUrl && (
-          <a
-            href={stepDownloadUrl}
-            download="primary.step"
+        {/* 5 Component Labels in Lineup */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(5, 1fr)',
+          gap: '0.75rem',
+          textAlign: 'left'
+        }}>
+          {explodedParts.map((part, i) => (
+            <div key={i}>
+              <h4 style={{
+                fontSize: '0.8125rem',
+                fontWeight: 700,
+                color: '#111827',
+                margin: '0 0 0.2rem 0',
+                lineHeight: 1.2
+              }}>
+                {part.name}
+              </h4>
+              <p style={{
+                fontSize: '0.75rem',
+                color: '#6B7280',
+                margin: 0,
+                lineHeight: 1.3
+              }}>
+                {part.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Bottom 2 Cards Row */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        gap: '1.5rem'
+      }}>
+        
+        {/* Left Card: Drilldown List */}
+        <div style={{
+          background: '#FFFFFF',
+          border: '1px solid #E5E7EB',
+          borderRadius: '16px',
+          overflow: 'hidden'
+        }}>
+          <button
+            onClick={() => setShowBomModal(true)}
             style={{
+              width: '100%',
               display: 'flex',
+              justifyContent: 'space-between',
               alignItems: 'center',
-              gap: '0.5rem',
-              background: 'var(--accent-primary)',
-              color: '#000',
-              padding: '0.6rem 1.2rem',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '0.8125rem',
-              fontWeight: 700,
-              textDecoration: 'none'
+              padding: '1rem 1.25rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: '1px solid #F3F4F6',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              color: '#111827',
+              textAlign: 'left'
             }}
           >
-            <Download size={14} />
-            Download STEP CAD
-          </a>
-        )}
+            <span style={{ fontWeight: 600 }}>Component List</span>
+            <span style={{ color: '#6B7280', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8125rem' }}>
+              9 components <ChevronRight size={14} />
+            </span>
+          </button>
+
+          <button
+            onClick={() => setShowMaterialsModal(true)}
+            style={{
+              width: '100%',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '1rem 1.25rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: '1px solid #F3F4F6',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              color: '#111827',
+              textAlign: 'left'
+            }}
+          >
+            <span style={{ fontWeight: 600 }}>Materials</span>
+            <span style={{ color: '#6B7280', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8125rem' }}>
+              5 materials <ChevronRight size={14} />
+            </span>
+          </button>
+
+          <button
+            onClick={() => setShowBomModal(true)}
+            style={{
+              width: '100%',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '1rem 1.25rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: '1px solid #F3F4F6',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              color: '#111827',
+              textAlign: 'left'
+            }}
+          >
+            <span style={{ fontWeight: 600 }}>Bill of Materials</span>
+            <span style={{ color: '#6B7280', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8125rem' }}>
+              View BOM ($4.50) <ChevronRight size={14} />
+            </span>
+          </button>
+
+          {stepDownloadUrl ? (
+            <a
+              href={stepDownloadUrl}
+              download="primary.step"
+              style={{
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '1rem 1.25rem',
+                fontSize: '0.875rem',
+                color: '#111827',
+                textDecoration: 'none'
+              }}
+            >
+              <span style={{ fontWeight: 600 }}>3D Model</span>
+              <span style={{ color: '#6B7280', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8125rem' }}>
+                Download STEP <Download size={14} />
+              </span>
+            </a>
+          ) : (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '1rem 1.25rem',
+              fontSize: '0.875rem',
+              color: '#111827'
+            }}>
+              <span style={{ fontWeight: 600 }}>3D Model</span>
+              <span style={{ color: '#6B7280', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8125rem' }}>
+                View in 3D <ChevronRight size={14} />
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Right Card: Reality State Derived */}
+        <div style={{
+          background: '#FFFFFF',
+          border: '1px solid #E5E7EB',
+          borderRadius: '16px',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between'
+        }}>
+          <div>
+            <h3 style={{
+              fontSize: '0.875rem',
+              fontWeight: 700,
+              color: '#111827',
+              margin: '0 0 1rem 0'
+            }}>
+              Reality State (derived)
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {realityDerived.map((r, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                  <span style={{ color: '#4B5563' }}>{r.label}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#111827', fontWeight: 500 }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: r.color }} />
+                    {r.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginTop: '1.25rem', paddingTop: '0.75rem', borderTop: '1px solid #F3F4F6' }}>
+            <button
+              onClick={() => onInspectClaim && onInspectClaim('estimated_bom_usd')}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                color: '#111827',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: 0
+              }}
+            >
+              View all details
+              <ArrowRight size={13} />
+            </button>
+          </div>
+        </div>
+
       </div>
 
-      {/* Bill of Materials Table */}
-      <div className={styles.section}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+      {/* BOM Detail Modal */}
+      {showBomModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(17, 24, 39, 0.4)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 100, padding: '1.5rem'
+        }} onClick={() => setShowBomModal(false)}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            maxWidth: '620px',
+            width: '100%',
+            padding: '2rem',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#111827' }}>
               Production Bill of Materials (BOM)
             </h3>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              100-Unit Pilot Sourcing Run
-            </span>
-          </div>
+            <p style={{ fontSize: '0.8125rem', color: '#6B7280', margin: '0 0 1.25rem 0' }}>
+              Total estimated unit COGS: <strong style={{ color: '#10B981' }}>$4.50 USD</strong> (Target MSRP: $25.00 USD)
+            </p>
 
-          <div style={{
-            background: 'var(--bg-primary)',
-            border: '1px solid var(--border-color)',
-            borderRadius: 'var(--radius-sm)',
-            padding: '0.4rem 0.8rem',
-            textAlign: 'right'
-          }}>
-            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block' }}>Total Estimated COGS</span>
-            <strong style={{ fontSize: '1.125rem', color: '#00e5a3', fontFamily: 'var(--font-mono)' }}>$4.50 USD</strong>
-          </div>
-        </div>
-
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.7rem' }}>
-                <th style={{ padding: '0.75rem 0.5rem' }}>Component</th>
-                <th style={{ padding: '0.75rem 0.5rem' }}>Specification</th>
-                <th style={{ padding: '0.75rem 0.5rem' }}>Material</th>
-                <th style={{ padding: '0.75rem 0.5rem', textAlign: 'center' }}>Qty</th>
-                <th style={{ padding: '0.75rem 0.5rem', textAlign: 'right' }}>Unit</th>
-                <th style={{ padding: '0.75rem 0.5rem', textAlign: 'right' }}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bomItems.map((item, idx) => (
-                <tr key={idx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                  <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {item.part}
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{item.supplier}</div>
-                  </td>
-                  <td style={{ padding: '0.75rem 0.5rem', color: 'var(--text-secondary)' }}>{item.spec}</td>
-                  <td style={{ padding: '0.75rem 0.5rem', color: 'var(--text-secondary)' }}>{item.material}</td>
-                  <td style={{ padding: '0.75rem 0.5rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>{item.qty}</td>
-                  <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right', fontFamily: 'var(--font-mono)' }}>{item.cost}</td>
-                  <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right', fontWeight: 700, color: '#00e5a3', fontFamily: 'var(--font-mono)' }}>{item.total}</td>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #E5E7EB', color: '#6B7280', fontSize: '0.75rem' }}>
+                  <th style={{ padding: '0.5rem 0' }}>Part</th>
+                  <th style={{ padding: '0.5rem 0' }}>Material</th>
+                  <th style={{ padding: '0.5rem 0', textAlign: 'right' }}>Cost</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              </thead>
+              <tbody>
+                <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
+                  <td style={{ padding: '0.6rem 0', fontWeight: 600 }}>316L Stainless Conduit (6mm ID x 220mm)</td>
+                  <td style={{ padding: '0.6rem 0', color: '#4B5563' }}>316L Stainless Steel</td>
+                  <td style={{ padding: '0.6rem 0', textAlign: 'right', fontWeight: 600 }}>$1.20</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
+                  <td style={{ padding: '0.6rem 0', fontWeight: 600 }}>Sodium Acetate Trihydrate (50g Core)</td>
+                  <td style={{ padding: '0.6rem 0', color: '#4B5563' }}>NaC2H3O2 · 3H2O</td>
+                  <td style={{ padding: '0.6rem 0', textAlign: 'right', fontWeight: 600 }}>$0.65</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
+                  <td style={{ padding: '0.6rem 0', fontWeight: 600 }}>Bistable Snap-Disc Trigger</td>
+                  <td style={{ padding: '0.6rem 0', color: '#4B5563' }}>301 Full-Hard Stainless</td>
+                  <td style={{ padding: '0.6rem 0', textAlign: 'right', fontWeight: 600 }}>$0.35</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
+                  <td style={{ padding: '0.6rem 0', fontWeight: 600 }}>Thermochromic Silicone Jacket</td>
+                  <td style={{ padding: '0.6rem 0', color: '#4B5563' }}>Medical Silicone</td>
+                  <td style={{ padding: '0.6rem 0', textAlign: 'right', fontWeight: 600 }}>$0.85</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '0.6rem 0', fontWeight: 600 }}>Viton End Seals & Retaining Collars</td>
+                  <td style={{ padding: '0.6rem 0', color: '#4B5563' }}>Viton Fluoropolymer</td>
+                  <td style={{ padding: '0.6rem 0', textAlign: 'right', fontWeight: 600 }}>$1.45</td>
+                </tr>
+              </tbody>
+            </table>
 
-      {/* Cross-Section Geometry & Material Specifications */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-        
-        <div className={styles.section} style={{ margin: 0 }}>
-          <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Radial Annular Tolerances
-          </h3>
-          <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            <li><strong>Inner Fluid Bore:</strong> 6.0 mm ID (Optimized draw resistance)</li>
-            <li><strong>Stainless Wall:</strong> 0.5 mm (Rapid thermal conduction)</li>
-            <li><strong>PCM Jacket Cavity:</strong> 13.0 mm OD × 180 mm Active Length</li>
-            <li><strong>Silicone Insulation:</strong> 1.5 mm Wall (Thermochromic status cue)</li>
-            <li><strong>Total Exterior Diameter:</strong> 16.0 mm</li>
-          </ul>
+            <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+              <button
+                onClick={() => setShowBomModal(false)}
+                className="button-primary"
+                style={{ padding: '0.5rem 1.25rem', borderRadius: '6px' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
+      )}
 
-        <div className={styles.section} style={{ margin: 0 }}>
-          <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Food-Contact & Compliance
-          </h3>
-          <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            <li><strong>Fluid Path:</strong> 100% Passivated 316L Stainless Steel</li>
-            <li><strong>Core Seal:</strong> Dual Viton Fluoropolymer O-rings (Hermetic)</li>
-            <li><strong>PCM Isolation:</strong> Zero fluid-contact risk (Secondary chamber)</li>
-            <li><strong>Cleaning Protocol:</strong> Dishwasher safe / Camp-stove boil reset</li>
-          </ul>
+      {/* Materials Modal */}
+      {showMaterialsModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(17, 24, 39, 0.4)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 100, padding: '1.5rem'
+        }} onClick={() => setShowMaterialsModal(false)}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            maxWidth: '520px',
+            width: '100%',
+            padding: '2rem',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.75rem 0', color: '#111827' }}>
+              Material Specifications
+            </h3>
+            <ul style={{ paddingLeft: '1.25rem', fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.8 }}>
+              <li><strong>Passivated 316L Stainless Steel:</strong> Internal food-contact fluid channel (High thermal conductivity).</li>
+              <li><strong>Sodium Acetate Trihydrate (SAT):</strong> Non-toxic phase-change chemical salt (54°C transition).</li>
+              <li><strong>Full-Hard 301 Stainless Spring Steel:</strong> Mechanical bistable tactile click disc.</li>
+              <li><strong>Food-Grade Silicone (Shore 40A):</strong> Thermal insulating outer sleeve with color-change cue.</li>
+              <li><strong>Viton Fluoropolymer O-Rings:</strong> Hermetic fluid seal rated from -20°C to 150°C.</li>
+            </ul>
+
+            <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+              <button
+                onClick={() => setShowMaterialsModal(false)}
+                className="button-primary"
+                style={{ padding: '0.5rem 1.25rem', borderRadius: '6px' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
-
-      </div>
+      )}
 
     </div>
   );
