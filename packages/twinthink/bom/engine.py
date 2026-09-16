@@ -378,16 +378,29 @@ def parse_bom_csv(csv_text: str, root_title: str = "Root Assembly") -> BomNode:
     for i, r in enumerate(rows, 1):
         raw_nodes.append(_extract_row_data(r, i))
 
-    # Case 1: Dot-level hierarchy (e.g. 1, 1.1, 1.2, 1.2.1)
-    if has_level and any("." in str(n["level"]) for n in raw_nodes):
-        level_map: Dict[str, str] = {}
-        for n in raw_nodes:
-            lvl = str(n["level"])
-            level_map[lvl] = n["node_id"]
-            if "." in lvl:
-                parent_lvl = ".".join(lvl.split(".")[:-1])
-                if parent_lvl in level_map:
-                    n["parent_id"] = level_map[parent_lvl]
+    # Case 1: Level-based hierarchy (e.g. 1.1 or integer 0, 1, 2)
+    if has_level:
+        if any("." in str(n["level"]) for n in raw_nodes):
+            level_map: Dict[str, str] = {}
+            for n in raw_nodes:
+                lvl = str(n["level"])
+                level_map[lvl] = n["node_id"]
+                if "." in lvl:
+                    parent_lvl = ".".join(lvl.split(".")[:-1])
+                    if parent_lvl in level_map:
+                        n["parent_id"] = level_map[parent_lvl]
+        else:
+            last_at_level: Dict[int, str] = {}
+            for n in raw_nodes:
+                lvl_str = str(n.get("level", "")).strip()
+                if lvl_str.isdigit():
+                    lvl_int = int(lvl_str)
+                    last_at_level[lvl_int] = n["node_id"]
+                    parent_lvl = lvl_int - 1
+                    while parent_lvl >= 0 and parent_lvl not in last_at_level:
+                        parent_lvl -= 1
+                    if parent_lvl >= 0:
+                        n["parent_id"] = last_at_level[parent_lvl]
 
     # Convert to BomNode objects
     bom_nodes: List[BomNode] = []

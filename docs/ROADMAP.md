@@ -8,7 +8,7 @@
 | **M1** | **Foundation & Creator Storage** | ✅ **Completed** | Persistent local SQLite + bundle storage, unique IDs, owner-token authorization, de-RESIP ingestion, genuine calibration & error metrics, export & re-import roundtrip, restart persistence. |
 | **M2** | **Canonical Hierarchical Product Graph** | ✅ **Completed** | Structural BOM tree backbone with attached engineering domains (material, manufacturing, recursive cost rollups, provenance history, declared rights intent, and role-filtered DPP projection previews). Passed 14/14 acceptance criteria. |
 | **M3** | **Identity, Private Access & Cryptographic Rights** | ✅ **Completed** | Asymmetric keypairs (Ed25519), did:twin identities, signed revision chains, capability tokens, AES-256-GCM envelope encryption, rights inheritance, and 100% offline portable .twin verification. Passed 20/20 acceptance criteria. |
-| **M4** | **Universal TwinThink Tooling & Integrations** | 📋 Scheduled | `tt` CLI, Antigravity MCP Server, IDE pair-programming hooks, and multi-format importers as interchangeable clients of the canonical TwinDocument contract. |
+| **M4** | **Universal TwinThink Tooling & Integrations** | ✅ **Completed** | Unified `TwinService` canonical protocol layer, complete `tt` CLI surface (`twin`, `bom`, `access`, `evidence`, `provenance`, `dpp`), zero-dependency JSON-RPC stdio MCP server (`tt mcp` / `python -m twinthink.mcp`), and verified multi-client state equivalence across CLI, MCP, and Web/API. |
 | **M5** | **P2P NDA & Cryptographic IP Paywalls** | 📋 Scheduled | Blind catalog profile views, no-search direct-link access, dynamic P2P NDA signing, escrow payment integration (Stripe/Simulated). |
 | **M6** | **2027 EU Digital Product Passport (DPP) Compliance Exports** | 📋 Scheduled | Formal EU Regulation 2023/1542 battery passport compliance dossier integration, third-party conformity assessment bridge, open JSON-LD / GS1 interoperability. |
 | **M7** | **Crowdfunding & Data Royalty Rewards Pilots** | 📋 Scheduled | Point-of-sale micro-roundup treasury, browser extension privacy wrapper, data revenue dividend payouts. |
@@ -68,10 +68,19 @@
 - **100% Offline Bundle Verification**: `tt verify bundle.twin` validates identity documents, creator signatures, revision chain continuity, graph hash matching, and provenance entries completely offline without network access.
 - **Passed 20/20 Acceptance Criteria**: Verified across unit tests, API integration tests, and CLI workflows.
 
-### 📋 M4: Universal TwinThink Tooling & Integrations
-- **Interchangeable Clients Contract**: `tt` CLI, Antigravity IDE MCP Server, and Web UI act as unified clients against the canonical `TwinDocument` interface.
-- **Deep Toolchain Interception**: Enhanced `tt wrap` for intercepting CAM toolpaths (G-code), OpenSSL, KiCad, FreeCAD, and build systems.
-- **Antigravity Model Context Protocol (MCP)**: Native tool endpoints for AI pair-programming, allowing agents to query BOM graphs, attach provenance, and generate calibration runs directly.
+### ✅ M4: Universal TwinThink Tooling & Integrations (Completed)
+- **Canonical `TwinService` Layer**: Established the single source of truth (`packages/twinthink/service.py`) executing all twin lifecycle mutations, BOM evaluations, cryptographic signatures, capability governance, and portable bundles.
+- **Unified `tt` CLI Surface**: Complete taxonomy implemented in `apps/api/tt.py`:
+  - `tt twin [create|inspect|edit|sign|verify|export|import]`
+  - `tt bom [inspect|validate]`
+  - `tt access [grant|revoke]`
+  - `tt evidence attach`
+  - `tt provenance show`
+  - `tt dpp preview`
+  - `tt mcp`
+- **Zero-Dependency JSON-RPC 2.0 MCP Server**: Pure stdio protocol server (`packages/twinthink/mcp/`) exposing 14 tools (`twin_create`, `twin_inspect`, `twin_edit`, `twin_sign`, `twin_verify`, `twin_export`, `twin_import`, `bom_inspect`, `bom_validate`, `access_grant`, `access_revoke`, `evidence_attach`, `provenance_show`, `dpp_preview`). Directly launchable via `tt mcp` or `python -m twinthink.mcp`.
+- **Multi-Client State Equivalence**: Automated tests prove that twins created via CLI, signed via MCP, and queried via API/Web operate on the exact same graph hashes, signature chains, and rolled-up BOM structures.
+- **Full Test Suite & Web Build Verified**: 71/71 tests passing across M0-M4 with 0 errors on production Next.js build.
 
 ### 📋 M5: P2P NDA & Cryptographic IP Paywalls
 - Blind catalog discovery links (direct creator links without global search).

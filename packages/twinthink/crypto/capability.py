@@ -12,15 +12,22 @@ from pydantic import BaseModel, Field
 from .identity import verify_signature, Keypair
 
 VALID_PERMISSIONS = {
+    "read",
+    "write",
+    "admin",
+    "read:all",
+    "write:all",
     "read:envelope",
     "read:design",
     "read:bom",
+    "bom:read",
     "read:manufacturing",
     "read:evidence",
     "read:financials",
     "read:attachments",
     "write:tests",
-    "write:metadata"
+    "write:metadata",
+    "evidence:attach"
 }
 
 class CapabilityToken(BaseModel):
