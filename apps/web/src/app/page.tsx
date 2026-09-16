@@ -324,7 +324,321 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 3. Six Reality Protocol Navigation Cards */}
+      {/* 3. What is a Digital Twin? - Interactive Educational Guide */}
+      <section style={{
+        marginTop: '4rem',
+        marginBottom: '4.5rem',
+        background: '#FFFFFF',
+        border: '1px solid #E5E7EB',
+        borderRadius: '20px',
+        padding: '3rem 2.25rem',
+        boxShadow: '0 10px 30px -10px rgba(0, 0, 0, 0.04)'
+      }}>
+        <div style={{ maxWidth: '780px', marginBottom: '2.5rem' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            background: 'rgba(16, 185, 129, 0.08)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            borderRadius: '100px',
+            padding: '0.25rem 0.75rem',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            color: '#059669',
+            marginBottom: '1rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} />
+            The Living Digital Twin Protocol
+          </div>
+          <h2 style={{
+            fontSize: 'clamp(1.75rem, 3.5vw, 2.35rem)',
+            fontWeight: 800,
+            letterSpacing: '-0.75px',
+            lineHeight: 1.2,
+            color: '#111827',
+            marginBottom: '1rem'
+          }}>
+            What is a Physical Digital Twin?
+          </h2>
+          <p style={{
+            fontSize: '1.0625rem',
+            color: '#4B5563',
+            lineHeight: 1.65,
+            margin: 0
+          }}>
+            A digital twin is <strong>not merely a 3D picture or a CAD drawing</strong>. It is a computable, living software mirror of a physical product that brings together physical geometry, physics simulations, real sensor experiments, and cryptographic proof of invention.
+          </p>
+        </div>
+
+        {/* 4 Architectural Pillars Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '1.5rem',
+          marginBottom: '3rem'
+        }}>
+          {/* Pillar 1 */}
+          <div style={{
+            background: '#F9FAFB',
+            border: '1px solid #E5E7EB',
+            borderRadius: '14px',
+            padding: '1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between'
+          }}>
+            <div>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                background: '#FFFFFF',
+                border: '1px solid #E5E7EB',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '1rem',
+                color: '#111827'
+              }}>
+                <Layers size={20} />
+              </div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', marginBottom: '0.4rem' }}>
+                1. Structural BOM & CAD
+              </h3>
+              <p style={{ fontSize: '0.8125rem', color: '#6B7280', lineHeight: 1.5, margin: 0 }}>
+                Hierarchical Bill of Materials (BOM) linking raw materials, manufacturing processes, unit costs ($4.50), and 3D STEP geometry.
+              </p>
+            </div>
+            <Link
+              href="/twins/0001?tab=structure"
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#111827',
+                marginTop: '1.25rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem'
+              }}
+            >
+              Inspect BOM Structure <ChevronRight size={13} />
+            </Link>
+          </div>
+
+          {/* Pillar 2 */}
+          <div style={{
+            background: '#F9FAFB',
+            border: '1px solid #E5E7EB',
+            borderRadius: '14px',
+            padding: '1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between'
+          }}>
+            <div>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                background: '#FFFFFF',
+                border: '1px solid #E5E7EB',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '1rem',
+                color: '#0284C7'
+              }}>
+                <Activity size={20} />
+              </div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', marginBottom: '0.4rem' }}>
+                2. Differential Equations
+              </h3>
+              <p style={{ fontSize: '0.8125rem', color: '#6B7280', lineHeight: 1.5, margin: 0 }}>
+                Pure-Python ODE solvers modeling heat transfer, flow velocity, and latent phase-change release without expensive CAD plugins.
+              </p>
+            </div>
+            <Link
+              href="/twins/0001?tab=behavior"
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#0284C7',
+                marginTop: '1.25rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem'
+              }}
+            >
+              Run Thermal ODE <ChevronRight size={13} />
+            </Link>
+          </div>
+
+          {/* Pillar 3 */}
+          <div style={{
+            background: '#F9FAFB',
+            border: '1px solid #E5E7EB',
+            borderRadius: '14px',
+            padding: '1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between'
+          }}>
+            <div>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                background: '#FFFFFF',
+                border: '1px solid #E5E7EB',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '1rem',
+                color: '#059669'
+              }}>
+                <FileText size={20} />
+              </div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', marginBottom: '0.4rem' }}>
+                3. Bench Sensor Telemetry
+              </h3>
+              <p style={{ fontSize: '0.8125rem', color: '#6B7280', lineHeight: 1.5, margin: 0 }}>
+                Actual micro-thermocouple test streams uploaded from physical test rigs. Continuously fits parameters and verifies RMSE precision.
+              </p>
+            </div>
+            <Link
+              href="/twins/0001?tab=evidence"
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#059669',
+                marginTop: '1.25rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem'
+              }}
+            >
+              View Test Runs <ChevronRight size={13} />
+            </Link>
+          </div>
+
+          {/* Pillar 4 */}
+          <div style={{
+            background: '#F9FAFB',
+            border: '1px solid #E5E7EB',
+            borderRadius: '14px',
+            padding: '1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between'
+          }}>
+            <div>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                background: '#FFFFFF',
+                border: '1px solid #E5E7EB',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '1rem',
+                color: '#D97706'
+              }}>
+                <ShieldCheck size={20} />
+              </div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', marginBottom: '0.4rem' }}>
+                4. Cryptographic Proof
+              </h3>
+              <p style={{ fontSize: '0.8125rem', color: '#6B7280', lineHeight: 1.5, margin: 0 }}>
+                Every revision is signed with creator Ed25519 keys, linking 2016 invention notebook scans to verified 2026 prototypes.
+              </p>
+            </div>
+            <Link
+              href="/twins/0001?tab=history"
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#D97706',
+                marginTop: '1.25rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem'
+              }}
+            >
+              Explore Provenance <ChevronRight size={13} />
+            </Link>
+          </div>
+        </div>
+
+        {/* Interactive Comparison: Static CAD vs. Living Twin */}
+        <div style={{
+          background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+          borderRadius: '14px',
+          padding: '2rem',
+          color: '#FFFFFF'
+        }}>
+          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '0.5rem' }}>
+            Why Digital Twins Outperform Static CAD Files & Paper Patents
+          </h3>
+          <p style={{ fontSize: '0.875rem', color: '#94A3B8', marginBottom: '1.5rem', maxWidth: '680px' }}>
+            Traditional engineering leaves critical data fragmented in isolated folders. TwinThink binds physical reality and computation into one portable, verifiable bundle.
+          </p>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '1.25rem'
+          }}>
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '10px',
+              padding: '1.25rem'
+            }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#EF4444', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                ✕ The Fragmented Way
+              </div>
+              <ul style={{ paddingLeft: '1.1rem', fontSize: '0.8125rem', color: '#CBD5E1', lineHeight: 1.8, margin: 0 }}>
+                <li>CAD models are static geometric shapes with no embedded physics.</li>
+                <li>Physical test data sits in unversioned spreadsheets on someone&apos;s laptop.</li>
+                <li>BOM costs and supplier links diverge from 3D designs.</li>
+                <li>Inventorship disputes rely on ambiguous dates and unverified emails.</li>
+              </ul>
+            </div>
+
+            <div style={{
+              background: 'rgba(16, 185, 129, 0.1)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              borderRadius: '10px',
+              padding: '1.25rem'
+            }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#34D399', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                ✓ The TwinThink Living Twin
+              </div>
+              <ul style={{ paddingLeft: '1.1rem', fontSize: '0.8125rem', color: '#F1F5F9', lineHeight: 1.8, margin: 0 }}>
+                <li>Self-contained differential equation simulation engine inside the bundle.</li>
+                <li>Real bench sensor telemetry continuously validates model accuracy (RMSE).</li>
+                <li>3-level structural BOM with real unit costs ($4.50) and part weights.</li>
+                <li>Ed25519 cryptographic signatures guarantee tamper-evident authorship.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. Six Reality Protocol Navigation Cards */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', margin: '0 0 0.4rem 0' }}>
+          Explore the Six Reality Dimensions
+        </h3>
+        <p style={{ fontSize: '0.875rem', color: '#6B7280', margin: '0 0 1.25rem 0' }}>
+          Click any dimension below to inspect how Twin #0001 (Resip™) answers the fundamental engineering questions.
+        </p>
+      </div>
+
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
@@ -384,3 +698,4 @@ export default function HomePage() {
     </main>
   );
 }
+

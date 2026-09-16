@@ -39,6 +39,20 @@ export default function Navbar() {
               color: '#111827' 
             }}
           >
+            <div style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '7px',
+              background: '#0F172A',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+            }}>
+              <img src="/icon.svg" alt="TwinThink Logo" style={{ width: '22px', height: '22px' }} />
+            </div>
             <span style={{ fontSize: '1.125rem', fontWeight: 800, letterSpacing: '-0.5px' }}>
               TWINTH.INK
             </span>

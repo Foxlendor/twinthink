@@ -11,5 +11,8 @@ export function getApiUrl(): string {
     }
     return 'http://127.0.0.1:8001';
   }
-  return 'http://127.0.0.1:8001';
+  return process.env.NODE_ENV === 'production' || process.env.VERCEL
+    ? 'https://twinthink.onrender.com'
+    : 'http://127.0.0.1:8001';
 }
+

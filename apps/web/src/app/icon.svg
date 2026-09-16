@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+
+    <!-- Physical Twin Facet (Obsidian / Steel) -->
+    <linearGradient id="physicalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#64748B"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+
+    <!-- Digital Twin Facet (Luminescent Emerald to Cyan) -->
+    <linearGradient id="digitalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981"/>
+      <stop offset="50%" stop-color="#06B6D4"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+
+    <!-- Glowing Core Pulse -->
+    <radialGradient id="pulseGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#34D399" stop-opacity="0.9"/>
+      <stop offset="60%" stop-color="#059669" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#10B981" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Subtle Border Glow -->
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#334155"/>
+      <stop offset="50%" stop-color="#10B981" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Container Base -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bgGrad)" stroke="url(#borderGrad)" stroke-width="1.5"/>
+
+  <!-- Twin Convergence Aura -->
+  <circle cx="32" cy="32" r="16" fill="url(#pulseGlow)"/>
+
+  <!-- Physical Node (Left Isometric Diamond / Hex) -->
+  <path d="M 21 16 L 32 23 L 32 41 L 21 34 Z" fill="url(#physicalGrad)"/>
+  <path d="M 12 23 L 21 16 L 32 23 L 23 30 Z" fill="#475569"/>
+  <path d="M 12 23 L 23 30 L 23 47 L 12 40 Z" fill="#0F172A"/>
+
+  <!-- Digital Node (Right Isometric Diamond / Hex) -->
+  <path d="M 43 16 L 52 23 L 52 41 L 43 34 Z" fill="url(#digitalGrad)"/>
+  <path d="M 32 23 L 43 16 L 52 23 L 41 30 Z" fill="#38BDF8"/>
+  <path d="M 32 23 L 41 30 L 41 47 L 32 40 Z" fill="#0284C7"/>
+
+  <!-- Connecting Quantum Bridge / Telemetry Synapse -->
+  <line x1="23" y1="30" x2="41" y2="30" stroke="#6EE7B7" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 2"/>
+
+  <!-- Central Nexus Core -->
+  <circle cx="32" cy="30" r="3" fill="#FFFFFF"/>
+  <circle cx="32" cy="30" r="1.5" fill="#10B981"/>
+</svg>

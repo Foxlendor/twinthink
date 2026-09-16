@@ -380,7 +380,14 @@ export default function StructureTab({ twinId, stepDownloadUrl, onInspectClaim }
               </tbody>
             </table>
 
-            <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <a
+                href={`/twins/${twinId}?tab=bom`}
+                className="button-secondary"
+                style={{ padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.8125rem', textDecoration: 'none' }}
+              >
+                Open Interactive BOM Tree &rarr;
+              </a>
               <button
                 onClick={() => setShowBomModal(false)}
                 className="button-primary"

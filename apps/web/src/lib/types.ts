@@ -40,6 +40,7 @@ export interface TwinVersion {
   properties: TwinProperty[];
   relationships: TwinRelationship[];
   assets: TwinAsset[];
+  simulation?: any;
 }
 
 export interface TwinData {

@@ -21,6 +21,7 @@ import {
 // Reality Protocol Tabs
 import ObjectTab from './tabs/ObjectTab';
 import StructureTab from './tabs/StructureTab';
+import BomTab from './tabs/BomTab';
 import BehaviorTab from './tabs/BehaviorTab';
 import EvidenceTab from './tabs/EvidenceTab';
 import HistoryTab from './tabs/HistoryTab';
@@ -34,19 +35,22 @@ interface TwinTabsProps {
   twin: TwinData;
 }
 
-export type RealityTabKey = 'object' | 'structure' | 'behavior' | 'evidence' | 'history' | 'lineage' | 'files';
+export type RealityTabKey = 'object' | 'structure' | 'bom' | 'behavior' | 'evidence' | 'tests' | 'history' | 'lineage' | 'files';
 
 export default function TwinTabs({ twin }: TwinTabsProps) {
   const searchParams = useSearchParams();
-  const initialTab = (searchParams.get('tab') as RealityTabKey) || 'structure';
+  const rawTab = searchParams.get('tab');
+  const initialTab: RealityTabKey = rawTab === 'tests' ? 'evidence' : ((rawTab as RealityTabKey) || 'structure');
   
   const [activeTab, setActiveTab] = useState<RealityTabKey>(initialTab);
   const [inspectedClaim, setInspectedClaim] = useState<string | null>(null);
 
   useEffect(() => {
-    const tabParam = searchParams.get('tab') as RealityTabKey;
-    if (tabParam) {
-      setActiveTab(tabParam);
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'tests') {
+      setActiveTab('evidence');
+    } else if (tabParam && ['object', 'structure', 'bom', 'behavior', 'evidence', 'history', 'lineage', 'files'].includes(tabParam)) {
+      setActiveTab(tabParam as RealityTabKey);
     }
   }, [searchParams]);
 
@@ -57,8 +61,9 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
   const sidebarItems: Array<{ id: RealityTabKey; title: string; subtitle: string; icon: any }> = [
     { id: 'object', title: 'Object', subtitle: 'What is it?', icon: Box },
     { id: 'structure', title: 'Structure', subtitle: 'What is it made of?', icon: Layers },
+    { id: 'bom', title: 'BOM Tree', subtitle: 'Hierarchical product graph', icon: GitFork },
     { id: 'behavior', title: 'Behavior', subtitle: 'What does it do?', icon: Activity },
-    { id: 'evidence', title: 'Evidence', subtitle: 'What supports it?', icon: FileText },
+    { id: 'evidence', title: 'Testing & Evidence', subtitle: 'What supports it?', icon: FileText },
     { id: 'history', title: 'History', subtitle: 'How did it become this?', icon: Clock },
     { id: 'lineage', title: 'Lineage', subtitle: 'Where did it come from?', icon: GitFork },
   ];
@@ -231,6 +236,10 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
               stepDownloadUrl={stepDownloadUrl} 
               onInspectClaim={(claimKey) => setInspectedClaim(claimKey)} 
             />
+          )}
+
+          {activeTab === 'bom' && (
+            <BomTab twin={twin} />
           )}
 
           {activeTab === 'behavior' && (
