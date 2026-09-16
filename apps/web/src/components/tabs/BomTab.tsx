@@ -293,17 +293,22 @@ export default function BomTab({ twin }: TabProps) {
             <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Canonical Hierarchical Product Graph</h2>
             <span style={{
               fontSize: '0.75rem',
-              padding: '0.2rem 0.5rem',
+              padding: '0.2rem 0.55rem',
               borderRadius: '999px',
-              background: 'rgba(0, 204, 255, 0.1)',
-              color: 'var(--accent-primary)',
-              fontWeight: 600
+              background: 'rgba(0, 255, 170, 0.12)',
+              border: '1px solid rgba(0, 255, 170, 0.3)',
+              color: '#00ffaa',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem'
             }}>
-              Milestone M2
+              <ShieldCheck size={12} />
+              Milestone M3 — Cryptographic Rights
             </span>
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.35rem' }}>
-            Multi-tier assembly backbone with attached engineering domains, recursive cost rollups, and provenance history.
+            Verifiable asymmetric identity, signed revision chains, capability-based delegation, and portable .twin bundles.
           </p>
         </div>
 
@@ -786,6 +791,17 @@ export default function BomTab({ twin }: TabProps) {
                       <div style={{ color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                         By: {p.creator} • {new Date(p.captured_at).toLocaleDateString()}
                       </div>
+                      {p.creator_identity && (
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', color: '#00e676', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <ShieldCheck size={11} />
+                          DID: {p.creator_identity}
+                        </div>
+                      )}
+                      {p.revision && (
+                        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                          Revision: <strong style={{ color: 'var(--text-primary)' }}>{p.revision}</strong> {p.signature ? '• Ed25519 Signed' : ''}
+                        </div>
+                      )}
                       {p.artifact_hash && (
                         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.25rem', wordBreak: 'break-all' }}>
                           Hash: {p.artifact_hash}

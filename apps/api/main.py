@@ -27,6 +27,29 @@ from twinthink.simulation.flow import FlowTimeline, SipEvent
 from twinthink.simulation.calibration import calculate_error_metrics, generate_validation_report
 from twinthink.factory import TwinFactoryEngine
 from twinthink.bom import CyclicBomError, OrphanBomNodeError, project_dpp, BomNode
+from twinthink.crypto import (
+    IdentityDocument,
+    Keypair,
+    verify_signature,
+    TwinRevisionRecord,
+    create_signed_revision,
+    verify_revision,
+    verify_revision_chain,
+    CapabilityToken,
+    RevocationRecord,
+    issue_capability,
+    verify_capability,
+    EncryptedSegment,
+    WrappedKey,
+    encrypt_segment,
+    decrypt_segment,
+    wrap_key_for_recipient,
+    unwrap_key_with_private_key,
+    pack_twin_bundle,
+    verify_twin_bundle,
+    get_or_create_default_identity
+)
+from twinthink.schema import resolve_node_rights, RightsPolicyDeclaration
 
 app = FastAPI(title="TwinThink API")
 
@@ -119,6 +142,50 @@ else:
                 initial_conditions TEXT,
                 raw_preview TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS identities (
+                identity_id TEXT PRIMARY KEY,
+                algorithm TEXT,
+                public_key TEXT,
+                name TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                status TEXT
+            );
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS twin_revisions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                twin_id TEXT,
+                revision TEXT,
+                parent_revision TEXT,
+                graph_hash TEXT,
+                author_identity TEXT,
+                mutation_notes TEXT,
+                signature TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(twin_id, revision)
+            );
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS capabilities (
+                token_id TEXT PRIMARY KEY,
+                subject TEXT,
+                twin_id TEXT,
+                permissions_json TEXT,
+                issued_by TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP,
+                signature TEXT
+            );
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS capability_revocations (
+                token_id TEXT PRIMARY KEY,
+                revoked_by TEXT,
+                revoked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reason TEXT
             );
         """)
         conn.commit()
@@ -796,6 +863,355 @@ async def get_twin_dpp(twin_id: str):
         "license": manifest.get("license", "CERN-OHL-S-2.0"),
         "components": dpp_components
     }
+
+# ==========================================
+# M3: CRYPTOGRAPHIC IDENTITY, REVISIONS, CAPABILITIES & BUNDLE API
+# ==========================================
+
+@app.post("/api/identities")
+async def register_identity(doc: IdentityDocument):
+    """Registers or updates a public creator IdentityDocument."""
+    conn = get_db_local()
+    conn.execute("""
+        INSERT INTO identities (identity_id, algorithm, public_key, name, created_at, status)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(identity_id) DO UPDATE SET
+            name=excluded.name,
+            status=excluded.status
+    """, (
+        doc.identity_id,
+        doc.algorithm,
+        doc.public_key,
+        doc.name,
+        doc.created_at,
+        doc.status
+    ))
+    conn.commit()
+    conn.close()
+    return doc
+
+@app.get("/api/identities/{identity_id}")
+async def get_identity(identity_id: str):
+    """Fetches a registered IdentityDocument by its DID."""
+    conn = get_db_local()
+    row = conn.execute("SELECT * FROM identities WHERE identity_id = ?", (identity_id,)).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Identity not found")
+    return {
+        "identity_id": row["identity_id"],
+        "algorithm": row["algorithm"],
+        "public_key": row["public_key"],
+        "name": row["name"],
+        "created_at": str(row["created_at"]),
+        "status": row["status"]
+    }
+
+@app.post("/api/twins/{twin_id}/revisions")
+async def create_revision_endpoint(twin_id: str, rec: TwinRevisionRecord):
+    """
+    Submits a signed revision for a twin.
+    Verifies author Ed25519 signature and revision chain continuity.
+    """
+    if rec.twin_id != twin_id:
+        raise HTTPException(status_code=400, detail=f"Revision twin_id mismatch: {rec.twin_id} vs {twin_id}")
+
+    # Verify signature
+    if not verify_revision(rec):
+        raise HTTPException(status_code=400, detail="Invalid cryptographic signature on revision")
+
+    conn = get_db_local()
+    # Check parent continuity if existing revisions
+    rows = conn.execute(
+        "SELECT * FROM twin_revisions WHERE twin_id = ? ORDER BY id ASC",
+        (twin_id,)
+    ).fetchall()
+
+    existing_revs = [
+        TwinRevisionRecord(
+            twin_id=r["twin_id"],
+            revision=r["revision"],
+            parent_revision=r["parent_revision"],
+            graph_hash=r["graph_hash"],
+            author_identity=r["author_identity"],
+            mutation_notes=r["mutation_notes"],
+            signature=r["signature"],
+            created_at=str(r["created_at"])
+        )
+        for r in rows
+    ]
+
+    if existing_revs:
+        last_rev = existing_revs[-1]
+        expected_parent = last_rev.compute_hash()
+        if rec.parent_revision != expected_parent:
+            conn.close()
+            raise HTTPException(
+                status_code=400,
+                detail=f"Broken revision lineage: expected parent_revision {expected_parent[:12]}..., got {str(rec.parent_revision)[:12]}..."
+            )
+    else:
+        if rec.parent_revision is not None:
+            conn.close()
+            raise HTTPException(status_code=400, detail="Initial revision must have parent_revision == null")
+
+    try:
+        conn.execute("""
+            INSERT INTO twin_revisions (twin_id, revision, parent_revision, graph_hash, author_identity, mutation_notes, signature, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            rec.twin_id,
+            rec.revision,
+            rec.parent_revision,
+            rec.graph_hash,
+            rec.author_identity,
+            rec.mutation_notes,
+            rec.signature,
+            rec.created_at
+        ))
+        conn.commit()
+    except Exception as e:
+        conn.close()
+        raise HTTPException(status_code=400, detail=f"Failed to record revision: {str(e)}")
+    conn.close()
+
+    return {
+        "status": "signed",
+        "twin_id": twin_id,
+        "revision": rec.revision,
+        "commit_hash": rec.compute_hash(),
+        "record": rec.model_dump()
+    }
+
+@app.get("/api/twins/{twin_id}/revisions")
+async def list_twin_revisions(twin_id: str):
+    """Returns the signed revision chain for a twin and verifies chain integrity."""
+    conn = get_db_local()
+    rows = conn.execute(
+        "SELECT * FROM twin_revisions WHERE twin_id = ? ORDER BY id ASC",
+        (twin_id,)
+    ).fetchall()
+    conn.close()
+
+    revisions = [
+        TwinRevisionRecord(
+            twin_id=r["twin_id"],
+            revision=r["revision"],
+            parent_revision=r["parent_revision"],
+            graph_hash=r["graph_hash"],
+            author_identity=r["author_identity"],
+            mutation_notes=r["mutation_notes"],
+            signature=r["signature"],
+            created_at=str(r["created_at"])
+        )
+        for r in rows
+    ]
+
+    chain_ok, chain_err = verify_revision_chain(revisions) if revisions else (True, None)
+
+    return {
+        "twin_id": twin_id,
+        "revisions_count": len(revisions),
+        "chain_valid": chain_ok,
+        "chain_error": chain_err,
+        "revisions": [r.model_dump() for r in revisions]
+    }
+
+@app.post("/api/twins/{twin_id}/capabilities")
+async def issue_capability_endpoint(twin_id: str, token: CapabilityToken):
+    """Registers an authorized CapabilityToken for a subject DID."""
+    if token.twin_id != twin_id:
+        raise HTTPException(status_code=400, detail="Capability twin_id mismatch")
+
+    valid, err = verify_capability(token)
+    if not valid:
+        raise HTTPException(status_code=400, detail=f"Invalid capability token: {err}")
+
+    conn = get_db_local()
+    conn.execute("""
+        INSERT INTO capabilities (token_id, subject, twin_id, permissions_json, issued_by, created_at, expires_at, signature)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        token.token_id,
+        token.subject,
+        token.twin_id,
+        json.dumps(token.permissions),
+        token.issued_by,
+        token.created_at,
+        token.expires_at,
+        token.signature
+    ))
+    conn.commit()
+    conn.close()
+
+    return {"status": "issued", "token": token.model_dump()}
+
+@app.post("/api/twins/{twin_id}/capabilities/revoke")
+async def revoke_capability_endpoint(twin_id: str, revocation: RevocationRecord):
+    """Revokes a previously issued capability token."""
+    conn = get_db_local()
+    conn.execute("""
+        INSERT INTO capability_revocations (token_id, revoked_by, revoked_at, reason)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(token_id) DO UPDATE SET
+            revoked_at=excluded.revoked_at,
+            reason=excluded.reason
+    """, (
+        revocation.token_id,
+        revocation.revoked_by,
+        revocation.revoked_at,
+        revocation.reason
+    ))
+    conn.commit()
+    conn.close()
+
+    return {"status": "revoked", "token_id": revocation.token_id}
+
+@app.get("/api/twins/{twin_id}/capabilities")
+async def list_twin_capabilities(twin_id: str):
+    """Lists capability tokens and revocations for a twin."""
+    conn = get_db_local()
+    caps = conn.execute("SELECT * FROM capabilities WHERE twin_id = ?", (twin_id,)).fetchall()
+    revs = set(r[0] for r in conn.execute("SELECT token_id FROM capability_revocations").fetchall())
+    conn.close()
+
+    result = []
+    for c in caps:
+        is_rev = c["token_id"] in revs
+        result.append({
+            "token_id": c["token_id"],
+            "subject": c["subject"],
+            "twin_id": c["twin_id"],
+            "permissions": json.loads(c["permissions_json"]),
+            "issued_by": c["issued_by"],
+            "created_at": str(c["created_at"]),
+            "expires_at": str(c["expires_at"]) if c["expires_at"] else None,
+            "revoked": is_rev
+        })
+    return {"twin_id": twin_id, "capabilities": result}
+
+@app.get("/api/twins/{twin_id}/bundle")
+async def get_twin_m3_bundle(twin_id: str):
+    """
+    Exports a 100% portable, verifiable .twin bundle containing:
+    - manifest.json
+    - identity/creator.json
+    - graph/nodes.json & graph/edges.json
+    - revisions/*.json & signatures/revisions.json
+    - rights/policy.json
+    - provenance/ledger.json
+    - public/envelope.json
+    """
+    conn = get_db_local()
+    row = conn.execute("SELECT * FROM twins WHERE id = ?", (twin_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Twin not found")
+
+    manifest = json.loads(row["manifest_json"]) if row["manifest_json"] else {}
+    doc = json.loads(row["document_json"]) if row["document_json"] else {}
+
+    # Get identity
+    creator_did = row["creator"]
+    id_row = conn.execute("SELECT * FROM identities WHERE identity_id = ?", (creator_did,)).fetchone()
+    if id_row:
+        creator_id = IdentityDocument(
+            identity_id=id_row["identity_id"],
+            algorithm=id_row["algorithm"],
+            public_key=id_row["public_key"],
+            name=id_row["name"],
+            created_at=str(id_row["created_at"]),
+            status=id_row["status"]
+        )
+    else:
+        # Generate or mock identity document from creator string
+        kp = get_or_create_default_identity()
+        creator_id = kp.export_identity(name=creator_did or "Anonymous Creator")
+
+    # Get revisions
+    rev_rows = conn.execute(
+        "SELECT * FROM twin_revisions WHERE twin_id = ? ORDER BY id ASC",
+        (twin_id,)
+    ).fetchall()
+    revisions = [
+        TwinRevisionRecord(
+            twin_id=r["twin_id"],
+            revision=r["revision"],
+            parent_revision=r["parent_revision"],
+            graph_hash=r["graph_hash"],
+            author_identity=r["author_identity"],
+            mutation_notes=r["mutation_notes"],
+            signature=r["signature"],
+            created_at=str(r["created_at"])
+        )
+        for r in rev_rows
+    ]
+
+    # If no revisions recorded yet, create signed initial R0 revision
+    if not revisions:
+        from twinthink.bom import BomEngine, parse_bom_dict
+        bom_nodes_raw = doc.get("structure", {}).get("bom_nodes", [])
+        try:
+            tree_root = parse_bom_dict(bom_nodes_raw)
+            g_hash = BomEngine.compute_hash(tree_root)
+        except Exception:
+            g_hash = hashlib.sha256(json.dumps(bom_nodes_raw, sort_keys=True).encode()).hexdigest()
+        kp = get_or_create_default_identity()
+        r0 = create_signed_revision(
+            twin_id=twin_id,
+            revision_name="R0",
+            graph_hash=g_hash,
+            keypair=kp,
+            mutation_notes="Initial M3 export snapshot"
+        )
+        revisions = [r0]
+
+    conn.close()
+
+    graph_nodes = doc.get("structure", {}).get("bom_nodes", [])
+    rights_policy = doc.get("rights_policy") or {
+        "mode": doc.get("identity", {}).get("declared_rights_mode", "Open Development"),
+        "scope": "twin",
+        "declared_by": creator_id.identity_id
+    }
+
+    # Extract provenance ledger from nodes
+    prov_ledger = []
+    for n in graph_nodes:
+        for p in n.get("provenance", []):
+            prov_ledger.append(p)
+
+    public_envelope = {
+        "twin_id": twin_id,
+        "title": manifest.get("title", "Digital Twin"),
+        "creator": creator_id.identity_id,
+        "created_at": manifest.get("created_at"),
+        "declared_rights_mode": rights_policy.get("mode")
+    }
+
+    bundle_bytes = pack_twin_bundle(
+        manifest_data=manifest,
+        creator_identity=creator_id,
+        graph_nodes=graph_nodes,
+        revisions=revisions,
+        rights_policy=rights_policy,
+        provenance_ledger=prov_ledger,
+        public_envelope=public_envelope
+    )
+
+    from fastapi import Response
+    return Response(
+        content=bundle_bytes,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="twin_{twin_id}.twin"'}
+    )
+
+@app.post("/api/twins/verify-bundle")
+async def verify_bundle_endpoint(file: UploadFile = File(...)):
+    """Verifies a portable .twin bundle archive 100% offline."""
+    content = await file.read()
+    result = verify_twin_bundle(content)
+    return result.to_dict()
 
 # ==========================================
 # PHYSICAL TEST TELEMETRY & CALIBRATION API

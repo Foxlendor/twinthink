@@ -7,8 +7,8 @@
 | **M0** | **Environment & Startup Repair** | ✅ **Completed** | Fixed missing typing imports, resolved `twinthink.reality` package collisions, added automatic SQLite schema setup. |
 | **M1** | **Foundation & Creator Storage** | ✅ **Completed** | Persistent local SQLite + bundle storage, unique IDs, owner-token authorization, de-RESIP ingestion, genuine calibration & error metrics, export & re-import roundtrip, restart persistence. |
 | **M2** | **Canonical Hierarchical Product Graph** | ✅ **Completed** | Structural BOM tree backbone with attached engineering domains (material, manufacturing, recursive cost rollups, provenance history, declared rights intent, and role-filtered DPP projection previews). Passed 14/14 acceptance criteria. |
-| **M3** | **Account-Based Private Access & Key Management** | 📋 Scheduled | Identity ledger, role-based cryptographic access (auditor, buyer, fabricator), granular file visibility permissions. |
-| **M4** | **Universal CLI Wrapper & Antigravity MCP** | 📋 Scheduled | `tt-wrap` terminal interceptor, MCP tools for Antigravity IDE pair-programming and toolpath ingestion. |
+| **M3** | **Identity, Private Access & Cryptographic Rights** | ✅ **Completed** | Asymmetric keypairs (Ed25519), did:twin identities, signed revision chains, capability tokens, AES-256-GCM envelope encryption, rights inheritance, and 100% offline portable .twin verification. Passed 20/20 acceptance criteria. |
+| **M4** | **Universal TwinThink Tooling & Integrations** | 📋 Scheduled | `tt` CLI, Antigravity MCP Server, IDE pair-programming hooks, and multi-format importers as interchangeable clients of the canonical TwinDocument contract. |
 | **M5** | **P2P NDA & Cryptographic IP Paywalls** | 📋 Scheduled | Blind catalog profile views, no-search direct-link access, dynamic P2P NDA signing, escrow payment integration (Stripe/Simulated). |
 | **M6** | **2027 EU Digital Product Passport (DPP) Compliance Exports** | 📋 Scheduled | Formal EU Regulation 2023/1542 battery passport compliance dossier integration, third-party conformity assessment bridge, open JSON-LD / GS1 interoperability. |
 | **M7** | **Crowdfunding & Data Royalty Rewards Pilots** | 📋 Scheduled | Point-of-sale micro-roundup treasury, browser extension privacy wrapper, data revenue dividend payouts. |
@@ -58,13 +58,20 @@
 - **Role-Filtered DPP Projection Previews**: Implemented `project_dpp` supporting Public, Recycler, and Authority tiers with mandatory uncertified preview disclaimer.
 - **Web UI Lifecycle Inspector & DPP Modal**: Built interactive node drawer and multi-tier DPP projection modal into `apps/web/src/components/tabs/BomTab.tsx`.
 
-### 📋 M3: Account-Based Private Access & Key Management
-- Upgrade from bearer tokens to user accounts, API keys, and asymmetric signing keypairs.
-- Support role-based access control (Creator, Reviewer, Machinist, Recycler).
+### ✅ M3: Identity, Private Access & Cryptographic Rights (Completed)
+- **Asymmetric Cryptographic Identity**: Ed25519 keypairs with canonical `did:twin:<hex_pubkey>` identifiers. Public Identity Documents are exportable and registerable; private keys remain strictly client-side.
+- **Signed Revision Chains**: Mutations form cryptographically signed revision records (R0 -> R1 -> R2), binding canonical product graph hashes, author identities, and commit hash lineage.
+- **Capability-Based Access Control**: Granular segment-level capability tokens (`read:design`, `read:bom`, `read:manufacturing`, `read:evidence`, etc.) signed by issuers with instant revocation checks.
+- **AES-256-GCM Envelope Encryption**: Sensitive graph segments (design, CAD, financials, evidence) are encrypted with symmetric keys and wrapped for authorized recipient X25519 keys via ephemeral ECDH + HKDF.
+- **Declared Rights Inheritance**: Modeled five declared distribution modes (`Private`, `Licensed`, `Open Development`, `Public Domain Dedication`, `Conditional Release`) with recursive inheritance down the BOM and component-level overrides.
+- **Standardized `.twin` Bundle Format**: Standardized directory structure (`manifest.json`, `identity/`, `graph/`, `revisions/`, `signatures/`, `rights/`, `provenance/`, `public/`, `encrypted/`).
+- **100% Offline Bundle Verification**: `tt verify bundle.twin` validates identity documents, creator signatures, revision chain continuity, graph hash matching, and provenance entries completely offline without network access.
+- **Passed 20/20 Acceptance Criteria**: Verified across unit tests, API integration tests, and CLI workflows.
 
-### 📋 M4: Universal CLI Wrapper & Antigravity MCP
-- Terminal wrapper tool (`tt-wrap`) to intercept local engineering commands (e.g. OpenSSL, G-code generators, CAD compilers) and encapsulate outputs directly into TwinThink.
-- Expose TwinThink API via Model Context Protocol (MCP) server for Antigravity IDE.
+### 📋 M4: Universal TwinThink Tooling & Integrations
+- **Interchangeable Clients Contract**: `tt` CLI, Antigravity IDE MCP Server, and Web UI act as unified clients against the canonical `TwinDocument` interface.
+- **Deep Toolchain Interception**: Enhanced `tt wrap` for intercepting CAM toolpaths (G-code), OpenSSL, KiCad, FreeCAD, and build systems.
+- **Antigravity Model Context Protocol (MCP)**: Native tool endpoints for AI pair-programming, allowing agents to query BOM graphs, attach provenance, and generate calibration runs directly.
 
 ### 📋 M5: P2P NDA & Cryptographic IP Paywalls
 - Blind catalog discovery links (direct creator links without global search).

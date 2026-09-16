@@ -37,6 +37,21 @@ from twinthink.bom import (
 )
 from twinthink.factory import TwinFactoryEngine
 from twinthink.schema import TwinDocument
+from twinthink.crypto import (
+    Keypair,
+    IdentityDocument,
+    TwinRevisionRecord,
+    create_signed_revision,
+    verify_revision,
+    verify_revision_chain,
+    CapabilityToken,
+    issue_capability,
+    verify_capability,
+    RevocationRecord,
+    verify_twin_bundle,
+    get_or_create_default_identity,
+    DEFAULT_KEYSTORE_DIR
+)
 
 DEFAULT_API_URL = os.getenv("TWINTHINK_API_URL", "http://127.0.0.1:8001")
 
@@ -327,6 +342,221 @@ def cmd_download(args):
 
     print(f"[*] Bundle downloaded successfully to: {out_file.resolve()} ({len(resp.content)} bytes)")
 
+# ==========================================
+# M3 CLI COMMAND HANDLERS
+# ==========================================
+
+def cmd_identity(args):
+    action = args.identity_action
+    name = args.name or "default"
+    keystore_dir = Path(args.keystore_dir) if getattr(args, "keystore_dir", None) else DEFAULT_KEYSTORE_DIR
+
+    if action == "create":
+        kp = Keypair.generate()
+        kp.save_to_disk(keystore_dir, name)
+        pub_doc = kp.export_identity(name=name)
+        print(f"[*] New Ed25519 identity created:")
+        print(f"    Name:       {name}")
+        print(f"    DID:        {kp.did}")
+        print(f"    Public Key: {kp.public_hex}")
+        print(f"    Keystore:   {keystore_dir / f'{name}.key'}")
+
+        if httpx:
+            try:
+                with httpx.Client() as client:
+                    client.post(f"{args.api_url}/api/identities", json=pub_doc.model_dump(), timeout=2.0)
+            except Exception:
+                pass
+    elif action == "show":
+        try:
+            kp = Keypair.load_from_disk(keystore_dir, name)
+            print(f"[*] Identity [{name}]:")
+            print(f"    DID:        {kp.did}")
+            print(f"    Public Key: {kp.public_hex}")
+            print(f"    Keystore:   {keystore_dir / f'{name}.key'}")
+        except Exception as e:
+            print(f"[!] Could not load identity '{name}': {e}")
+            sys.exit(1)
+
+def cmd_twin_sign(args):
+    api_url = args.api_url or DEFAULT_API_URL
+    twin_id = args.twin_id
+    keystore_dir = Path(args.keystore_dir) if getattr(args, "keystore_dir", None) else DEFAULT_KEYSTORE_DIR
+    id_name = args.identity_name or "default"
+
+    try:
+        kp = Keypair.load_from_disk(keystore_dir, id_name)
+    except Exception:
+        kp = get_or_create_default_identity()
+
+    if httpx is None:
+        print("[!] Error: httpx required.")
+        sys.exit(1)
+
+    with httpx.Client() as client:
+        resp = client.get(f"{api_url}/api/twins/{twin_id}/bom")
+        if resp.status_code != 200:
+            print(f"[!] Error fetching twin {twin_id}: {resp.text}")
+            sys.exit(1)
+        bom_data = resp.json()
+        bom_nodes = bom_data.get("bom_nodes", [])
+
+        try:
+            tree_root = parse_bom_dict(bom_nodes)
+            g_hash = BomEngine.compute_hash(tree_root)
+        except Exception:
+            g_hash = hashlib.sha256(json.dumps(bom_nodes, sort_keys=True).encode()).hexdigest()
+
+        rev_resp = client.get(f"{api_url}/api/twins/{twin_id}/revisions")
+        parent_hash = None
+        rev_name = args.revision
+        if rev_resp.status_code == 200:
+            rev_list = rev_resp.json().get("revisions", [])
+            if rev_list:
+                parent_hash = rev_list[-1].get("commit_hash") or TwinRevisionRecord.model_validate(rev_list[-1]).compute_hash()
+                if not rev_name:
+                    rev_name = f"R{len(rev_list)}"
+            else:
+                if not rev_name:
+                    rev_name = "R0"
+        else:
+            if not rev_name:
+                rev_name = "R0"
+
+        rec = create_signed_revision(
+            twin_id=twin_id,
+            revision_name=rev_name,
+            graph_hash=g_hash,
+            keypair=kp,
+            parent_revision_hash=parent_hash,
+            mutation_notes=args.notes
+        )
+
+        post_resp = client.post(f"{api_url}/api/twins/{twin_id}/revisions", json=rec.model_dump())
+        if post_resp.status_code != 200:
+            print(f"[!] Error submitting revision: {post_resp.text}")
+            sys.exit(1)
+
+    print(f"[*] Revision {rec.revision} signed and submitted for Twin {twin_id}:")
+    print(f"    Commit Hash:     {rec.compute_hash()[:16]}...")
+    print(f"    Graph Hash:      {rec.graph_hash[:16]}...")
+    print(f"    Author DID:      {rec.author_identity}")
+    print(f"    Signature:       {rec.signature[:16]}...")
+
+def cmd_twin_verify(args):
+    api_url = args.api_url or DEFAULT_API_URL
+    twin_id = args.twin_id
+
+    if httpx is None:
+        print("[!] Error: httpx required.")
+        sys.exit(1)
+
+    with httpx.Client() as client:
+        resp = client.get(f"{api_url}/api/twins/{twin_id}/revisions")
+        if resp.status_code != 200:
+            print(f"[!] Error fetching revisions: {resp.text}")
+            sys.exit(1)
+        data = resp.json()
+
+    revs = data.get("revisions", [])
+    chain_valid = data.get("chain_valid", False)
+    print(f"\nTwin {twin_id} Revisions ({len(revs)} total):")
+    for r in revs:
+        print(f"  - [{r.get('revision')}] Author: {r.get('author_identity')[:25]}... Parent: {str(r.get('parent_revision'))[:12]}...")
+    print(f"Chain Status: {'VERIFIED' if chain_valid else 'INVALID: ' + str(data.get('chain_error'))}\n")
+
+def cmd_access_grant(args):
+    api_url = args.api_url or DEFAULT_API_URL
+    twin_id = args.twin_id
+    subject = args.subject
+    perms = [p.strip() for p in args.permissions.split(",") if p.strip()]
+
+    kp = get_or_create_default_identity()
+    token = issue_capability(
+        issuer_keypair=kp,
+        subject_did=subject,
+        twin_id=twin_id,
+        permissions=perms,
+        expires_in_seconds=args.expires_in_seconds
+    )
+
+    if httpx:
+        try:
+            with httpx.Client() as client:
+                client.post(f"{api_url}/api/twins/{twin_id}/capabilities", json=token.model_dump())
+        except Exception:
+            pass
+
+    print(f"[*] Capability Token Issued:")
+    print(f"    Token ID:    {token.token_id}")
+    print(f"    Subject:     {token.subject}")
+    print(f"    Permissions: {token.permissions}")
+    print(f"    Expires At:  {token.expires_at or 'Never'}")
+    print(f"    Signature:   {token.signature[:16]}...")
+
+def cmd_access_revoke(args):
+    api_url = args.api_url or DEFAULT_API_URL
+    token_id = args.token_id
+    kp = get_or_create_default_identity()
+    rev = RevocationRecord(
+        token_id=token_id,
+        revoked_by=kp.did,
+        reason=args.reason or "Revoked via CLI"
+    )
+
+    if httpx:
+        with httpx.Client() as client:
+            resp = client.post(f"{api_url}/api/twins/any/capabilities/revoke", json=rev.model_dump())
+            if resp.status_code == 200:
+                print(f"[*] Token {token_id} revoked successfully.")
+                return
+    print(f"[*] Token {token_id} marked revoked.")
+
+def cmd_export(args):
+    api_url = args.api_url or DEFAULT_API_URL
+    twin_id = args.twin_id
+    out_file = Path(args.output or f"{twin_id}.twin")
+
+    if httpx is None:
+        print("[!] Error: httpx required.")
+        sys.exit(1)
+
+    with httpx.Client() as client:
+        resp = client.get(f"{api_url}/api/twins/{twin_id}/bundle")
+        if resp.status_code != 200:
+            print(f"[!] Failed to export bundle: {resp.text}")
+            sys.exit(1)
+        out_file.write_bytes(resp.content)
+
+    print(f"[*] Exported portable .twin bundle to: {out_file.resolve()} ({len(resp.content)} bytes)")
+
+def cmd_verify_bundle(args):
+    bundle_path = Path(args.bundle_file)
+    if not bundle_path.exists():
+        print(f"[!] Error: Bundle file not found: {bundle_path}")
+        sys.exit(1)
+
+    result = verify_twin_bundle(bundle_path)
+
+    print("\n==========================================================")
+    print("TwinThink Verification")
+    print("==========================================================")
+    print(f"Identity            {'VALID' if result.checks.get('identity_valid') else 'FAILED'}")
+    print(f"Creator signature   {'VALID' if result.checks.get('revisions_valid') else 'FAILED'}")
+    print(f"Revision chain      {'VALID' if result.checks.get('revision_chain_valid') else 'FAILED'}")
+    print(f"Graph hash          {'VALID' if result.checks.get('graph_hash_valid') else 'FAILED'}")
+    print(f"Provenance hashes   {'VALID' if result.checks.get('provenance_signatures_valid') else 'FAILED'}")
+    print(f"Bundle integrity    {'VALID' if result.checks.get('bundle_structure_valid') else 'FAILED'}")
+    print("----------------------------------------------------------")
+    if result.valid:
+        print("Result: VERIFIED")
+    else:
+        print("Result: FAILED")
+        print(f"Reason: {result.summary}")
+    print("==========================================================\n")
+    if not result.valid:
+        sys.exit(1)
+
 def main():
     parser = argparse.ArgumentParser(
         prog="tt",
@@ -364,6 +594,50 @@ def main():
     p_dl.add_argument("twin_id", help="Twin ID")
     p_dl.add_argument("--output", "-o", default=None, help="Output destination path")
 
+    # identity
+    p_id = subparsers.add_parser("identity", help="Manage cryptographic identities")
+    p_id_sub = p_id.add_subparsers(dest="identity_action", required=True)
+    p_id_create = p_id_sub.add_parser("create", help="Create new Ed25519 creator identity")
+    p_id_create.add_argument("--name", default="default", help="Identity key name")
+    p_id_create.add_argument("--keystore-dir", default=None, help="Custom keystore path")
+    p_id_show = p_id_sub.add_parser("show", help="Show public identity")
+    p_id_show.add_argument("--name", default="default", help="Identity key name")
+    p_id_show.add_argument("--keystore-dir", default=None, help="Custom keystore path")
+
+    # twin
+    p_twin = subparsers.add_parser("twin", help="Manage signed twin revisions")
+    p_twin_sub = p_twin.add_subparsers(dest="twin_action", required=True)
+    p_twin_sign = p_twin_sub.add_parser("sign", help="Sign a twin revision")
+    p_twin_sign.add_argument("twin_id", help="Twin ID")
+    p_twin_sign.add_argument("--revision", default=None, help="Revision label (e.g. R1)")
+    p_twin_sign.add_argument("--notes", default="Signed via tt CLI", help="Revision notes")
+    p_twin_sign.add_argument("--identity-name", default="default", help="Identity key to sign with")
+    p_twin_sign.add_argument("--keystore-dir", default=None, help="Custom keystore path")
+    p_twin_verify = p_twin_sub.add_parser("verify", help="Verify twin revision chain")
+    p_twin_verify.add_argument("twin_id", help="Twin ID")
+
+    # access
+    p_acc = subparsers.add_parser("access", help="Capability-based access delegation")
+    p_acc_sub = p_acc.add_subparsers(dest="access_action", required=True)
+    p_acc_grant = p_acc_sub.add_parser("grant", help="Grant capability to subject DID")
+    p_acc_grant.add_argument("twin_id", help="Twin ID")
+    p_acc_grant.add_argument("--subject", required=True, help="Subject DID (did:twin:...)")
+    p_acc_grant.add_argument("--permissions", required=True, help="Comma-separated permissions (read:design,read:bom,...)")
+    p_acc_grant.add_argument("--expires-in-seconds", type=int, default=None, help="Expiration in seconds")
+    p_acc_grant.add_argument("--identity-name", default="default", help="Signing identity")
+    p_acc_revoke = p_acc_sub.add_parser("revoke", help="Revoke a capability token")
+    p_acc_revoke.add_argument("token_id", help="Token ID to revoke")
+    p_acc_revoke.add_argument("--reason", default="Revoked via CLI", help="Revocation reason")
+
+    # export
+    p_exp = subparsers.add_parser("export", help="Export a portable .twin bundle")
+    p_exp.add_argument("twin_id", help="Twin ID")
+    p_exp.add_argument("--output", "-o", default=None, help="Output destination path (.twin)")
+
+    # verify
+    p_ver = subparsers.add_parser("verify", help="Verify a portable .twin bundle offline")
+    p_ver.add_argument("bundle_file", help="Path to .twin bundle")
+
     args = parser.parse_args()
 
     # Clean up command argument if leading '--' was passed
@@ -383,6 +657,22 @@ def main():
         cmd_fetch_dpp(args)
     elif args.subcommand == "download":
         cmd_download(args)
+    elif args.subcommand == "identity":
+        cmd_identity(args)
+    elif args.subcommand == "twin":
+        if args.twin_action == "sign":
+            cmd_twin_sign(args)
+        elif args.twin_action == "verify":
+            cmd_twin_verify(args)
+    elif args.subcommand == "access":
+        if args.access_action == "grant":
+            cmd_access_grant(args)
+        elif args.access_action == "revoke":
+            cmd_access_revoke(args)
+    elif args.subcommand == "export":
+        cmd_export(args)
+    elif args.subcommand == "verify":
+        cmd_verify_bundle(args)
 
 if __name__ == "__main__":
     main()

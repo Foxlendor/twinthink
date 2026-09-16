@@ -120,8 +120,51 @@ export interface ProvenanceEntry {
   artifact_hash?: string;
   captured_at: string;
   creator: string;
+  creator_identity?: string;
   action: string;
+  revision?: string;
+  signature?: string;
   notes?: string;
+}
+
+export interface IdentityDocument {
+  identity_id: string;
+  algorithm: string;
+  public_key: string;
+  name?: string;
+  created_at: string;
+  status: string;
+}
+
+export interface TwinRevisionRecord {
+  twin_id: string;
+  revision: string;
+  parent_revision?: string | null;
+  graph_hash: string;
+  created_at: string;
+  author_identity: string;
+  mutation_notes?: string;
+  signature: string;
+}
+
+export interface RightsPolicyDeclaration {
+  mode: 'Private' | 'Licensed' | 'Open Development' | 'Public Domain Dedication' | 'Conditional Release';
+  scope: string;
+  terms_uri?: string;
+  declared_by?: string;
+  declared_at: string;
+  notes?: string;
+}
+
+export interface CapabilityToken {
+  token_id: string;
+  subject: string;
+  twin_id: string;
+  permissions: string[];
+  issued_by: string;
+  created_at: string;
+  expires_at?: string;
+  signature: string;
 }
 
 export interface MaterialSpec {

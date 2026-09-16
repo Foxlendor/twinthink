@@ -46,12 +46,23 @@ NodeType = Literal["assembly", "subassembly", "component", "raw_material", "fast
 
 DeclaredRightsMode = Literal["Private", "Licensed", "Open Development", "Public Domain Dedication", "Conditional Release"]
 
+class RightsPolicyDeclaration(BaseModel):
+    mode: DeclaredRightsMode = "Open Development"
+    scope: str = "twin"  # 'twin', 'design', 'bom', 'evidence', etc.
+    terms_uri: Optional[str] = None
+    declared_by: Optional[str] = None  # did:twin:<hex_pubkey>
+    declared_at: str = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
+    notes: Optional[str] = None
+
 class ProvenanceEntry(BaseModel):
     source: str = "tt"
     artifact_hash: Optional[str] = None
     captured_at: str = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
     creator: str = "Anonymous"
+    creator_identity: Optional[str] = None  # did:twin:<hex_pubkey>
     action: str = "created"
+    revision: Optional[str] = None  # e.g. R0, R1
+    signature: Optional[str] = None  # Ed25519 hex signature over entry payload
     notes: Optional[str] = None
 
 class BomNode(BaseModel):
@@ -161,3 +172,29 @@ class TwinDocument(BaseModel):
     claims: List[Claim] = Field(default_factory=list)
     reality_state: RealityState
     unknowns_and_assumptions: List[str] = Field(default_factory=list)
+    rights_policy: Optional[RightsPolicyDeclaration] = None
+
+def resolve_node_rights(twin: TwinDocument, node_id: str) -> DeclaredRightsMode:
+    """
+    Resolves the effective rights mode for a specific BOM node within a TwinDocument:
+    1. If the node has an explicit rights_override, that override takes precedence.
+    2. Otherwise, walk up the parent chain; if any ancestor defines a rights_override, inherit it.
+    3. Fall back to twin.rights_policy.mode (if present), or twin.identity.declared_rights_mode.
+    """
+    node_map: Dict[str, BomNode] = {n.node_id: n for n in twin.structure.bom_nodes}
+    if not node_map and twin.structure.bom_root:
+        def _collect(n: BomNode):
+            node_map[n.node_id] = n
+            for c in n.children:
+                _collect(c)
+        _collect(twin.structure.bom_root)
+
+    curr = node_map.get(node_id)
+    while curr:
+        if curr.rights_override:
+            return curr.rights_override
+        curr = node_map.get(curr.parent_id) if curr.parent_id else None
+
+    if twin.rights_policy:
+        return twin.rights_policy.mode
+    return twin.identity.declared_rights_mode
