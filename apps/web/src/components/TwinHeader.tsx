@@ -22,9 +22,7 @@ export default function TwinHeader({ twin }: TwinHeaderProps) {
             <span style={{
               fontSize: '0.75rem',
               fontWeight: 800,
-              background: 'linear-gradient(135deg, var(--accent-primary), #00e5a3)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              color: 'var(--text-primary)',
               letterSpacing: '1px',
               textTransform: 'uppercase',
               fontFamily: 'var(--font-mono)'
@@ -35,9 +33,9 @@ export default function TwinHeader({ twin }: TwinHeaderProps) {
             <span style={{
               fontSize: '0.7rem',
               fontWeight: 700,
-              color: '#00e5a3',
-              background: 'rgba(0, 229, 163, 0.1)',
-              border: '1px solid rgba(0, 229, 163, 0.3)',
+              color: '#059669',
+              background: '#ECFDF5',
+              border: '1px solid #A7F3D0',
               padding: '0.15rem 0.5rem',
               borderRadius: '4px',
               display: 'inline-flex',

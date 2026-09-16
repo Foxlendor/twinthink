@@ -43,13 +43,13 @@ export default function Navbar() {
               width: '28px',
               height: '28px',
               borderRadius: '7px',
-              background: '#0F172A',
-              border: '1px solid rgba(16, 185, 129, 0.4)',
+              background: '#FFFFFF',
+              border: '1px solid #E5E7EB',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               overflow: 'hidden',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
             }}>
               <img src="/icon.svg" alt="TwinThink Logo" style={{ width: '22px', height: '22px' }} />
             </div>

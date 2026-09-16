@@ -575,15 +575,16 @@ export default function HomePage() {
 
         {/* Interactive Comparison: Static CAD vs. Living Twin */}
         <div style={{
-          background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
-          borderRadius: '14px',
+          background: '#F9FAFB',
+          border: '1px solid #E5E7EB',
+          borderRadius: '16px',
           padding: '2rem',
-          color: '#FFFFFF'
+          color: '#111827'
         }}>
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '0.5rem' }}>
+          <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: '#111827', marginBottom: '0.4rem' }}>
             Why Digital Twins Outperform Static CAD Files & Paper Patents
           </h3>
-          <p style={{ fontSize: '0.875rem', color: '#94A3B8', marginBottom: '1.5rem', maxWidth: '680px' }}>
+          <p style={{ fontSize: '0.875rem', color: '#6B7280', marginBottom: '1.5rem', maxWidth: '680px', lineHeight: 1.5 }}>
             Traditional engineering leaves critical data fragmented in isolated folders. TwinThink binds physical reality and computation into one portable, verifiable bundle.
           </p>
 
@@ -593,15 +594,15 @@ export default function HomePage() {
             gap: '1.25rem'
           }}>
             <div style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '10px',
+              background: '#FFF1F2',
+              border: '1px solid #FECDD3',
+              borderRadius: '12px',
               padding: '1.25rem'
             }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#EF4444', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#E11D48', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.5px' }}>
                 ✕ The Fragmented Way
               </div>
-              <ul style={{ paddingLeft: '1.1rem', fontSize: '0.8125rem', color: '#CBD5E1', lineHeight: 1.8, margin: 0 }}>
+              <ul style={{ paddingLeft: '1.1rem', fontSize: '0.8125rem', color: '#475569', lineHeight: 1.8, margin: 0 }}>
                 <li>CAD models are static geometric shapes with no embedded physics.</li>
                 <li>Physical test data sits in unversioned spreadsheets on someone&apos;s laptop.</li>
                 <li>BOM costs and supplier links diverge from 3D designs.</li>
@@ -610,15 +611,15 @@ export default function HomePage() {
             </div>
 
             <div style={{
-              background: 'rgba(16, 185, 129, 0.1)',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-              borderRadius: '10px',
+              background: '#ECFDF5',
+              border: '1px solid #A7F3D0',
+              borderRadius: '12px',
               padding: '1.25rem'
             }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#34D399', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#059669', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.5px' }}>
                 ✓ The TwinThink Living Twin
               </div>
-              <ul style={{ paddingLeft: '1.1rem', fontSize: '0.8125rem', color: '#F1F5F9', lineHeight: 1.8, margin: 0 }}>
+              <ul style={{ paddingLeft: '1.1rem', fontSize: '0.8125rem', color: '#334155', lineHeight: 1.8, margin: 0 }}>
                 <li>Self-contained differential equation simulation engine inside the bundle.</li>
                 <li>Real bench sensor telemetry continuously validates model accuracy (RMSE).</li>
                 <li>3-level structural BOM with real unit costs ($4.50) and part weights.</li>
@@ -627,6 +628,7 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+
       </section>
 
       {/* 4. Six Reality Protocol Navigation Cards */}

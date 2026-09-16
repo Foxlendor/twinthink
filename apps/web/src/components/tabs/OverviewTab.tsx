@@ -50,12 +50,12 @@ export default function OverviewTab({ twin }: TabProps) {
       
       {/* Hero Overview Banner */}
       <div style={{
-        background: 'linear-gradient(135deg, rgba(14, 20, 30, 0.95) 0%, rgba(8, 11, 18, 0.98) 100%)',
-        border: '1px solid #1f2b40',
+        background: '#FFFFFF',
+        border: '1px solid var(--border-color)',
         borderRadius: 'var(--radius-md)',
         padding: '1.75rem',
         marginBottom: '2rem',
-        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)'
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
           <span style={{
@@ -63,9 +63,9 @@ export default function OverviewTab({ twin }: TabProps) {
             fontWeight: 700,
             padding: '0.2rem 0.5rem',
             borderRadius: '4px',
-            background: 'rgba(0, 204, 255, 0.15)',
-            color: '#00ccff',
-            border: '1px solid rgba(0, 204, 255, 0.3)'
+            background: '#EFF6FF',
+            color: '#0284C7',
+            border: '1px solid #BAE6FD'
           }}>
             PATENT-PENDING KINETIC MECHANISM
           </span>
@@ -86,12 +86,12 @@ export default function OverviewTab({ twin }: TabProps) {
           gap: '1.25rem',
           marginTop: '1.5rem',
           paddingTop: '1.5rem',
-          borderTop: '1px solid #162033'
+          borderTop: '1px solid var(--border-subtle)'
         }}>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <Zap size={22} color="#00ccff" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <Zap size={22} color="#0284C7" style={{ flexShrink: 0, marginTop: '2px' }} />
             <div>
-              <strong style={{ color: '#fff', fontSize: '0.875rem', display: 'block' }}>1. Rack-to-Heat Mechanism</strong>
+              <strong style={{ color: 'var(--text-primary)', fontSize: '0.875rem', display: 'block' }}>1. Rack-to-Heat Mechanism</strong>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.4, display: 'block', marginTop: '0.2rem' }}>
                 Pull back and release the coaxial barrel like a slide-hammer. Elastic silicone snaps the barrels together, sending a kinetic shockwave into the sodium acetate bladder to initiate instant 54°C phase-change.
               </span>
@@ -99,9 +99,9 @@ export default function OverviewTab({ twin }: TabProps) {
           </div>
 
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <Flame size={22} color="#ffaa00" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <Flame size={22} color="#D97706" style={{ flexShrink: 0, marginTop: '2px' }} />
             <div>
-              <strong style={{ color: '#fff', fontSize: '0.875rem', display: 'block' }}>2. Convective Heat-on-Demand</strong>
+              <strong style={{ color: 'var(--text-primary)', fontSize: '0.875rem', display: 'block' }}>2. Convective Heat-on-Demand</strong>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.4, display: 'block', marginTop: '0.2rem' }}>
                 Warms cold trail or river water (5°C $\rightarrow$ 20°C+) as fluid draws through the central conduit. Releases 12.05 kJ of latent enthalpy without batteries or open flame.
               </span>
@@ -109,9 +109,9 @@ export default function OverviewTab({ twin }: TabProps) {
           </div>
 
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <RefreshCw size={22} color="#00e5a3" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <RefreshCw size={22} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
             <div>
-              <strong style={{ color: '#fff', fontSize: '0.875rem', display: 'block' }}>3. Camp Stove Boil Reset</strong>
+              <strong style={{ color: 'var(--text-primary)', fontSize: '0.875rem', display: 'block' }}>3. Camp Stove Boil Reset</strong>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.4, display: 'block', marginTop: '0.2rem' }}>
                 Submerge in boiling water over a Jetboil or campfire for 8–10 minutes to melt the crystal matrix back to a liquid state with infinite recharge cycles.
               </span>
@@ -140,9 +140,9 @@ export default function OverviewTab({ twin }: TabProps) {
             fontWeight: 700,
             padding: '0.2rem 0.5rem',
             borderRadius: '4px',
-            background: 'rgba(0, 229, 163, 0.15)',
-            color: '#00e5a3',
-            border: '1px solid rgba(0, 229, 163, 0.3)'
+            background: '#ECFDF5',
+            color: '#059669',
+            border: '1px solid #A7F3D0'
           }}>
             VERIFIED PHYSICAL PROVENANCE
           </span>
@@ -160,12 +160,13 @@ export default function OverviewTab({ twin }: TabProps) {
         }}>
           {FEATURED_PHOTOS.map((p, idx) => (
             <div key={idx} style={{
-              background: '#0a0d14',
-              border: '1px solid #161c2b',
+              background: '#FFFFFF',
+              border: '1px solid var(--border-subtle)',
               borderRadius: 'var(--radius-sm)',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
             }}>
-              <div style={{ width: '100%', height: '160px', background: '#000', overflow: 'hidden' }}>
+              <div style={{ width: '100%', height: '160px', background: '#F3F4F6', overflow: 'hidden' }}>
                 <img 
                   src={p.src} 
                   alt={p.title} 
@@ -204,21 +205,21 @@ export default function OverviewTab({ twin }: TabProps) {
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: '1rem'
         }}>
-          <div style={{ padding: '1rem', background: '#0a0d14', borderRadius: 'var(--radius-sm)', border: '1px solid #161c2b' }}>
+          <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Unit Bill of Materials (COGS)</span>
             <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent-primary)', marginTop: '0.2rem' }}>$4.50 USD</div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Low-part-count mechanical build</span>
           </div>
 
-          <div style={{ padding: '1rem', background: '#0a0d14', borderRadius: 'var(--radius-sm)', border: '1px solid #161c2b' }}>
+          <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Target Retail Price (MSRP)</span>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#00e5a3', marginTop: '0.2rem' }}>$25.00 USD</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#059669', marginTop: '0.2rem' }}>$25.00 USD</div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Impulse price point at REI / DTC</span>
           </div>
 
-          <div style={{ padding: '1rem', background: '#0a0d14', borderRadius: 'var(--radius-sm)', border: '1px solid #161c2b' }}>
+          <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Gross Margin Profile</span>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#a64dff', marginTop: '0.2rem' }}>82% DTC</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#7C3AED', marginTop: '0.2rem' }}>82% DTC</div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>55% Outdoor wholesale margin</span>
           </div>
         </div>

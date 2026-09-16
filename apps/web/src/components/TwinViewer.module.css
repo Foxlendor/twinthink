@@ -1,9 +1,9 @@
 .viewerContainer {
   height: 100%;
   min-height: 400px;
-  background: #1a1a1a;
+  background: #F8FAFC;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-color);
   overflow: hidden;
   position: relative;
 }
@@ -52,11 +52,12 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  background: rgba(36, 36, 36, 0.8);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(8px);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition: all var(--transition-fast);
 }
 

@@ -33,11 +33,12 @@ export default function LineageTab({ twin }: LineageTabProps) {
     <div className={styles.tabContent}>
       {/* Concept Lineage Header */}
       <div style={{
-        background: '#131824',
-        border: '1px solid #1f293d',
+        background: '#FFFFFF',
+        border: '1px solid var(--border-color)',
         borderRadius: 'var(--radius-md)',
         padding: '1.25rem 1.5rem',
-        marginBottom: '1.5rem'
+        marginBottom: '1.5rem',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
           <GitFork size={16} color="var(--accent-primary)" />
@@ -90,16 +91,16 @@ export default function LineageTab({ twin }: LineageTabProps) {
 
         {/* Current Canonical Twin Node */}
         <div style={{
-          background: 'linear-gradient(135deg, rgba(0, 102, 255, 0.15) 0%, rgba(0, 229, 163, 0.1) 100%)',
-          border: '2px solid var(--accent-primary)',
+          background: '#F0FDF4',
+          border: '2px solid #10B981',
           borderRadius: 'var(--radius-md)',
           padding: '1.25rem 2rem',
           textAlign: 'center',
           maxWidth: '500px',
           width: '100%',
-          boxShadow: '0 0 30px rgba(0, 102, 255, 0.15)'
+          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.08)'
         }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#00e5a3', letterSpacing: '0.5px' }}>CURRENT CANONICAL SPECIMEN</div>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#059669', letterSpacing: '0.5px' }}>CURRENT CANONICAL SPECIMEN</div>
           <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0.25rem 0' }}>
             RESIP™ — Twin #0001 (Outdoor Edition)
           </div>
@@ -128,17 +129,18 @@ export default function LineageTab({ twin }: LineageTabProps) {
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              background: '#00e5a3',
-              color: '#000',
+              background: '#111827',
+              color: '#FFFFFF',
               border: 'none',
               padding: '0.5rem 1rem',
               borderRadius: 'var(--radius-sm)',
               fontSize: '0.8125rem',
               fontWeight: 700,
-              cursor: 'pointer'
+              cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
             }}
           >
-            <Play size={14} fill="#000" />
+            <Play size={14} fill="#FFFFFF" />
             Run Fork Simulation
           </button>
         </div>
@@ -225,8 +227,8 @@ export default function LineageTab({ twin }: LineageTabProps) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Latent Enthalpy Yield</span>
                   <div style={{ textAlign: 'right' }}>
-                    <strong style={{ fontFamily: 'var(--font-mono)', color: '#00e5a3', fontSize: '0.9375rem' }}>{mutatedEnthalpy} kJ</strong>
-                    <span style={{ fontSize: '0.7rem', color: Number(deltaEnthalpy) >= 0 ? '#00e5a3' : '#ff5555', marginLeft: '0.4rem' }}>
+                    <strong style={{ fontFamily: 'var(--font-mono)', color: '#059669', fontSize: '0.9375rem' }}>{mutatedEnthalpy} kJ</strong>
+                    <span style={{ fontSize: '0.7rem', color: Number(deltaEnthalpy) >= 0 ? '#059669' : '#DC2626', marginLeft: '0.4rem' }}>
                       ({Number(deltaEnthalpy) >= 0 ? `+${deltaEnthalpy}` : deltaEnthalpy}%)
                     </span>
                   </div>
@@ -252,11 +254,11 @@ export default function LineageTab({ twin }: LineageTabProps) {
               </div>
             </div>
 
-            <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#131824', borderRadius: 'var(--radius-sm)', border: '1px solid #1f293d' }}>
-              <div style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', fontWeight: 700, marginBottom: '0.2rem' }}>
+            <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#F9FAFB', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+              <div style={{ fontSize: '0.7rem', color: '#111827', fontWeight: 700, marginBottom: '0.2rem' }}>
                 READY TO SPAWN CHILD REVISION
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                 This mutation can be packaged into a standalone digital twin bundle preserving ancestor provenance.
               </div>
             </div>

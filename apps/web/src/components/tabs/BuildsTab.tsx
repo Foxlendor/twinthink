@@ -128,9 +128,9 @@ export default function BuildsTab({ twin }: TabProps) {
               fontWeight: 700,
               padding: '0.2rem 0.5rem',
               borderRadius: '4px',
-              background: 'rgba(0, 229, 163, 0.15)',
-              color: '#00e5a3',
-              border: '1px solid rgba(0, 229, 163, 0.3)'
+              background: '#ECFDF5',
+              color: '#059669',
+              border: '1px solid #A7F3D0'
             }}>
               8 VERIFIED PHYSICAL BUILDS
             </span>
@@ -172,7 +172,7 @@ export default function BuildsTab({ twin }: TabProps) {
             }}
           >
             {/* Image Preview */}
-            <div style={{ position: 'relative', width: '100%', height: '180px', background: '#0a0a0c', overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: '100%', height: '180px', background: '#F3F4F6', overflow: 'hidden' }}>
               <img 
                 src={item.filename} 
                 alt={item.title} 
@@ -198,8 +198,9 @@ export default function BuildsTab({ twin }: TabProps) {
                 position: 'absolute',
                 bottom: '0.5rem',
                 left: '0.5rem',
-                background: 'rgba(0, 229, 163, 0.9)',
-                color: '#000',
+                background: '#ECFDF5',
+                color: '#059669',
+                border: '1px solid #A7F3D0',
                 fontSize: '0.65rem',
                 fontWeight: 700,
                 borderRadius: '3px',
@@ -240,7 +241,7 @@ export default function BuildsTab({ twin }: TabProps) {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0, 0, 0, 0.85)',
+          background: 'rgba(17, 24, 39, 0.6)',
           backdropFilter: 'blur(8px)',
           zIndex: 9999,
           display: 'flex',
@@ -257,7 +258,7 @@ export default function BuildsTab({ twin }: TabProps) {
             overflow: 'hidden',
             boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8)'
           }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ position: 'relative', width: '100%', maxHeight: '480px', background: '#000', textAlign: 'center' }}>
+            <div style={{ position: 'relative', width: '100%', maxHeight: '480px', background: '#F9FAFB', textAlign: 'center' }}>
               <img 
                 src={selectedPhoto.filename} 
                 alt={selectedPhoto.title} 
@@ -300,9 +301,9 @@ export default function BuildsTab({ twin }: TabProps) {
                   fontWeight: 700,
                   padding: '0.25rem 0.6rem',
                   borderRadius: '999px',
-                  background: 'rgba(0, 229, 163, 0.15)',
-                  color: '#00e5a3',
-                  border: '1px solid rgba(0, 229, 163, 0.3)'
+                  background: '#ECFDF5',
+                  color: '#059669',
+                  border: '1px solid #A7F3D0'
                 }}>
                   VERIFIED HARDWARE
                 </span>

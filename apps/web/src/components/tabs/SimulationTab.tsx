@@ -290,26 +290,26 @@ export default function SimulationTab({ twin }: TabProps) {
       
       {/* GOD'S EYE VIEW: Thermal Architecture Control Station Header */}
       <div style={{
-        background: 'linear-gradient(135deg, rgba(14, 18, 26, 0.95) 0%, rgba(8, 10, 15, 0.98) 100%)',
-        border: '1px solid #1f293d',
+        background: '#FFFFFF',
+        border: '1px solid var(--border-color)',
         borderRadius: 'var(--radius-md)',
         padding: '1.5rem',
         marginBottom: '1.75rem',
-        boxShadow: '0 12px 32px rgba(0, 0, 0, 0.5)'
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(0, 229, 163, 0.15)', border: '1px solid rgba(0, 229, 163, 0.4)', borderRadius: '4px', padding: '0.2rem 0.5rem' }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00e5a3', display: 'inline-block', animation: 'pulse 2s infinite' }}></span>
-                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#00e5a3', letterSpacing: '0.5px' }}>TELEMETRY SYNCHRONIZED</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '4px', padding: '0.2rem 0.5rem' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#059669', display: 'inline-block', animation: 'pulse 2s infinite' }}></span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#059669', letterSpacing: '0.5px' }}>TELEMETRY SYNCHRONIZED</span>
               </div>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', fontFamily: 'var(--font-mono)' }}>RIG-001 // ODE-EULER-4NODE</span>
             </div>
             <h1 style={{ fontSize: '1.375rem', margin: '0.5rem 0 0.2rem 0', fontWeight: 700, color: 'var(--text-primary)' }}>
               God's Eye View: Multi-Node Thermal State Engine
             </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: 0 }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8125rem', margin: 0 }}>
               Full-system conservation solver tracking phase crystallization, solid-fluid boundary flux, and transient enthalpy transfer.
             </p>
           </div>
@@ -324,9 +324,10 @@ export default function SimulationTab({ twin }: TabProps) {
                 style={{
                   fontSize: '0.75rem',
                   padding: '0.4rem 0.75rem',
-                  borderColor: selectedScenario === sc.id ? 'var(--accent-primary)' : '#252e42',
-                  color: selectedScenario === sc.id ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                  background: selectedScenario === sc.id ? 'rgba(0, 204, 255, 0.1)' : '#10141e'
+                  borderColor: selectedScenario === sc.id ? '#111827' : 'var(--border-subtle)',
+                  color: selectedScenario === sc.id ? '#111827' : 'var(--text-secondary)',
+                  background: selectedScenario === sc.id ? '#F3F4F6' : '#FFFFFF',
+                  fontWeight: selectedScenario === sc.id ? 700 : 500
                 }}
               >
                 <span style={{ fontWeight: 700, marginRight: '0.35rem' }}>{sc.code}:</span>
@@ -343,10 +344,10 @@ export default function SimulationTab({ twin }: TabProps) {
           gap: '1rem',
           marginTop: '1.25rem',
           paddingTop: '1.25rem',
-          borderTop: '1px solid #1a2233'
+          borderTop: '1px solid var(--border-subtle)'
         }}>
-          <div style={{ padding: '0.75rem 1rem', background: '#0a0d14', border: '1px solid #161c2b', borderRadius: 'var(--radius-sm)' }}>
-            <span style={{ fontSize: '0.7rem', color: '#00ccff', textTransform: 'uppercase', fontWeight: 700 }}>
+          <div style={{ padding: '0.75rem 1rem', background: '#F9FAFB', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)' }}>
+            <span style={{ fontSize: '0.7rem', color: '#0284C7', textTransform: 'uppercase', fontWeight: 700 }}>
               Outlet Fluid Temp (T₄)
             </span>
             <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
@@ -357,11 +358,11 @@ export default function SimulationTab({ twin }: TabProps) {
             </span>
           </div>
 
-          <div style={{ padding: '0.75rem 1rem', background: '#0a0d14', border: '1px solid #161c2b', borderRadius: 'var(--radius-sm)' }}>
-            <span style={{ fontSize: '0.7rem', color: '#ffaa00', textTransform: 'uppercase', fontWeight: 700 }}>
+          <div style={{ padding: '0.75rem 1rem', background: '#F9FAFB', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)' }}>
+            <span style={{ fontSize: '0.7rem', color: '#D97706', textTransform: 'uppercase', fontWeight: 700 }}>
               PCM Core Node (T₁)
             </span>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ffaa00', marginTop: '0.2rem' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#D97706', marginTop: '0.2rem' }}>
               54.0°C
             </div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -369,11 +370,11 @@ export default function SimulationTab({ twin }: TabProps) {
             </span>
           </div>
 
-          <div style={{ padding: '0.75rem 1rem', background: '#0a0d14', border: '1px solid #161c2b', borderRadius: 'var(--radius-sm)' }}>
-            <span style={{ fontSize: '0.7rem', color: '#00e5a3', textTransform: 'uppercase', fontWeight: 700 }}>
+          <div style={{ padding: '0.75rem 1rem', background: '#F9FAFB', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)' }}>
+            <span style={{ fontSize: '0.7rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700 }}>
               Bench Calibration (RMSE)
             </span>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#00e5a3', marginTop: '0.2rem' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#059669', marginTop: '0.2rem' }}>
               {errorMetrics.rmse}°C
             </div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -381,11 +382,11 @@ export default function SimulationTab({ twin }: TabProps) {
             </span>
           </div>
 
-          <div style={{ padding: '0.75rem 1rem', background: '#0a0d14', border: '1px solid #161c2b', borderRadius: 'var(--radius-sm)' }}>
-            <span style={{ fontSize: '0.7rem', color: '#a64dff', textTransform: 'uppercase', fontWeight: 700 }}>
+          <div style={{ padding: '0.75rem 1rem', background: '#F9FAFB', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)' }}>
+            <span style={{ fontSize: '0.7rem', color: '#7C3AED', textTransform: 'uppercase', fontWeight: 700 }}>
               Cumulative Enthalpy
             </span>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#a64dff', marginTop: '0.2rem' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#7C3AED', marginTop: '0.2rem' }}>
               {simBaseline.total_yield_kJ.toFixed(1)} kJ
             </div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -397,11 +398,12 @@ export default function SimulationTab({ twin }: TabProps) {
 
       {/* GOD'S EYE VIEW: Cross-Section Thermal Flux & Radial Gradient Schematic */}
       <div style={{
-        background: '#090c12',
-        border: '1px solid #1a2233',
+        background: '#FFFFFF',
+        border: '1px solid var(--border-color)',
         borderRadius: 'var(--radius-md)',
         padding: '1.25rem',
-        marginBottom: '1.75rem'
+        marginBottom: '1.75rem',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -420,24 +422,24 @@ export default function SimulationTab({ twin }: TabProps) {
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
           gap: '0.75rem',
-          background: '#0e121a',
+          background: '#F9FAFB',
           padding: '1rem',
           borderRadius: 'var(--radius-sm)',
-          border: '1px solid #161c2b'
+          border: '1px solid var(--border-subtle)'
         }}>
           {/* Node 5: Ambient */}
-          <div style={{ padding: '0.75rem', background: '#090b10', borderRadius: '4px', borderLeft: '3px solid #555' }}>
+          <div style={{ padding: '0.75rem', background: '#FFFFFF', borderRadius: '4px', border: '1px solid var(--border-subtle)', borderLeft: '3px solid #64748B' }}>
             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block' }}>AMBIENT AIR (T₅)</span>
-            <span style={{ fontSize: '1.125rem', fontWeight: 700, color: '#fff', display: 'block', marginTop: '0.2rem' }}>21.0°C</span>
-            <span style={{ fontSize: '0.7rem', color: '#ff7700', marginTop: '0.25rem', display: 'block' }}>
+            <span style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginTop: '0.2rem' }}>21.0°C</span>
+            <span style={{ fontSize: '0.7rem', color: '#D97706', marginTop: '0.25rem', display: 'block' }}>
               Q_loss: {simBaseline.q_loss_arr[activeScrubIdx]}W
             </span>
           </div>
 
           {/* Node 1: PCM Core */}
-          <div style={{ padding: '0.75rem', background: '#1c1308', borderRadius: '4px', borderLeft: '3px solid #ffaa00' }}>
-            <span style={{ fontSize: '0.65rem', color: '#ffaa00', fontWeight: 700, display: 'block' }}>PCM CORE (T₁)</span>
-            <span style={{ fontSize: '1.125rem', fontWeight: 700, color: '#ffaa00', display: 'block', marginTop: '0.2rem' }}>
+          <div style={{ padding: '0.75rem', background: '#FFFBEB', borderRadius: '4px', border: '1px solid #FDE68A', borderLeft: '3px solid #D97706' }}>
+            <span style={{ fontSize: '0.65rem', color: '#B45309', fontWeight: 700, display: 'block' }}>PCM CORE (T₁)</span>
+            <span style={{ fontSize: '1.125rem', fontWeight: 700, color: '#D97706', display: 'block', marginTop: '0.2rem' }}>
               {simBaseline.t_pcm_arr[activeScrubIdx]}°C
             </span>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
@@ -446,34 +448,34 @@ export default function SimulationTab({ twin }: TabProps) {
           </div>
 
           {/* Node 2: Conduit Wall */}
-          <div style={{ padding: '0.75rem', background: '#17140b', borderRadius: '4px', borderLeft: '3px solid #ffd000' }}>
-            <span style={{ fontSize: '0.65rem', color: '#ffd000', fontWeight: 700, display: 'block' }}>316L WALL (T₂)</span>
-            <span style={{ fontSize: '1.125rem', fontWeight: 700, color: '#ffd000', display: 'block', marginTop: '0.2rem' }}>
+          <div style={{ padding: '0.75rem', background: '#FEFCE8', borderRadius: '4px', border: '1px solid #FEF08A', borderLeft: '3px solid #CA8A04' }}>
+            <span style={{ fontSize: '0.65rem', color: '#854D0E', fontWeight: 700, display: 'block' }}>316L WALL (T₂)</span>
+            <span style={{ fontSize: '1.125rem', fontWeight: 700, color: '#CA8A04', display: 'block', marginTop: '0.2rem' }}>
               {simBaseline.t_wall_arr[activeScrubIdx]}°C
             </span>
-            <span style={{ fontSize: '0.7rem', color: '#00ccff', marginTop: '0.25rem', display: 'block' }}>
+            <span style={{ fontSize: '0.7rem', color: '#0284C7', marginTop: '0.25rem', display: 'block' }}>
               Q_wall: {simBaseline.q_wall_arr[activeScrubIdx]}W
             </span>
           </div>
 
           {/* Node 4: Outlet Stream */}
-          <div style={{ padding: '0.75rem', background: '#08171f', borderRadius: '4px', borderLeft: '3px solid #00ccff' }}>
-            <span style={{ fontSize: '0.65rem', color: '#00ccff', fontWeight: 700, display: 'block' }}>FLUID STREAM (T₄)</span>
-            <span style={{ fontSize: '1.125rem', fontWeight: 700, color: '#00ccff', display: 'block', marginTop: '0.2rem' }}>
+          <div style={{ padding: '0.75rem', background: '#F0F9FF', borderRadius: '4px', border: '1px solid #BAE6FD', borderLeft: '3px solid #0284C7' }}>
+            <span style={{ fontSize: '0.65rem', color: '#0369A1', fontWeight: 700, display: 'block' }}>FLUID STREAM (T₄)</span>
+            <span style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0284C7', display: 'block', marginTop: '0.2rem' }}>
               {simBaseline.t_fluid_arr[activeScrubIdx]}°C
             </span>
-            <span style={{ fontSize: '0.7rem', color: '#00e5a3', marginTop: '0.25rem', display: 'block' }}>
+            <span style={{ fontSize: '0.7rem', color: '#059669', marginTop: '0.25rem', display: 'block' }}>
               Q_conv: {simBaseline.q_conv_arr[activeScrubIdx]}W
             </span>
           </div>
 
           {/* Flow State */}
-          <div style={{ padding: '0.75rem', background: simBaseline.sip_active_arr[activeScrubIdx] ? 'rgba(0, 204, 255, 0.15)' : '#090b10', borderRadius: '4px', borderLeft: '3px solid #00e5a3' }}>
-            <span style={{ fontSize: '0.65rem', color: '#00e5a3', fontWeight: 700, display: 'block' }}>MASS FLOW (ṁ)</span>
-            <span style={{ fontSize: '1.125rem', fontWeight: 700, color: '#00e5a3', display: 'block', marginTop: '0.2rem' }}>
+          <div style={{ padding: '0.75rem', background: simBaseline.sip_active_arr[activeScrubIdx] ? '#ECFDF5' : '#FFFFFF', borderRadius: '4px', border: '1px solid ' + (simBaseline.sip_active_arr[activeScrubIdx] ? '#A7F3D0' : 'var(--border-subtle)'), borderLeft: '3px solid #059669' }}>
+            <span style={{ fontSize: '0.65rem', color: '#047857', fontWeight: 700, display: 'block' }}>MASS FLOW (ṁ)</span>
+            <span style={{ fontSize: '1.125rem', fontWeight: 700, color: '#059669', display: 'block', marginTop: '0.2rem' }}>
               {simBaseline.sip_active_arr[activeScrubIdx] ? `${flowRateMlS.toFixed(1)} mL/s` : '0.0 mL/s'}
             </span>
-            <span style={{ fontSize: '0.7rem', color: simBaseline.sip_active_arr[activeScrubIdx] ? '#00e5a3' : 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+            <span style={{ fontSize: '0.7rem', color: simBaseline.sip_active_arr[activeScrubIdx] ? '#059669' : 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
               {simBaseline.sip_active_arr[activeScrubIdx] ? 'ACTIVE PULSE' : 'REST / EQUIL'}
             </span>
           </div>
@@ -482,16 +484,17 @@ export default function SimulationTab({ twin }: TabProps) {
 
       {/* GOD'S EYE VIEW: Precision Multi-Channel Oscilloscope & Telemetry Viewer */}
       <div style={{
-        background: '#07090e',
-        border: '1px solid #192030',
+        background: '#FFFFFF',
+        border: '1px solid var(--border-color)',
         borderRadius: 'var(--radius-md)',
         padding: '1.5rem',
-        marginBottom: '1.75rem'
+        marginBottom: '1.75rem',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
       }}>
         {/* Channel Toggles Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Activity size={17} color="#00e5a3" />
+            <Activity size={17} color="#059669" />
             Synchronized Thermal Transient Trajectory (0–300s)
           </div>
 
@@ -502,14 +505,14 @@ export default function SimulationTab({ twin }: TabProps) {
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
-                color: showPcmCore ? '#ffaa00' : '#444',
+                color: showPcmCore ? '#D97706' : '#9CA3AF',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.35rem',
                 fontWeight: 600
               }}
             >
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: showPcmCore ? '#ffaa00' : '#444' }}></span>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: showPcmCore ? '#D97706' : '#D1D5DB' }}></span>
               CH1: PCM Core (T₁)
             </button>
 
@@ -519,14 +522,14 @@ export default function SimulationTab({ twin }: TabProps) {
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
-                color: showWallNode ? '#ffd000' : '#444',
+                color: showWallNode ? '#CA8A04' : '#9CA3AF',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.35rem',
                 fontWeight: 600
               }}
             >
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: showWallNode ? '#ffd000' : '#444' }}></span>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: showWallNode ? '#CA8A04' : '#D1D5DB' }}></span>
               CH2: Wall Interface (T₂)
             </button>
 
@@ -536,14 +539,14 @@ export default function SimulationTab({ twin }: TabProps) {
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
-                color: showOutletFluid ? '#00ccff' : '#444',
+                color: showOutletFluid ? '#0284C7' : '#9CA3AF',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.35rem',
                 fontWeight: 600
               }}
             >
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: showOutletFluid ? '#00ccff' : '#444' }}></span>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: showOutletFluid ? '#0284C7' : '#D1D5DB' }}></span>
               CH3: Outlet Fluid (T₄)
             </button>
 
@@ -553,20 +556,20 @@ export default function SimulationTab({ twin }: TabProps) {
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
-                color: showPhysicalBench ? '#00e5a3' : '#444',
+                color: showPhysicalBench ? '#059669' : '#9CA3AF',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.35rem',
                 fontWeight: 600
               }}
             >
-              <span style={{ width: 12, height: 2, background: showPhysicalBench ? '#00e5a3' : '#444' }}></span>
+              <span style={{ width: 12, height: 2, background: showPhysicalBench ? '#059669' : '#D1D5DB' }}></span>
               CH4: Physical Sensor Test #001
             </button>
 
             {showForkMutation && (
-              <span style={{ color: '#a64dff', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#a64dff' }}></span>
+              <span style={{ color: '#7C3AED', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#7C3AED' }}></span>
                 CH5: Fork Mutation (T_fork)
               </span>
             )}
@@ -588,23 +591,23 @@ export default function SimulationTab({ twin }: TabProps) {
             {/* Grid lines */}
             {[10, 20, 30, 40, 50].map((t) => (
               <g key={t}>
-                <line x1={paddingLeft} y1={getY(t)} x2={svgWidth - paddingRight} y2={getY(t)} stroke="#141a29" strokeDasharray="3 3" />
-                <text x={paddingLeft - 8} y={getY(t) + 4} fill="#4f5d75" fontSize="10" fontFamily="var(--font-mono)" textAnchor="end">{t}°C</text>
+                <line x1={paddingLeft} y1={getY(t)} x2={svgWidth - paddingRight} y2={getY(t)} stroke="#E5E7EB" strokeDasharray="3 3" />
+                <text x={paddingLeft - 8} y={getY(t) + 4} fill="#6B7280" fontSize="10" fontFamily="var(--font-mono)" textAnchor="end">{t}°C</text>
               </g>
             ))}
             {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300].map((sec) => (
               <g key={sec}>
-                <line x1={getX(sec)} y1={paddingTop} x2={getX(sec)} y2={svgHeight - paddingBottom} stroke="#141a29" strokeDasharray="3 3" />
-                <text x={getX(sec)} y={svgHeight - paddingBottom + 16} fill="#4f5d75" fontSize="10" fontFamily="var(--font-mono)" textAnchor="middle">{sec}s</text>
+                <line x1={getX(sec)} y1={paddingTop} x2={getX(sec)} y2={svgHeight - paddingBottom} stroke="#E5E7EB" strokeDasharray="3 3" />
+                <text x={getX(sec)} y={svgHeight - paddingBottom + 16} fill="#6B7280" fontSize="10" fontFamily="var(--font-mono)" textAnchor="middle">{sec}s</text>
               </g>
             ))}
 
             {/* Channels */}
-            {showPcmCore && <path d={pcmPath} fill="none" stroke="#ffaa00" strokeWidth="2.5" />}
-            {showWallNode && <path d={wallPath} fill="none" stroke="#ffd000" strokeWidth="2.0" opacity="0.85" />}
-            {showOutletFluid && <path d={fluidPath} fill="none" stroke="#00ccff" strokeWidth="2.5" />}
-            {showPhysicalBench && <path d={benchPath} fill="none" stroke="#00e5a3" strokeWidth="2.0" strokeDasharray="4 2" />}
-            {showForkMutation && forkPath && <path d={forkPath} fill="none" stroke="#a64dff" strokeWidth="2.5" strokeDasharray="2 2" />}
+            {showPcmCore && <path d={pcmPath} fill="none" stroke="#D97706" strokeWidth="2.5" />}
+            {showWallNode && <path d={wallPath} fill="none" stroke="#CA8A04" strokeWidth="2.0" opacity="0.85" />}
+            {showOutletFluid && <path d={fluidPath} fill="none" stroke="#0284C7" strokeWidth="2.5" />}
+            {showPhysicalBench && <path d={benchPath} fill="none" stroke="#059669" strokeWidth="2.0" strokeDasharray="4 2" />}
+            {showForkMutation && forkPath && <path d={forkPath} fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeDasharray="2 2" />}
 
             {/* Interactive Vertical Scrubber Line */}
             {hoverIndex !== null && (
@@ -614,31 +617,31 @@ export default function SimulationTab({ twin }: TabProps) {
                   y1={paddingTop} 
                   x2={getX(hoverIndex)} 
                   y2={svgHeight - paddingBottom} 
-                  stroke="#fff" 
+                  stroke="#111827" 
                   strokeWidth="1.5" 
-                  opacity="0.8"
+                  opacity="0.7"
                 />
-                <circle cx={getX(hoverIndex)} cy={getY(simBaseline.t_fluid_arr[hoverIndex])} r="4" fill="#00ccff" />
-                <circle cx={getX(hoverIndex)} cy={getY(simBaseline.t_pcm_arr[hoverIndex])} r="4" fill="#ffaa00" />
+                <circle cx={getX(hoverIndex)} cy={getY(simBaseline.t_fluid_arr[hoverIndex])} r="4" fill="#0284C7" />
+                <circle cx={getX(hoverIndex)} cy={getY(simBaseline.t_pcm_arr[hoverIndex])} r="4" fill="#D97706" />
               </g>
             )}
           </svg>
         </div>
 
         {/* Discrete Convective Mass Flow Timeline Strip */}
-        <div style={{ marginTop: '1rem', paddingTop: '0.875rem', borderTop: '1px solid #161c2b' }}>
+        <div style={{ marginTop: '1rem', paddingTop: '0.875rem', borderTop: '1px solid var(--border-subtle)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
             <span>Transient Convection State (Open fluid flow transport active in blue blocks)</span>
             <span style={{ fontFamily: 'var(--font-mono)' }}>300.0s Window</span>
           </div>
-          <div style={{ height: '14px', background: '#0e121a', borderRadius: '3px', display: 'flex', overflow: 'hidden', border: '1px solid #161c2b' }}>
+          <div style={{ height: '14px', background: '#F3F4F6', borderRadius: '3px', display: 'flex', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
             {simBaseline.sip_active_arr.map((active, idx) => (
               <div 
                 key={idx} 
                 style={{ 
                   flex: 1, 
-                  background: active ? '#00ccff' : 'transparent',
-                  opacity: active ? 0.9 : 0 
+                  background: active ? '#0284C7' : 'transparent',
+                  opacity: active ? 0.85 : 0 
                 }} 
               />
             ))}
@@ -724,7 +727,7 @@ export default function SimulationTab({ twin }: TabProps) {
       <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '1.5rem', marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <GitFork size={18} color="#a64dff" />
+            <GitFork size={18} color="#7C3AED" />
             <h3 style={{ fontSize: '1rem', margin: 0, color: 'var(--text-primary)' }}>Lineage Fork & Geometry Mutation Simulator</h3>
           </div>
           <button
@@ -732,8 +735,8 @@ export default function SimulationTab({ twin }: TabProps) {
             onClick={() => setShowForkMutation(!showForkMutation)}
             style={{ 
               fontSize: '0.8125rem', 
-              borderColor: showForkMutation ? '#a64dff' : undefined,
-              color: showForkMutation ? '#a64dff' : undefined
+              borderColor: showForkMutation ? '#7C3AED' : undefined,
+              color: showForkMutation ? '#7C3AED' : undefined
             }}
           >
             {showForkMutation ? 'Hide Fork Mutation' : 'Simulate Fork Mutation'}
@@ -782,24 +785,24 @@ export default function SimulationTab({ twin }: TabProps) {
 
             {/* Delta Performance Cards */}
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <div style={{ padding: '0.75rem 1.25rem', background: 'rgba(166, 77, 255, 0.1)', border: '1px solid rgba(166, 77, 255, 0.3)', borderRadius: 'var(--radius-sm)' }}>
-                <span style={{ fontSize: '0.7rem', color: '#a64dff', fontWeight: 700, display: 'block' }}>PEAK TEMP GAIN</span>
+              <div style={{ padding: '0.75rem 1.25rem', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 'var(--radius-sm)' }}>
+                <span style={{ fontSize: '0.7rem', color: '#7C3AED', fontWeight: 700, display: 'block' }}>PEAK TEMP GAIN</span>
                 <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                   {(simFork.peak_fluid_temp - simBaseline.peak_fluid_temp) >= 0 ? '+' : ''}
                   {(simFork.peak_fluid_temp - simBaseline.peak_fluid_temp).toFixed(1)}°C
                 </span>
               </div>
 
-              <div style={{ padding: '0.75rem 1.25rem', background: 'rgba(166, 77, 255, 0.1)', border: '1px solid rgba(166, 77, 255, 0.3)', borderRadius: 'var(--radius-sm)' }}>
-                <span style={{ fontSize: '0.7rem', color: '#a64dff', fontWeight: 700, display: 'block' }}>ENTHALPY DELTA</span>
+              <div style={{ padding: '0.75rem 1.25rem', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 'var(--radius-sm)' }}>
+                <span style={{ fontSize: '0.7rem', color: '#7C3AED', fontWeight: 700, display: 'block' }}>ENTHALPY DELTA</span>
                 <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                   {(simFork.total_yield_kJ - simBaseline.total_yield_kJ) >= 0 ? '+' : ''}
                   {(simFork.total_yield_kJ - simBaseline.total_yield_kJ).toFixed(1)} kJ
                 </span>
               </div>
 
-              <div style={{ padding: '0.75rem 1.25rem', background: 'rgba(166, 77, 255, 0.1)', border: '1px solid rgba(166, 77, 255, 0.3)', borderRadius: 'var(--radius-sm)' }}>
-                <span style={{ fontSize: '0.7rem', color: '#a64dff', fontWeight: 700, display: 'block' }}>PLATEAU DURATION DELTA</span>
+              <div style={{ padding: '0.75rem 1.25rem', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 'var(--radius-sm)' }}>
+                <span style={{ fontSize: '0.7rem', color: '#7C3AED', fontWeight: 700, display: 'block' }}>PLATEAU DURATION DELTA</span>
                 <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                   {(simFork.plateau_duration_s - simBaseline.plateau_duration_s) >= 0 ? '+' : ''}
                   {(simFork.plateau_duration_s - simBaseline.plateau_duration_s)}s
@@ -842,20 +845,20 @@ export default function SimulationTab({ twin }: TabProps) {
                       padding: '0.2rem 0.5rem',
                       borderRadius: '4px',
                       background: 
-                        param.status === 'CALIBRATED' ? 'rgba(0, 229, 163, 0.15)' :
-                        param.status === 'MEASURED' ? 'rgba(0, 204, 255, 0.15)' :
-                        param.status === 'LITERATURE' ? 'rgba(166, 77, 255, 0.15)' :
-                        'rgba(255, 170, 0, 0.15)',
+                        param.status === 'CALIBRATED' ? '#ECFDF5' :
+                        param.status === 'MEASURED' ? '#EFF6FF' :
+                        param.status === 'LITERATURE' ? '#F5F3FF' :
+                        '#FFFBEB',
                       color: 
-                        param.status === 'CALIBRATED' ? '#00e5a3' :
-                        param.status === 'MEASURED' ? '#00ccff' :
-                        param.status === 'LITERATURE' ? '#a64dff' :
-                        '#ffaa00',
+                        param.status === 'CALIBRATED' ? '#059669' :
+                        param.status === 'MEASURED' ? '#0284C7' :
+                        param.status === 'LITERATURE' ? '#7C3AED' :
+                        '#D97706',
                       border: 
-                        param.status === 'CALIBRATED' ? '1px solid rgba(0, 229, 163, 0.3)' :
-                        param.status === 'MEASURED' ? '1px solid rgba(0, 204, 255, 0.3)' :
-                        param.status === 'LITERATURE' ? '1px solid rgba(166, 77, 255, 0.3)' :
-                        '1px solid rgba(255, 170, 0, 0.3)'
+                        param.status === 'CALIBRATED' ? '1px solid #A7F3D0' :
+                        param.status === 'MEASURED' ? '1px solid #BAE6FD' :
+                        param.status === 'LITERATURE' ? '1px solid #DDD6FE' :
+                        '1px solid #FDE68A'
                     }}>
                       {param.status}
                     </span>

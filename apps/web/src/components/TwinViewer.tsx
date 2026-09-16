@@ -60,7 +60,7 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
               "environment-image": "neutral",
               exposure: "1",
               className: styles.modelViewer,
-              style: { width: '100%', height: '100%', backgroundColor: '#1a1a1a' }
+              style: { width: '100%', height: '100%', backgroundColor: '#F8FAFC' }
             }, (
               <div className={styles.controlsOverlay} slot="poster">
               </div>
@@ -97,9 +97,9 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
   // 2. The MetaConcept (Omega Twin)
   if (ontologyClass === 'MetaConcept') {
     return (
-      <div className={styles.viewerContainer} style={{ backgroundColor: '#000', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', overflow: 'hidden', position: 'relative' }}>
+      <div className={styles.viewerContainer} style={{ backgroundColor: '#F8FAFC', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)', overflow: 'hidden', position: 'relative' }}>
         {/* Pulsing core effect */}
-        <div style={{ position: 'absolute', width: '200px', height: '200px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(120,0,255,0.8) 0%, rgba(0,0,0,0) 70%)', animation: 'pulse 4s infinite alternate' }} />
+        <div style={{ position: 'absolute', width: '200px', height: '200px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(124, 58, 237, 0.15) 0%, rgba(255,255,255,0) 70%)', animation: 'pulse 4s infinite alternate' }} />
         
         <style>{`
           @keyframes pulse {
@@ -111,16 +111,16 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
           }
         `}</style>
         
-        <Network size={80} color="#a64dff" style={{ zIndex: 1, animation: 'spin 20s linear infinite' }} />
-        <h1 style={{ zIndex: 1, color: '#fff', marginTop: '2rem', letterSpacing: '4px', textTransform: 'uppercase', textShadow: '0 0 10px #a64dff' }}>{twin.current_version.title}</h1>
-        <p style={{ zIndex: 1, maxWidth: '60%', textAlign: 'center', color: '#aaa', fontStyle: 'italic', marginTop: '1rem' }}>
+        <Network size={80} color="#7C3AED" style={{ zIndex: 1, animation: 'spin 20s linear infinite' }} />
+        <h1 style={{ zIndex: 1, color: 'var(--text-primary)', marginTop: '2rem', letterSpacing: '2px', textTransform: 'uppercase' }}>{twin.current_version.title}</h1>
+        <p style={{ zIndex: 1, maxWidth: '60%', textAlign: 'center', color: 'var(--text-secondary)', fontStyle: 'italic', marginTop: '1rem' }}>
           {twin.current_version.summary}
         </p>
         
         <div style={{ zIndex: 1, marginTop: '3rem', display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center' }}>
           {twin.current_version.relationships?.map((rel, i) => (
-            <div key={i} style={{ padding: '1rem 2rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(166,77,255,0.3)', borderRadius: '8px', fontSize: '1rem', backdropFilter: 'blur(4px)' }}>
-              <span style={{ color: '#a64dff', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '2px', display: 'block', marginBottom: '0.5rem' }}>{rel.type}</span>
+            <div key={i} style={{ padding: '1rem 2rem', background: '#FFFFFF', border: '1px solid #DDD6FE', borderRadius: '8px', fontSize: '1rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <span style={{ color: '#7C3AED', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '2px', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>{rel.type}</span>
               <strong>{rel.target_twin_id}</strong>
             </div>
           ))}
@@ -132,16 +132,16 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
   // 3. If it's Software or a Concept, render a semantic view placeholder
   if (ontologyClass === 'Software' || ontologyClass === 'Concept') {
     return (
-      <div className={styles.viewerContainer} style={{ backgroundColor: '#1a1a1a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
+      <div className={styles.viewerContainer} style={{ backgroundColor: '#F9FAFB', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
         {ontologyClass === 'Software' ? <Code size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} /> : <Network size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />}
-        <h2 style={{ color: '#eee', marginBottom: '0.5rem' }}>{ontologyClass} Twin</h2>
+        <h2 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{ontologyClass} Twin</h2>
         <p style={{ maxWidth: '60%', textAlign: 'center' }}>
           Visualizing semantic relationships and properties for <strong>{twin.current_version.title}</strong>.
         </p>
         <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
           {twin.current_version.relationships?.map((rel, i) => (
-            <div key={i} style={{ padding: '0.5rem 1rem', background: '#333', borderRadius: '4px', fontSize: '0.9rem' }}>
-              <span style={{ color: '#aaa' }}>{rel.type}</span> &rarr; {rel.target_twin_id}
+            <div key={i} style={{ padding: '0.5rem 1rem', background: '#FFFFFF', border: '1px solid var(--border-subtle)', borderRadius: '4px', fontSize: '0.9rem', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+              <span style={{ color: 'var(--text-muted)' }}>{rel.type}</span> &rarr; <strong style={{ color: 'var(--text-primary)' }}>{rel.target_twin_id}</strong>
             </div>
           ))}
         </div>

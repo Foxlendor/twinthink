@@ -91,7 +91,7 @@ export default function BomTab({ twin }: TabProps) {
             <tbody>
               {mockAxioms.map((item, idx) => (
                 <tr key={idx}>
-                  <td style={{ fontWeight: 600, color: '#a64dff' }}>{item.axiom}</td>
+                  <td style={{ fontWeight: 600, color: '#7C3AED' }}>{item.axiom}</td>
                   <td>{item.author}</td>
                   <td>{item.epoch}</td>
                   <td>{item.truth}</td>
@@ -271,13 +271,13 @@ export default function BomTab({ twin }: TabProps) {
   const getNodeTypeBadgeStyle = (type: string) => {
     switch (type.toLowerCase()) {
       case 'assembly':
-        return { background: 'rgba(0, 204, 255, 0.15)', color: '#00ccff', border: '1px solid rgba(0, 204, 255, 0.3)' };
+        return { background: '#EFF6FF', color: '#0284C7', border: '1px solid #BAE6FD' };
       case 'subassembly':
-        return { background: 'rgba(166, 77, 255, 0.15)', color: '#c285ff', border: '1px solid rgba(166, 77, 255, 0.3)' };
+        return { background: '#F5F3FF', color: '#7C3AED', border: '1px solid #DDD6FE' };
       case 'fastener':
-        return { background: 'rgba(255, 170, 0, 0.15)', color: '#ffb333', border: '1px solid rgba(255, 170, 0, 0.3)' };
+        return { background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' };
       case 'raw_material':
-        return { background: 'rgba(0, 230, 118, 0.15)', color: '#00e676', border: '1px solid rgba(0, 230, 118, 0.3)' };
+        return { background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' };
       default:
         return { background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' };
     }
@@ -295,9 +295,9 @@ export default function BomTab({ twin }: TabProps) {
               fontSize: '0.75rem',
               padding: '0.2rem 0.55rem',
               borderRadius: '999px',
-              background: 'rgba(0, 255, 170, 0.12)',
-              border: '1px solid rgba(0, 255, 170, 0.3)',
-              color: '#00ffaa',
+              background: '#ECFDF5',
+              border: '1px solid #A7F3D0',
+              color: '#059669',
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
@@ -346,7 +346,7 @@ export default function BomTab({ twin }: TabProps) {
                 ${Number(totalCost).toFixed(2)} {currency}
               </span>
             ) : (
-              <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#ffaa00', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#D97706', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                 <AlertCircle size={14} /> Pending Quotes
               </span>
             )}
@@ -360,13 +360,14 @@ export default function BomTab({ twin }: TabProps) {
               alignItems: 'center',
               gap: '0.45rem',
               padding: '0.55rem 0.95rem',
-              background: 'linear-gradient(135deg, rgba(0, 204, 255, 0.2), rgba(166, 77, 255, 0.2))',
-              border: '1px solid rgba(0, 204, 255, 0.4)',
+              background: '#FFFFFF',
+              border: '1px solid var(--border-color)',
               borderRadius: 'var(--radius-sm)',
               color: 'var(--text-primary)',
               fontWeight: 600,
               fontSize: '0.8125rem',
               cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
               transition: 'all 0.2s ease'
             }}
           >
@@ -379,15 +380,15 @@ export default function BomTab({ twin }: TabProps) {
       {/* Missing Data Notice if applicable */}
       {hasMissingCosts && (
         <div style={{
-          background: 'rgba(255, 170, 0, 0.08)',
-          border: '1px solid rgba(255, 170, 0, 0.25)',
+          background: '#FFFBEB',
+          border: '1px solid #FDE68A',
           borderRadius: 'var(--radius-sm)',
           padding: '0.65rem 1rem',
           display: 'flex',
           alignItems: 'center',
           gap: '0.75rem',
           fontSize: '0.8125rem',
-          color: '#ffb333'
+          color: '#92400E'
         }}>
           <AlertCircle size={16} style={{ flexShrink: 0 }} />
           <span>
@@ -593,7 +594,7 @@ export default function BomTab({ twin }: TabProps) {
                   {totalCost !== null && totalCost !== undefined ? (
                     `$${Number(totalCost).toFixed(2)} ${currency}`
                   ) : (
-                    <span style={{ color: '#ffaa00', fontSize: '0.875rem' }}>Pending supplier pricing</span>
+                    <span style={{ color: '#D97706', fontSize: '0.875rem' }}>Pending supplier pricing</span>
                   )}
                 </td>
               </tr>
@@ -657,7 +658,7 @@ export default function BomTab({ twin }: TabProps) {
               padding: '0.75rem'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
-                <Key size={14} style={{ color: '#c285ff' }} />
+                <Key size={14} style={{ color: '#7C3AED' }} />
                 <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
                   Declared Rights Policy
                 </span>
@@ -666,8 +667,9 @@ export default function BomTab({ twin }: TabProps) {
                 <span style={{
                   fontSize: '0.8125rem',
                   fontWeight: 700,
-                  color: '#c285ff',
-                  background: 'rgba(166, 77, 255, 0.15)',
+                  color: '#7C3AED',
+                  background: '#F5F3FF',
+                  border: '1px solid #DDD6FE',
                   padding: '0.2rem 0.5rem',
                   borderRadius: '4px'
                 }}>
@@ -708,7 +710,7 @@ export default function BomTab({ twin }: TabProps) {
               {selectedNode.recycledContentPct !== undefined && (
                 <div style={{ fontSize: '0.8125rem', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.35rem' }}>
                   <span style={{ color: 'var(--text-muted)' }}>Recycled Content:</span>
-                  <span style={{ color: '#00e676', fontWeight: 600 }}>{selectedNode.recycledContentPct}%</span>
+                  <span style={{ color: '#059669', fontWeight: 600 }}>{selectedNode.recycledContentPct}%</span>
                 </div>
               )}
 
@@ -792,7 +794,7 @@ export default function BomTab({ twin }: TabProps) {
                         By: {p.creator} • {new Date(p.captured_at).toLocaleDateString()}
                       </div>
                       {p.creator_identity && (
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', color: '#00e676', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', color: '#059669', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                           <ShieldCheck size={11} />
                           DID: {p.creator_identity}
                         </div>
@@ -828,7 +830,7 @@ export default function BomTab({ twin }: TabProps) {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0, 0, 0, 0.8)',
+          background: 'rgba(17, 24, 39, 0.5)',
           backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
@@ -863,8 +865,9 @@ export default function BomTab({ twin }: TabProps) {
                     fontSize: '0.7rem',
                     padding: '0.15rem 0.5rem',
                     borderRadius: '999px',
-                    background: 'rgba(255, 170, 0, 0.15)',
-                    color: '#ffaa00',
+                    background: '#FFFBEB',
+                    color: '#D97706',
+                    border: '1px solid #FDE68A',
                     fontWeight: 700,
                     letterSpacing: '0.04em'
                   }}>
@@ -891,12 +894,12 @@ export default function BomTab({ twin }: TabProps) {
 
             {/* Mandatory Safeguard Disclaimer */}
             <div style={{
-              background: 'rgba(255, 170, 0, 0.08)',
-              border: '1px solid rgba(255, 170, 0, 0.3)',
+              background: '#FFFBEB',
+              border: '1px solid #FDE68A',
               borderRadius: 'var(--radius-sm)',
               padding: '0.75rem 1rem',
               fontSize: '0.8125rem',
-              color: '#ffb333',
+              color: '#92400E',
               lineHeight: 1.5
             }}>
               <strong>Regulatory Notice:</strong> This representation is projected directly from the canonical digital twin record for engineering review and supply-chain audit. It does <em>not</em> constitute an official legally certified EU Battery Passport or CE marking. Formal compliance requires designated notified bodies and registration in the official 2026/2027 EU DPP Registry.
@@ -914,9 +917,9 @@ export default function BomTab({ twin }: TabProps) {
                 style={{
                   padding: '0.45rem 0.9rem',
                   borderRadius: 'var(--radius-sm)',
-                  border: dppTier === 'public' ? '1px solid var(--accent-primary)' : '1px solid transparent',
-                  background: dppTier === 'public' ? 'rgba(0, 204, 255, 0.15)' : 'transparent',
-                  color: dppTier === 'public' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  border: dppTier === 'public' ? '1px solid #BAE6FD' : '1px solid transparent',
+                  background: dppTier === 'public' ? '#EFF6FF' : 'transparent',
+                  color: dppTier === 'public' ? '#0284C7' : 'var(--text-secondary)',
                   fontWeight: 600,
                   fontSize: '0.8125rem',
                   cursor: 'pointer'
@@ -929,9 +932,9 @@ export default function BomTab({ twin }: TabProps) {
                 style={{
                   padding: '0.45rem 0.9rem',
                   borderRadius: 'var(--radius-sm)',
-                  border: dppTier === 'recycler' ? '1px solid #00e676' : '1px solid transparent',
-                  background: dppTier === 'recycler' ? 'rgba(0, 230, 118, 0.15)' : 'transparent',
-                  color: dppTier === 'recycler' ? '#00e676' : 'var(--text-secondary)',
+                  border: dppTier === 'recycler' ? '1px solid #A7F3D0' : '1px solid transparent',
+                  background: dppTier === 'recycler' ? '#ECFDF5' : 'transparent',
+                  color: dppTier === 'recycler' ? '#059669' : 'var(--text-secondary)',
                   fontWeight: 600,
                   fontSize: '0.8125rem',
                   cursor: 'pointer'
@@ -944,9 +947,9 @@ export default function BomTab({ twin }: TabProps) {
                 style={{
                   padding: '0.45rem 0.9rem',
                   borderRadius: 'var(--radius-sm)',
-                  border: dppTier === 'authority' ? '1px solid #c285ff' : '1px solid transparent',
-                  background: dppTier === 'authority' ? 'rgba(166, 77, 255, 0.15)' : 'transparent',
-                  color: dppTier === 'authority' ? '#c285ff' : 'var(--text-secondary)',
+                  border: dppTier === 'authority' ? '1px solid #DDD6FE' : '1px solid transparent',
+                  background: dppTier === 'authority' ? '#F5F3FF' : 'transparent',
+                  color: dppTier === 'authority' ? '#7C3AED' : 'var(--text-secondary)',
                   fontWeight: 600,
                   fontSize: '0.8125rem',
                   cursor: 'pointer'
@@ -1023,7 +1026,7 @@ export default function BomTab({ twin }: TabProps) {
                           <td style={{ fontWeight: 600 }}>{item.name}</td>
                           <td>{item.material} {item.materialGrade && `(${item.materialGrade})`}</td>
                           <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{item.materialStandard || '—'}</td>
-                          <td style={{ color: item.recycledContentPct ? '#00e676' : 'var(--text-muted)' }}>
+                          <td style={{ color: item.recycledContentPct ? '#059669' : 'var(--text-muted)' }}>
                             {item.recycledContentPct ? `${item.recycledContentPct}%` : '—'}
                           </td>
                           <td>{item.process || '—'}</td>
@@ -1032,7 +1035,7 @@ export default function BomTab({ twin }: TabProps) {
                     </tbody>
                   </table>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#00e676' }}>
+                <div style={{ fontSize: '0.75rem', color: '#059669' }}>
                   ✓ Non-destructive disassembly confirmed for all threaded fasteners.
                 </div>
               </div>
@@ -1053,7 +1056,7 @@ export default function BomTab({ twin }: TabProps) {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Graph Integrity Verification:</span>
-                    <span style={{ color: '#00e676', fontWeight: 600 }}>Verified Acyclic (3-Color DFS)</span>
+                    <span style={{ color: '#059669', fontWeight: 600 }}>Verified Acyclic (3-Color DFS)</span>
                   </div>
                 </div>
 
