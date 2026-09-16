@@ -684,4 +684,141 @@ def test_20_tt_and_web_produce_equivalent_signed_records(test_client):
     assert api_res["checks"]["identity_valid"] is True
     assert api_res["checks"]["revisions_valid"] is True
     assert api_res["checks"]["graph_hash_valid"] is True
-    assert api_res["checks"]["graph_hash_valid"] is True
+
+# ==============================================================================
+# Criterion 21: Private Key Non-Leakage Protection
+# ==============================================================================
+def test_21_private_key_leakage_protection(test_client):
+    kp = Keypair.generate()
+    priv_hex = kp.private_hex
+
+    # 1. Register identity
+    pub_doc = kp.export_identity(name="SecretKeeper")
+    resp = test_client.post("/api/identities", json=pub_doc.model_dump())
+    assert resp.status_code == 200
+    assert priv_hex not in resp.text
+
+    # 2. Check get identity endpoint
+    get_resp = test_client.get(f"/api/identities/{kp.did}")
+    assert get_resp.status_code == 200
+    assert priv_hex not in get_resp.text
+
+    # 3. Create twin and signed revision
+    files = [("files", ("README.md", b"# Privacy Test"))]
+    create_resp = test_client.post("/api/twins/create", files=files, data={"creator": kp.did})
+    twin_id = create_resp.json()["id"]
+
+    rev = create_signed_revision(twin_id, "R0", "00" * 32, kp)
+    rev_resp = test_client.post(f"/api/twins/{twin_id}/revisions", json=rev.model_dump())
+    assert rev_resp.status_code == 200
+    assert priv_hex not in rev_resp.text
+
+    # 4. Check database directly
+    from apps.api.main import get_db_local
+    conn = get_db_local()
+    for table in ["identities", "twins", "twin_revisions", "capabilities"]:
+        rows = conn.execute(f"SELECT * FROM {table}").fetchall()
+        for r in rows:
+            row_str = " ".join(str(val) for val in dict(r).values())
+            assert priv_hex not in row_str, f"Private key leaked in table {table}!"
+    conn.close()
+
+    # 5. Check exported bundle
+    bundle_resp = test_client.get(f"/api/twins/{twin_id}/bundle")
+    assert priv_hex.encode("utf-8") not in bundle_resp.content
+
+# ==============================================================================
+# Criterion 22: Offline Verification with Zero Network Dependency
+# ==============================================================================
+def test_22_offline_tt_verify_zero_network(monkeypatch):
+    # Cut off network entirely by pointing API to invalid address
+    monkeypatch.setenv("TWINTHINK_API_URL", "http://0.0.0.0:1")
+
+    kp = Keypair.generate()
+    twin_id = "twin_zero_net"
+    nodes = [{"node_id": "root", "name": "Assembly", "node_type": "assembly", "quantity": 1.0, "unit": "ea"}]
+    tree_root = parse_bom_dict(nodes)
+    g_hash = BomEngine.compute_hash(tree_root)
+    r0 = create_signed_revision(twin_id, "R0", g_hash, kp)
+
+    bundle_bytes = pack_twin_bundle(
+        manifest_data={"title": "Zero Net", "twin_id": twin_id},
+        creator_identity=kp.export_identity(),
+        graph_nodes=nodes,
+        revisions=[r0]
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        bundle_path = Path(tmpdir) / "valid.twin"
+        bundle_path.write_bytes(bundle_bytes)
+
+        # Runs 100% offline
+        res = verify_twin_bundle(bundle_path)
+        assert res.valid is True
+        assert res.checks["identity_valid"] is True
+        assert res.checks["revisions_valid"] is True
+        assert res.checks["graph_hash_valid"] is True
+
+        # Now tamper with graph/nodes.json inside the bundle
+        tampered_path = Path(tmpdir) / "tampered.twin"
+        with zipfile.ZipFile(bundle_path, 'r') as z_in:
+            with zipfile.ZipFile(tampered_path, 'w') as z_out:
+                for item in z_in.infolist():
+                    data = z_in.read(item.filename)
+                    if item.filename == "graph/nodes.json":
+                        tampered_nodes = [{"node_id": "root", "name": "Tampered CAD", "node_type": "assembly", "quantity": 999.0, "unit": "ea"}]
+                        data = json.dumps(tampered_nodes).encode()
+                    z_out.writestr(item, data)
+
+        tampered_res = verify_twin_bundle(tampered_path)
+        assert tampered_res.valid is False
+        assert tampered_res.checks["graph_hash_valid"] is False
+        assert "tampered post-signing" in tampered_res.summary
+
+# ==============================================================================
+# Criterion 23: Capability Revocation Semantics & Information Disclosure Distinction
+# ==============================================================================
+def test_23_capability_revocation_semantics():
+    """
+    Verifies that capability revocation strictly denies future authorization,
+    while acknowledging the protocol boundary that cryptographic revocation
+    governs access authorization, not physical erasure of previously disclosed plaintext.
+    """
+    creator_kp = Keypair.generate()
+    fabricator_kp = Keypair.generate()
+
+    secret_data = {"cad_recipe": "proprietary_extrusion_formula_v3"}
+    seg, seg_key = encrypt_segment("design", secret_data)
+    wrapped = wrap_key_for_recipient(seg_key, fabricator_kp.x25519_public_bytes, fabricator_kp.did)
+
+    token = issue_capability(
+        issuer_keypair=creator_kp,
+        subject_did=fabricator_kp.did,
+        twin_id="twin_sem",
+        permissions=["read:design"],
+        expires_in_seconds=3600
+    )
+
+    # Phase 1: Authorized access works
+    valid, _ = verify_capability(token, required_permission="read:design")
+    assert valid is True
+    unwrapped = unwrap_key_with_private_key(wrapped, fabricator_kp.x25519_private_bytes)
+    decrypted = json.loads(decrypt_segment(seg, unwrapped).decode())
+    assert decrypted == secret_data
+
+    # Phase 2: Revocation strictly rejects future authorization
+    rev_set = {token.token_id}
+    rev_valid, reason = verify_capability(token, required_permission="read:design", revocation_set=rev_set)
+    assert rev_valid is False
+    assert "revoked" in reason.lower()
+
+    # Phase 3: Without valid authorization, attempts by other or future requests fail
+    unauthorized_token = issue_capability(
+        issuer_keypair=creator_kp,
+        subject_did=fabricator_kp.did,
+        twin_id="twin_sem",
+        permissions=["read:bom"]  # lacks read:design
+    )
+    scope_valid, scope_reason = verify_capability(unauthorized_token, required_permission="read:design")
+    assert scope_valid is False
+    assert "lacks required scope" in scope_reason.lower()
