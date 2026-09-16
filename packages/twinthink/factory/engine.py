@@ -8,7 +8,7 @@ import io
 import csv
 import json
 import re
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from pathlib import Path
 
 from ..schema import (
@@ -21,22 +21,45 @@ from ..schema import (
     TwinHistoryEntry,
     TwinLineage,
     Claim,
-    ComponentItem
+    ComponentItem,
+    BomNode,
+    ProvenanceEntry
 )
 from ..reality.calculator import derive_reality_state
+from ..simulation.calibration import calculate_error_metrics
+from ..bom import (
+    parse_bom_csv,
+    parse_bom_dict,
+    flatten_bom_tree,
+    convert_leaves_to_component_items,
+    CyclicBomError,
+    OrphanBomNodeError
+)
 
 class TwinFactoryEngine:
     @staticmethod
-    def process_bundle(file_map: Dict[str, bytes], twin_id: str = "0001") -> TwinDocument:
+    def process_bundle(file_map: Dict[str, bytes], twin_id: str = "0001", creator: str = "Anonymous") -> TwinDocument:
         """
         Parses a dictionary of {relative_path: raw_bytes} and compiles a complete TwinDocument.
         """
         filenames = list(file_map.keys())
         
-        # 1. Identity & Overview extraction
-        title = "Untitled Physical Invention"
-        summary = "Living digital twin compiled from engineering files."
-        classification = "PhysicalObject"
+        # 1. Check for existing manifest.json
+        manifest_data = {}
+        for name, data in file_map.items():
+            if name.lower() == "manifest.json" or name.lower().endswith("/manifest.json"):
+                try:
+                    manifest_data = json.loads(data.decode("utf-8", errors="ignore"))
+                except Exception:
+                    pass
+                break
+
+        # 2. Identity & Overview extraction
+        title = manifest_data.get("title") or "Untitled Physical Invention"
+        summary = manifest_data.get("summary") or "Living digital twin compiled from engineering files."
+        classification = manifest_data.get("ontology_class") or manifest_data.get("classification") or "PhysicalObject"
+        license_type = manifest_data.get("license") or "CERN-OHL-S-2.0"
+        version_str = manifest_data.get("version") or manifest_data.get("semver") or "1.0.0"
         
         readme_content = ""
         spec_content = ""
@@ -46,9 +69,9 @@ class TwinFactoryEngine:
                 try:
                     readme_content = data.decode("utf-8", errors="ignore")
                     lines = [l.strip() for l in readme_content.splitlines() if l.strip()]
-                    if lines and lines[0].startswith("#"):
+                    if lines and lines[0].startswith("#") and title == "Untitled Physical Invention":
                         title = lines[0].lstrip("#").strip()
-                    if len(lines) > 1:
+                    if len(lines) > 1 and summary == "Living digital twin compiled from engineering files.":
                         summary = lines[1].lstrip(">").strip()
                 except Exception:
                     pass
@@ -58,125 +81,162 @@ class TwinFactoryEngine:
                 except Exception:
                     pass
 
-        # 2. Extract Components & BOM
-        components = []
-        bom_items = []
-        estimated_bom = None
+        # 3. Extract Hierarchical BOM
+        bom_root: Optional[BomNode] = None
+        bom_nodes: List[BomNode] = []
+        components: List[ComponentItem] = []
+        estimated_bom: Optional[float] = None
         
-        for name, data in file_map.items():
-            if name.lower().endswith("bom.csv"):
+        # Check for bom.json first, then bom.csv
+        bom_json_key = next((k for k in file_map if k.lower().endswith("bom.json")), None)
+        if bom_json_key:
+            try:
+                bom_dict = json.loads(file_map[bom_json_key].decode("utf-8", errors="ignore"))
+                bom_root = parse_bom_dict(bom_dict, root_title=title)
+                bom_nodes = flatten_bom_tree(bom_root)
+                components = convert_leaves_to_component_items(bom_root)
+                if bom_root.cost and bom_root.cost.unit_cost is not None:
+                    estimated_bom = bom_root.cost.unit_cost
+            except (CyclicBomError, OrphanBomNodeError):
+                raise
+            except Exception:
+                pass
+
+        if not bom_root:
+            bom_csv_key = next((k for k in file_map if k.lower().endswith("bom.csv")), None)
+            if bom_csv_key:
                 try:
-                    text = data.decode("utf-8", errors="ignore")
-                    reader = csv.DictReader(io.StringIO(text))
-                    for row in reader:
-                        # Normalize keys
-                        row_lower = {k.lower().strip(): v.strip() for k, v in row.items() if k}
-                        c_name = row_lower.get("part", row_lower.get("component", row_lower.get("name", "Component")))
-                        c_mat = row_lower.get("material", "Standard")
-                        c_desc = row_lower.get("specification", row_lower.get("desc", ""))
-                        c_qty = int(row_lower.get("qty", 1))
-                        
-                        cost_str = row_lower.get("total", row_lower.get("unit_cost_usd", "0")).replace("$", "")
-                        try:
-                            c_cost = float(cost_str)
-                        except ValueError:
-                            c_cost = 0.0
-                            
-                        components.append(ComponentItem(
-                            name=c_name,
-                            description=c_desc,
-                            material=c_mat,
-                            qty=c_qty,
-                            unit_cost_usd=c_cost,
-                            supplier=row_lower.get("supplier")
-                        ))
-                    if components:
-                        estimated_bom = sum(c.unit_cost_usd or 0 for c in components)
+                    csv_text = file_map[bom_csv_key].decode("utf-8", errors="ignore")
+                    bom_root = parse_bom_csv(csv_text, root_title=title)
+                    bom_nodes = flatten_bom_tree(bom_root)
+                    components = convert_leaves_to_component_items(bom_root)
+                    if bom_root.cost and bom_root.cost.unit_cost is not None:
+                        estimated_bom = bom_root.cost.unit_cost
+                except (CyclicBomError, OrphanBomNodeError):
+                    raise
                 except Exception:
                     pass
 
-        # Fallback default components if no BOM found
-        if not components:
-            components = [
-                ComponentItem(name="Main Body Housing", description="Enclosing chassis", material="Aluminum / Polymer", qty=1),
-                ComponentItem(name="Internal Core", description="Primary operational mechanism", material="Stainless Steel", qty=1)
-            ]
+        # 4. CAD & Solid Geometry
+        step_path = next((f for f in filenames if f.lower().endswith(('.step', '.stp'))), None)
+        glb_path = next((f for f in filenames if f.lower().endswith('.glb')), None)
+        has_step = step_path is not None
+        
+        # Extract geometry metrics only if present in manifest properties
+        bounding_box = None
+        mass_val = None
+        for prop in manifest_data.get("properties", []):
+            k = prop.get("key", "").lower()
+            if "bounding_box" in k and isinstance(prop.get("value"), list):
+                bounding_box = prop.get("value")
+            elif "mass" in k or "weight" in k:
+                try:
+                    mass_val = float(prop.get("value"))
+                except (ValueError, TypeError):
+                    pass
 
-        # 3. CAD & Solid Geometry
-        has_step = any(f.endswith('.step') or f.endswith('.stp') for f in filenames)
-        has_glb = any(f.endswith('.glb') for f in filenames)
-        
-        step_path = next((f for f in filenames if f.endswith(('.step', '.stp'))), None)
-        glb_path = next((f for f in filenames if f.endswith('.glb')), None)
-        
         obj_geom = TwinObjectGeometry(
             cad_step_path=step_path,
             cad_preview_glb_path=glb_path,
-            bounding_box_mm=[16.0, 16.0, 220.0],
-            mass_grams=45.0
+            bounding_box_mm=bounding_box,
+            mass_grams=mass_val
         )
 
-        # 4. Claims Extraction
-        claims = [
-            Claim(
-                key="activation_temp",
-                name="Activation Temperature",
-                value="54.0 °C",
-                unit="°C",
-                status="LITERATURE",
-                confidence_pct=95,
-                origin="NIST standard reference database for trihydrate crystallization equilibrium.",
-                source_file="spec.md",
-                evidence_paths=[f for f in filenames if 'sim' in f or 'param' in f],
-                relationships=["Sodium Acetate Trihydrate", "Exothermic Phase Change"]
-            ),
-            Claim(
-                key="latent_heat_capacity",
-                name="Latent Heat Capacity",
-                value="12.05 kJ",
-                unit="kJ",
-                status="CALIBRATED",
-                confidence_pct=82,
-                origin="Calibrated from 50g mass ODE model against physical thermocouple logs.",
-                source_file="simulation/thermal.py",
-                evidence_paths=[f for f in filenames if 'test' in f or 'calib' in f],
-                relationships=["Thermal Enthalpy", "Beverage Heat Transfer"]
-            ),
-            Claim(
-                key="estimated_bom_usd",
-                name="Unit BOM (COGS)",
-                value=f"${estimated_bom:.2f} USD" if estimated_bom else "$4.50 USD",
-                unit="USD",
-                status="MEASURED",
-                confidence_pct=88,
-                origin="Sourced from off-the-shelf component suppliers for 100-unit pilot batch.",
-                source_file="bom.csv",
-                evidence_paths=[f for f in filenames if 'bom' in f],
-                relationships=["316L Conduit", "Silicone Sleeve", "Snap Disc"]
-            )
-        ]
+        # 5. Behavior & Simulation
+        sim_script = next((f for f in filenames if f.lower().endswith(('.py')) and ('sim' in f.lower() or 'model' in f.lower())), None)
+        params_path = next((f for f in filenames if 'param' in f.lower() and f.lower().endswith('.json')), None)
+        sim_results_path = next((f for f in filenames if ('result' in f.lower() or 'sim' in f.lower()) and f.lower().endswith('.json')), None)
 
-        # 5. Behavior & ODE Simulator
         behavior = TwinBehavior(
-            engine_name="twinthink.simulation.thermal",
-            entrypoint_script=next((f for f in filenames if f.endswith('thermal.py')), None),
-            parameters_path=next((f for f in filenames if 'param' in f), None),
-            simulation_results_path=next((f for f in filenames if 'results' in f), None),
-            operating_envelope={"inlet_temp_min_C": 0.0, "inlet_temp_max_C": 25.0, "flow_rate_ml_s": 8.0}
+            engine_name="simulation" if sim_script else None,
+            entrypoint_script=sim_script,
+            parameters_path=params_path,
+            simulation_results_path=sim_results_path,
+            operating_envelope={}
         )
 
-        # 6. Physical Evidence & Calibration
-        evidence_files = [f for f in filenames if f.endswith(('.csv', '.step', '.py', '.json'))]
-        has_tests = any('test' in f.lower() for f in filenames)
+        # 6. Physical Evidence & Calibration Calculation
+        test_files = [f for f in filenames if any(k in f.lower() for k in ['test', 'telemetry', 'bench']) and f.lower().endswith('.csv')]
+        has_tests = len(test_files) > 0
+        sensor_channels: List[str] = []
+        calibration_rmse: Optional[float] = None
         
+        # Read sensor channels and series from test CSV if available
+        test_series: List[float] = []
+        if has_tests:
+            try:
+                test_csv_data = file_map[test_files[0]].decode("utf-8", errors="ignore")
+                csv_reader = csv.DictReader(io.StringIO(test_csv_data))
+                if csv_reader.fieldnames:
+                    sensor_channels = [c for c in csv_reader.fieldnames if c not in ['time_seconds', 'timestamp_s', 'time', 'timestamp_ms', 'index']]
+                    # Attempt to extract numeric series from the first non-time sensor column
+                    col_to_use = next((c for c in ['T_beverage_chamber_C', 'outlet_C', 'measured', 'temp', 'temperature'] if c in csv_reader.fieldnames), None)
+                    if not col_to_use and sensor_channels:
+                        col_to_use = sensor_channels[0]
+                    if col_to_use:
+                        for r in csv_reader:
+                            try:
+                                test_series.append(float(r[col_to_use]))
+                            except (ValueError, TypeError):
+                                pass
+            except Exception:
+                pass
+
+        # Try to read simulation series if simulation results JSON is available
+        sim_series: List[float] = []
+        if sim_results_path and sim_results_path in file_map:
+            try:
+                sim_json = json.loads(file_map[sim_results_path].decode("utf-8", errors="ignore"))
+                # Look for array of floats
+                for key in ['beverage_temp_C', 'outlet_C', 'simulated', 'values', 'output', 'temperature']:
+                    if key in sim_json and isinstance(sim_json[key], list) and len(sim_json[key]) > 0:
+                        sim_series = [float(v) for v in sim_json[key] if isinstance(v, (int, float))]
+                        break
+            except Exception:
+                pass
+
+        # If both series exist, compute real error metrics
+        if sim_series and test_series:
+            metrics = calculate_error_metrics(sim_series, test_series)
+            calibration_rmse = metrics.get("rmse_C")
+
+        evidence_files = [f for f in filenames if f.lower().endswith(('.csv', '.step', '.stp', '.glb', '.py', '.json', '.md'))]
+
         evidence = TwinEvidence(
-            test_runs_count=3 if has_tests else 0,
-            calibration_rmse=1.60 if has_tests else None,
-            sensor_channels=["T_ambient", "T_pcm_core", "T_drink_inlet", "T_drink_outlet", "Flow_rate"],
+            test_runs_count=len(test_files),
+            calibration_rmse=calibration_rmse,
+            sensor_channels=sensor_channels,
             verified_files=evidence_files
         )
 
-        # 7. Reality State Calculation
+        # 7. Extract Claims (Honest, derived from source files)
+        claims: List[Claim] = []
+        if estimated_bom is not None:
+            claims.append(Claim(
+                key="estimated_bom_usd",
+                name="Unit BOM (COGS)",
+                value=f"${estimated_bom:.2f} USD",
+                unit="USD",
+                status="MEASURED",
+                confidence_pct=85,
+                origin="Calculated from component BOM entries.",
+                source_file="bom.csv",
+                evidence_paths=[f for f in filenames if 'bom' in f.lower()]
+            ))
+
+        for c in components:
+            if c.material and c.material != "Standard":
+                claims.append(Claim(
+                    key=f"material_{re.sub(r'[^a-zA-Z0-9_]', '_', c.name.lower())}",
+                    name=f"Material: {c.name}",
+                    value=c.material,
+                    status="VERIFIED" if c.supplier else "ESTIMATED",
+                    confidence_pct=90 if c.supplier else 60,
+                    origin=f"Specified in BOM for {c.name}" + (f" (Supplier: {c.supplier})" if c.supplier else ""),
+                    source_file="bom.csv"
+                ))
+
+        # 8. Reality State Calculation
         reality_state = derive_reality_state(
             files=filenames,
             claims=claims,
@@ -186,32 +246,44 @@ class TwinFactoryEngine:
             rmse_error=evidence.calibration_rmse
         )
 
-        # 8. Compile Final Document
+        # 9. Build Unknowns and Assumptions
+        unknowns = []
+        if not obj_geom.cad_step_path:
+            unknowns.append("Dimensional CAD solid model (STEP) not provided.")
+        if not components:
+            unknowns.append("Structured bill of materials (BOM) pending specification.")
+        if not has_tests:
+            unknowns.append("Physical bench testing and experimental telemetry pending.")
+        elif calibration_rmse is None:
+            unknowns.append("Simulation model calibration against physical test data pending.")
+        if obj_geom.bounding_box_mm is None:
+            unknowns.append("Physical dimensions and geometric envelope unverified.")
+
+        # 10. Compile Final Document
         doc = TwinDocument(
             identity=TwinIdentity(
                 title=title,
                 summary=summary,
                 classification=classification,
-                creator="Foxlendor",
-                license="CERN-OHL-S-2.0",
-                version="1.0.0"
+                creator=creator,
+                license=license_type,
+                version=version_str
             ),
             object=obj_geom,
             structure=TwinStructure(
+                bom_root=bom_root,
+                bom_nodes=bom_nodes,
                 components=components,
-                materials=list(set(c.material for c in components)),
-                estimated_bom_usd=estimated_bom or 4.50,
-                target_msrp_usd=25.00
+                materials=list(set(c.material for c in components if c.material)),
+                estimated_bom_usd=estimated_bom,
+                target_msrp_usd=None
             ),
             behavior=behavior,
             evidence=evidence,
             history=[],
-            lineage=TwinLineage(parent_twin_id=None),
+            lineage=TwinLineage(parent_twin_id=manifest_data.get("parent_twin")),
             claims=claims,
             reality_state=reality_state,
-            unknowns_and_assumptions=[
-                "Long-term supercooling nucleation stability beyond 500 reset cycles is pending validation.",
-                "FDA / LFGB formal food contact laboratory extraction assay pending."
-            ]
+            unknowns_and_assumptions=unknowns
         )
         return doc

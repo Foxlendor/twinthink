@@ -1,0 +1,4 @@
+level,node_id,parent_id,name,qty
+1,part_a,part_c,Part A,1
+2,part_b,part_a,Part B,1
+3,part_c,part_b,Part C,1

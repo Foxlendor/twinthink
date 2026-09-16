@@ -42,6 +42,25 @@ def validate_bundle(zip_path: str):
                 if asset['relative_path'] not in normalized_namelist:
                     return f"ASSET MISSING: {asset['relative_path']}"
             
+            # 4. BOM acyclicity check if present
+            for name in normalized_namelist:
+                if name.lower().endswith("bom.json"):
+                    try:
+                        with zf.open(name) as bf:
+                            bom_data = json.load(bf)
+                            from twinthink.bom import validate_bom_acyclic
+                            validate_bom_acyclic(bom_data)
+                    except Exception as e:
+                        return f"BOM INVALID: {str(e)}"
+                elif name.lower().endswith("bom.csv"):
+                    try:
+                        with zf.open(name) as bf:
+                            csv_text = bf.read().decode("utf-8", errors="ignore")
+                            from twinthink.bom import parse_bom_csv
+                            parse_bom_csv(csv_text)
+                    except Exception as e:
+                        return f"BOM INVALID: {str(e)}"
+
             # 5. Integrity
             with zf.open('manifest.json') as f:
                 content = f.read()
@@ -57,5 +76,10 @@ if __name__ == "__main__":
         print("Usage: python -m twinthink.validator <path_to_zip>")
         sys.exit(1)
     
-    success = validate_bundle(sys.argv[1])
-    sys.exit(0 if success else 1)
+    result = validate_bundle(sys.argv[1])
+    if result is True:
+        print("Bundle is valid.")
+        sys.exit(0)
+    else:
+        print(f"Validation failed: {result}")
+        sys.exit(1)

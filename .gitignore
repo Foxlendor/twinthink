@@ -22,6 +22,10 @@ storage/
 twinthink.db
 apps/api/storage/
 
+# Ignore test caches and verification state
+.pytest_cache/
+verify_state.json
+
 # Ignore Agent artifacts
 .agents/
 skills-lock.json

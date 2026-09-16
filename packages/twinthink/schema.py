@@ -22,10 +22,63 @@ class Claim(BaseModel):
     relationships: List[str] = Field(default_factory=list)
     improvement_action: Optional[str] = None
 
+class MaterialSpec(BaseModel):
+    name: str
+    grade: Optional[str] = None
+    standard: Optional[str] = None
+    origin_country: Optional[str] = None
+    recycled_content_pct: Optional[float] = None
+    notes: Optional[str] = None
+
+class ManufacturingSpec(BaseModel):
+    process: Optional[str] = None
+    finish: Optional[str] = None
+    tolerances: Optional[str] = None
+    processing_cost: Optional[float] = None
+
+class CostSpec(BaseModel):
+    unit_cost: Optional[float] = None
+    extended_cost: Optional[float] = None
+    currency: str = "USD"
+    is_estimated: bool = False
+
+NodeType = Literal["assembly", "subassembly", "component", "raw_material", "fastener"]
+
+DeclaredRightsMode = Literal["Private", "Licensed", "Open Development", "Public Domain Dedication", "Conditional Release"]
+
+class ProvenanceEntry(BaseModel):
+    source: str = "tt"
+    artifact_hash: Optional[str] = None
+    captured_at: str = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
+    creator: str = "Anonymous"
+    action: str = "created"
+    notes: Optional[str] = None
+
+class BomNode(BaseModel):
+    node_id: str
+    parent_id: Optional[str] = None
+    node_type: NodeType = "component"
+    name: str
+    part_number: Optional[str] = None
+    revision: Optional[str] = "R1"
+    description: Optional[str] = ""
+    quantity: float = 1.0
+    unit: str = "ea"
+    material: Optional[MaterialSpec] = None
+    manufacturing: Optional[ManufacturingSpec] = None
+    cost: Optional[CostSpec] = None
+    supplier: Optional[str] = None
+    dpp_id: Optional[str] = None
+    cad_body_name: Optional[str] = None
+    provenance: List[ProvenanceEntry] = Field(default_factory=list)
+    rights_override: Optional[DeclaredRightsMode] = None
+    evidence_refs: List[str] = Field(default_factory=list)
+    children: List["BomNode"] = Field(default_factory=list)
+
 class ComponentItem(BaseModel):
     name: str
-    description: str
-    material: str
+    description: str = ""
+    material: str = "Standard"
     qty: int = 1
     unit_cost_usd: Optional[float] = None
     supplier: Optional[str] = None
@@ -51,8 +104,9 @@ class TwinIdentity(BaseModel):
     classification: str = "PhysicalObject"
     creator: str = "Anonymous"
     license: str = "CERN-OHL-S-2.0"
+    declared_rights_mode: DeclaredRightsMode = "Open Development"  # Creator distribution intent, not legal warranty
     version: str = "1.0.0"
-    created_at: str = Field(default_factory=lambda: datetime.datetime.utcnow().isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
 
 class TwinObjectGeometry(BaseModel):
     cad_step_path: Optional[str] = None
@@ -62,6 +116,8 @@ class TwinObjectGeometry(BaseModel):
 
 class TwinStructure(BaseModel):
     components: List[ComponentItem] = Field(default_factory=list)
+    bom_root: Optional[BomNode] = None
+    bom_nodes: List[BomNode] = Field(default_factory=list)
     materials: List[str] = Field(default_factory=list)
     estimated_bom_usd: Optional[float] = None
     target_msrp_usd: Optional[float] = None

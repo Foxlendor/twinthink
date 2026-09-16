@@ -1,0 +1,8 @@
+level,part_number,name,qty,unit,unit_cost,type,material,process,supplier,dpp_id
+1,HVA-100,Hydraulic Valve Assembly,1,ea,,assembly,,,AeroHydraulics,DPP-VALVE-01
+1.1,VB-200,Valve Body,1,ea,48.50,component,Al 7075-T6,5-axis CNC milling,Precision CNC,DPP-VB-200
+1.2,PSA-300,Piston Subassembly,1,ea,,subassembly,,,In-House,DPP-PSA-300
+1.2.1,PR-301,Piston Rod,1,ea,18.00,component,316L Stainless Steel,CNC Turning,Metals Direct,DPP-PR-301
+1.2.2,SL-302,Hydraulic Seal,2,ea,3.25,component,Viton 90A,Molding,SealCo,DPP-SL-302
+1.3,HW-400,M4 Socket Screw,4,ea,0.45,fastener,A2 Stainless Steel,Cold Heading,FastenerHub,DPP-M4-01
+1.4,HW-401,Washer,4,ea,0.15,fastener,A2 Stainless Steel,Stamping,FastenerHub,DPP-W-01

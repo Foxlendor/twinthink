@@ -62,6 +62,7 @@ export interface TwinData {
     title: string;
     published_at: string;
   }[];
+  document?: any;
 }
 
 export interface TwinTestMetrics {
@@ -113,3 +114,58 @@ export interface TwinTestsResponse {
   summary: TwinTestsSummary;
   tests: TwinTestRecord[];
 }
+
+export interface ProvenanceEntry {
+  source: string;
+  artifact_hash?: string;
+  captured_at: string;
+  creator: string;
+  action: string;
+  notes?: string;
+}
+
+export interface MaterialSpec {
+  name: string;
+  grade?: string;
+  standard?: string;
+  origin_country?: string;
+  recycled_content_pct?: number;
+  notes?: string;
+}
+
+export interface ManufacturingSpec {
+  process?: string;
+  finish?: string;
+  tolerances?: string;
+  processing_cost?: number;
+}
+
+export interface CostSpec {
+  unit_cost?: number | null;
+  extended_cost?: number | null;
+  currency?: string;
+  is_estimated?: boolean;
+}
+
+export interface BomNode {
+  node_id: string;
+  parent_id?: string | null;
+  node_type: 'assembly' | 'subassembly' | 'component' | 'raw_material' | 'fastener';
+  name: string;
+  part_number?: string;
+  revision?: string;
+  description?: string;
+  quantity: number;
+  unit: string;
+  material?: MaterialSpec;
+  manufacturing?: ManufacturingSpec;
+  cost?: CostSpec;
+  supplier?: string;
+  dpp_id?: string;
+  cad_body_name?: string;
+  provenance?: ProvenanceEntry[];
+  rights_override?: 'Private' | 'Licensed' | 'Open Development' | 'Public Domain Dedication' | 'Conditional Release';
+  evidence_refs?: string[];
+  children?: BomNode[];
+}
+

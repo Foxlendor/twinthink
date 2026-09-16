@@ -7,6 +7,19 @@ export async function GET(
 ) {
   const { id } = await params;
 
+  // 1. Check if backend API has this twin
+  try {
+    const backendUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001';
+    const res = await fetch(`${backendUrl}/api/twins/${id}`, { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      return NextResponse.json(data);
+    }
+  } catch (err) {
+    // Backend offline or unreachable, continue to mocks
+  }
+
+  // 2. Static mock fallback twins for development demo
   if (id === '0002') {
     const twin: TwinData = {
       id: "0002",

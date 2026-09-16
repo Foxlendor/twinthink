@@ -27,7 +27,10 @@ def calculate_error_metrics(predicted: List[float], measured: List[float]) -> Di
     mean_m = sum(m) / n
     ss_tot = sum((m[i] - mean_m) ** 2 for i in range(n))
     ss_res = sum(sq_errors)
-    r_squared = 1.0 - (ss_res / ss_tot) if ss_tot > 0 else 1.0
+    if ss_tot > 0:
+        r_squared = 1.0 - (ss_res / ss_tot)
+    else:
+        r_squared = 1.0 if ss_res == 0.0 else 0.0
 
     return {
         "rmse_C": round(rmse, 3),
