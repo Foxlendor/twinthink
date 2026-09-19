@@ -45,6 +45,7 @@ export interface TwinVersion {
     public_preview_approved?: boolean;
     level?: number;
     public_note?: string;
+    public_tabs?: string[];
     callouts?: Array<{
       label: string;
       description: string;
@@ -56,7 +57,7 @@ export interface TwinVersion {
 export interface TwinData {
   id: string;
   slug: string;
-  creator: string;
+  creator: string | null;
   created_at: string;
   current_version: TwinVersion;
   lineage: {
