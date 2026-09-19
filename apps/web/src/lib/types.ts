@@ -31,7 +31,6 @@ export interface TwinVersion {
   summary: string;
   license: string;
   ontology_class: OntologyClass;
-  manifest_metadata?: any;
   
   // Legacy specific keys (can be moved to properties or kept as shortcuts)
   bundle_storage_key?: string;
@@ -41,6 +40,16 @@ export interface TwinVersion {
   relationships: TwinRelationship[];
   assets: TwinAsset[];
   simulation?: any;
+  disclosure?: {
+    public_preview_approved?: boolean;
+    level?: number;
+    public_note?: string;
+    callouts?: Array<{
+      label: string;
+      description: string;
+    }>;
+  };
+  manifest_metadata?: any;
 }
 
 export interface TwinData {
