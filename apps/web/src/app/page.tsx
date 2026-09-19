@@ -85,7 +85,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 1. TOP BANNER (Action-Oriented Commercialization Hook + Provenance Showcase) */}
+      {/* 1. TOP BANNER: The Original Vision */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
@@ -95,46 +95,46 @@ export default function HomePage() {
       }}>
         <div>
           <h1 style={{
-            fontSize: 'clamp(2.5rem, 5vw, 3.75rem)',
+            fontSize: 'clamp(2.75rem, 5vw, 3.85rem)',
             fontWeight: 800,
             letterSpacing: '-1.5px',
-            lineHeight: 1.1,
+            lineHeight: 1.08,
             color: '#111827',
             marginBottom: '1.25rem'
           }}>
-            Fund your prototypes.<br />License your designs.
+            Give an idea<br />a reality.
           </h1>
 
           <p style={{
             fontSize: '1.125rem',
             color: '#4B5563',
             lineHeight: 1.6,
-            maxWidth: '480px',
+            maxWidth: '460px',
             marginBottom: '2rem'
           }}>
-            The platform for independent inventors to showcase physical concepts, build a backer base, and connect with manufacturers.
+            A living digital record for things people imagine, build, and test.
           </p>
 
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '2.5rem' }}>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="button-primary"
-              style={{ padding: '0.85rem 1.75rem', borderRadius: '100px', fontSize: '0.9375rem' }}
-            >
-              Post an Invention
-            </button>
-
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1.5rem' }}>
             <Link
               href="/twins/0001"
-              className="button-secondary"
+              className="button-primary"
               style={{ padding: '0.85rem 1.75rem', borderRadius: '100px', fontSize: '0.9375rem', textDecoration: 'none' }}
             >
-              Explore Inventions
+              Explore
             </Link>
+
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="button-secondary"
+              style={{ padding: '0.85rem 1.75rem', borderRadius: '100px', fontSize: '0.9375rem' }}
+            >
+              Create Twin
+            </button>
           </div>
 
           <Link
-            href="#builds"
+            href="#platform"
             style={{
               fontSize: '0.875rem',
               color: '#374151',
@@ -145,8 +145,7 @@ export default function HomePage() {
               textDecoration: 'none'
             }}
           >
-            Explore live builds &amp; pre-orders
-            <ArrowRight size={14} />
+            Learn more about TwinThink →
           </Link>
         </div>
 
@@ -888,20 +887,20 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 4. SECTION 3: HOW IT WORKS (3 Simple Steps) */}
-      <section style={{ marginBottom: '5.5rem' }}>
+      {/* 4. SECTION 3: FROM FIRST SKETCH TO PHYSICAL REALITY */}
+      <section id="platform" style={{ marginBottom: '5.5rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
           <h2 style={{
-            fontSize: '1.65rem',
+            fontSize: '1.75rem',
             fontWeight: 800,
             color: '#111827',
             letterSpacing: '-0.5px',
-            margin: '0 0 0.35rem 0'
+            margin: '0 0 0.5rem 0'
           }}>
-            How It Works
+            From first sketch to physical reality.
           </h2>
-          <p style={{ fontSize: '0.95rem', color: '#6B7280', margin: 0 }}>
-            From initial concept to manufactured hardware in 3 straightforward steps.
+          <p style={{ fontSize: '1rem', color: '#6B7280', maxWidth: '640px', margin: '0 auto', lineHeight: 1.55 }}>
+            Document the idea. Show the work. Gather feedback. Find backers. Connect with manufacturers.
           </p>
         </div>
 
