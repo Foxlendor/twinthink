@@ -41,12 +41,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icon.png?v=5", type: "image/png", sizes: "512x512" },
-      { url: "/favicon.ico?v=5", sizes: "any" },
-      { url: "/icon.svg?v=5", type: "image/svg+xml" }
+      { url: "/icon.png?v=6", type: "image/png", sizes: "512x512" },
+      { url: "/favicon.ico?v=6", sizes: "any" },
+      { url: "/icon.svg?v=6", type: "image/svg+xml" }
     ],
-    shortcut: "/favicon.ico?v=5",
-    apple: "/apple-touch-icon.png?v=5"
+    shortcut: "/favicon.ico?v=6",
+    apple: "/apple-touch-icon.png?v=6"
   },
 };
 
@@ -57,10 +57,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${plusJakartaSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <head>
-        <link rel="icon" href="/favicon.ico?v=5" sizes="any" />
-        <link rel="icon" href="/icon.png?v=5" type="image/png" />
-        <link rel="icon" href="/icon.svg?v=5" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=5" />
+        <link rel="icon" href="/favicon.ico?v=6" sizes="any" />
+        <link rel="icon" href="/icon.png?v=6" type="image/png" />
+        <link rel="icon" href="/icon.svg?v=6" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=6" />
       </head>
       <body className="min-h-full flex flex-col" style={{ background: '#FAFAFA', color: '#111827' }}>
         <Navbar />
