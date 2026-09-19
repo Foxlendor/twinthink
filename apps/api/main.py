@@ -438,7 +438,8 @@ async def create_twin_from_factory(
             "media_type": media_type,
             "size_bytes": len(content),
             "is_entrypoint": is_entry,
-            "entrypoint_name": entrypoint_name
+            "entrypoint_name": entrypoint_name,
+            "publication_scope": "private"
         })
 
     # Add README and spec if not already in file map
@@ -451,7 +452,8 @@ async def create_twin_from_factory(
             "media_type": "text/markdown",
             "size_bytes": len(readme_bytes),
             "is_entrypoint": 1,
-            "entrypoint_name": "readme"
+            "entrypoint_name": "readme",
+            "publication_scope": "private"
         })
 
     if "spec.md" not in file_map and "spec.md" not in file_map:
@@ -463,12 +465,20 @@ async def create_twin_from_factory(
             "media_type": "text/markdown",
             "size_bytes": len(spec_bytes),
             "is_entrypoint": 1,
-            "entrypoint_name": "spec"
+            "entrypoint_name": "spec",
+            "publication_scope": "private"
         })
 
     # Create derived manifest
     manifest = {
         "version": twin_doc.identity.version,
+        "visibility": "private",
+        "publication_status": "draft",
+        "disclosure": {
+            "public_preview_approved": False,
+            "level": 1,
+            "public_note": "No engineering package is public by default."
+        },
         "title": twin_doc.identity.title,
         "summary": twin_doc.identity.summary,
         "license": twin_doc.identity.license,
@@ -556,6 +566,8 @@ async def list_twins():
     for r in rows:
         try:
             m = json.loads(r["manifest_json"])
+            if m.get("visibility") != "public" or m.get("publication_status") != "approved":
+                continue
             twins.append({
                 "id": r["id"],
                 "title": m.get("title", "Untitled"),
@@ -568,7 +580,7 @@ async def list_twins():
     return {"twins": twins}
 
 @app.get("/api/twins/{twin_id}")
-async def get_twin(twin_id: str):
+async def get_twin(twin_id: str, x_twin_owner_token: Optional[str] = Header(None)):
     if USE_CLOUD:
         conn = get_db_cloud()
         with conn.cursor() as cur:
@@ -596,7 +608,20 @@ async def get_twin(twin_id: str):
         doc_json = row['document_json']
         
     manifest = json.loads(manifest_json)
-    
+
+    is_owner = False
+    if x_twin_owner_token:
+        try:
+            is_owner = require_owner(twin_id, x_twin_owner_token)
+        except HTTPException:
+            is_owner = False
+
+    if not is_owner and (
+        manifest.get("visibility") != "public" or
+        manifest.get("publication_status") != "approved"
+    ):
+        raise HTTPException(status_code=404, detail="Twin not publicly published")
+
     # Format lineage
     parent_twin = manifest.get("parent_twin")
     lineage_parent = None
@@ -649,6 +674,83 @@ async def get_twin_dpp_projection(twin_id: str, tier: str = "public"):
     projection = project_dpp(bom_root, tier=tier)  # type: ignore
     projection["twin_id"] = twin_id
     return projection
+
+@app.post("/api/twins/{twin_id}/publication")
+async def update_publication(
+    twin_id: str,
+    action: str = Form(...),
+    owner_token: Optional[str] = Form(None),
+    x_twin_owner_token: Optional[str] = Header(None)
+):
+    """Explicit inventor-controlled public concept publication gate."""
+    token = x_twin_owner_token or owner_token
+    require_owner(twin_id, token)
+
+    if action not in {"approve", "revoke"}:
+        raise HTTPException(status_code=400, detail="Action must be 'approve' or 'revoke'")
+
+    conn = get_db_local()
+    row = conn.execute("SELECT manifest_json FROM twins WHERE id = ?", (twin_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Twin not found")
+
+    manifest = json.loads(row["manifest_json"])
+    assets = manifest.get("assets", [])
+
+    if action == "approve":
+        preview_assets = [
+            a for a in assets
+            if a.get("entrypoint_name") == "cad_preview"
+            and a.get("relative_path", "").lower().endswith(".glb")
+        ]
+        if not preview_assets:
+            conn.close()
+            raise HTTPException(
+                status_code=400,
+                detail="No concept preview asset is available. Add an explicitly approved preview.glb first."
+            )
+
+        for asset in assets:
+            asset["publication_scope"] = "public_preview" if asset in preview_assets else "private"
+
+        manifest["visibility"] = "public"
+        manifest["publication_status"] = "approved"
+        manifest["disclosure"] = {
+            "public_preview_approved": True,
+            "level": 1,
+            "public_note": "Interactive concept preview only. Manufacturing geometry and the engineering package remain restricted."
+        }
+    else:
+        for asset in assets:
+            asset["publication_scope"] = "private"
+        manifest["visibility"] = "private"
+        manifest["publication_status"] = "draft"
+        manifest["disclosure"] = {
+            "public_preview_approved": False,
+            "level": 1,
+            "public_note": "No engineering package is public by default."
+        }
+
+    conn.execute(
+        "UPDATE twins SET manifest_json = ? WHERE id = ?",
+        (json.dumps(manifest), twin_id)
+    )
+    conn.commit()
+    conn.close()
+
+    mf_path = EXTRACTED_DIR / twin_id / "manifest.json"
+    if mf_path.exists():
+        mf_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    return {
+        "status": "success",
+        "id": twin_id,
+        "visibility": manifest["visibility"],
+        "publication_status": manifest["publication_status"],
+        "disclosure": manifest["disclosure"]
+    }
+
 
 @app.patch("/api/twins/{twin_id}")
 async def edit_twin(
@@ -726,10 +828,34 @@ async def edit_twin(
     return {"status": "success", "id": twin_id, "twin": manifest}
 
 @app.get("/api/twins/{twin_id}/assets/{path:path}")
-async def get_asset(twin_id: str, path: str):
+async def get_asset(
+    twin_id: str,
+    path: str,
+    x_twin_owner_token: Optional[str] = Header(None)
+):
     if ".." in path or path.startswith("/") or "\\" in path:
         raise HTTPException(status_code=400, detail="Invalid path: path traversal detected")
-        
+
+    conn = get_db_local()
+    row = conn.execute("SELECT manifest_json FROM twins WHERE id = ?", (twin_id,)).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Twin not found")
+
+    manifest = json.loads(row["manifest_json"])
+    asset = next((a for a in manifest.get("assets", []) if a.get("relative_path") == path), None)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    public_preview = (
+        manifest.get("visibility") == "public"
+        and manifest.get("publication_status") == "approved"
+        and asset.get("publication_scope") == "public_preview"
+    )
+
+    if not public_preview:
+        require_owner(twin_id, x_twin_owner_token)
+
     if USE_CLOUD:
         s3_key = f"{twin_id}/assets/{path}"
         url = s3_client.generate_presigned_url(
@@ -745,7 +871,8 @@ async def get_asset(twin_id: str, path: str):
         return FileResponse(str(asset_path))
     
 @app.get("/api/twins/{twin_id}/download")
-async def download_bundle(twin_id: str):
+async def download_bundle(twin_id: str, x_twin_owner_token: Optional[str] = Header(None)):
+    require_owner(twin_id, x_twin_owner_token)
     if USE_CLOUD:
         s3_key = f"{twin_id}/bundle.zip"
         url = s3_client.generate_presigned_url(
@@ -765,11 +892,12 @@ async def download_bundle(twin_id: str):
         return FileResponse(str(bundle_path), filename=f"twin_{twin_id}.zip", media_type="application/zip")
 
 @app.get("/api/twins/{twin_id}/bom")
-async def get_twin_bom(twin_id: str):
+async def get_twin_bom(twin_id: str, x_twin_owner_token: Optional[str] = Header(None)):
     """
     Returns the canonical hierarchical Bill of Materials (BOM) for a twin,
     including the tree root, flattened nodes, total rolled-up cost, and currency.
     """
+    require_owner(twin_id, x_twin_owner_token)
     conn = get_db_local()
     row = conn.execute("SELECT manifest_json, document_json FROM twins WHERE id = ?", (twin_id,)).fetchone()
     conn.close()
