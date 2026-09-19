@@ -432,7 +432,29 @@ async def create_twin_from_factory(
             entrypoint_name = "readme"
             is_entry = 1
 
+        # Determine explicit asset kind and format
+        ext = rel_path.rsplit(".", 1)[-1].lower() if "." in rel_path else "bin"
+        if lower.endswith(("preview.glb", "concept_preview.glb", "preview.gltf")) or entrypoint_name == "cad_preview":
+            kind = "concept_preview"
+        elif lower.endswith((".step", ".stp", ".dwg", ".dxf", ".fcstd", ".sldprt")) or entrypoint_name == "cad_source":
+            kind = "engineering_cad"
+        elif lower.endswith(("bom.csv", "bom.json")) or entrypoint_name == "bom":
+            kind = "bom"
+        elif lower.endswith("spec.md") or entrypoint_name == "spec":
+            kind = "specification"
+        elif lower.endswith("readme.md") or entrypoint_name == "readme":
+            kind = "documentation"
+        elif lower.endswith((".py", ".json", ".csv")):
+            kind = "simulation_data"
+        else:
+            kind = "file"
+
+        asset_id = f"asset-{hashlib.sha256(rel_path.encode()).hexdigest()[:12]}"
+
         assets_list.append({
+            "id": asset_id,
+            "kind": kind,
+            "format": ext,
             "relative_path": rel_path,
             "url": f"/api/twins/{twin_id}/assets/{rel_path}",
             "media_type": media_type,
@@ -447,6 +469,9 @@ async def create_twin_from_factory(
         readme_bytes = f"# {twin_doc.identity.title}\n\n> {twin_doc.identity.summary}\n".encode("utf-8")
         file_map["README.md"] = readme_bytes
         assets_list.append({
+            "id": f"asset-{hashlib.sha256(b'README.md').hexdigest()[:12]}",
+            "kind": "documentation",
+            "format": "md",
             "relative_path": "README.md",
             "url": f"/api/twins/{twin_id}/assets/README.md",
             "media_type": "text/markdown",
@@ -460,6 +485,9 @@ async def create_twin_from_factory(
         spec_bytes = f"# Specification: {twin_doc.identity.title}\n\nVersion: {twin_doc.identity.version}\nLicense: {twin_doc.identity.license}\n".encode("utf-8")
         file_map["spec.md"] = spec_bytes
         assets_list.append({
+            "id": f"asset-{hashlib.sha256(b'spec.md').hexdigest()[:12]}",
+            "kind": "specification",
+            "format": "md",
             "relative_path": "spec.md",
             "url": f"/api/twins/{twin_id}/assets/spec.md",
             "media_type": "text/markdown",
@@ -714,17 +742,28 @@ async def update_publication(
     if action == "approve":
         preview_assets = [
             a for a in assets
-            if a.get("entrypoint_name") == "cad_preview"
-            and a.get("relative_path", "").lower().endswith(".glb")
+            if a.get("kind") == "concept_preview" or (
+                a.get("entrypoint_name") == "cad_preview"
+                and a.get("relative_path", "").lower().endswith((".glb", ".gltf"))
+            )
         ]
         if not preview_assets:
             conn.close()
             raise HTTPException(
                 status_code=400,
-                detail="No concept preview asset is available. Add an explicitly approved preview.glb first."
+                detail="No concept preview asset is available. Add an explicitly approved concept_preview asset first."
             )
 
         for asset in assets:
+            if not asset.get("kind"):
+                if asset in preview_assets:
+                    asset["kind"] = "concept_preview"
+                else:
+                    asset["kind"] = "engineering_asset"
+            if not asset.get("format"):
+                ext = asset.get("relative_path", "").rsplit(".", 1)[-1].lower() if "." in asset.get("relative_path", "") else "bin"
+                asset["format"] = ext
+
             asset["publication_scope"] = "public_preview" if asset in preview_assets else "private"
 
         manifest["visibility"] = "public"

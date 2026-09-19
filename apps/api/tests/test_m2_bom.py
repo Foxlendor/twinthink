@@ -273,8 +273,12 @@ def test_api_create_twin_with_hierarchical_bom_json():
     assert structure["bom_root"] is not None
     assert structure["estimated_bom_usd"] == 59.0
 
-    # Test GET /api/twins/{twin_id}/bom
-    bom_res = client.get(f"/api/twins/{twin_id}/bom")
+    # Unauthenticated /bom returns 403
+    assert client.get(f"/api/twins/{twin_id}/bom").status_code == 403
+    assert client.get(f"/api/twins/{twin_id}/bom", headers={"X-Twin-Owner-Token": "bad_token"}).status_code == 403
+
+    # Test GET /api/twins/{twin_id}/bom with owner token
+    bom_res = client.get(f"/api/twins/{twin_id}/bom", headers={"X-Twin-Owner-Token": owner_token})
     assert bom_res.status_code == 200
     bom_info = bom_res.json()
     assert bom_info["twin_id"] == twin_id
@@ -366,6 +370,7 @@ def test_twin_bom_restart_persistence_and_bundle_export():
     res = client.post("/api/twins/create", files=files, data={"creator": "DroneLabs"})
     assert res.status_code == 200
     twin_id = res.json()["id"]
+    owner_token = res.json()["owner_token"]
 
     # Phase 2: Simulate process restart by reading directly from new DB connection
     conn = main.get_db_local()
@@ -378,7 +383,11 @@ def test_twin_bom_restart_persistence_and_bundle_export():
     assert doc["structure"]["bom_root"]["cost"]["extended_cost"] == 88.0  # 4 * 22
 
     # Phase 3: Download bundle zip
-    dl_res = client.get(f"/api/twins/{twin_id}/download")
+    # Unauthenticated /download returns 403
+    assert client.get(f"/api/twins/{twin_id}/download").status_code == 403
+    assert client.get(f"/api/twins/{twin_id}/download", headers={"X-Twin-Owner-Token": "invalid_tok"}).status_code == 403
+
+    dl_res = client.get(f"/api/twins/{twin_id}/download", headers={"X-Twin-Owner-Token": owner_token})
     assert dl_res.status_code == 200
     zip_bytes = dl_res.content
 

@@ -640,6 +640,7 @@ def test_20_tt_and_web_produce_equivalent_signed_records(test_client):
     )
     assert create_resp.status_code == 200
     twin_id = create_resp.json()["id"]
+    owner_tok = create_resp.json()["owner_token"]
 
     # 2. Keypair signs a revision
     kp = Keypair.generate()
@@ -647,8 +648,11 @@ def test_20_tt_and_web_produce_equivalent_signed_records(test_client):
     id_resp = test_client.post("/api/identities", json=kp.export_identity("TwinMaker").model_dump())
     assert id_resp.status_code == 200
 
-    # Fetch BOM
-    bom_resp = test_client.get(f"/api/twins/{twin_id}/bom")
+    # Fetch BOM: unauthenticated returns 403
+    assert test_client.get(f"/api/twins/{twin_id}/bom").status_code == 403
+
+    # Fetch BOM as authenticated owner -> 200
+    bom_resp = test_client.get(f"/api/twins/{twin_id}/bom", headers={"X-Twin-Owner-Token": owner_tok})
     assert bom_resp.status_code == 200
     bom_nodes = bom_resp.json().get("bom_nodes", [])
 

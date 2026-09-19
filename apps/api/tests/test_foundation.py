@@ -63,14 +63,22 @@ def test_two_creates_are_distinct_owned_records():
     assert id1 != id2
     assert tok1 != tok2
 
-    # 3. Fetch both twins
-    get1 = client.get(f"/api/twins/{id1}")
+    # 3. Unauthenticated requests to private draft twins return 404
+    assert client.get(f"/api/twins/{id1}").status_code == 404
+    assert client.get(f"/api/twins/{id2}").status_code == 404
+
+    # 4. Wrong owner token returns 404 for unapproved twins
+    assert client.get(f"/api/twins/{id1}", headers={"X-Twin-Owner-Token": tok2}).status_code == 404
+    assert client.get(f"/api/twins/{id2}", headers={"X-Twin-Owner-Token": tok1}).status_code == 404
+
+    # 5. Authenticated owner requests return 200
+    get1 = client.get(f"/api/twins/{id1}", headers={"X-Twin-Owner-Token": tok1})
     assert get1.status_code == 200
     twin1 = get1.json()
     assert twin1["creator"] == "Alice"
     assert twin1["current_version"]["title"] == "Hydraulic Actuator"
 
-    get2 = client.get(f"/api/twins/{id2}")
+    get2 = client.get(f"/api/twins/{id2}", headers={"X-Twin-Owner-Token": tok2})
     assert get2.status_code == 200
     twin2 = get2.json()
     assert twin2["creator"] == "Bob"
@@ -93,8 +101,11 @@ def test_owner_edit_authorization_and_denial():
     )
     assert edit_res.status_code == 200
     
-    # Confirm persistence
-    get_res = client.get(f"/api/twins/{twin_id}")
+    # Confirm persistence: Unauthenticated get returns 404
+    assert client.get(f"/api/twins/{twin_id}").status_code == 404
+
+    # Confirm persistence: Owner get returns 200 with updated fields
+    get_res = client.get(f"/api/twins/{twin_id}", headers={"X-Twin-Owner-Token": owner_tok})
     assert get_res.status_code == 200
     assert get_res.json()["current_version"]["title"] == "Updated Device Title"
     assert get_res.json()["current_version"]["summary"] == "Updated summary description"
@@ -197,9 +208,14 @@ def test_export_reimport_roundtrip():
     create_res = client.post("/api/twins/create", files=files, data={"creator": "Carol"})
     assert create_res.status_code == 200
     original_id = create_res.json()["id"]
+    original_tok = create_res.json()["owner_token"]
 
-    # 2. Download bundle
-    download_res = client.get(f"/api/twins/{original_id}/download")
+    # 2. Download bundle: verify unauthenticated/wrong token returns 403
+    assert client.get(f"/api/twins/{original_id}/download").status_code == 403
+    assert client.get(f"/api/twins/{original_id}/download", headers={"X-Twin-Owner-Token": "wrong"}).status_code == 403
+
+    # Authenticated owner download succeeds -> 200
+    download_res = client.get(f"/api/twins/{original_id}/download", headers={"X-Twin-Owner-Token": original_tok})
     assert download_res.status_code == 200
     zip_bytes = download_res.content
 
@@ -220,10 +236,14 @@ def test_export_reimport_roundtrip():
     )
     assert upload_res.status_code == 200
     new_id = upload_res.json()["id"]
+    new_tok = upload_res.json()["owner_token"]
     assert new_id != original_id
 
-    # Verify re-imported twin
-    get_reimported = client.get(f"/api/twins/{new_id}")
+    # Verify re-imported twin: unauthenticated returns 404 (private/draft)
+    assert client.get(f"/api/twins/{new_id}").status_code == 404
+
+    # Owner fetch returns 200
+    get_reimported = client.get(f"/api/twins/{new_id}", headers={"X-Twin-Owner-Token": new_tok})
     assert get_reimported.status_code == 200
     data = get_reimported.json()
     assert data["creator"] == "Carol Re-importer"
@@ -243,8 +263,13 @@ def test_factory_create_with_embedded_manifest_has_single_manifest():
     )
     assert res.status_code == 200
     twin_id = res.json()["id"]
+    owner_tok = res.json()["owner_token"]
 
-    download_res = client.get(f"/api/twins/{twin_id}/download")
+    # Unauthenticated /download returns 403
+    assert client.get(f"/api/twins/{twin_id}/download").status_code == 403
+
+    # Owner download returns 200
+    download_res = client.get(f"/api/twins/{twin_id}/download", headers={"X-Twin-Owner-Token": owner_tok})
     assert download_res.status_code == 200
     with zipfile.ZipFile(io.BytesIO(download_res.content), 'r') as zf:
         manifest_entries = [name for name in zf.namelist() if name.lower() == "manifest.json"]
@@ -283,3 +308,105 @@ def test_validator_cli_exit_code():
         text=True
     )
     assert proc.returncode != 0
+
+def test_explicit_publication_security_lifecycle():
+    """
+    Test the complete disclosure and publication security lifecycle:
+    1. Generator creates twin: starts private and draft, generator NEVER publishes.
+    2. Public endpoint returns 404 for unauthenticated callers.
+    3. Unauthenticated /download returns 403.
+    4. Unauthenticated /bom returns 403.
+    5. Owner approval transitions preview asset to public_preview and twin to approved.
+    6. Non-owner can now fetch twin (200) and concept preview asset (200), but raw BOM/download remains 403.
+    7. Owner revokes -> unauthenticated requests return 404 again.
+    """
+    files = [
+        ("files", ("README.md", b"# Provenance Test Device\n> Explicit approval test")),
+        ("files", ("bom.csv", b"part,qty,unit_cost\nResistor,10,0.05")),
+        ("files", ("cad/preview.glb", b"GLTF-MOCK-BINARY-CONTENT")),
+        ("files", ("cad/source.step", b"STEP-SOLID-MODEL-SECRET-GEOMETRY"))
+    ]
+    res = client.post("/api/twins/create", files=files, data={"creator": "InventorDave"})
+    assert res.status_code == 200
+    d = res.json()
+    twin_id = d["id"]
+    tok = d["owner_token"]
+
+    # 1. Verify initial private/draft state
+    # Unauthenticated -> 404
+    assert client.get(f"/api/twins/{twin_id}").status_code == 404
+    # Wrong token -> 404
+    assert client.get(f"/api/twins/{twin_id}", headers={"X-Twin-Owner-Token": "wrong_token"}).status_code == 404
+    # Unauthenticated asset fetch -> 403
+    assert client.get(f"/api/twins/{twin_id}/assets/cad/preview.glb").status_code == 403
+    assert client.get(f"/api/twins/{twin_id}/assets/cad/source.step").status_code == 403
+    # Unauthenticated /download and /bom -> 403
+    assert client.get(f"/api/twins/{twin_id}/download").status_code == 403
+    assert client.get(f"/api/twins/{twin_id}/bom").status_code == 403
+
+    # Owner can fetch complete record
+    owner_get = client.get(f"/api/twins/{twin_id}", headers={"X-Twin-Owner-Token": tok})
+    assert owner_get.status_code == 200
+    manifest = owner_get.json()["current_version"]
+    assert manifest["visibility"] == "private"
+    assert manifest["publication_status"] == "draft"
+    # Verify generator never marked any asset as public_preview
+    for asset in manifest["assets"]:
+        assert asset.get("publication_scope") == "private"
+
+    # 2. Publication attempt without token -> 403
+    pub_denied = client.post(f"/api/twins/{twin_id}/publication", data={"action": "approve"})
+    assert pub_denied.status_code == 403
+
+    # Publication attempt with wrong token -> 403
+    pub_wrong = client.post(
+        f"/api/twins/{twin_id}/publication",
+        data={"action": "approve"},
+        headers={"X-Twin-Owner-Token": "bad_token"}
+    )
+    assert pub_wrong.status_code == 403
+
+    # 3. Owner approves publication
+    pub_ok = client.post(
+        f"/api/twins/{twin_id}/publication",
+        data={"action": "approve"},
+        headers={"X-Twin-Owner-Token": tok}
+    )
+    assert pub_ok.status_code == 200
+    assert pub_ok.json()["visibility"] == "public"
+    assert pub_ok.json()["publication_status"] == "approved"
+
+    # 4. Now public twin returns 200 to unauthenticated callers
+    public_view = client.get(f"/api/twins/{twin_id}")
+    assert public_view.status_code == 200
+    pub_manifest = public_view.json()["current_version"]
+    # Only concept_preview assets are exposed publicly!
+    assert len(pub_manifest["assets"]) == 1
+    assert pub_manifest["assets"][0]["relative_path"] == "cad/preview.glb"
+    assert pub_manifest["assets"][0]["publication_scope"] == "public_preview"
+
+    # Public can fetch preview asset -> 200
+    preview_asset_res = client.get(f"/api/twins/{twin_id}/assets/cad/preview.glb")
+    assert preview_asset_res.status_code == 200
+
+    # Secret source step file remains restricted from public -> 403
+    step_res = client.get(f"/api/twins/{twin_id}/assets/cad/source.step")
+    assert step_res.status_code == 403
+
+    # Raw BOM and bundle download remain restricted from public -> 403
+    assert client.get(f"/api/twins/{twin_id}/download").status_code == 403
+    assert client.get(f"/api/twins/{twin_id}/bom").status_code == 403
+
+    # 5. Owner revokes publication
+    revoke_res = client.post(
+        f"/api/twins/{twin_id}/publication",
+        data={"action": "revoke"},
+        headers={"X-Twin-Owner-Token": tok}
+    )
+    assert revoke_res.status_code == 200
+    assert revoke_res.json()["publication_status"] == "draft"
+
+    # Public endpoint returns 404 again once revoked!
+    assert client.get(f"/api/twins/{twin_id}").status_code == 404
+    assert client.get(f"/api/twins/{twin_id}/assets/cad/preview.glb").status_code == 403
+

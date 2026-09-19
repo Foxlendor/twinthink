@@ -314,9 +314,13 @@ def test_criterion_10_export_graph_bundle():
     resp = client.post("/api/twins/create", files=files, data={"creator": "ExportTester"})
     assert resp.status_code == 200, resp.text
     twin_id = resp.json()["id"]
+    owner_tok = resp.json()["owner_token"]
 
-    # Download bundle
-    dl_resp = client.get(f"/api/twins/{twin_id}/download")
+    # Unauthenticated /download returns 403
+    assert client.get(f"/api/twins/{twin_id}/download").status_code == 403
+
+    # Download bundle as owner
+    dl_resp = client.get(f"/api/twins/{twin_id}/download", headers={"X-Twin-Owner-Token": owner_tok})
     assert dl_resp.status_code == 200
     assert dl_resp.headers["content-type"] == "application/zip"
 
@@ -343,8 +347,13 @@ def test_criterion_11_reimport_graph_bundle():
     ]
     create_resp = client.post("/api/twins/create", files=files, data={"creator": "OriginalAuthor"})
     t_id = create_resp.json()["id"]
+    owner_tok = create_resp.json()["owner_token"]
 
-    dl_resp = client.get(f"/api/twins/{t_id}/download")
+    # Unauthenticated download returns 403
+    assert client.get(f"/api/twins/{t_id}/download").status_code == 403
+
+    dl_resp = client.get(f"/api/twins/{t_id}/download", headers={"X-Twin-Owner-Token": owner_tok})
+    assert dl_resp.status_code == 200
     bundle_bytes = dl_resp.content
 
     # Re-import through /api/twins/upload
@@ -354,10 +363,14 @@ def test_criterion_11_reimport_graph_bundle():
     )
     assert up_resp.status_code == 200, up_resp.text
     new_id = up_resp.json()["id"]
+    new_tok = up_resp.json()["owner_token"]
     assert new_id != t_id
 
-    # Verify reimported twin loads
-    twin_resp = client.get(f"/api/twins/{new_id}")
+    # Verify unauthenticated get returns 404 (private/draft)
+    assert client.get(f"/api/twins/{new_id}").status_code == 404
+
+    # Verify reimported twin loads with owner token
+    twin_resp = client.get(f"/api/twins/{new_id}", headers={"X-Twin-Owner-Token": new_tok})
     assert twin_resp.status_code == 200
     t_data = twin_resp.json()
     assert t_data["document"]["structure"]["bom_root"] is not None
@@ -396,6 +409,7 @@ def test_criterion_13_restart_persistence():
     files = [("files", ("bom.csv", io.BytesIO(bom_csv.encode("utf-8")), "text/csv"))]
     resp = client.post("/api/twins/create", files=files, data={"creator": "PersistAuthor"})
     twin_id = resp.json()["id"]
+    owner_tok = resp.json()["owner_token"]
 
     # Read from DB directly
     db_conn = main.get_db_local()
@@ -407,8 +421,11 @@ def test_criterion_13_restart_persistence():
     assert (root_node["node_id"] == "pers_root" or
             (root_node.get("children") and root_node["children"][0]["node_id"] == "pers_root"))
 
-    # Query via API
-    api_resp = client.get(f"/api/twins/{twin_id}")
+    # Query via API: Unauthenticated returns 404
+    assert client.get(f"/api/twins/{twin_id}").status_code == 404
+
+    # Query via API as owner -> 200
+    api_resp = client.get(f"/api/twins/{twin_id}", headers={"X-Twin-Owner-Token": owner_tok})
     assert api_resp.status_code == 200
     api_root = api_resp.json()["document"]["structure"]["bom_root"]
     assert (api_root["name"] == "Persistent Node" or
