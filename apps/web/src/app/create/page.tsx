@@ -510,6 +510,7 @@ export default function CreateTwinPage() {
               )}
             </div>
           )
+        )}
 
       </main>
     </div>
