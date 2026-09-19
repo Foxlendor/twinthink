@@ -1,6 +1,5 @@
 import React from 'react';
 import Link from 'next/link';
-import Navbar from '@/components/Navbar';
 import { ArrowLeft, LockKeyhole, ShieldCheck } from 'lucide-react';
 
 interface CreatorProfileProps {
@@ -12,8 +11,6 @@ export default async function CreatorProfilePage({ params }: CreatorProfileProps
 
   return (
     <div style={{ minHeight: '100vh', background: '#FAFAFA', color: '#111827' }}>
-      <Navbar />
-
       <main style={{ maxWidth: '860px', margin: '0 auto', padding: '4rem 1.5rem 6rem' }}>
         <Link
           href="/"

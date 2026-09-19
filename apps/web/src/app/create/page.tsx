@@ -2,7 +2,6 @@
 
 import React, { useState, useRef } from 'react';
 import Link from 'next/link';
-import Navbar from '@/components/Navbar';
 import { getApiUrl } from '@/lib/api';
 import { 
   UploadCloud, 
@@ -110,8 +109,6 @@ export default function CreateTwinPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#FAFAFA', color: '#111827' }}>
-      <Navbar />
-
       <main style={{ maxWidth: '760px', margin: '0 auto', padding: '3.5rem 1.5rem 6rem' }}>
         
         <div style={{ marginBottom: '1.5rem' }}>

@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import Navbar from '@/components/Navbar';
 import { 
   Coffee, 
   Sparkles, 
@@ -37,8 +36,6 @@ export default function RoundUpPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#FAFAFA', color: '#111827' }}>
-      <Navbar />
-
       <main style={{ maxWidth: '520px', margin: '0 auto', padding: '2rem 1.25rem 5rem' }}>
         
         {/* Success Alert */}
