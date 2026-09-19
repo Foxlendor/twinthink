@@ -22,6 +22,7 @@ export interface TwinAsset {
   size_bytes: number;
   is_entrypoint: number;
   entrypoint_name: string;
+  publication_scope?: 'private' | 'public_preview';
 }
 
 export interface TwinVersion {
