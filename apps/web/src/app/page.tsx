@@ -4,817 +4,851 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { 
-  Box, 
-  Layers, 
-  Activity, 
-  FileText, 
-  Clock, 
-  GitFork, 
+  Sparkles, 
   ArrowRight, 
-  ChevronRight, 
-  Calendar,
-  Layers2,
-  FileCode,
-  ShieldCheck,
-  CheckCircle,
-  Sparkles,
-  Lightbulb,
-  Check,
-  Lock,
-  Mail
+  Users, 
+  ShieldCheck, 
+  MapPin, 
+  Flame, 
+  Store, 
+  CheckCircle2, 
+  ExternalLink,
+  DollarSign,
+  Heart,
+  X
 } from 'lucide-react';
-import CreateTwinModal from '@/components/CreateTwinModal';
 
 export default function HomePage() {
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [waitlistEmail, setWaitlistEmail] = useState('');
-  const [waitlistSubmitted, setWaitlistSubmitted] = useState(false);
+  const [pledgeSuccess, setPledgeSuccess] = useState<string | null>(null);
+  const [showSubModal, setShowSubModal] = useState(false);
+  const [subSuccess, setSubSuccess] = useState<string | null>(null);
 
-  const realityCards = [
-    {
-      id: 'object',
-      title: 'Object',
-      question: 'What is it?',
-      icon: Box,
-      href: '/twins/0001?tab=object'
-    },
-    {
-      id: 'structure',
-      title: 'Structure',
-      question: 'What is it made of?',
-      icon: Layers,
-      href: '/twins/0001?tab=structure'
-    },
-    {
-      id: 'behavior',
-      title: 'Behavior',
-      question: 'What does it do?',
-      icon: Activity,
-      href: '/twins/0001?tab=behavior'
-    },
-    {
-      id: 'evidence',
-      title: 'Evidence',
-      question: 'What supports it?',
-      icon: FileText,
-      href: '/twins/0001?tab=evidence'
-    },
-    {
-      id: 'history',
-      title: 'History',
-      question: 'How did it become this?',
-      icon: Clock,
-      href: '/twins/0001?tab=history'
-    },
-    {
-      id: 'lineage',
-      title: 'Lineage',
-      question: 'Where did it come from, and where can it go?',
-      icon: GitFork,
-      href: '/twins/0001?tab=lineage'
-    }
-  ];
+  const handleQuickBack = (projectName: string, amount: number) => {
+    setPledgeSuccess(`Pledge confirmed: $${amount} added to ${projectName}!`);
+    setTimeout(() => setPledgeSuccess(null), 5000);
+  };
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubSuccess("Subscribed to John Thompson ($5/mo)! Thank you for supporting independent hardware.");
+    setShowSubModal(false);
+    setTimeout(() => setSubSuccess(null), 6000);
+  };
 
   return (
-    <main className="container" style={{ padding: '4rem 1.5rem 6rem 1.5rem', maxWidth: '1080px', margin: '0 auto' }}>
-      
-      {/* 1. Hero Section */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-        alignItems: 'center',
-        gap: '3rem',
-        marginBottom: '5rem'
-      }}>
-        <div>
+    <main style={{ minHeight: '100vh', background: '#FAFAFA', color: '#111827', padding: '3.5rem 1.5rem 6rem' }}>
+      <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
+        
+        {/* Success Alert Banner */}
+        {pledgeSuccess && (
+          <div style={{
+            background: '#ECFDF5',
+            border: '1px solid #A7F3D0',
+            borderRadius: '14px',
+            padding: '1rem 1.25rem',
+            marginBottom: '2rem',
+            color: '#065F46',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.65rem',
+            fontSize: '0.9375rem',
+            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.1)'
+          }}>
+            <CheckCircle2 size={20} color="#059669" />
+            <span>{pledgeSuccess}</span>
+          </div>
+        )}
+
+        {subSuccess && (
+          <div style={{
+            background: '#EFF6FF',
+            border: '1px solid #BFDBFE',
+            borderRadius: '14px',
+            padding: '1rem 1.25rem',
+            marginBottom: '2rem',
+            color: '#1E40AF',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.65rem',
+            fontSize: '0.9375rem',
+            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.1)'
+          }}>
+            <CheckCircle2 size={20} color="#2563EB" />
+            <span>{subSuccess}</span>
+          </div>
+        )}
+
+        {/* 1. HERO SECTION (Minimal & Direct) */}
+        <section style={{ textAlign: 'center', maxWidth: '780px', margin: '1rem auto 4.5rem' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            background: '#FFFFFF',
+            border: '1px solid #E5E7EB',
+            padding: '0.35rem 0.85rem',
+            borderRadius: '999px',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            color: '#4B5563',
+            marginBottom: '1.5rem',
+            letterSpacing: '0.5px',
+            textTransform: 'uppercase',
+            fontFamily: 'var(--font-mono)'
+          }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981' }} />
+            The Idea Reality Engine
+          </div>
+
           <h1 style={{
-            fontSize: 'clamp(2.75rem, 5vw, 3.85rem)',
-            fontWeight: 800,
+            fontSize: 'clamp(2.5rem, 5.5vw, 4rem)',
+            fontWeight: 900,
             letterSpacing: '-1.5px',
             lineHeight: 1.08,
             color: '#111827',
-            marginBottom: '1.25rem'
+            margin: '0 0 1.25rem 0'
           }}>
-            Give an idea<br />a reality.
+            Where Independent Inventions Get Built.
           </h1>
 
           <p style={{
-            fontSize: '1.125rem',
+            fontSize: 'clamp(1.125rem, 2.2vw, 1.35rem)',
             color: '#4B5563',
-            lineHeight: 1.6,
-            maxWidth: '460px',
-            marginBottom: '2rem'
+            lineHeight: 1.5,
+            margin: '0 auto 2.5rem auto',
+            maxWidth: '580px',
+            fontWeight: 400
           }}>
-            A living digital record for things people imagine, build, and test.
+            Back real prototypes. Support independent thinkers. No vaporware—grounded by physical test logs and CAD truth.
           </p>
 
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '2.5rem' }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '1rem',
+            flexWrap: 'wrap'
+          }}>
             <Link
-              href="/twins/0001"
-              className="button-primary"
-              style={{ padding: '0.85rem 1.75rem', borderRadius: '100px', fontSize: '0.9375rem' }}
+              href="/create"
+              style={{
+                background: '#111827',
+                color: '#FFFFFF',
+                padding: '0.95rem 2rem',
+                borderRadius: '100px',
+                fontSize: '1rem',
+                fontWeight: 700,
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.12)',
+                transition: 'transform 0.15s ease, background 0.15s ease'
+              }}
             >
-              Explore
+              Start a Twin <ArrowRight size={16} />
             </Link>
 
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="button-secondary"
-              style={{ padding: '0.85rem 1.75rem', borderRadius: '100px', fontSize: '0.9375rem' }}
-            >
-              Create Twin
-            </button>
-          </div>
-
-          <Link
-            href="/twins/0001"
-            style={{
-              fontSize: '0.875rem',
-              color: '#374151',
-              fontWeight: 500,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              textDecoration: 'none'
-            }}
-          >
-            Learn more about TwinThink
-            <ArrowRight size={14} />
-          </Link>
-        </div>
-
-        {/* Hero Product Render */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          position: 'relative'
-        }}>
-          <div style={{
-            width: '100%',
-            maxWidth: '380px',
-            height: '420px',
-            position: 'relative'
-          }}>
-            <img
-              src="/resip_straw_hero.jpg"
-              alt="RESIP™ Thermal Straw Prototype"
+            <a
+              href="#builds"
               style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                filter: 'drop-shadow(0 20px 30px rgba(0,0,0,0.06))'
+                background: '#FFFFFF',
+                color: '#111827',
+                border: '1.5px solid #D1D5DB',
+                padding: '0.95rem 2rem',
+                borderRadius: '100px',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                transition: 'border-color 0.15s ease'
               }}
-            />
+            >
+              Back a Project ↓
+            </a>
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* 2. Featured Twin Card */}
-      <div style={{
-        background: '#FFFFFF',
-        border: '1px solid #E5E7EB',
-        borderRadius: '16px',
-        padding: '2.25rem',
-        marginBottom: '4rem',
-        boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.03)'
-      }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: '2rem',
-          alignItems: 'center'
-        }}>
-          
-          {/* Left Column: Specimen Identity */}
-          <div>
-            <div style={{
-              fontSize: '0.6875rem',
-              fontWeight: 700,
-              color: '#6B7280',
-              textTransform: 'uppercase',
-              letterSpacing: '0.75px',
-              marginBottom: '0.75rem'
-            }}>
-              FEATURED TWIN
+        {/* 2. LIVE BUILDS & PROTOTYPES GRID */}
+        <section id="builds" style={{ marginBottom: '5.5rem' }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'baseline',
+            marginBottom: '1.75rem',
+            borderBottom: '1px solid #E5E7EB',
+            paddingBottom: '1rem'
+          }}>
+            <div>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: 800,
+                color: '#111827',
+                letterSpacing: '-0.5px',
+                margin: '0 0 0.25rem 0'
+              }}>
+                Live Builds &amp; Prototypes
+              </h2>
+              <p style={{ fontSize: '0.875rem', color: '#6B7280', margin: 0 }}>
+                Every project is verified by physical sensors, BOM trees, and reproducible prototypes.
+              </p>
             </div>
-
-            <h2 style={{
-              fontSize: '1.875rem',
-              fontWeight: 800,
-              color: '#111827',
-              margin: '0 0 0.25rem 0',
-              letterSpacing: '-0.5px'
-            }}>
-              RESIP™
-            </h2>
-
-            <div style={{
-              fontSize: '1rem',
-              color: '#4B5563',
-              marginBottom: '0.75rem'
-            }}>
-              Thermal Drink Straw
-            </div>
-
-            <div style={{
-              display: 'inline-block',
-              background: '#F3F4F6',
-              border: '1px solid #E5E7EB',
-              borderRadius: '100px',
-              padding: '0.2rem 0.65rem',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: '#374151',
-              fontFamily: 'var(--font-mono)',
-              marginBottom: '1.25rem'
-            }}>
-              Twin #0001
-            </div>
-
-            <p style={{
-              fontSize: '0.875rem',
-              color: '#6B7280',
-              lineHeight: 1.5,
-              margin: '0 0 1.5rem 0'
-            }}>
-              A reusable self-heating drink straw using sodium acetate phase change activation.
-            </p>
 
             <Link
               href="/twins/0001"
               style={{
                 fontSize: '0.875rem',
+                color: '#2563EB',
                 fontWeight: 600,
-                color: '#111827',
+                textDecoration: 'none',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.4rem',
-                textDecoration: 'none'
+                gap: '0.25rem'
               }}
             >
-              Explore Twin
-              <ArrowRight size={14} />
+              View All Twins →
             </Link>
           </div>
-
-          {/* Middle Column: Product Visual */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '240px',
-            background: '#F9FAFB',
-            borderRadius: '12px',
-            padding: '1rem',
-            overflow: 'hidden'
-          }}>
-            <img
-              src="/resip_straw_hero.jpg"
-              alt="RESIP™ Preview"
-              style={{
-                maxHeight: '100%',
-                maxWidth: '100%',
-                objectFit: 'contain'
-              }}
-            />
-          </div>
-
-          {/* Right Column: Quiet Metadata Rows */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1rem',
-            fontSize: '0.875rem'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#6B7280', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Calendar size={15} color="#9CA3AF" />
-                Created
-              </span>
-              <strong style={{ color: '#111827', fontFamily: 'var(--font-mono)' }}>2026-08-30</strong>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#6B7280', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <ShieldCheck size={15} color="#9CA3AF" />
-                Status
-              </span>
-              <strong style={{ color: '#111827' }}>Experimental</strong>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#6B7280', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <FileCode size={15} color="#9CA3AF" />
-                Files
-              </span>
-              <strong style={{ color: '#111827', fontFamily: 'var(--font-mono)' }}>37</strong>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#6B7280', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Layers2 size={15} color="#9CA3AF" />
-                Components
-              </span>
-              <strong style={{ color: '#111827', fontFamily: 'var(--font-mono)' }}>9</strong>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#6B7280', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <CheckCircle size={15} color="#9CA3AF" />
-                Claims
-              </span>
-              <strong style={{ color: '#111827', fontFamily: 'var(--font-mono)' }}>37</strong>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* 3. The Simplicity of Value: A Priori Ideas & Soon to Come */}
-      <section style={{
-        marginTop: '4rem',
-        marginBottom: '4.5rem',
-        background: '#FFFFFF',
-        border: '1px solid #E5E7EB',
-        borderRadius: '20px',
-        padding: '3rem 2.25rem',
-        boxShadow: '0 10px 30px -10px rgba(0, 0, 0, 0.04)'
-      }}>
-        <div style={{ maxWidth: '780px', marginBottom: '2.5rem' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            background: 'rgba(17, 24, 39, 0.05)',
-            border: '1px solid #E5E7EB',
-            borderRadius: '100px',
-            padding: '0.25rem 0.75rem',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: '#111827',
-            marginBottom: '1rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
-            <Lightbulb size={13} color="#111827" />
-            A Priori Ideas
-          </div>
-          <h2 style={{
-            fontSize: 'clamp(1.75rem, 3.5vw, 2.35rem)',
-            fontWeight: 800,
-            letterSpacing: '-0.75px',
-            lineHeight: 1.2,
-            color: '#111827',
-            marginBottom: '1rem'
-          }}>
-            The Simplicity of Value: Ideas Conceived from First Principles
-          </h2>
-          <p style={{
-            fontSize: '1.0625rem',
-            color: '#4B5563',
-            lineHeight: 1.65,
-            margin: 0
-          }}>
-            Great inventions do not need buzzwords to prove their worth. Before factories, tooling, or bureaucracy, an idea holds genuine intrinsic value when it solves a real problem from first principles. TwinThink gives original concepts a clear, permanent, and tangible reality that anyone can understand.
-          </p>
-        </div>
-
-        {/* 3 Grounded Pillars Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: '1.5rem',
-          marginBottom: '3rem'
-        }}>
-          {/* Pillar 1 */}
-          <div style={{
-            background: '#F9FAFB',
-            border: '1px solid #E5E7EB',
-            borderRadius: '14px',
-            padding: '1.5rem',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between'
-          }}>
-            <div>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '10px',
-                background: '#FFFFFF',
-                border: '1px solid #E5E7EB',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '1rem',
-                color: '#111827'
-              }}>
-                <Lightbulb size={20} />
-              </div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', marginBottom: '0.4rem' }}>
-                1. First Principles (A Priori)
-              </h3>
-              <p style={{ fontSize: '0.8125rem', color: '#6B7280', lineHeight: 1.5, margin: 0 }}>
-                When an idea solves a genuine physical problem by first principles, that conceptual design holds immediate, standalone value—before mass production ever begins.
-              </p>
-            </div>
-            <Link
-              href="/twins/0001?tab=object"
-              style={{
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: '#111827',
-                marginTop: '1.25rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.3rem'
-              }}
-            >
-              Inspect Concept & Intent <ChevronRight size={13} />
-            </Link>
-          </div>
-
-          {/* Pillar 2 */}
-          <div style={{
-            background: '#F9FAFB',
-            border: '1px solid #E5E7EB',
-            borderRadius: '14px',
-            padding: '1.5rem',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between'
-          }}>
-            <div>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '10px',
-                background: '#FFFFFF',
-                border: '1px solid #E5E7EB',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '1rem',
-                color: '#111827'
-              }}>
-                <Layers size={20} />
-              </div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', marginBottom: '0.4rem' }}>
-                2. Tangible Grounding
-              </h3>
-              <p style={{ fontSize: '0.8125rem', color: '#6B7280', lineHeight: 1.5, margin: 0 }}>
-                No artificial jargon. Plainly detail what the product is made of, how the physical mechanics function, what parts cost, and how it performs in practice.
-              </p>
-            </div>
-            <Link
-              href="/twins/0001?tab=structure"
-              style={{
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: '#111827',
-                marginTop: '1.25rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.3rem'
-              }}
-            >
-              Review Practical BOM <ChevronRight size={13} />
-            </Link>
-          </div>
-
-          {/* Pillar 3 */}
-          <div style={{
-            background: '#F9FAFB',
-            border: '1px solid #E5E7EB',
-            borderRadius: '14px',
-            padding: '1.5rem',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between'
-          }}>
-            <div>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '10px',
-                background: '#FFFFFF',
-                border: '1px solid #E5E7EB',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '1rem',
-                color: '#111827'
-              }}>
-                <ShieldCheck size={20} />
-              </div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', marginBottom: '0.4rem' }}>
-                3. Permanent Authorship
-              </h3>
-              <p style={{ fontSize: '0.8125rem', color: '#6B7280', lineHeight: 1.5, margin: 0 }}>
-                Connect earliest notebook sketches and physical prototypes into a tamper-evident record. You get clear proof of originality without confusion.
-              </p>
-            </div>
-            <Link
-              href="/twins/0001?tab=history"
-              style={{
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: '#111827',
-                marginTop: '1.25rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.3rem'
-              }}
-            >
-              Explore Provenance <ChevronRight size={13} />
-            </Link>
-          </div>
-        </div>
-
-        {/* Real-World Clarity vs Buzzword Jargon Comparison */}
-        <div style={{
-          background: '#F9FAFB',
-          border: '1px solid #E5E7EB',
-          borderRadius: '16px',
-          padding: '2rem',
-          color: '#111827'
-        }}>
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: '#111827', marginBottom: '0.4rem' }}>
-            Why Simplicity Beats Industry Buzzwords
-          </h3>
-          <p style={{ fontSize: '0.875rem', color: '#6B7280', marginBottom: '1.5rem', maxWidth: '680px', lineHeight: 1.5 }}>
-            Too many physical products get buried under speculative tech buzzwords or scattered across unreadable CAD plugins. TwinThink brings clean, unmistakable clarity to what you have created.
-          </p>
 
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '1.25rem'
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '1.75rem'
           }}>
+            
+            {/* Card 1: RESIP™ Self-Heating Straw */}
             <div style={{
-              background: '#FFF1F2',
-              border: '1px solid #FECDD3',
-              borderRadius: '12px',
-              padding: '1.25rem'
+              background: '#FFFFFF',
+              border: '1px solid #E5E7EB',
+              borderRadius: '20px',
+              padding: '1.75rem',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+              position: 'relative'
             }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#E11D48', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.5px' }}>
-                ✕ The Buzzword Trap
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                  color: '#059669',
+                  background: '#ECFDF5',
+                  border: '1px solid #A7F3D0',
+                  padding: '0.2rem 0.6rem',
+                  borderRadius: '999px',
+                  fontFamily: 'var(--font-mono)',
+                  letterSpacing: '0.5px'
+                }}>
+                  PROTOTYPE · 2016 SCIENCE FAIR VERIFIED
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#6B7280', fontFamily: 'var(--font-mono)' }}>
+                  Twin #0001
+                </span>
               </div>
-              <ul style={{ paddingLeft: '1.1rem', fontSize: '0.8125rem', color: '#475569', lineHeight: 1.8, margin: 0 }}>
-                <li>Overcomplicated jargon that leaves friends, buyers, and investors confused.</li>
-                <li>CAD models trapped behind proprietary software licenses.</li>
-                <li>BOM costs and supplier links scattered across unsaved spreadsheets.</li>
-                <li>Ambiguous notes that fail to prove who originated the idea.</li>
-              </ul>
+
+              <div style={{
+                width: '100%',
+                height: '180px',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                background: '#F3F4F6',
+                marginBottom: '1.25rem',
+                position: 'relative'
+              }}>
+                <img
+                  src="/resip/208ea1a2-820f-40c1-8a34-7123342714aa.jpg"
+                  alt="RESIP Straw"
+                  style={{ width: '100%', height: '180px', objectFit: 'cover' }}
+                />
+              </div>
+
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '0 0 0.35rem 0' }}>
+                <Link href="/twins/0001" style={{ color: '#111827', textDecoration: 'none' }}>
+                  RESIP™ Self-Heating Straw
+                </Link>
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.5, margin: '0 0 1.25rem 0', flex: 1 }}>
+                Passive exothermic phase-change straw with bistable CNC snap-disc trigger. Delivers safe 54.0°C plateau without batteries.
+              </p>
+
+              {/* Funding Progress Bar */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.35rem' }}>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 900, color: '#111827', fontFamily: 'var(--font-mono)' }}>
+                    $1,875 <span style={{ fontSize: '0.8rem', color: '#6B7280', fontWeight: 500 }}>of $2,500</span>
+                  </span>
+                  <span style={{ fontSize: '0.8125rem', color: '#059669', fontWeight: 700 }}>
+                    75% · 48 Backers
+                  </span>
+                </div>
+                <div style={{ width: '100%', height: '8px', background: '#E5E7EB', borderRadius: '999px', overflow: 'hidden' }}>
+                  <div style={{ width: '75%', height: '100%', background: '#10B981', borderRadius: '999px' }} />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <Link
+                  href="/twins/0001"
+                  style={{
+                    flex: 1,
+                    background: '#111827',
+                    color: '#FFFFFF',
+                    padding: '0.75rem',
+                    borderRadius: '10px',
+                    fontSize: '0.875rem',
+                    fontWeight: 700,
+                    textAlign: 'center',
+                    textDecoration: 'none',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  Back Straw — $25
+                </Link>
+                <Link
+                  href="/twins/0001"
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '10px',
+                    border: '1px solid #D1D5DB',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    color: '#374151',
+                    textDecoration: 'none',
+                    textAlign: 'center'
+                  }}
+                >
+                  Inspect
+                </Link>
+              </div>
             </div>
 
+            {/* Card 2: BubbleBlock */}
             <div style={{
-              background: '#ECFDF5',
-              border: '1px solid #A7F3D0',
-              borderRadius: '12px',
-              padding: '1.25rem'
+              background: '#FFFFFF',
+              border: '1px solid #E5E7EB',
+              borderRadius: '20px',
+              padding: '1.75rem',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
             }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#059669', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.5px' }}>
-                ✓ The TwinThink Standard
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                  color: '#D97706',
+                  background: '#FFFBEB',
+                  border: '1px solid #FDE68A',
+                  padding: '0.2rem 0.6rem',
+                  borderRadius: '999px',
+                  fontFamily: 'var(--font-mono)',
+                  letterSpacing: '0.5px'
+                }}>
+                  THERMAL INSULATION · EXPERIMENTAL
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#6B7280', fontFamily: 'var(--font-mono)' }}>
+                  Twin #0002
+                </span>
               </div>
-              <ul style={{ paddingLeft: '1.1rem', fontSize: '0.8125rem', color: '#334155', lineHeight: 1.8, margin: 0 }}>
-                <li>Simple, plain-English explanation anyone can grasp in 60 seconds.</li>
-                <li>Transparent Bill of Materials with verified unit costs and part specs.</li>
-                <li>Clear physical mechanics and test records directly linked to the design.</li>
-                <li>Timestamped proof of invention from first sketch to working prototype.</li>
-              </ul>
+
+              <div style={{
+                width: '100%',
+                height: '180px',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                background: '#F3F4F6',
+                marginBottom: '1.25rem',
+                position: 'relative'
+              }}>
+                <img
+                  src="/resip/5fc3a429-8c83-4088-86ac-eae6484d59d6.jpg"
+                  alt="BubbleBlock Tile"
+                  style={{ width: '100%', height: '180px', objectFit: 'cover' }}
+                />
+              </div>
+
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '0 0 0.35rem 0' }}>
+                <Link href="/twins/0001?tab=structure" style={{ color: '#111827', textDecoration: 'none' }}>
+                  BubbleBlock Tile
+                </Link>
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.5, margin: '0 0 1.25rem 0', flex: 1 }}>
+                Modular phase-change thermal barrier tile with micro-encapsulated salt hydrate. Passive building envelope insulation.
+              </p>
+
+              {/* Funding Progress Bar */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.35rem' }}>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 900, color: '#111827', fontFamily: 'var(--font-mono)' }}>
+                    $450 <span style={{ fontSize: '0.8rem', color: '#6B7280', fontWeight: 500 }}>of $1,200</span>
+                  </span>
+                  <span style={{ fontSize: '0.8125rem', color: '#D97706', fontWeight: 700 }}>
+                    37% · 14 Backers
+                  </span>
+                </div>
+                <div style={{ width: '100%', height: '8px', background: '#E5E7EB', borderRadius: '999px', overflow: 'hidden' }}>
+                  <div style={{ width: '37%', height: '100%', background: '#F59E0B', borderRadius: '999px' }} />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  onClick={() => handleQuickBack("BubbleBlock", 15)}
+                  style={{
+                    flex: 1,
+                    background: '#111827',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    padding: '0.75rem',
+                    borderRadius: '10px',
+                    fontSize: '0.875rem',
+                    fontWeight: 700,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  Back Tile — $15
+                </button>
+                <Link
+                  href="/twins/0001?tab=structure"
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '10px',
+                    border: '1px solid #D1D5DB',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    color: '#374151',
+                    textDecoration: 'none',
+                    textAlign: 'center'
+                  }}
+                >
+                  Specs
+                </Link>
+              </div>
             </div>
+
+            {/* Card 3: FerroPen Stylus */}
+            <div style={{
+              background: '#FFFFFF',
+              border: '1px solid #E5E7EB',
+              borderRadius: '20px',
+              padding: '1.75rem',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                  color: '#6B7280',
+                  background: '#F3F4F6',
+                  border: '1px solid #E5E7EB',
+                  padding: '0.2rem 0.6rem',
+                  borderRadius: '999px',
+                  fontFamily: 'var(--font-mono)',
+                  letterSpacing: '0.5px'
+                }}>
+                  MICRO-FLUIDIC · CONCEPT NOTE
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#6B7280', fontFamily: 'var(--font-mono)' }}>
+                  Twin #0003
+                </span>
+              </div>
+
+              <div style={{
+                width: '100%',
+                height: '180px',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                background: '#F3F4F6',
+                marginBottom: '1.25rem',
+                position: 'relative'
+              }}>
+                <img
+                  src="/journal/003-1-e1628076904523.png"
+                  alt="FerroPen Concept"
+                  style={{ width: '100%', height: '180px', objectFit: 'cover' }}
+                />
+              </div>
+
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '0 0 0.35rem 0' }}>
+                <Link href="/archive" style={{ color: '#111827', textDecoration: 'none' }}>
+                  FerroPen Stylus
+                </Link>
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.5, margin: '0 0 1.25rem 0', flex: 1 }}>
+                Micro-ferrofluid tactile pressure stylus for frictionless tablet drafting with analog Hall-effect precision.
+              </p>
+
+              {/* Status Indicator */}
+              <div style={{
+                background: '#F9FAFB',
+                border: '1px solid #E5E7EB',
+                borderRadius: '10px',
+                padding: '0.75rem 1rem',
+                marginBottom: '1.25rem',
+                fontSize: '0.8125rem',
+                color: '#6B7280',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span>Stage: Notebook Archive</span>
+                <span style={{ fontWeight: 600, color: '#111827' }}>Pending Lab Run</span>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <Link
+                  href="/archive"
+                  style={{
+                    flex: 1,
+                    background: '#FFFFFF',
+                    color: '#111827',
+                    border: '1.5px solid #111827',
+                    padding: '0.75rem',
+                    borderRadius: '10px',
+                    fontSize: '0.875rem',
+                    fontWeight: 700,
+                    textAlign: 'center',
+                    textDecoration: 'none'
+                  }}
+                >
+                  View Archive Concept →
+                </Link>
+              </div>
+            </div>
+
           </div>
-        </div>
+        </section>
 
-        {/* Soon to Come Callout & Waitlist */}
-        <div style={{
-          marginTop: '3rem',
-          background: '#111827',
-          borderRadius: '16px',
-          padding: '2.5rem',
-          color: '#FFFFFF',
-          position: 'relative',
-          overflow: 'hidden',
-          boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.25)'
-        }}>
+        {/* 3. CREATOR SPOTLIGHT */}
+        <section style={{ marginBottom: '5.5rem' }}>
           <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            background: 'rgba(255, 255, 255, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            borderRadius: '100px',
-            padding: '0.3rem 0.85rem',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: '#34D399',
-            marginBottom: '1.25rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
+            background: '#FFFFFF',
+            border: '1px solid #E5E7EB',
+            borderRadius: '24px',
+            padding: '2.5rem',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)'
           }}>
-            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#34D399', display: 'inline-block' }} />
-            Soon to Come
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              flexWrap: 'wrap',
+              gap: '1.5rem',
+              marginBottom: '1.75rem'
+            }}>
+              <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #111827 0%, #374151 100%)',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.75rem',
+                  fontWeight: 800,
+                  fontFamily: 'var(--font-mono)'
+                }}>
+                  JT
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                    <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', margin: 0 }}>
+                      John Thompson
+                    </h3>
+                    <span style={{
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      color: '#059669',
+                      background: '#ECFDF5',
+                      border: '1px solid #A7F3D0',
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: '999px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      fontFamily: 'var(--font-mono)'
+                    }}>
+                      <ShieldCheck size={12} /> VERIFIED INVENTOR
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#6B7280', fontSize: '0.875rem', flexWrap: 'wrap' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <MapPin size={14} /> Albuquerque, New Mexico
+                    </span>
+                    <span>•</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: '#111827' }}>
+                      twinth.ink/@john
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <Link
+                  href="/@john"
+                  style={{
+                    background: '#FFFFFF',
+                    color: '#111827',
+                    border: '1.5px solid #D1D5DB',
+                    padding: '0.75rem 1.25rem',
+                    borderRadius: '100px',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem'
+                  }}
+                >
+                  View Profile / Resume
+                </Link>
+
+                <button
+                  onClick={() => setShowSubModal(true)}
+                  style={{
+                    background: '#111827',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '100px',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  <Sparkles size={15} /> Support $5/mo
+                </button>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: '1rem',
+              background: '#F9FAFB',
+              border: '1px solid #E5E7EB',
+              borderRadius: '14px',
+              padding: '1.25rem'
+            }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>
+                  Specializations
+                </div>
+                <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#111827', marginTop: '0.2rem' }}>
+                  Thermodynamics · Phase Change · Physical Hardware
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>
+                  Pipeline Portfolio
+                </div>
+                <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#111827', marginTop: '0.2rem' }}>
+                  3 Active Builds · 48 Community Backers
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>
+                  Verification
+                </div>
+                <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#059669', marginTop: '0.2rem' }}>
+                  Grounding: 2016 Science Fair Prior Art
+                </div>
+              </div>
+            </div>
           </div>
+        </section>
 
-          <h3 style={{
-            fontSize: 'clamp(1.5rem, 3vw, 2.1rem)',
-            fontWeight: 800,
-            letterSpacing: '-0.5px',
-            marginBottom: '0.75rem',
-            lineHeight: 1.2
-          }}>
-            TwinThink is opening soon for creators and inventors.
-          </h3>
-
-          <p style={{
-            fontSize: '0.9375rem',
-            color: '#9CA3AF',
-            maxWidth: '620px',
-            lineHeight: 1.6,
-            marginBottom: '2rem'
-          }}>
-            We are preparing early access for independent builders, engineers, and product creators who want a simple, credible way to record, value, and share their physical inventions. Join the preview waitlist below.
-          </p>
-
-          {/* Email Waitlist Form */}
-          {waitlistSubmitted ? (
+        {/* 4. RETAIL COUNTER BANNER (Bottom) */}
+        <section style={{
+          background: 'linear-gradient(135deg, #111827 0%, #1F2937 100%)',
+          borderRadius: '24px',
+          padding: '2.5rem 2rem',
+          color: '#FFFFFF',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1.75rem',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)'
+        }}>
+          <div style={{ maxWidth: '640px' }}>
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.6rem',
-              background: 'rgba(16, 185, 129, 0.15)',
-              border: '1px solid #10B981',
-              borderRadius: '10px',
-              padding: '0.85rem 1.25rem',
+              gap: '0.4rem',
+              fontSize: '0.7rem',
+              fontWeight: 800,
               color: '#34D399',
-              fontSize: '0.9375rem',
-              fontWeight: 600
+              background: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              padding: '0.2rem 0.6rem',
+              borderRadius: '999px',
+              marginBottom: '0.75rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              fontFamily: 'var(--font-mono)'
             }}>
-              <Check size={18} />
-              You&apos;re on the list. We&apos;ll notify you when early access opens.
+              <Store size={12} /> LOCAL SHOP COMMUNITY NETWORK
             </div>
-          ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (waitlistEmail.trim()) {
-                  setWaitlistSubmitted(true);
-                }
-              }}
+
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#FFFFFF', margin: '0 0 0.5rem 0', letterSpacing: '-0.3px' }}>
+              Run a local coffee shop or retail store?
+            </h3>
+            <p style={{ fontSize: '0.95rem', color: '#D1D5DB', margin: 0, lineHeight: 1.5 }}>
+              Get a free acrylic Google Review counter stand with integrated TwinThink round-up funding. Turn local foot traffic into backers for neighborhood inventors.
+            </p>
+          </div>
+
+          <Link
+            href="/roundup"
+            style={{
+              background: '#FFFFFF',
+              color: '#111827',
+              padding: '0.9rem 1.75rem',
+              borderRadius: '100px',
+              fontSize: '0.9375rem',
+              fontWeight: 700,
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              flexShrink: 0,
+              boxShadow: '0 4px 12px rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            Learn More / Get Stand →
+          </Link>
+        </section>
+
+      </div>
+
+      {/* Subscription Modal for John Thompson */}
+      {showSubModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '24px',
+            maxWidth: '460px',
+            width: '100%',
+            padding: '2rem',
+            position: 'relative',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+          }}>
+            <button
+              onClick={() => setShowSubModal(false)}
               style={{
-                display: 'flex',
-                gap: '0.75rem',
-                maxWidth: '480px',
-                flexWrap: 'wrap'
+                position: 'absolute',
+                top: '1.25rem',
+                right: '1.25rem',
+                background: 'none',
+                border: 'none',
+                color: '#6B7280',
+                cursor: 'pointer'
               }}
             >
-              <input
-                type="email"
-                required
-                value={waitlistEmail}
-                onChange={(e) => setWaitlistEmail(e.target.value)}
-                placeholder="Enter your email address"
-                style={{
-                  flex: 1,
-                  minWidth: '220px',
-                  padding: '0.85rem 1.15rem',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderRadius: '10px',
-                  color: '#FFFFFF',
-                  fontSize: '0.9375rem',
-                  outline: 'none'
-                }}
-              />
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '1.25rem' }}>✨</span>
+              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#111827', margin: 0 }}>
+                Support John Thompson
+              </h3>
+            </div>
+
+            <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.5, margin: '0 0 1.5rem 0' }}>
+              Your $5/month directly funds raw prototype materials, snap-disc machining, and lab bench testing in Albuquerque, NM.
+            </p>
+
+            <form onSubmit={handleSubscribe}>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                  Your Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Jane Maker"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1.5px solid #D1D5DB',
+                    borderRadius: '10px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                  Your Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="jane@example.com"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1.5px solid #D1D5DB',
+                    borderRadius: '10px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
               <button
                 type="submit"
                 style={{
-                  background: '#FFFFFF',
-                  color: '#111827',
-                  fontWeight: 700,
-                  fontSize: '0.9375rem',
-                  padding: '0.85rem 1.5rem',
-                  borderRadius: '10px',
+                  width: '100%',
+                  background: '#111827',
+                  color: '#FFFFFF',
                   border: 'none',
+                  padding: '0.9rem',
+                  borderRadius: '100px',
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
                   cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.4rem'
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                 }}
               >
-                Join Waitlist
-                <ArrowRight size={15} />
+                Confirm $5/mo Subscription →
               </button>
             </form>
-          )}
-
-          {/* Feature Highlights Grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1.5rem',
-            marginTop: '2.5rem',
-            paddingTop: '2rem',
-            borderTop: '1px solid rgba(255, 255, 255, 0.1)'
-          }}>
-            <div>
-              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#F9FAFB', marginBottom: '0.35rem' }}>
-                Instant Idea Packaging
-              </div>
-              <div style={{ fontSize: '0.8125rem', color: '#9CA3AF', lineHeight: 1.5 }}>
-                Drop in sketches, notes, and photos to create a clean, structured record of your idea.
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#F9FAFB', marginBottom: '0.35rem' }}>
-                Grounded Valuation
-              </div>
-              <div style={{ fontSize: '0.8125rem', color: '#9CA3AF', lineHeight: 1.5 }}>
-                Clear bill-of-materials and practical unit costing that buyers and partners can trust.
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#F9FAFB', marginBottom: '0.35rem' }}>
-                Verifiable Authorship
-              </div>
-              <div style={{ fontSize: '0.8125rem', color: '#9CA3AF', lineHeight: 1.5 }}>
-                Permanent, timestamped proof of your original invention without bureaucratic drag.
-              </div>
-            </div>
           </div>
         </div>
-
-      </section>
-
-      {/* 4. Six Reality Dimensions / Anatomy of an Idea */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', margin: '0 0 0.4rem 0' }}>
-          Explore the Anatomy of an Idea
-        </h3>
-        <p style={{ fontSize: '0.875rem', color: '#6B7280', margin: '0 0 1.25rem 0' }}>
-          Click any dimension below to inspect how Twin #0001 (Resip™) breaks down from initial concept to physical reality.
-        </p>
-      </div>
-
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-        gap: '1rem'
-      }}>
-        {realityCards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <Link
-              key={card.id}
-              href={card.href}
-              style={{
-                background: '#FFFFFF',
-                border: '1px solid #E5E7EB',
-                borderRadius: '12px',
-                padding: '1.25rem',
-                textDecoration: 'none',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                minHeight: '140px',
-                transition: 'border-color 0.15s, transform 0.15s, box-shadow 0.15s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#111827';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.04)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#E5E7EB';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
-              <div>
-                <Icon size={20} color="#111827" style={{ marginBottom: '0.75rem' }} />
-                <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#111827', margin: '0 0 0.25rem 0' }}>
-                  {card.title}
-                </h3>
-                <p style={{ fontSize: '0.75rem', color: '#6B7280', margin: 0, lineHeight: 1.4 }}>
-                  {card.question}
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', color: '#9CA3AF', marginTop: '0.5rem' }}>
-                <ChevronRight size={16} />
-              </div>
-            </Link>
-          );
-        })}
-      </div>
-
-      {/* Create Modal */}
-      {showCreateModal && (
-        <CreateTwinModal onClose={() => setShowCreateModal(false)} />
       )}
     </main>
   );
 }
-
