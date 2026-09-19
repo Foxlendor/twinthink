@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { getApiUrl } from '@/lib/api';
 import { X, UploadCloud, FileText, CheckCircle2, Loader2, ArrowRight, Sparkles, Box, Layers, HelpCircle, GitFork, AlertCircle } from 'lucide-react';
 
@@ -28,12 +27,10 @@ interface DiscoveryReport {
 }
 
 export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
-  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [files, setFiles] = useState<File[]>([]);
   const [creator, setCreator] = useState('');
-  const [createdTwinId, setCreatedTwinId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -84,7 +81,6 @@ export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
 
       if (res.ok) {
         const data = await res.json();
-        setCreatedTwinId(data.id);
         if (data.owner_token && typeof window !== 'undefined') {
           localStorage.setItem(`twin_token_${data.id}`, data.owner_token);
         }
