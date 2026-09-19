@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { getApiUrl } from '@/lib/api';
@@ -12,7 +11,8 @@ import {
   Loader2, 
   CheckCircle2, 
   AlertCircle,
-  ArrowLeft
+  ArrowLeft,
+  ShieldCheck
 } from 'lucide-react';
 
 interface DiscoveryReport {
@@ -26,7 +26,6 @@ interface DiscoveryReport {
 }
 
 export default function CreateTwinPage() {
-  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [files, setFiles] = useState<File[]>([]);
