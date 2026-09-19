@@ -289,7 +289,7 @@ export default function CreatorProfilePage({ params }: CreatorProfileProps) {
             {/* Backer & Verification Stats */}
             <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.8125rem' }}>
               <div><strong style={{ color: '#111827', fontSize: '1rem', fontFamily: 'var(--font-mono)' }}>3</strong> <span style={{ color: '#6B7280' }}>Twins</span></div>
-              <div><strong style={{ color: '#111827', fontSize: '1rem', fontFamily: 'var(--font-mono)' }}>48</strong> <span style={{ color: '#6B7280' }}>Active Backers</span></div>
+              <div><strong style={{ color: '#111827', fontSize: '1rem', fontFamily: 'var(--font-mono)' }}>Pre-Launch</strong> <span style={{ color: '#6B7280' }}>Accepting Backers</span></div>
               <div><strong style={{ color: '#059669', fontSize: '1rem', fontFamily: 'var(--font-mono)' }}>100%</strong> <span style={{ color: '#6B7280' }}>Evidence-Backed</span></div>
             </div>
           </div>

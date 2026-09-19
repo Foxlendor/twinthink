@@ -27,8 +27,8 @@ interface CrowdfundingBarProps {
 export default function CrowdfundingBar({
   twinId,
   goalAmount = 2500,
-  initialRaised = 1875,
-  initialBackers = 48,
+  initialRaised = 0,
+  initialBackers = 0,
   batchDescription = "First batch of CNC bimetal snap-discs & passivated 316L tubing",
   targetMsrp = 25
 }: CrowdfundingBarProps) {
@@ -99,10 +99,10 @@ export default function CrowdfundingBar({
             gap: '0.35rem',
             fontFamily: 'var(--font-mono)'
           }}>
-            <Flame size={12} /> CROWDFUNDING BATCH RUN
+            <Flame size={12} /> PRE-LAUNCH · ACCEPTING FIRST PRODUCTION BACKERS
           </span>
           <span style={{ fontSize: '0.75rem', color: '#6B7280', fontWeight: 500 }}>
-            No vaporware · Backed by 2016 Science Fair prior art &amp; real test logs
+            Ground truth hardware · Verified by 2016 Science Fair prior art &amp; real test logs
           </span>
         </div>
 

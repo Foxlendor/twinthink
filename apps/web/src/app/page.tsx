@@ -85,7 +85,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 1. HERO SECTION (Clean Typography + Floating RESIP Straw Visual) */}
+      {/* 1. TOP BANNER (Action-Oriented Commercialization Hook + Provenance Showcase) */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
@@ -95,42 +95,42 @@ export default function HomePage() {
       }}>
         <div>
           <h1 style={{
-            fontSize: 'clamp(2.75rem, 5vw, 3.85rem)',
+            fontSize: 'clamp(2.5rem, 5vw, 3.75rem)',
             fontWeight: 800,
             letterSpacing: '-1.5px',
-            lineHeight: 1.08,
+            lineHeight: 1.1,
             color: '#111827',
             marginBottom: '1.25rem'
           }}>
-            Give an idea<br />a reality.
+            Fund your prototypes.<br />License your designs.
           </h1>
 
           <p style={{
             fontSize: '1.125rem',
             color: '#4B5563',
             lineHeight: 1.6,
-            maxWidth: '460px',
+            maxWidth: '480px',
             marginBottom: '2rem'
           }}>
-            A living digital record for things people imagine, build, and test.
+            The platform for independent inventors to showcase physical concepts, build a backer base, and connect with manufacturers.
           </p>
 
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '2.5rem' }}>
-            <Link
-              href="/twins/0001"
+            <button
+              onClick={() => setShowCreateModal(true)}
               className="button-primary"
               style={{ padding: '0.85rem 1.75rem', borderRadius: '100px', fontSize: '0.9375rem' }}
             >
-              Explore
-            </Link>
-
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="button-secondary"
-              style={{ padding: '0.85rem 1.75rem', borderRadius: '100px', fontSize: '0.9375rem' }}
-            >
-              Create Twin
+              Post an Invention
             </button>
+
+            <Link
+              href="/twins/0001"
+              className="button-secondary"
+              style={{ padding: '0.85rem 1.75rem', borderRadius: '100px', fontSize: '0.9375rem', textDecoration: 'none' }}
+            >
+              Explore Inventions
+            </Link>
           </div>
 
           <Link
@@ -490,14 +490,14 @@ export default function HomePage() {
             <div style={{ marginBottom: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.35rem' }}>
                 <span style={{ fontSize: '1.25rem', fontWeight: 900, color: '#111827', fontFamily: 'var(--font-mono)' }}>
-                  $1,875 <span style={{ fontSize: '0.8rem', color: '#6B7280', fontWeight: 500 }}>of $2,500</span>
+                  $0 <span style={{ fontSize: '0.8rem', color: '#6B7280', fontWeight: 500 }}>of $2,500 target</span>
                 </span>
                 <span style={{ fontSize: '0.8125rem', color: '#059669', fontWeight: 700 }}>
-                  75% · 48 Backers
+                  Pre-Launch · Accepting First Production Backers
                 </span>
               </div>
               <div style={{ width: '100%', height: '8px', background: '#E5E7EB', borderRadius: '999px', overflow: 'hidden' }}>
-                <div style={{ width: '75%', height: '100%', background: '#10B981', borderRadius: '999px' }} />
+                <div style={{ width: '0%', height: '100%', background: '#10B981', borderRadius: '999px' }} />
               </div>
             </div>
 
@@ -595,14 +595,14 @@ export default function HomePage() {
             <div style={{ marginBottom: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.35rem' }}>
                 <span style={{ fontSize: '1.25rem', fontWeight: 900, color: '#111827', fontFamily: 'var(--font-mono)' }}>
-                  $450 <span style={{ fontSize: '0.8rem', color: '#6B7280', fontWeight: 500 }}>of $1,200</span>
+                  $0 <span style={{ fontSize: '0.8rem', color: '#6B7280', fontWeight: 500 }}>of $1,200 target</span>
                 </span>
                 <span style={{ fontSize: '0.8125rem', color: '#D97706', fontWeight: 700 }}>
-                  37% · 14 Backers
+                  Pre-Launch · Open for Backers
                 </span>
               </div>
               <div style={{ width: '100%', height: '8px', background: '#E5E7EB', borderRadius: '999px', overflow: 'hidden' }}>
-                <div style={{ width: '37%', height: '100%', background: '#F59E0B', borderRadius: '999px' }} />
+                <div style={{ width: '0%', height: '100%', background: '#F59E0B', borderRadius: '999px' }} />
               </div>
             </div>
 
@@ -872,7 +872,7 @@ export default function HomePage() {
                 Pipeline Portfolio
               </div>
               <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#111827', marginTop: '0.2rem' }}>
-                3 Inventions · 48 Backers
+                3 Inventions · Pre-Launch (Accepting Backers)
               </div>
             </div>
 
@@ -888,7 +888,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 4. SECTION 3: HOW AN IDEA GETS BUILT (3 Clean Steps — No Lectures) */}
+      {/* 4. SECTION 3: HOW IT WORKS (3 Simple Steps) */}
       <section style={{ marginBottom: '5.5rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
           <h2 style={{
@@ -898,10 +898,10 @@ export default function HomePage() {
             letterSpacing: '-0.5px',
             margin: '0 0 0.35rem 0'
           }}>
-            How an Idea Gets Built
+            How It Works
           </h2>
           <p style={{ fontSize: '0.95rem', color: '#6B7280', margin: 0 }}>
-            From raw notebook sketches to manufactured hardware in 3 honest steps.
+            From initial concept to manufactured hardware in 3 straightforward steps.
           </p>
         </div>
 
@@ -933,10 +933,10 @@ export default function HomePage() {
               01
             </div>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '0 0 0.5rem 0' }}>
-              Drop Your Raw Files
+              Showcase Your Prototype
             </h3>
             <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.55, margin: 0 }}>
-              Upload your 3D models (STEP/STL), notebook scans, parts lists (BOM), and sensor logs into a durable digital twin capsule.
+              Post your technical drawings, BOM specifications, and test logs. Prove real-world engineering with verifiable bench data.
             </p>
           </div>
 
@@ -963,10 +963,10 @@ export default function HomePage() {
               02
             </div>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '0 0 0.5rem 0' }}>
-              Ground the Physics
+              Control Confidential Specs
             </h3>
             <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.55, margin: 0 }}>
-              Prove real-world function with physical test data and transparent supplier BOMs so backers know it&apos;s a real machine, not vaporware.
+              Keep sensitive CAD geometries, proprietary formulas, and vendor tooling files locked behind a standard mutual NDA gate.
             </p>
           </div>
 
@@ -993,10 +993,10 @@ export default function HomePage() {
               03
             </div>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '0 0 0.5rem 0' }}>
-              Get Funded
+              Get Funded &amp; Licensed
             </h3>
             <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.55, margin: 0 }}>
-              Supporters pre-order your first production batch runs or subscribe monthly to support your living inventor resume.
+              Collect pre-orders toward your first production batch, receive monthly patron subscriptions, or negotiate commercial licensing.
             </p>
           </div>
         </div>

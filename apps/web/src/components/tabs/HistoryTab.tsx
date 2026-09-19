@@ -60,10 +60,20 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
   // Directive Phase 1: Restrict Twin #0001's History tab strictly to pages with verified provenance
   // 020, 021, 022 (ScienceFair2016 Drawing, Chart, and Graph) and 003-1 (Ferro/Crystalline Display / phase change notes).
   const verifiedPrefixes = ['020-', '021-', '022-', '003-1-'];
+  const VERIFIED_CAPTIONS: Record<string, string> = {
+    '020-e1628076238962.png': 'Original Hand Schematic (Science Fair 2016)',
+    '021-e1628076098948.png': 'Phase-Change Temperature Chart (2016)',
+    '022-e1628076121431.png': 'Convective Heat Transfer Graph (2016)',
+    '003-1-e1628076904523.png': 'Crystalline Phase Notes',
+  };
+
   const allEntries = manifest?.entries || [];
-  const entries = allEntries.filter(entry => 
-    verifiedPrefixes.some(prefix => entry.filename.startsWith(prefix))
-  );
+  const entries = allEntries
+    .filter(entry => verifiedPrefixes.some(prefix => entry.filename.startsWith(prefix)))
+    .map(entry => ({
+      ...entry,
+      archive_caption: VERIFIED_CAPTIONS[entry.filename] || entry.archive_caption
+    }));
   const unlinkedArchiveCount = allEntries.length - entries.length;
   const currentEntry = entries[selectedPageIndex] || null;
 
@@ -158,25 +168,30 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
           borderRadius: '10px',
           flexShrink: 0
         }}>
-          <ShieldCheck size={20} />
+          <ShieldCheck size={24} />
         </div>
         <div>
-          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#111827', marginBottom: '0.25rem' }}>
-            Why does a Digital Twin need a History?
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.5px', fontFamily: 'var(--font-mono)' }}>
+              AUTHENTIC ORIGIN RECORD
+            </span>
           </div>
-          <div style={{ fontSize: '0.8125rem', color: '#4B5563', lineHeight: 1.55 }}>
-            Inventions don&apos;t exist in a vacuum. By binding the original 2016 concept sketches directly to physical prototypes and numerical simulation files, the inventor establishes <strong>verifiable patent prior art, design lineage, and tamper-evident inventorship</strong>.
-          </div>
+          <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', margin: '0 0 0.25rem 0' }}>
+            2016 Regional Science Fair Prior Art Provenance
+          </h4>
+          <p style={{ fontSize: '0.8125rem', color: '#4B5563', margin: 0, lineHeight: 1.5 }}>
+            RESIP™ traces directly to hand-drawn notebook diagrams, heat transfer curves, and phase-change salt experiments documented in John Thompson&apos;s original 2016 invention journal slides (020, 021, 022, and 003-1).
+          </p>
         </div>
       </div>
 
-      {/* Provenance Isolation Callout (Directive Phase 1) */}
+      {/* Provenance Scope Callout */}
       <div style={{
-        background: '#F9FAFB',
+        background: '#FFFFFF',
         border: '1px solid #E5E7EB',
         borderRadius: '12px',
-        padding: '0.9rem 1.25rem',
-        marginBottom: '2rem',
+        padding: '0.85rem 1.25rem',
+        marginBottom: '1.5rem',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -198,16 +213,21 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
             Specimen #0001 Provenance
           </span>
           <span style={{ fontSize: '0.8125rem', color: '#374151' }}>
-            Strictly isolated to <strong>4 verified slides</strong> (020, 021, 022 ScienceFair2016 &amp; 003-1 phase change).
+            Strictly isolated to <strong>4 verified slides</strong> (020, 021, 022 Science Fair 2016 &amp; 003-1 phase change).
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <span style={{
             fontSize: '0.725rem',
-            fontStyle: 'italic',
-            color: '#6B7280'
+            fontWeight: 700,
+            color: '#4B5563',
+            background: '#F3F4F6',
+            border: '1px solid #E5E7EB',
+            padding: '0.2rem 0.55rem',
+            borderRadius: '4px',
+            fontFamily: 'var(--font-mono)'
           }}>
-            AI proposes, human establishes
+            Inventor Provenance Ledger
           </span>
           <Link
             href="/archive"

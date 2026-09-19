@@ -16,7 +16,9 @@ import {
   ArrowLeft, 
   ChevronDown,
   Download,
-  Lock
+  Lock,
+  BookOpen,
+  MessageSquare
 } from 'lucide-react';
 
 // Reality Protocol Tabs
@@ -28,6 +30,8 @@ import EvidenceTab from './tabs/EvidenceTab';
 import HistoryTab from './tabs/HistoryTab';
 import LineageTab from './tabs/LineageTab';
 import FilesTab from './tabs/FilesTab';
+import PeerReviewTab from './tabs/PeerReviewTab';
+import ThoughtLogsTab from './tabs/ThoughtLogsTab';
 
 // WHY? Claim Inspector Modal
 import ClaimInspectorModal from './ClaimInspectorModal';
@@ -39,7 +43,7 @@ interface TwinTabsProps {
   twin: TwinData;
 }
 
-export type RealityTabKey = 'object' | 'structure' | 'bom' | 'behavior' | 'evidence' | 'tests' | 'history' | 'lineage' | 'files';
+export type RealityTabKey = 'object' | 'structure' | 'bom' | 'behavior' | 'evidence' | 'tests' | 'history' | 'thoughtlogs' | 'community' | 'lineage' | 'files';
 
 export default function TwinTabs({ twin }: TwinTabsProps) {
   const searchParams = useSearchParams();
@@ -54,7 +58,7 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
     const tabParam = searchParams.get('tab');
     if (tabParam === 'tests') {
       setActiveTab('evidence');
-    } else if (tabParam && ['object', 'structure', 'bom', 'behavior', 'evidence', 'history', 'lineage', 'files'].includes(tabParam)) {
+    } else if (tabParam && ['object', 'structure', 'bom', 'behavior', 'evidence', 'history', 'thoughtlogs', 'community', 'lineage', 'files'].includes(tabParam)) {
       setActiveTab(tabParam as RealityTabKey);
     }
   }, [searchParams]);
@@ -70,6 +74,8 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
     { id: 'behavior', title: 'Behavior', subtitle: 'What does it do?', icon: Activity },
     { id: 'evidence', title: 'Testing & Evidence', subtitle: 'What supports it?', icon: FileText },
     { id: 'history', title: 'History', subtitle: 'How did it become this?', icon: Clock },
+    { id: 'thoughtlogs', title: 'Thought Logs', subtitle: 'Development transcripts', icon: BookOpen },
+    { id: 'community', title: 'Peer Review', subtitle: 'Machinists & backers', icon: MessageSquare },
     { id: 'lineage', title: 'Lineage', subtitle: 'Where did it come from?', icon: GitFork },
   ];
 
@@ -251,8 +257,8 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
         <CrowdfundingBar 
           twinId={twin.id} 
           goalAmount={2500} 
-          initialRaised={1875} 
-          initialBackers={48} 
+          initialRaised={0} 
+          initialBackers={0} 
           batchDescription="First batch of CNC bimetal snap-discs & passivated 316L tubing"
           targetMsrp={25}
         />
@@ -294,6 +300,14 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
 
           {activeTab === 'history' && (
             <HistoryTab twin={twin} />
+          )}
+
+          {activeTab === 'thoughtlogs' && (
+            <ThoughtLogsTab />
+          )}
+
+          {activeTab === 'community' && (
+            <PeerReviewTab twinId={twin.id} />
           )}
 
           {activeTab === 'lineage' && (

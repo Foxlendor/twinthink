@@ -279,8 +279,8 @@ export default function RoundUpPage() {
               <span style={{ fontSize: '0.7rem', color: '#6B7280', display: 'block' }}>Specimen #0001</span>
               <strong style={{ fontSize: '0.875rem', color: '#111827' }}>RESIP™ Straw</strong>
             </div>
-            <span style={{ fontSize: '0.75rem', color: '#059669', background: '#ECFDF5', border: '1px solid #A7F3D0', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 700 }}>
-              $1,875 / $2,500 Raised
+            <span style={{ fontSize: '0.75rem', color: '#B45309', background: '#FEF3C7', border: '1px solid #FDE68A', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 700 }}>
+              $0 / $2,500 (Pre-Launch)
             </span>
           </div>
 

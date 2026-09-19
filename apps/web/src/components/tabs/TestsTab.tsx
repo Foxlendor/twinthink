@@ -640,7 +640,7 @@ export default function TestsTab({ twin }: TabProps) {
             style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
           >
             <Sparkles size={13} color="#D97706" />
-            1-Click Synthetic Run
+            1-Click Sample Bench Run
           </button>
         </div>
 

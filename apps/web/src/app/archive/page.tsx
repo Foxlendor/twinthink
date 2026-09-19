@@ -8,6 +8,7 @@ import {
   ArrowLeft, 
   ExternalLink, 
   ShieldAlert, 
+  ShieldCheck,
   CheckCircle2, 
   HelpCircle, 
   Filter, 
@@ -108,17 +109,18 @@ export default function ArchivePage() {
             <span style={{
               fontSize: '0.7rem',
               fontWeight: 700,
-              color: '#B45309',
-              background: '#FEF3C7',
-              border: '1px solid #FDE68A',
+              color: '#374151',
+              background: '#F3F4F6',
+              border: '1px solid #E5E7EB',
               padding: '0.2rem 0.55rem',
               borderRadius: '999px',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.3rem'
+              gap: '0.3rem',
+              fontFamily: 'var(--font-mono)'
             }}>
-              <ShieldAlert size={12} />
-              AI PROPOSES · HUMAN ESTABLISHES
+              <ShieldCheck size={12} color="#059669" />
+              INVENTOR PROVENANCE LEDGER
             </span>
           </div>
 
@@ -162,7 +164,7 @@ export default function ArchivePage() {
               Cognitive Lineage Safeguard
             </div>
             <div style={{ fontSize: '0.8125rem', color: '#6B7280', lineHeight: 1.5 }}>
-              Status of all entries: <code>resip_relationship: &quot;not_established&quot;</code>. TwinThink never hallucinates connections between disparate inventions.
+              Status of all entries: <code>resip_relationship: &quot;not_established&quot;</code>. TwinThink never fabricates connections between disparate inventions.
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
