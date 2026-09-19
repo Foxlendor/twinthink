@@ -37,6 +37,9 @@ export default function CreateTwinPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [discoveryReport, setDiscoveryReport] = useState<DiscoveryReport | null>(null);
   const [createdTwinId, setCreatedTwinId] = useState<string | null>(null);
+  const [ownerToken, setOwnerToken] = useState<string | null>(null);
+  const [publicationStatus, setPublicationStatus] = useState<'private' | 'published'>('private');
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const steps = [
     'Parsing file headers & media types',
@@ -86,6 +89,7 @@ export default function CreateTwinPage() {
 
       const data = await res.json();
       setCreatedTwinId(data.id);
+      setOwnerToken(data.owner_token || null);
       setDiscoveryReport(data.discovery);
 
       if (data.id && data.owner_token) {
@@ -312,80 +316,201 @@ export default function CreateTwinPage() {
             </div>
           </div>
         ) : (
-          /* The Assembly Confirmation Screen (Directive Phase 2) */
+          /* Controlled Disclosure Pre-Flight */
           discoveryReport && (
             <div style={{
               background: '#FFFFFF',
               border: '1px solid #E5E7EB',
               borderRadius: '24px',
-              padding: '3.5rem 2.5rem',
-              textAlign: 'center',
+              padding: '3rem 2.5rem',
+              textAlign: 'left',
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)'
             }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#059669', fontSize: '0.8125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.75rem' }}>
-                <Sparkles size={16} />
-                Your Twin is taking shape
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                color: publicationStatus === 'published' ? '#166534' : '#374151',
+                fontSize: '0.75rem',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                marginBottom: '0.7rem'
+              }}>
+                <ShieldCheck size={16} />
+                {publicationStatus === 'published' ? 'Concept Preview Published' : 'Private Twin · Pre-Flight Review'}
               </div>
 
-              <h2 style={{ fontSize: '2.25rem', fontWeight: 800, color: '#111827', margin: '0 0 0.5rem 0', letterSpacing: '-0.75px' }}>
+              <h2 style={{ fontSize: '2rem', fontWeight: 800, color: '#111827', margin: '0 0 0.5rem', letterSpacing: '-0.7px' }}>
                 {discoveryReport.title}
               </h2>
-              <p style={{ fontSize: '1rem', color: '#6B7280', margin: '0 0 2.5rem 0', lineHeight: 1.5, maxWidth: '540px', marginLeft: 'auto', marginRight: 'auto' }}>
+
+              <p style={{ fontSize: '0.95rem', color: '#6B7280', lineHeight: 1.55, margin: '0 0 1.5rem' }}>
                 {discoveryReport.summary}
               </p>
 
-              {/* Quiet Summary Card */}
               <div style={{
-                background: '#F9FAFB',
+                background: '#F8FAFC',
                 border: '1px solid #E5E7EB',
-                borderRadius: '16px',
-                padding: '1.5rem 2rem',
-                marginBottom: '2.5rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexWrap: 'wrap',
-                gap: '0.75rem',
-                fontSize: '1.05rem',
-                fontWeight: 700,
-                color: '#111827'
+                borderRadius: '14px',
+                padding: '1.25rem',
+                marginBottom: '1rem'
               }}>
-                <span style={{ color: '#6B7280', fontWeight: 600 }}>Found:</span>
-                <span>{discoveryReport.objects_count || 1} Object</span>
-                <span style={{ color: '#9CA3AF' }}>·</span>
-                <span>{discoveryReport.components_count} Components</span>
-                <span style={{ color: '#9CA3AF' }}>·</span>
-                <span>{discoveryReport.claims_count} Claims</span>
-                <span style={{ color: '#9CA3AF' }}>·</span>
-                <span>{discoveryReport.relationships_count} Relationships</span>
+                <div style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.06em', color: '#374151', textTransform: 'uppercase', marginBottom: '0.8rem' }}>
+                  Public Concept Preview
+                </div>
+                <div style={{ display: 'grid', gap: '0.55rem', fontSize: '0.85rem', color: '#4B5563' }}>
+                  <div>✓ Simplified visual representation</div>
+                  <div>✓ High-level concept description</div>
+                  <div>✓ Only assets explicitly approved for public preview</div>
+                </div>
               </div>
 
-              <button
-                onClick={() => {
-                  if (createdTwinId) {
-                    router.push(`/twins/${createdTwinId}`);
-                  }
-                }}
-                style={{
-                  background: '#111827',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  padding: '1rem 3rem',
-                  borderRadius: '100px',
-                  fontSize: '1.05rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.6rem',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)'
-                }}
-              >
-                Review Twin →
-              </button>
+              <div style={{
+                border: '1px solid #E5E7EB',
+                borderRadius: '14px',
+                padding: '1.25rem',
+                marginBottom: '1.5rem'
+              }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.06em', color: '#374151', textTransform: 'uppercase', marginBottom: '0.8rem' }}>
+                  Stays Restricted
+                </div>
+                <div style={{ display: 'grid', gap: '0.55rem', fontSize: '0.85rem', color: '#6B7280' }}>
+                  <div>🔒 Full engineering CAD</div>
+                  <div>🔒 Complete BOM, suppliers, and pricing</div>
+                  <div>🔒 Manufacturing tolerances and production files</div>
+                  <div>🔒 Raw test data and private development material</div>
+                </div>
+              </div>
+
+              <div style={{
+                background: '#FFF7ED',
+                border: '1px solid #FED7AA',
+                borderRadius: '12px',
+                padding: '0.9rem 1rem',
+                marginBottom: '1.5rem',
+                fontSize: '0.8rem',
+                lineHeight: 1.5,
+                color: '#9A3412'
+              }}>
+                Publishing is an explicit inventor action. TwinThink does not infer permission from
+                the existence of a file. Only <strong>preview.glb</strong> is eligible for this public
+                concept-preview action; all other uploaded assets remain private.
+              </div>
+
+              {publicationStatus === 'published' ? (
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  <div style={{
+                    background: '#F0FDF4',
+                    border: '1px solid #BBF7D0',
+                    borderRadius: '12px',
+                    padding: '0.9rem 1rem',
+                    color: '#166534',
+                    fontSize: '0.82rem',
+                    fontWeight: 650
+                  }}>
+                    The approved concept preview is now public. The full bundle remains owner-controlled.
+                  </div>
+                  <button
+                    onClick={() => window.location.href = '/'}
+                    style={{
+                      background: '#111827',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      padding: '0.9rem 1.5rem',
+                      borderRadius: '999px',
+                      fontSize: '0.9rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => {
+                      setDiscoveryReport(null);
+                      setIsProcessing(false);
+                    }}
+                    style={{
+                      flex: '1 1 180px',
+                      background: '#FFFFFF',
+                      color: '#111827',
+                      border: '1px solid #D1D5DB',
+                      padding: '0.9rem 1rem',
+                      borderRadius: '999px',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Keep 100% Private
+                  </button>
+
+                  <button
+                    disabled={isPublishing}
+                    onClick={async () => {
+                      if (!createdTwinId || !ownerToken) return;
+                      setIsPublishing(true);
+                      setErrorMsg(null);
+                      try {
+                        const body = new FormData();
+                        body.append('action', 'approve');
+                        body.append('owner_token', ownerToken);
+
+                        const apiUrl = getApiUrl();
+                        const res = await fetch(
+                          `${apiUrl}/api/twins/${createdTwinId}/publication`,
+                          { method: 'POST', body }
+                        );
+
+                        if (!res.ok) {
+                          const err = await res.json().catch(() => ({}));
+                          throw new Error(err.detail || 'No public-safe preview is available to approve.');
+                        }
+
+                        setPublicationStatus('published');
+                      } catch (err: any) {
+                        setErrorMsg(err.message || 'Publication approval failed.');
+                      } finally {
+                        setIsPublishing(false);
+                      }
+                    }}
+                    style={{
+                      flex: '1 1 260px',
+                      background: '#111827',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      padding: '0.9rem 1rem',
+                      borderRadius: '999px',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      cursor: isPublishing ? 'wait' : 'pointer',
+                      opacity: isPublishing ? 0.65 : 1
+                    }}
+                  >
+                    {isPublishing ? 'Publishing…' : 'Approve & Publish Concept Preview'}
+                  </button>
+                </div>
+              )}
+
+              {errorMsg && (
+                <div style={{
+                  marginTop: '1rem',
+                  background: '#FEF2F2',
+                  border: '1px solid #FECACA',
+                  borderRadius: '10px',
+                  padding: '0.75rem 0.9rem',
+                  color: '#991B1B',
+                  fontSize: '0.8rem'
+                }}>
+                  {errorMsg}
+                </div>
+              )}
             </div>
           )
-        )}
 
       </main>
     </div>
