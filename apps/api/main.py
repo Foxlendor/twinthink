@@ -569,7 +569,7 @@ async def list_twins():
             m = json.loads(r["manifest_json"])
             if m.get("visibility") != "public" or m.get("publication_status") != "approved":
                 continue
-                twins.append({
+            twins.append({
                 "id": r["id"],
                 "title": m.get("title", "Untitled"),
                 "summary": m.get("summary", ""),
