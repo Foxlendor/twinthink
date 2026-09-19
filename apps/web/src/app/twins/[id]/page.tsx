@@ -1,21 +1,9 @@
 import { getApiUrl } from '@/lib/api';
 import { notFound } from 'next/navigation';
-
-/*
- * Public TwinThink publication registry.
- *
- * This list is intentionally empty until an inventor explicitly approves
- * a twin for public publication. Do not infer publication from existence,
- * API availability, creator ownership, or an old fixture.
- */
-const PUBLIC_TWIN_IDS = new Set<string>([]);
+import TwinTabs from '@/components/TwinTabs';
 
 export default async function TwinPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-
-  if (!PUBLIC_TWIN_IDS.has(id)) {
-    notFound();
-  }
 
   try {
     const apiUrl = getApiUrl();
@@ -35,12 +23,13 @@ export default async function TwinPage({ params }: { params: Promise<{ id: strin
 
     const twin = await res.json();
 
-    // Publication is an explicit state, not something inferred from existence.
-    if (twin?.visibility !== 'public' || twin?.publication_status !== 'approved') {
+    // The API is the publication authority. A route existing is never proof of publication.
+    if (
+      twin?.current_version?.disclosure?.public_preview_approved !== true ||
+      twin?.current_version?.assets?.some((asset: any) => asset.publication_scope === 'public_preview') !== true
+    ) {
       notFound();
     }
-
-    const { default: TwinTabs } = await import('@/components/TwinTabs');
 
     return (
       <div style={{ width: '100%' }}>
