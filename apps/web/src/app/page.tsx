@@ -22,6 +22,14 @@ export default function HomePage() {
   const [showSubModal, setShowSubModal] = useState(false);
   const [pledgeSuccess, setPledgeSuccess] = useState<string | null>(null);
   const [subSuccess, setSubSuccess] = useState<string | null>(null);
+  const [heroVisualMode, setHeroVisualMode] = useState<'schematic' | 'cad'>('schematic');
+  const [modelViewerMounted, setModelViewerMounted] = useState(false);
+
+  React.useEffect(() => {
+    import('@google/model-viewer').then(() => {
+      setModelViewerMounted(true);
+    });
+  }, []);
 
   const handleQuickBack = (projectName: string, amount: number) => {
     setPledgeSuccess(`Pledge confirmed: $${amount} added to ${projectName}!`);
@@ -142,7 +150,7 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {/* Hero Product Render */}
+        {/* Authentic Engineering Hero Showcase */}
         <div style={{
           display: 'flex',
           justifyContent: 'center',
@@ -151,20 +159,227 @@ export default function HomePage() {
         }}>
           <div style={{
             width: '100%',
-            maxWidth: '380px',
-            height: '420px',
+            maxWidth: '440px',
+            background: '#FFFFFF',
+            border: '1px solid #E5E7EB',
+            borderRadius: '24px',
+            padding: '1.25rem',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.06)',
             position: 'relative'
           }}>
-            <img
-              src="/resip_straw_hero.jpg"
-              alt="RESIP™ Thermal Straw Prototype"
-              style={{
+            {/* Toggle header between 2016 Schematic and 3D CAD */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1rem',
+              paddingBottom: '0.75rem',
+              borderBottom: '1px solid #F3F4F6'
+            }}>
+              <div style={{ display: 'flex', gap: '0.35rem', background: '#F3F4F6', padding: '0.2rem', borderRadius: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setHeroVisualMode('schematic')}
+                  style={{
+                    background: heroVisualMode === 'schematic' ? '#FFFFFF' : 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '0.3rem 0.65rem',
+                    fontSize: '0.75rem',
+                    fontWeight: heroVisualMode === 'schematic' ? 700 : 500,
+                    color: heroVisualMode === 'schematic' ? '#111827' : '#6B7280',
+                    cursor: 'pointer',
+                    boxShadow: heroVisualMode === 'schematic' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                  }}
+                >
+                  2016 Schematic
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHeroVisualMode('cad')}
+                  style={{
+                    background: heroVisualMode === 'cad' ? '#FFFFFF' : 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '0.3rem 0.65rem',
+                    fontSize: '0.75rem',
+                    fontWeight: heroVisualMode === 'cad' ? 700 : 500,
+                    color: heroVisualMode === 'cad' ? '#111827' : '#6B7280',
+                    cursor: 'pointer',
+                    boxShadow: heroVisualMode === 'cad' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                  }}
+                >
+                  Live 3D CAD
+                </button>
+              </div>
+
+              <span style={{
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                color: '#059669',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                fontFamily: 'var(--font-mono)'
+              }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} />
+                VERIFIED PROVENANCE
+              </span>
+            </div>
+
+            {/* Visual Canvas */}
+            {heroVisualMode === 'schematic' ? (
+              <div style={{
                 width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                filter: 'drop-shadow(0 20px 30px rgba(0,0,0,0.06))'
-              }}
-            />
+                height: '340px',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                background: '#FAFAFA',
+                backgroundImage: 'radial-gradient(#E5E7EB 1.5px, transparent 1.5px)',
+                backgroundSize: '18px 18px',
+                border: '1px solid #F3F4F6',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.5rem'
+              }}>
+                <img
+                  src="/resip_schematic_2016.png"
+                  alt="Original 2016 Science Fair Schematic (020)"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    filter: 'contrast(1.08)'
+                  }}
+                />
+
+                {/* Callout Badges */}
+                <div style={{
+                  position: 'absolute',
+                  top: '12px',
+                  left: '12px',
+                  background: 'rgba(255, 255, 255, 0.92)',
+                  backdropFilter: 'blur(4px)',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '6px',
+                  padding: '0.2rem 0.5rem',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  color: '#111827',
+                  fontFamily: 'var(--font-mono)',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
+                }}>
+                  ① 316L Coaxial Conduit
+                </div>
+
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  right: '12px',
+                  transform: 'translateY(-50%)',
+                  background: 'rgba(255, 255, 255, 0.92)',
+                  backdropFilter: 'blur(4px)',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '6px',
+                  padding: '0.2rem 0.5rem',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  color: '#059669',
+                  fontFamily: 'var(--font-mono)',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
+                }}>
+                  ② 54°C Latent Phase Change
+                </div>
+
+                <div style={{
+                  position: 'absolute',
+                  bottom: '12px',
+                  left: '12px',
+                  background: 'rgba(255, 255, 255, 0.92)',
+                  backdropFilter: 'blur(4px)',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '6px',
+                  padding: '0.2rem 0.5rem',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  color: '#B45309',
+                  fontFamily: 'var(--font-mono)',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
+                }}>
+                  ③ Bimetal Snap-Disc
+                </div>
+              </div>
+            ) : (
+              <div style={{
+                width: '100%',
+                height: '340px',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                background: '#F9FAFB',
+                border: '1px solid #F3F4F6',
+                position: 'relative'
+              }}>
+                {modelViewerMounted ? (
+                  React.createElement('model-viewer', {
+                    src: '/resip_preview.glb',
+                    alt: 'Interactive 3D CAD model of RESIP straw',
+                    'camera-controls': true,
+                    'auto-rotate': true,
+                    'shadow-intensity': '1',
+                    'environment-image': 'neutral',
+                    style: { width: '100%', height: '100%' }
+                  })
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9CA3AF', fontSize: '0.85rem' }}>
+                    Loading 3D CAD...
+                  </div>
+                )}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '10px',
+                  left: '10px',
+                  background: 'rgba(0,0,0,0.6)',
+                  color: '#FFFFFF',
+                  padding: '0.2rem 0.5rem',
+                  borderRadius: '4px',
+                  fontSize: '0.65rem',
+                  fontFamily: 'var(--font-mono)'
+                }}>
+                  Interactive 3D CAD · Drag to rotate
+                </div>
+              </div>
+            )}
+
+            {/* Provenance footer info */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginTop: '0.85rem',
+              paddingTop: '0.6rem',
+              borderTop: '1px solid #F3F4F6',
+              fontSize: '0.75rem',
+              color: '#6B7280'
+            }}>
+              <span style={{ fontFamily: 'var(--font-mono)' }}>
+                Specimen #0001 · Primary Prior Art
+              </span>
+              <Link
+                href="/twins/0001?tab=history"
+                style={{
+                  color: '#2563EB',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem'
+                }}
+              >
+                Inspect Provenance →
+              </Link>
+            </div>
           </div>
         </div>
       </div>
