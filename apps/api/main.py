@@ -484,6 +484,7 @@ async def create_twin_from_factory(
         "license": twin_doc.identity.license,
         "ontology_class": twin_doc.identity.classification,
         "creator": creator,
+        "creator_public": False,
         "properties": [
             {
                 "key": "estimated_bom_usd",
@@ -568,11 +569,10 @@ async def list_twins():
             m = json.loads(r["manifest_json"])
             if m.get("visibility") != "public" or m.get("publication_status") != "approved":
                 continue
-            twins.append({
+                twins.append({
                 "id": r["id"],
                 "title": m.get("title", "Untitled"),
                 "summary": m.get("summary", ""),
-                "creator": r["creator"] or m.get("creator", "Anonymous"),
                 "created_at": str(r["created_at"])
             })
         except Exception:
@@ -635,9 +635,22 @@ async def get_twin(twin_id: str, x_twin_owner_token: Optional[str] = Header(None
     response = {
         "id": twin_id,
         "slug": f"{twin_id}-{manifest.get('title', 'twin').lower().replace(' ', '-')[:30]}",
-        "creator": creator,
+        "creator": creator if is_owner or manifest.get("creator_public") else None,
         "created_at": created_at,
-        "current_version": manifest,
+        "current_version": manifest if is_owner else {
+            "version": manifest.get("version", "1.0.0"),
+            "title": manifest.get("title", "Untitled"),
+            "summary": manifest.get("summary", ""),
+            "license": manifest.get("license", "All rights reserved"),
+            "ontology_class": manifest.get("ontology_class", "Concept"),
+            "properties": [],
+            "relationships": [],
+            "assets": [
+                asset for asset in manifest.get("assets", [])
+                if asset.get("publication_scope") == "public_preview"
+            ],
+            "disclosure": manifest.get("disclosure", {})
+        },
         "lineage": {
             "parent": lineage_parent,
             "descendants": [],
@@ -651,7 +664,7 @@ async def get_twin(twin_id: str, x_twin_owner_token: Optional[str] = Header(None
             }
         ]
     }
-    if doc_json:
+    if doc_json and is_owner:
         try:
             response["document"] = json.loads(doc_json)
         except Exception:
