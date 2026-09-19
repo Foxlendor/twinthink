@@ -32,7 +32,7 @@ export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [files, setFiles] = useState<File[]>([]);
-  const [creator, setCreator] = useState('Creator');
+  const [creator, setCreator] = useState('');
   const [createdTwinId, setCreatedTwinId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -156,7 +156,7 @@ export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
             </h2>
             <p style={{ fontSize: '0.9375rem', color: '#4B5563', margin: '0 0 1.5rem 0', lineHeight: 1.5 }}>
               Bring together everything you have about an idea.<br />
-              <span style={{ fontSize: '0.8125rem', color: '#9CA3AF', fontStyle: 'italic' }}>TwinThink will organize them for you.</span>
+              <span style={{ fontSize: '0.8125rem', color: '#6B7280' }}>New Twins are private by default and are not added to public feeds.</span>
             </p>
 
             {/* Error banner */}
@@ -182,7 +182,7 @@ export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
             {/* Creator / Team input */}
             <div style={{ marginBottom: '1.25rem', textAlign: 'left' }}>
               <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '0.35rem' }}>
-                Creator / Team Name
+                Creator / Team Name (optional)
               </label>
               <input
                 type="text"
@@ -326,7 +326,7 @@ export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
             <div style={{ textAlign: 'left' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#059669', fontSize: '0.8125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.5rem' }}>
                 <Sparkles size={16} />
-                Your Twin is taking shape
+                Private Twin created
               </div>
 
               <h2 style={{ fontSize: '1.65rem', fontWeight: 800, color: '#111827', margin: '0 0 0.5rem 0', letterSpacing: '-0.5px' }}>
@@ -364,12 +364,7 @@ export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
 
               {/* Action Button */}
               <button
-                onClick={() => {
-                  onClose();
-                  if (createdTwinId) {
-                    router.push(`/twins/${createdTwinId}`);
-                  }
-                }}
+                onClick={() => onClose()}
                 style={{
                   background: '#111827',
                   color: '#FFFFFF',
@@ -387,7 +382,7 @@ export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
                   boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                 }}
               >
-                Review Twin →
+                Done — Keep Private
               </button>
             </div>
           )
