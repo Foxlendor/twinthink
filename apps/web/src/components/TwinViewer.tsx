@@ -31,16 +31,29 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
   
   const ontologyClass = twin.current_version.ontology_class;
 
-  // 1. If it's a PhysicalObject, try to render the 3D model
+  // 1. Physical objects only render assets explicitly approved as public previews.
+  // A generic GLB is never treated as safe merely because it exists.
   if (ontologyClass === 'PhysicalObject') {
-    const glbAsset = twin.current_version.assets.find(a => a.relative_path.endsWith('.glb'));
+    const glbAsset = twin.current_version.assets.find(
+      a => a.relative_path.toLowerCase().endsWith('.glb') &&
+        a.publication_scope === 'public_preview'
+    );
     const apiUrl = getApiUrl();
     const url = glbAsset ? `${apiUrl}/api/twins/${twin.id}/assets/${glbAsset.relative_path}` : undefined;
     
     if (!url) {
       return (
         <div className={styles.viewerContainer}>
-          <div className={styles.emptyState}>{fallbackText}</div>
+          <div className={styles.emptyState}>
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <div style={{ fontWeight: 700, color: '#374151', marginBottom: '0.35rem' }}>
+                No public concept preview
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#6B7280' }}>
+                A 3D asset must be explicitly approved as a public preview before it can render here.
+              </div>
+            </div>
+          </div>
         </div>
       );
     }
@@ -66,6 +79,23 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
               </div>
             ))}
             
+            <div style={{
+              position: 'absolute',
+              top: '0.75rem',
+              left: '0.75rem',
+              zIndex: 2,
+              background: 'rgba(255,255,255,0.94)',
+              border: '1px solid #E5E7EB',
+              borderRadius: '999px',
+              padding: '0.35rem 0.65rem',
+              fontSize: '0.66rem',
+              fontWeight: 800,
+              letterSpacing: '0.06em',
+              color: '#166534'
+            }}>
+              CONCEPT PREVIEW · PUBLIC
+            </div>
+
             <div className={styles.viewerActions}>
               <button className={styles.iconButton} onClick={handleReset} title="Reset Camera">
                 <RotateCcw size={18} />
