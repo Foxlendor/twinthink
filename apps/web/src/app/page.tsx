@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ShieldCheck, LockKeyhole, FilePlus2 } from 'lucide-react';
 import CreateTwinModal from '@/components/CreateTwinModal';
+import BrandLogo from '@/components/BrandLogo';
 
 export default function HomePage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -28,6 +29,10 @@ export default function HomePage() {
           }}
         >
           <div>
+            <div style={{ marginBottom: '1.75rem' }}>
+              <BrandLogo height={44} />
+            </div>
+
             <h1
               style={{
                 fontSize: 'clamp(3.25rem, 7vw, 5.5rem)',
@@ -145,13 +150,10 @@ export default function HomePage() {
                 border: '2px solid #111827',
                 display: 'grid',
                 placeItems: 'center',
-                marginBottom: '1.5rem',
-                fontSize: '2rem',
-                fontWeight: 800,
-                letterSpacing: '-2px'
+                marginBottom: '1.5rem'
               }}
             >
-              TT
+              <BrandLogo variant="glyph" height={48} />
             </div>
 
             <h2

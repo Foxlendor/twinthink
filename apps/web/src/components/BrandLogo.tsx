@@ -4,80 +4,70 @@ import React from 'react';
 
 interface BrandLogoProps {
   height?: number | string;
-  variant?: 'brand' | 'wordmark' | 'image' | 'domain';
+  variant?: 'brand' | 'wordmark' | 'image' | 'domain' | 'glyph';
   className?: string;
+  priority?: boolean;
 }
 
 /**
- * BrandLogo component for TwinThink:
- * - Decoupled double-stem TT ligature
- * - Confident "TwinThink" typography standing on its own
- * - No forced domain-trick visual gimmicks
+ * Authentic BrandLogo component for Twinth.ink:
+ * - Signature double-stem TT ligature
+ * - Clean geometric "winth.ink" lettering
+ * - Soft rose pink dots on the period and the 'i'
  */
 export default function BrandLogo({ 
-  height = 28, 
+  height = 30, 
   variant = 'brand', 
   className = '' 
 }: BrandLogoProps) {
-  const numericHeight = typeof height === 'number' ? height : parseInt(height as string) || 28;
+  const numericHeight = typeof height === 'number' ? height : parseInt(height as string) || 30;
 
-  if (variant === 'image') {
+  // Glyph variant: Just the iconic double-stem TT ligature
+  if (variant === 'glyph') {
     return (
-      <img
-        src="/logo.png"
-        alt="TwinThink"
-        style={{
-          height: `${numericHeight}px`,
-          width: 'auto',
-          display: 'block',
-          objectFit: 'contain'
-        }}
+      <svg 
+        height={numericHeight} 
+        viewBox="0 0 72 122" 
+        fill="none" 
+        xmlns="http://www.w3.org/2000/svg"
         className={className}
-      />
+        style={{ display: 'inline-block', verticalAlign: 'middle' }}
+      >
+        <title>Twinth.ink</title>
+        {/* Horizontal Overbar */}
+        <rect x="0" y="0" width="72" height="15" rx="4" fill="#111827" />
+        {/* Left Vertical Stem (rounded capsule bottom) */}
+        <rect x="15" y="15" width="15" height="107" rx="7.5" fill="#111827" />
+        {/* Right Vertical Stem (rounded capsule bottom) */}
+        <rect x="42" y="15" width="15" height="107" rx="7.5" fill="#111827" />
+      </svg>
     );
   }
 
-  // Pure Brand Mark: Precision Double-stem TT ligature + "TwinThink"
+  // Full Authentic Brand Mark: "Twinth.ink" with twin-stem TT and pink dots
   return (
     <div 
       className={className}
       style={{ 
         display: 'inline-flex', 
-        alignItems: 'center', 
-        gap: '0.65rem',
-        fontFamily: 'var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif)',
-        color: '#111827',
+        alignItems: 'center',
+        verticalAlign: 'middle',
         userSelect: 'none',
         lineHeight: 1
       }}
-      title="TwinThink — Give an idea a reality."
+      title="Twinth.ink — Give an idea a reality."
     >
-      {/* Precision Double-stem TT ligature mark */}
-      <svg 
-        height={numericHeight} 
-        viewBox="0 0 32 32" 
-        fill="none" 
-        xmlns="http://www.w3.org/2000/svg"
-        style={{ display: 'block', flexShrink: 0 }}
-      >
-        {/* Top Bar */}
-        <rect x="2" y="4" width="28" height="4.5" rx="2.25" fill="#111827" />
-        {/* Left Stem */}
-        <rect x="9" y="8.5" width="4.5" height="18.5" rx="2.25" fill="#111827" />
-        {/* Right Stem */}
-        <rect x="18.5" y="8.5" width="4.5" height="18.5" rx="2.25" fill="#111827" />
-      </svg>
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <span style={{ 
-          fontSize: `${Math.max(16, numericHeight * 0.72)}px`, 
-          fontWeight: 800, 
-          letterSpacing: '-0.03em', 
-          color: '#111827',
-          lineHeight: 1.1
-        }}>
-          TwinThink
-        </span>
-      </div>
+      <img
+        src="/logo.png"
+        alt="Twinth.ink"
+        style={{
+          height: `${numericHeight}px`,
+          width: 'auto',
+          maxWidth: '100%',
+          display: 'block',
+          objectFit: 'contain'
+        }}
+      />
     </div>
   );
 }

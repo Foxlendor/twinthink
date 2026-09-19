@@ -39,7 +39,7 @@ export default function Navbar() {
               color: '#111827' 
             }}
           >
-            <BrandLogo height={26} variant="domain" />
+            <BrandLogo height={28} />
           </Link>
 
           {/* Navigation Links */}
