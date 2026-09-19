@@ -1,44 +1,53 @@
-import { TwinData } from '@/lib/types';
-import TwinTabs from '@/components/TwinTabs';
 import { getApiUrl } from '@/lib/api';
-import { FALLBACK_TWINS } from '@/lib/mockTwins';
 import { notFound } from 'next/navigation';
+
+/*
+ * Public TwinThink publication registry.
+ *
+ * This list is intentionally empty until an inventor explicitly approves
+ * a twin for public publication. Do not infer publication from existence,
+ * API availability, creator ownership, or an old fixture.
+ */
+const PUBLIC_TWIN_IDS = new Set<string>([]);
 
 export default async function TwinPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  
-  let twin: TwinData | null = null;
-  
+
+  if (!PUBLIC_TWIN_IDS.has(id)) {
+    notFound();
+  }
+
   try {
     const apiUrl = getApiUrl();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-    const res = await fetch(`${apiUrl}/api/twins/${id}`, { 
+    const res = await fetch(`${apiUrl}/api/twins/${id}`, {
       cache: 'no-store',
       signal: controller.signal
     });
+
     clearTimeout(timeoutId);
 
-    if (res.ok) {
-      twin = await res.json();
+    if (!res.ok) {
+      notFound();
     }
-  } catch (err) {
-    console.warn(`Direct fetch for twin ${id} failed or timed out, evaluating fallback mock:`, err);
-  }
 
-  // Graceful fallback for canonical specimens
-  if (!twin && FALLBACK_TWINS[id]) {
-    twin = FALLBACK_TWINS[id];
-  }
+    const twin = await res.json();
 
-  if (!twin) {
+    // Publication is an explicit state, not something inferred from existence.
+    if (twin?.visibility !== 'public' || twin?.publication_status !== 'approved') {
+      notFound();
+    }
+
+    const { default: TwinTabs } = await import('@/components/TwinTabs');
+
+    return (
+      <div style={{ width: '100%' }}>
+        <TwinTabs twin={twin} />
+      </div>
+    );
+  } catch {
     notFound();
   }
-
-  return (
-    <div style={{ width: '100%' }}>
-      <TwinTabs twin={twin} />
-    </div>
-  );
 }
