@@ -16,12 +16,19 @@ import {
   Layers2,
   FileCode,
   ShieldCheck,
-  CheckCircle
+  CheckCircle,
+  Sparkles,
+  Lightbulb,
+  Check,
+  Lock,
+  Mail
 } from 'lucide-react';
 import CreateTwinModal from '@/components/CreateTwinModal';
 
 export default function HomePage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [waitlistEmail, setWaitlistEmail] = useState('');
+  const [waitlistSubmitted, setWaitlistSubmitted] = useState(false);
 
   const realityCards = [
     {
@@ -324,7 +331,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 3. What is a Digital Twin? - Interactive Educational Guide */}
+      {/* 3. The Simplicity of Value: A Priori Ideas & Soon to Come */}
       <section style={{
         marginTop: '4rem',
         marginBottom: '4.5rem',
@@ -339,19 +346,19 @@ export default function HomePage() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '0.5rem',
-            background: 'rgba(16, 185, 129, 0.08)',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
+            background: 'rgba(17, 24, 39, 0.05)',
+            border: '1px solid #E5E7EB',
             borderRadius: '100px',
             padding: '0.25rem 0.75rem',
             fontSize: '0.75rem',
             fontWeight: 700,
-            color: '#059669',
+            color: '#111827',
             marginBottom: '1rem',
             textTransform: 'uppercase',
             letterSpacing: '0.5px'
           }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} />
-            The Living Digital Twin Protocol
+            <Lightbulb size={13} color="#111827" />
+            A Priori Ideas
           </div>
           <h2 style={{
             fontSize: 'clamp(1.75rem, 3.5vw, 2.35rem)',
@@ -361,7 +368,7 @@ export default function HomePage() {
             color: '#111827',
             marginBottom: '1rem'
           }}>
-            What is a Physical Digital Twin?
+            The Simplicity of Value: Ideas Conceived from First Principles
           </h2>
           <p style={{
             fontSize: '1.0625rem',
@@ -369,14 +376,14 @@ export default function HomePage() {
             lineHeight: 1.65,
             margin: 0
           }}>
-            A digital twin is <strong>not merely a 3D picture or a CAD drawing</strong>. It is a computable, living software mirror of a physical product that brings together physical geometry, physics simulations, real sensor experiments, and cryptographic proof of invention.
+            Great inventions do not need buzzwords to prove their worth. Before factories, tooling, or bureaucracy, an idea holds genuine intrinsic value when it solves a real problem from first principles. TwinThink gives original concepts a clear, permanent, and tangible reality that anyone can understand.
           </p>
         </div>
 
-        {/* 4 Architectural Pillars Grid */}
+        {/* 3 Grounded Pillars Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
           gap: '1.5rem',
           marginBottom: '3rem'
         }}>
@@ -403,17 +410,17 @@ export default function HomePage() {
                 marginBottom: '1rem',
                 color: '#111827'
               }}>
-                <Layers size={20} />
+                <Lightbulb size={20} />
               </div>
               <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', marginBottom: '0.4rem' }}>
-                1. Structural BOM & CAD
+                1. First Principles (A Priori)
               </h3>
               <p style={{ fontSize: '0.8125rem', color: '#6B7280', lineHeight: 1.5, margin: 0 }}>
-                Hierarchical Bill of Materials (BOM) linking raw materials, manufacturing processes, unit costs ($4.50), and 3D STEP geometry.
+                When an idea solves a genuine physical problem by first principles, that conceptual design holds immediate, standalone value—before mass production ever begins.
               </p>
             </div>
             <Link
-              href="/twins/0001?tab=structure"
+              href="/twins/0001?tab=object"
               style={{
                 fontSize: '0.75rem',
                 fontWeight: 600,
@@ -424,7 +431,7 @@ export default function HomePage() {
                 gap: '0.3rem'
               }}
             >
-              Inspect BOM Structure <ChevronRight size={13} />
+              Inspect Concept & Intent <ChevronRight size={13} />
             </Link>
           </div>
 
@@ -449,30 +456,30 @@ export default function HomePage() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginBottom: '1rem',
-                color: '#0284C7'
+                color: '#111827'
               }}>
-                <Activity size={20} />
+                <Layers size={20} />
               </div>
               <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', marginBottom: '0.4rem' }}>
-                2. Differential Equations
+                2. Tangible Grounding
               </h3>
               <p style={{ fontSize: '0.8125rem', color: '#6B7280', lineHeight: 1.5, margin: 0 }}>
-                Pure-Python ODE solvers modeling heat transfer, flow velocity, and latent phase-change release without expensive CAD plugins.
+                No artificial jargon. Plainly detail what the product is made of, how the physical mechanics function, what parts cost, and how it performs in practice.
               </p>
             </div>
             <Link
-              href="/twins/0001?tab=behavior"
+              href="/twins/0001?tab=structure"
               style={{
                 fontSize: '0.75rem',
                 fontWeight: 600,
-                color: '#0284C7',
+                color: '#111827',
                 marginTop: '1.25rem',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.3rem'
               }}
             >
-              Run Thermal ODE <ChevronRight size={13} />
+              Review Practical BOM <ChevronRight size={13} />
             </Link>
           </div>
 
@@ -497,63 +504,15 @@ export default function HomePage() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginBottom: '1rem',
-                color: '#059669'
-              }}>
-                <FileText size={20} />
-              </div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', marginBottom: '0.4rem' }}>
-                3. Bench Sensor Telemetry
-              </h3>
-              <p style={{ fontSize: '0.8125rem', color: '#6B7280', lineHeight: 1.5, margin: 0 }}>
-                Actual micro-thermocouple test streams uploaded from physical test rigs. Continuously fits parameters and verifies RMSE precision.
-              </p>
-            </div>
-            <Link
-              href="/twins/0001?tab=evidence"
-              style={{
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: '#059669',
-                marginTop: '1.25rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.3rem'
-              }}
-            >
-              View Test Runs <ChevronRight size={13} />
-            </Link>
-          </div>
-
-          {/* Pillar 4 */}
-          <div style={{
-            background: '#F9FAFB',
-            border: '1px solid #E5E7EB',
-            borderRadius: '14px',
-            padding: '1.5rem',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between'
-          }}>
-            <div>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '10px',
-                background: '#FFFFFF',
-                border: '1px solid #E5E7EB',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '1rem',
-                color: '#D97706'
+                color: '#111827'
               }}>
                 <ShieldCheck size={20} />
               </div>
               <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', marginBottom: '0.4rem' }}>
-                4. Cryptographic Proof
+                3. Permanent Authorship
               </h3>
               <p style={{ fontSize: '0.8125rem', color: '#6B7280', lineHeight: 1.5, margin: 0 }}>
-                Every revision is signed with creator Ed25519 keys, linking 2016 invention notebook scans to verified 2026 prototypes.
+                Connect earliest notebook sketches and physical prototypes into a tamper-evident record. You get clear proof of originality without confusion.
               </p>
             </div>
             <Link
@@ -561,7 +520,7 @@ export default function HomePage() {
               style={{
                 fontSize: '0.75rem',
                 fontWeight: 600,
-                color: '#D97706',
+                color: '#111827',
                 marginTop: '1.25rem',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -573,7 +532,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Interactive Comparison: Static CAD vs. Living Twin */}
+        {/* Real-World Clarity vs Buzzword Jargon Comparison */}
         <div style={{
           background: '#F9FAFB',
           border: '1px solid #E5E7EB',
@@ -582,10 +541,10 @@ export default function HomePage() {
           color: '#111827'
         }}>
           <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: '#111827', marginBottom: '0.4rem' }}>
-            Why Digital Twins Outperform Static CAD Files & Paper Patents
+            Why Simplicity Beats Industry Buzzwords
           </h3>
           <p style={{ fontSize: '0.875rem', color: '#6B7280', marginBottom: '1.5rem', maxWidth: '680px', lineHeight: 1.5 }}>
-            Traditional engineering leaves critical data fragmented in isolated folders. TwinThink binds physical reality and computation into one portable, verifiable bundle.
+            Too many physical products get buried under speculative tech buzzwords or scattered across unreadable CAD plugins. TwinThink brings clean, unmistakable clarity to what you have created.
           </p>
 
           <div style={{
@@ -600,13 +559,13 @@ export default function HomePage() {
               padding: '1.25rem'
             }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#E11D48', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.5px' }}>
-                ✕ The Fragmented Way
+                ✕ The Buzzword Trap
               </div>
               <ul style={{ paddingLeft: '1.1rem', fontSize: '0.8125rem', color: '#475569', lineHeight: 1.8, margin: 0 }}>
-                <li>CAD models are static geometric shapes with no embedded physics.</li>
-                <li>Physical test data sits in unversioned spreadsheets on someone&apos;s laptop.</li>
-                <li>BOM costs and supplier links diverge from 3D designs.</li>
-                <li>Inventorship disputes rely on ambiguous dates and unverified emails.</li>
+                <li>Overcomplicated jargon that leaves friends, buyers, and investors confused.</li>
+                <li>CAD models trapped behind proprietary software licenses.</li>
+                <li>BOM costs and supplier links scattered across unsaved spreadsheets.</li>
+                <li>Ambiguous notes that fail to prove who originated the idea.</li>
               </ul>
             </div>
 
@@ -617,27 +576,185 @@ export default function HomePage() {
               padding: '1.25rem'
             }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#059669', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.5px' }}>
-                ✓ The TwinThink Living Twin
+                ✓ The TwinThink Standard
               </div>
               <ul style={{ paddingLeft: '1.1rem', fontSize: '0.8125rem', color: '#334155', lineHeight: 1.8, margin: 0 }}>
-                <li>Self-contained differential equation simulation engine inside the bundle.</li>
-                <li>Real bench sensor telemetry continuously validates model accuracy (RMSE).</li>
-                <li>3-level structural BOM with real unit costs ($4.50) and part weights.</li>
-                <li>Ed25519 cryptographic signatures guarantee tamper-evident authorship.</li>
+                <li>Simple, plain-English explanation anyone can grasp in 60 seconds.</li>
+                <li>Transparent Bill of Materials with verified unit costs and part specs.</li>
+                <li>Clear physical mechanics and test records directly linked to the design.</li>
+                <li>Timestamped proof of invention from first sketch to working prototype.</li>
               </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Soon to Come Callout & Waitlist */}
+        <div style={{
+          marginTop: '3rem',
+          background: '#111827',
+          borderRadius: '16px',
+          padding: '2.5rem',
+          color: '#FFFFFF',
+          position: 'relative',
+          overflow: 'hidden',
+          boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.25)'
+        }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '100px',
+            padding: '0.3rem 0.85rem',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            color: '#34D399',
+            marginBottom: '1.25rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#34D399', display: 'inline-block' }} />
+            Soon to Come
+          </div>
+
+          <h3 style={{
+            fontSize: 'clamp(1.5rem, 3vw, 2.1rem)',
+            fontWeight: 800,
+            letterSpacing: '-0.5px',
+            marginBottom: '0.75rem',
+            lineHeight: 1.2
+          }}>
+            TwinThink is opening soon for creators and inventors.
+          </h3>
+
+          <p style={{
+            fontSize: '0.9375rem',
+            color: '#9CA3AF',
+            maxWidth: '620px',
+            lineHeight: 1.6,
+            marginBottom: '2rem'
+          }}>
+            We are preparing early access for independent builders, engineers, and product creators who want a simple, credible way to record, value, and share their physical inventions. Join the preview waitlist below.
+          </p>
+
+          {/* Email Waitlist Form */}
+          {waitlistSubmitted ? (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              background: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid #10B981',
+              borderRadius: '10px',
+              padding: '0.85rem 1.25rem',
+              color: '#34D399',
+              fontSize: '0.9375rem',
+              fontWeight: 600
+            }}>
+              <Check size={18} />
+              You&apos;re on the list. We&apos;ll notify you when early access opens.
+            </div>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (waitlistEmail.trim()) {
+                  setWaitlistSubmitted(true);
+                }
+              }}
+              style={{
+                display: 'flex',
+                gap: '0.75rem',
+                maxWidth: '480px',
+                flexWrap: 'wrap'
+              }}
+            >
+              <input
+                type="email"
+                required
+                value={waitlistEmail}
+                onChange={(e) => setWaitlistEmail(e.target.value)}
+                placeholder="Enter your email address"
+                style={{
+                  flex: 1,
+                  minWidth: '220px',
+                  padding: '0.85rem 1.15rem',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '10px',
+                  color: '#FFFFFF',
+                  fontSize: '0.9375rem',
+                  outline: 'none'
+                }}
+              />
+              <button
+                type="submit"
+                style={{
+                  background: '#FFFFFF',
+                  color: '#111827',
+                  fontWeight: 700,
+                  fontSize: '0.9375rem',
+                  padding: '0.85rem 1.5rem',
+                  borderRadius: '10px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem'
+                }}
+              >
+                Join Waitlist
+                <ArrowRight size={15} />
+              </button>
+            </form>
+          )}
+
+          {/* Feature Highlights Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1.5rem',
+            marginTop: '2.5rem',
+            paddingTop: '2rem',
+            borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+          }}>
+            <div>
+              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#F9FAFB', marginBottom: '0.35rem' }}>
+                Instant Idea Packaging
+              </div>
+              <div style={{ fontSize: '0.8125rem', color: '#9CA3AF', lineHeight: 1.5 }}>
+                Drop in sketches, notes, and photos to create a clean, structured record of your idea.
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#F9FAFB', marginBottom: '0.35rem' }}>
+                Grounded Valuation
+              </div>
+              <div style={{ fontSize: '0.8125rem', color: '#9CA3AF', lineHeight: 1.5 }}>
+                Clear bill-of-materials and practical unit costing that buyers and partners can trust.
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#F9FAFB', marginBottom: '0.35rem' }}>
+                Verifiable Authorship
+              </div>
+              <div style={{ fontSize: '0.8125rem', color: '#9CA3AF', lineHeight: 1.5 }}>
+                Permanent, timestamped proof of your original invention without bureaucratic drag.
+              </div>
             </div>
           </div>
         </div>
 
       </section>
 
-      {/* 4. Six Reality Protocol Navigation Cards */}
+      {/* 4. Six Reality Dimensions / Anatomy of an Idea */}
       <div style={{ marginBottom: '1.5rem' }}>
         <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', margin: '0 0 0.4rem 0' }}>
-          Explore the Six Reality Dimensions
+          Explore the Anatomy of an Idea
         </h3>
         <p style={{ fontSize: '0.875rem', color: '#6B7280', margin: '0 0 1.25rem 0' }}>
-          Click any dimension below to inspect how Twin #0001 (Resip™) answers the fundamental engineering questions.
+          Click any dimension below to inspect how Twin #0001 (Resip™) breaks down from initial concept to physical reality.
         </p>
       </div>
 

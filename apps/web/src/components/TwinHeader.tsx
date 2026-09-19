@@ -69,7 +69,9 @@ export default function TwinHeader({ twin }: TwinHeaderProps) {
       </div>
 
       <div className={styles.metaRow}>
-        <span className={styles.creator}>Creator: @{twin.creator}</span>
+        <span className={styles.creator}>
+          Creator: <a href={`/@${twin.creator}/${twin.id}`} style={{ color: 'inherit', textDecoration: 'underline' }}>@{twin.creator}</a>
+        </span>
         <span className={styles.divider}>•</span>
         <span className={styles.version}>v{version.version || version.semver || '1.0.0'}</span>
         <span className={styles.divider}>•</span>

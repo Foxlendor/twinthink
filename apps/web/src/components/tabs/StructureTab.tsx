@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { ChevronRight, ArrowRight, Download, Box } from 'lucide-react';
 import ClaimInspectorModal from '../ClaimInspectorModal';
+import RealityProvenanceDrawer, { RealityDimensionDetail } from '../RealityProvenanceDrawer';
 
 interface StructureTabProps {
   twinId: string;
@@ -13,6 +14,7 @@ interface StructureTabProps {
 export default function StructureTab({ twinId, stepDownloadUrl, onInspectClaim }: StructureTabProps) {
   const [showBomModal, setShowBomModal] = useState(false);
   const [showMaterialsModal, setShowMaterialsModal] = useState(false);
+  const [provenanceDetail, setProvenanceDetail] = useState<RealityDimensionDetail | null>(null);
 
   const explodedParts = [
     {
@@ -43,11 +45,56 @@ export default function StructureTab({ twinId, stepDownloadUrl, onInspectClaim }
   ];
 
   const realityDerived = [
-    { label: 'Structural', status: 'Verified', color: '#10B981' },
-    { label: 'Thermal', status: 'Experimental', color: '#F59E0B' },
-    { label: 'Material', status: 'Partial', color: '#F59E0B' },
-    { label: 'Safety', status: 'Unvalidated', color: '#EF4444' },
-    { label: 'Manufacturing', status: 'Concept', color: '#EF4444' }
+    { 
+      label: 'Structural', 
+      status: 'Established', 
+      color: '#10B981', 
+      dim: 'structural', 
+      score: 96, 
+      file: 'resip_assembly.step', 
+      criteria: 'Parametric CAD solid geometry (STEP/GLB) matched with complete BOM supplier mappings.',
+      rationale: 'Dimensional solid CAD integrity (STEP/GLB) matched with complete BOM supplier mappings.' 
+    },
+    { 
+      label: 'Thermal', 
+      status: 'Established', 
+      color: '#10B981', 
+      dim: 'thermal', 
+      score: 94, 
+      file: 'resip_telemetry_chamber.csv', 
+      criteria: 'Residual calibration error RMSE 1.60°C satisfies <= 4.0°C epistemic threshold.',
+      rationale: 'ODE governing equations validated against empirical thermocouple telemetry (RMSE = 1.60°C <= 4.0°C threshold).' 
+    },
+    { 
+      label: 'Material', 
+      status: 'Partially Established', 
+      color: '#F59E0B', 
+      dim: 'material', 
+      score: 65, 
+      file: 'bom.csv', 
+      criteria: 'Material specs documented in BOM; formal vendor MSDS sheets pending.',
+      rationale: 'Component materials identified in engineering specification. Official MSDS chemical certification pending.' 
+    },
+    { 
+      label: 'Safety', 
+      status: 'Unknown', 
+      color: '#EF4444', 
+      dim: 'safety', 
+      score: 10, 
+      file: null, 
+      criteria: 'Requires upload of empirical drop test, burst pressure, or dermal biocompatibility logs.',
+      rationale: 'Safety remains UNKNOWN until physical drop, pressure, or skin-contact logs are uploaded.' 
+    },
+    { 
+      label: 'Manufacturing', 
+      status: 'Partially Established', 
+      color: '#F59E0B', 
+      dim: 'manufacturing', 
+      score: 60, 
+      file: 'bom.csv', 
+      criteria: 'BOM unit COGS calculated ($1.38); production machining G-code toolpaths required for Established.',
+      rationale: 'Structured bill of materials with unit COGS established. Production tooling G-code pending.' 
+    }
   ];
 
   return (
@@ -281,12 +328,37 @@ export default function StructureTab({ twinId, stepDownloadUrl, onInspectClaim }
               Reality State (derived)
             </h3>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {realityDerived.map((r, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                  <span style={{ color: '#4B5563' }}>{r.label}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#111827', fontWeight: 500 }}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: r.color }} />
+                <div 
+                  key={idx}
+                  onClick={() => setProvenanceDetail({
+                    dimensionKey: r.dim,
+                    name: `${r.label} Reality`,
+                    status: r.status,
+                    score_pct: r.score,
+                    rationale: r.rationale,
+                    source_file: r.file,
+                    criteria: r.criteria,
+                    twinId
+                  })}
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    fontSize: '0.8125rem',
+                    padding: '0.45rem 0.6rem',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'background 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#F9FAFB')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  title="Click to open WHY? Provenance Drawer"
+                >
+                  <span style={{ color: '#374151', fontWeight: 500 }}>{r.label}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#111827', fontWeight: 600 }}>
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: r.color }} />
                     {r.status}
                   </span>
                 </div>
@@ -441,6 +513,12 @@ export default function StructureTab({ twinId, stepDownloadUrl, onInspectClaim }
           </div>
         </div>
       )}
+
+      {/* WHY? Provenance Drawer (Directive Phase 3) */}
+      <RealityProvenanceDrawer
+        detail={provenanceDetail}
+        onClose={() => setProvenanceDetail(null)}
+      />
 
     </div>
   );

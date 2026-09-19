@@ -230,16 +230,12 @@ export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
 
               <UploadCloud size={32} color="#6B7280" style={{ margin: '0 auto 0.75rem auto' }} />
 
-              <div style={{ fontSize: '1rem', fontWeight: 600, color: '#111827', marginBottom: '0.25rem' }}>
-                Drop files or folder here
+              <div style={{ fontSize: '1.05rem', fontWeight: 600, color: '#111827', marginBottom: '0.4rem' }}>
+                Drop files here
               </div>
-              <div style={{ fontSize: '0.8125rem', color: '#6B7280' }}>
-                or choose files to upload
+              <div style={{ fontSize: '0.85rem', color: '#6B7280', fontWeight: 500 }}>
+                PDFs · Images · CAD · Notes · Data
               </div>
-            </div>
-
-            <div style={{ fontSize: '0.75rem', color: '#9CA3AF', marginBottom: '1.5rem', letterSpacing: '0.5px' }}>
-              PDFs · images · CAD · notes · data · zip bundles
             </div>
 
             {/* Added Files Pill Strip */}
@@ -328,81 +324,42 @@ export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
           /* Screen 3: Discovery Complete */
           discoveryReport && (
             <div style={{ textAlign: 'left' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#059669', fontSize: '0.8125rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#059669', fontSize: '0.8125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.5rem' }}>
                 <Sparkles size={16} />
-                Twin Compiled & Saved
+                Your Twin is taking shape
               </div>
 
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', margin: '0 0 0.25rem 0', letterSpacing: '-0.5px' }}>
+              <h2 style={{ fontSize: '1.65rem', fontWeight: 800, color: '#111827', margin: '0 0 0.5rem 0', letterSpacing: '-0.5px' }}>
                 {discoveryReport.title}
               </h2>
-              <p style={{ fontSize: '0.875rem', color: '#6B7280', margin: '0 0 1.5rem 0' }}>
+              <p style={{ fontSize: '0.9rem', color: '#6B7280', margin: '0 0 1.5rem 0', lineHeight: 1.5 }}>
                 {discoveryReport.summary}
               </p>
 
-              {/* Reality Matrix Pill Strip */}
+              {/* Quiet Discovery Summary (Directive Phase 2) */}
               <div style={{
                 background: '#F9FAFB',
-                border: '1px solid #F3F4F6',
+                border: '1px solid #E5E7EB',
                 borderRadius: '12px',
-                padding: '1.25rem',
-                marginBottom: '1.5rem'
+                padding: '1.25rem 1.5rem',
+                marginBottom: '2rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexWrap: 'wrap',
+                gap: '0.65rem',
+                fontSize: '0.95rem',
+                fontWeight: 700,
+                color: '#111827'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>Reality State Score</span>
-                  <span style={{ fontSize: '1.125rem', fontWeight: 800, color: '#111827' }}>
-                    {discoveryReport.reality_state.overall_score_pct}%
-                  </span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem' }}>
-                  {Object.entries(discoveryReport.reality_state).filter(([k]) => k !== 'overall_score_pct').map(([key, val]: any) => (
-                    <div key={key} style={{ background: '#FFFFFF', padding: '0.5rem', borderRadius: '6px', border: '1px solid #E5E7EB', textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.65rem', color: '#9CA3AF', textTransform: 'capitalize', marginBottom: '0.2rem' }}>{key}</div>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#111827' }}>{val.score_pct}%</div>
-                      <div style={{ fontSize: '0.6rem', color: '#6B7280' }}>{val.status}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Discovery Stats Box */}
-              <div style={{
-                background: '#F9FAFB',
-                border: '1px solid #F3F4F6',
-                borderRadius: '12px',
-                padding: '1.25rem',
-                marginBottom: '1.5rem'
-              }}>
-                <div style={{ fontSize: '0.75rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, marginBottom: '0.75rem' }}>
-                  We discovered:
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
-                  <div style={{ background: '#FFFFFF', padding: '0.75rem', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Objects</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', fontFamily: 'var(--font-mono)' }}>
-                      {discoveryReport.objects_count}
-                    </div>
-                  </div>
-                  <div style={{ background: '#FFFFFF', padding: '0.75rem', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Components</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', fontFamily: 'var(--font-mono)' }}>
-                      {discoveryReport.components_count}
-                    </div>
-                  </div>
-                  <div style={{ background: '#FFFFFF', padding: '0.75rem', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Claims</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', fontFamily: 'var(--font-mono)' }}>
-                      {discoveryReport.claims_count}
-                    </div>
-                  </div>
-                  <div style={{ background: '#FFFFFF', padding: '0.75rem', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Relationships</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', fontFamily: 'var(--font-mono)' }}>
-                      {discoveryReport.relationships_count}
-                    </div>
-                  </div>
-                </div>
+                <span style={{ color: '#4B5563', fontWeight: 600 }}>Found:</span>
+                <span>{discoveryReport.objects_count || 1} Object</span>
+                <span style={{ color: '#9CA3AF' }}>·</span>
+                <span>{discoveryReport.components_count} Components</span>
+                <span style={{ color: '#9CA3AF' }}>·</span>
+                <span>{discoveryReport.claims_count} Claims</span>
+                <span style={{ color: '#9CA3AF' }}>·</span>
+                <span>{discoveryReport.relationships_count} Relationships</span>
               </div>
 
               {/* Action Button */}
@@ -417,7 +374,7 @@ export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
                   background: '#111827',
                   color: '#FFFFFF',
                   border: 'none',
-                  padding: '0.85rem 1.75rem',
+                  padding: '0.95rem 1.75rem',
                   borderRadius: '100px',
                   fontSize: '0.9375rem',
                   fontWeight: 600,
@@ -426,11 +383,11 @@ export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '0.5rem'
+                  gap: '0.5rem',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                 }}
               >
-                Review Twin
-                <ArrowRight size={16} />
+                Review Twin →
               </button>
             </div>
           )

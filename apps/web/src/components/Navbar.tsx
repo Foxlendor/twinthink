@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { User, Menu, X, Plus } from 'lucide-react';
 import CreateTwinModal from './CreateTwinModal';
+import BrandLogo from './BrandLogo';
 
 export default function Navbar() {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -34,31 +35,11 @@ export default function Navbar() {
             style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: '0.75rem', 
               textDecoration: 'none', 
               color: '#111827' 
             }}
           >
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '7px',
-              background: '#FFFFFF',
-              border: '1px solid #E5E7EB',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-            }}>
-              <img src="/icon.svg" alt="TwinThink Logo" style={{ width: '22px', height: '22px' }} />
-            </div>
-            <span style={{ fontSize: '1.125rem', fontWeight: 800, letterSpacing: '-0.5px' }}>
-              TWINTH.INK
-            </span>
-            <span style={{ fontSize: '0.8125rem', color: '#6B7280', fontWeight: 400 }}>
-              TwinThink
-            </span>
+            <BrandLogo height={26} variant="domain" />
           </Link>
 
           {/* Navigation Links */}
@@ -74,6 +55,19 @@ export default function Navbar() {
               }}
             >
               Explore
+            </Link>
+
+            <Link
+              href="/archive"
+              style={{
+                fontSize: '0.875rem',
+                color: '#6B7280',
+                textDecoration: 'none',
+                fontWeight: 500,
+                transition: 'color 0.15s'
+              }}
+            >
+              Archive
             </Link>
 
             <button

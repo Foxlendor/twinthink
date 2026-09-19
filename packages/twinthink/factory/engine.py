@@ -117,8 +117,8 @@ class TwinFactoryEngine:
                 except Exception:
                     pass
 
-        # 4. CAD & Solid Geometry
-        step_path = next((f for f in filenames if f.lower().endswith(('.step', '.stp'))), None)
+        # 4. CAD & Solid Geometry (.step, .stl, .glb)
+        step_path = next((f for f in filenames if f.lower().endswith(('.step', '.stp', '.stl'))), None)
         glb_path = next((f for f in filenames if f.lower().endswith('.glb')), None)
         has_step = step_path is not None
         
@@ -233,8 +233,49 @@ class TwinFactoryEngine:
                     status="VERIFIED" if c.supplier else "ESTIMATED",
                     confidence_pct=90 if c.supplier else 60,
                     origin=f"Specified in BOM for {c.name}" + (f" (Supplier: {c.supplier})" if c.supplier else ""),
-                    source_file="bom.csv"
+                    source_file="bom.csv",
+                    relationships=[f"component:{c.name}"]
                 ))
+
+        if step_path:
+            claims.append(Claim(
+                key="cad_solid_geometry",
+                name="Solid CAD Model",
+                value=step_path,
+                status="VERIFIED",
+                confidence_pct=95,
+                origin="Parametric solid geometry detected.",
+                source_file=step_path,
+                evidence_paths=[step_path],
+                relationships=[c.name for c in components]
+            ))
+
+        if sim_script:
+            claims.append(Claim(
+                key="behavior_simulation_model",
+                name="Physics Governing Solver",
+                value=sim_script,
+                status="CALIBRATED" if calibration_rmse is not None else "EXPERIMENTAL",
+                confidence_pct=90 if calibration_rmse is not None else 65,
+                origin="ODE governing equations and thermodynamic simulation.",
+                source_file=sim_script,
+                evidence_paths=[sim_script],
+                relationships=["structure:assembly"]
+            ))
+
+        if calibration_rmse is not None:
+            claims.append(Claim(
+                key="calibration_error_residual",
+                name="Empirical Sensor Calibration",
+                value=f"RMSE = {calibration_rmse:.2f}°C",
+                unit="°C",
+                status="VERIFIED" if calibration_rmse <= 4.0 else "EXPERIMENTAL",
+                confidence_pct=95 if calibration_rmse <= 4.0 else 70,
+                origin="Residual error calculated against physical thermocouple telemetry.",
+                source_file=test_files[0] if test_files else "telemetry.csv",
+                evidence_paths=test_files,
+                relationships=["behavior:simulation"]
+            ))
 
         # 8. Reality State Calculation
         reality_state = derive_reality_state(

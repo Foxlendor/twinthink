@@ -95,11 +95,26 @@ class ComponentItem(BaseModel):
     supplier: Optional[str] = None
     cad_body_name: Optional[str] = None
 
+RealityStatus = Literal[
+    "Established", 
+    "Experimental", 
+    "Partially Established", 
+    "Unknown", 
+    "Conceptual",
+    "Verified",
+    "Partial",
+    "Unvalidated",
+    "Concept"
+]
+
 class RealityDimensionState(BaseModel):
-    status: Literal["Verified", "Experimental", "Partial", "Unvalidated", "Concept", "Unknown"]
+    status: RealityStatus
     score_pct: int
     evidence_count: int
     rationale: str
+    source_file: Optional[str] = None
+    evidence_paths: List[str] = Field(default_factory=list)
+    criteria: Optional[str] = None
 
 class RealityState(BaseModel):
     structural: RealityDimensionState

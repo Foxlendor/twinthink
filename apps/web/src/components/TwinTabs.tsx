@@ -15,7 +15,8 @@ import {
   Folder, 
   ArrowLeft, 
   ChevronDown,
-  Download
+  Download,
+  Lock
 } from 'lucide-react';
 
 // Reality Protocol Tabs
@@ -30,6 +31,9 @@ import FilesTab from './tabs/FilesTab';
 
 // WHY? Claim Inspector Modal
 import ClaimInspectorModal from './ClaimInspectorModal';
+import KineticForgeBar from './KineticForgeBar';
+import DisclosureGateModal from './DisclosureGateModal';
+import CrowdfundingBar from './CrowdfundingBar';
 
 interface TwinTabsProps {
   twin: TwinData;
@@ -44,6 +48,7 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
   
   const [activeTab, setActiveTab] = useState<RealityTabKey>(initialTab);
   const [inspectedClaim, setInspectedClaim] = useState<string | null>(null);
+  const [showDisclosureGate, setShowDisclosureGate] = useState<boolean>(false);
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
@@ -198,6 +203,27 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              onClick={() => setShowDisclosureGate(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                fontSize: '0.8125rem',
+                color: '#111827',
+                padding: '0.35rem 0.75rem',
+                borderRadius: '6px',
+                border: '1px solid #111827',
+                background: '#FFFFFF',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+              title="Inspect Dark Capsule Disclosure Gate & P2P NDA"
+            >
+              <Lock size={13} />
+              Disclosure Gate
+            </button>
+
             <a
               href={`${apiUrl}/api/twins/${twin.id}/download`}
               download
@@ -220,6 +246,19 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
             </a>
           </div>
         </div>
+
+        {/* Crowdfunding Layer & Production Batch Goal */}
+        <CrowdfundingBar 
+          twinId={twin.id} 
+          goalAmount={2500} 
+          initialRaised={1875} 
+          initialBackers={48} 
+          batchDescription="First batch of CNC bimetal snap-discs & passivated 316L tubing"
+          targetMsrp={25}
+        />
+
+        {/* Kinetic Forge Bar (Directive Phase 4: ALLOY / SHEAR / SPARK / ETHER) */}
+        <KineticForgeBar twinId={twin.id} targetMsrp={25} />
 
         {/* Tab View Container */}
         <div>
@@ -274,6 +313,15 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
         onClose={() => setInspectedClaim(null)}
         twinId={twin.id}
       />
+
+      {/* Dark Capsule Disclosure Gate Modal (Directive Phase 5) */}
+      {showDisclosureGate && (
+        <DisclosureGateModal
+          twinId={twin.id}
+          creator={twin.creator || 'inventor'}
+          onClose={() => setShowDisclosureGate(false)}
+        />
+      )}
     </div>
   );
 }

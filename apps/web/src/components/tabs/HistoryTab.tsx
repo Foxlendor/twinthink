@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { TwinData } from '@/lib/types';
 import { 
   BookOpen, 
@@ -56,7 +57,14 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
       .catch(err => console.error("Failed to load journal manifest:", err));
   }, []);
 
-  const entries = manifest?.entries || [];
+  // Directive Phase 1: Restrict Twin #0001's History tab strictly to pages with verified provenance
+  // 020, 021, 022 (ScienceFair2016 Drawing, Chart, and Graph) and 003-1 (Ferro/Crystalline Display / phase change notes).
+  const verifiedPrefixes = ['020-', '021-', '022-', '003-1-'];
+  const allEntries = manifest?.entries || [];
+  const entries = allEntries.filter(entry => 
+    verifiedPrefixes.some(prefix => entry.filename.startsWith(prefix))
+  );
+  const unlinkedArchiveCount = allEntries.length - entries.length;
   const currentEntry = entries[selectedPageIndex] || null;
 
   const getRelationshipBadge = (rel: string) => {
@@ -138,7 +146,7 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
         border: '1px solid rgba(16, 185, 129, 0.25)',
         borderRadius: '16px',
         padding: '1.25rem 1.5rem',
-        marginBottom: '2rem',
+        marginBottom: '1rem',
         display: 'flex',
         alignItems: 'flex-start',
         gap: '1rem'
@@ -159,6 +167,66 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
           <div style={{ fontSize: '0.8125rem', color: '#4B5563', lineHeight: 1.55 }}>
             Inventions don&apos;t exist in a vacuum. By binding the original 2016 concept sketches directly to physical prototypes and numerical simulation files, the inventor establishes <strong>verifiable patent prior art, design lineage, and tamper-evident inventorship</strong>.
           </div>
+        </div>
+      </div>
+
+      {/* Provenance Isolation Callout (Directive Phase 1) */}
+      <div style={{
+        background: '#F9FAFB',
+        border: '1px solid #E5E7EB',
+        borderRadius: '12px',
+        padding: '0.9rem 1.25rem',
+        marginBottom: '2rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '0.75rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <span style={{
+            fontSize: '0.7rem',
+            fontWeight: 800,
+            color: '#059669',
+            background: '#ECFDF5',
+            border: '1px solid #A7F3D0',
+            padding: '0.2rem 0.55rem',
+            borderRadius: '999px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            Specimen #0001 Provenance
+          </span>
+          <span style={{ fontSize: '0.8125rem', color: '#374151' }}>
+            Strictly isolated to <strong>4 verified slides</strong> (020, 021, 022 ScienceFair2016 &amp; 003-1 phase change).
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{
+            fontSize: '0.725rem',
+            fontStyle: 'italic',
+            color: '#6B7280'
+          }}>
+            AI proposes, human establishes
+          </span>
+          <Link
+            href="/archive"
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: '#2563EB',
+              textDecoration: 'none',
+              background: '#EFF6FF',
+              border: '1px solid #BFDBFE',
+              padding: '0.25rem 0.65rem',
+              borderRadius: '6px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.3rem'
+            }}
+          >
+            Inspect Global Archive ({unlinkedArchiveCount} records) →
+          </Link>
         </div>
       </div>
 
