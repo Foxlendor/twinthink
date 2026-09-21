@@ -33,11 +33,15 @@ export default function TransitionScreen() {
   }, [pathname]);
 
   const handleVideoEnd = () => {
-    setIsRevealing(true);
-    // After the CSS reveal animation finishes (1000ms), completely hide the overlay
+    // Add a slight delay to ensure the video's visual tail fully completes
+    // before the black doorway starts ripping open.
     setTimeout(() => {
-      setIsHidden(true);
-    }, 1200); 
+      setIsRevealing(true);
+      // After the CSS reveal animation finishes (1000ms), completely hide the overlay
+      setTimeout(() => {
+        setIsHidden(true);
+      }, 1200); 
+    }, 800);
   };
 
   if (isHidden) return null;

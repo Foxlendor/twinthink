@@ -5,7 +5,7 @@ import styles from './TwinViewer.module.css';
 import { Maximize, RotateCcw, Code, Network, FileText } from 'lucide-react';
 import { TwinData } from '@/lib/types';
 import { getApiUrl } from '@/lib/api';
-import TwizzLockViewer from '@/components/twiizzlock/TwizzLockViewer';
+import TwizzLockViewer from '@/components/twizzlock/TwizzLockViewer';
 import RedrinkViewer from '@/components/redrink/RedrinkViewer';
 
 
