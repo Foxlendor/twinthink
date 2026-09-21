@@ -1,32 +1,44 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
+let isFirstLoad = true;
+let globalPrevPath = '';
 
 export default function TransitionScreen() {
-  const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
   const [isRevealing, setIsRevealing] = useState(false);
-  const [isHidden, setIsHidden] = useState(false);
+  const [isHidden, setIsHidden] = useState(true);
 
   useEffect(() => {
-    // Start mounted to show the black screen immediately
-    setMounted(true);
+    const fromHome = globalPrevPath === '/';
+    const toElsewhere = pathname !== '/';
 
-    // Hold the loading screen for a short moment, then trigger the reveal
-    const revealTimer = setTimeout(() => {
-      setIsRevealing(true);
-    }, 2500); // How long the transition logo stays visible
+    // Update global for the *next* navigation
+    globalPrevPath = pathname;
 
-    // After the reveal animation finishes, completely hide the overlay so it doesn't block clicks
-    const hideTimer = setTimeout(() => {
+    if (isFirstLoad) {
+      isFirstLoad = false;
+      setIsHidden(true); // Never show on direct URL load
+      return;
+    }
+
+    if (fromHome && toElsewhere) {
+      setIsHidden(false);
+      setIsRevealing(false);
+    } else {
       setIsHidden(true);
-    }, 3700); // 2500 + 1200ms animation
+    }
+  }, [pathname]);
 
-    return () => {
-      clearTimeout(revealTimer);
-      clearTimeout(hideTimer);
-    };
-  }, []);
+  const handleVideoEnd = () => {
+    setIsRevealing(true);
+    // After the CSS reveal animation finishes (1000ms), completely hide the overlay
+    setTimeout(() => {
+      setIsHidden(true);
+    }, 1200); 
+  };
 
   if (isHidden) return null;
 
@@ -83,9 +95,9 @@ export default function TransitionScreen() {
           <video
             src="/twinthink.mp4?v=2"
             autoPlay
-            loop
             muted
             playsInline
+            onEnded={handleVideoEnd}
             style={{
               position: 'absolute',
               width: '100%',
