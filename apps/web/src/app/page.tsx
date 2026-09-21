@@ -28,8 +28,8 @@ export default function HomePage() {
             color: '#111827'
           }}
         >
-          Engineering Truth.<br />
-          Open Records.
+          Give an idea<br />
+          a reality.
         </h1>
         <p
           style={{
@@ -41,7 +41,7 @@ export default function HomePage() {
             maxWidth: '600px'
           }}
         >
-          The authoritative digital infrastructure for physical inventions. Build, simulate, and verify transparent hardware protocols.
+          A living digital record for things people imagine, build, and test. Become a twinthink user today.
         </p>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'center' }}>
           <a
