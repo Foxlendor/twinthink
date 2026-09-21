@@ -209,10 +209,10 @@ export default function ArchivePage() {
                 <span style={{ fontSize: '0.68rem', fontWeight: 800, background: '#F3F4F6', color: '#4B5563', padding: '0.2rem 0.55rem', borderRadius: '999px' }}>
                   VERIFIED ORIGIN
                 </span>
-                <span style={{ fontSize: '0.72rem', color: '#6B7280', fontWeight: 600 }}>2016</span>
+                <span style={{ fontSize: '0.72rem', color: '#6B7280', fontWeight: 600 }}>ORIGIN</span>
               </div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 0.4rem' }}>
-                Redr.ink™ Origin (ReSip 2016)
+                Redr.ink™ Origin (ReSip Alpha)
               </h3>
               <p style={{ fontSize: '0.85rem', color: '#6B7280', lineHeight: 1.5, margin: 0, flex: 1 }}>
                 The original Alpha R&D Phase prototype record that evolved into Redr.ink™, protected by Private Access architecture.

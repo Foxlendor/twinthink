@@ -151,7 +151,7 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
     id: '0001',
     slug: 'resip-straw',
     creator: 'anonymous',
-    created_at: '2016-04-12T00:00:00Z',
+    created_at: '2026-01-01T00:00:00Z',
     lineage: {
       parent: null,
       descendants: ['redrink'],
@@ -161,12 +161,12 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
       {
         semver: '1.0.0',
         title: 'Redr.ink™ Origin / ReSip R&D Foundation (Alpha R&D Phase)',
-        published_at: '2016-04-12T00:00:00Z'
+        published_at: '2026-01-01T00:00:00Z'
       }
     ],
     current_version: {
       semver: '1.0.0',
-      title: 'Redr.ink™ Origin / ReSip R&D Foundation (2016)',
+      title: 'Redr.ink™ Origin / ReSip R&D Foundation (Alpha)',
       summary: 'The original Alpha R&D Phase foundation record that pioneered battery-free phase-change thermal straws, rebranded and evolved into Redr.ink™. Solid-state thermal exchange releasing 12.05 kJ latent heat.',
       license: 'CERN-OHL-S-2.0',
       ontology_class: 'PhysicalObject',

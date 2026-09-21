@@ -30,7 +30,7 @@ interface ThoughtLogEntry {
 const INITIAL_LOGS: ThoughtLogEntry[] = [
   {
     id: 'log-01',
-    timestamp: '2016-11-04 · R&D Brainstorm',
+    timestamp: 'Day 1 · R&D Brainstorm',
     topic: 'Heat Transfer Physics: Latent Heat vs. Resistive Heating',
     phase: 'Conceptual Feasibility',
     promptQuestion: 'Can battery-less phase change salts heat liquid fast enough during active drinking flow?',

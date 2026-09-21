@@ -67,7 +67,7 @@ export default function LineageTab({ twin }: LineageTabProps) {
           maxWidth: '420px',
           width: '100%'
         }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>CONCEPT ANCESTOR (2016)</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>CONCEPT ANCESTOR (Alpha)</div>
           <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9375rem' }}>Phase Change Beverage Reheating Calorimeter</div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Benchtop glass rig with supersaturated sodium acetate core</div>
         </div>

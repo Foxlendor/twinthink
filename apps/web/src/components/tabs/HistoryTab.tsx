@@ -58,12 +58,12 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
   }, []);
 
   // Directive Phase 1: Restrict Twin #0001's History tab strictly to pages with verified provenance
-  // 020, 021, 022 (ScienceFair2016 Drawing, Chart, and Graph) and 003-1 (Ferro/Crystalline Display / phase change notes).
+  // 020, 021, 022 (Early Concept Drawing, Chart, and Graph) and 003-1 (Ferro/Crystalline Display / phase change notes).
   const verifiedPrefixes = ['020-', '021-', '022-', '003-1-'];
   const VERIFIED_CAPTIONS: Record<string, string> = {
     '020-e1628076238962.png': 'Original Hand Schematic (Alpha R&D Phase)',
-    '021-e1628076098948.png': 'Phase-Change Temperature Chart (2016)',
-    '022-e1628076121431.png': 'Convective Heat Transfer Graph (2016)',
+    '021-e1628076098948.png': 'Phase-Change Temperature Chart (Alpha)',
+    '022-e1628076121431.png': 'Convective Heat Transfer Graph (Alpha)',
     '003-1-e1628076904523.png': 'Crystalline Phase Notes',
   };
 
@@ -146,7 +146,7 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
           margin: 0,
           lineHeight: 1.6
         }}>
-          Every physical twin in TwinThink preserves an unbroken chain of custody: from 2016 handwritten research notebooks to 2026 physical hardware machining, benchtop sensor testing, and signed cryptographic releases.
+          Every physical twin in TwinThink preserves an unbroken chain of custody: from early handwritten research notebooks to 2026 physical hardware machining, benchtop sensor testing, and signed cryptographic releases.
         </p>
       </div>
 
@@ -177,10 +177,10 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
             </span>
           </div>
           <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', margin: '0 0 0.25rem 0' }}>
-            2016 Regional R&D Prior Art Provenance
+            Origin R&D Prior Art Provenance
           </h4>
           <p style={{ fontSize: '0.8125rem', color: '#4B5563', margin: 0, lineHeight: 1.5 }}>
-            Redr.ink™ (formerly RESIP™) traces directly to hand-drawn notebook diagrams, heat transfer curves, and phase-change salt experiments documented in anonymous&apos;s original 2016 invention journal slides (020, 021, 022, and 003-1).
+            Redr.ink™ (formerly RESIP™) traces directly to hand-drawn notebook diagrams, heat transfer curves, and phase-change salt experiments documented in anonymous&apos;s original invention journal slides (020, 021, 022, and 003-1).
           </p>
         </div>
       </div>
@@ -298,7 +298,7 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
           }}
         >
           <BookOpen size={14} />
-          2016 Invention Journal ({entries.length || 27})
+          Invention Journal ({entries.length || 27})
         </button>
 
         <button
@@ -368,7 +368,7 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
                   padding: '0.2rem 0.6rem',
                   borderRadius: '100px'
                 }}>
-                  PHASE 1 • NOVEMBER 2016
+                  PHASE 1 • CONCEPT ORIGIN
                 </span>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '0.6rem 0 0.2rem 0' }}>
                   R&D Invention Journal & Ideation
