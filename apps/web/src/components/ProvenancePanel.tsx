@@ -90,7 +90,7 @@ export default function ProvenancePanel({ detail, onClose }: ProvenancePanelProp
       case 'thermal':
         return {
           law: 'ODE Equations + Telemetry Residuals (RMSE <= 4.0°C)',
-          verifiedRule: 'Dynamic differential equations validated against sensor streams with residual error <= 4.0°C.',
+          verifiedRule: 'Dynamic math models validated against sensor streams with residual error <= 4.0°C.',
           nextTier: 'To advance: Run benchtop sensor test and achieve calibration RMSE <= 4.0°C.'
         };
       case 'material':

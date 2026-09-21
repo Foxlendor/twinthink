@@ -69,7 +69,7 @@ export default function HomePage() {
             maxWidth: '650px'
           }}
         >
-          <strong>The ink is where you think.</strong> TwinThink is where physical matter meets its living twin. Track the entire arc of an invention: from the first drop of ink in an inventor's notebook, to CAD geometry, ODE physics simulations, and empirical benchtop telemetry.
+          <strong>The ink is where you think.</strong> TwinThink is where physical matter meets its living twin. Track the entire arc of an invention: from the first drop of ink in an inventor's notebook, to 3D designs, predictive math simulations, and real-world sensor data.
         </p>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'center' }}>
           <a

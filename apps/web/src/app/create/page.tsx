@@ -43,7 +43,7 @@ export default function CreateTwinPage() {
     'Parsing file headers & media types',
     'Extracting physical CAD geometry & 3D body tree',
     'Analyzing BOM part hierarchy and unit COGS',
-    'Solving differential equations & telemetry residual calibration',
+    'Solving math models & telemetry residual calibration',
     'Establishing cognitive lineage and epistemic claims matrix'
   ];
 

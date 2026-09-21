@@ -233,7 +233,7 @@ export default function TestsTab({ twin }: TabProps) {
           margin: 0,
           lineHeight: 1.6
         }}>
-          Physical twins require empirical ground truth. Every test run uploads real-world sensor streams, aligns them against thermodynamic differential equations, and computes residual error (RMSE) to prove claims against reality.
+          Physical twins require empirical ground truth. Every test run uploads real-world sensor streams, aligns them against thermodynamic math models, and computes residual error (RMSE) to prove claims against reality.
         </p>
       </div>
 

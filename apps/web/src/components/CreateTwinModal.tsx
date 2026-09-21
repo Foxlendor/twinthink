@@ -40,7 +40,7 @@ export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
   const steps = [
     'Reading uploaded files',
     'Extracting physical components & materials',
-    'Analyzing claims & epistemic provenance',
+    'Analyzing claims & proof of origin',
     'Deriving Reality State matrix',
     'Compiling living twin'
   ];
