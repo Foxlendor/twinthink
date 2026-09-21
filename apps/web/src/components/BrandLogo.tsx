@@ -22,29 +22,62 @@ export default function BrandLogo({
 }: BrandLogoProps) {
   const numericHeight = typeof height === 'number' ? height : parseInt(height as string) || 30;
 
-  // Glyph variant: Just the iconic double-stem TT ligature
+  // Glyph variant: The signature emblem / mark
   if (variant === 'glyph') {
     return (
-      <svg 
-        height={numericHeight} 
-        viewBox="0 0 72 122" 
-        fill="none" 
-        xmlns="http://www.w3.org/2000/svg"
+      <div
         className={className}
-        style={{ display: 'inline-block', verticalAlign: 'middle' }}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          verticalAlign: 'middle',
+          userSelect: 'none'
+        }}
       >
-        <title>Twinth.ink</title>
-        {/* Horizontal Overbar */}
-        <rect x="0" y="0" width="72" height="15" rx="4" fill="#111827" />
-        {/* Left Vertical Stem (rounded capsule bottom) */}
-        <rect x="15" y="15" width="15" height="107" rx="7.5" fill="#111827" />
-        {/* Right Vertical Stem (rounded capsule bottom) */}
-        <rect x="42" y="15" width="15" height="107" rx="7.5" fill="#111827" />
-      </svg>
+        <img
+          src="/glyph.png"
+          alt="TwinThink Glyph"
+          style={{
+            height: `${numericHeight}px`,
+            width: 'auto',
+            maxHeight: '100%',
+            maxWidth: '100%',
+            display: 'block',
+            objectFit: 'contain'
+          }}
+        />
+      </div>
     );
   }
 
-  // Full Authentic Brand Mark: "Twinth.ink" with twin-stem TT and pink dots
+  // Wordmark variant
+  if (variant === 'wordmark') {
+    return (
+      <div
+        className={className}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          verticalAlign: 'middle',
+          userSelect: 'none'
+        }}
+      >
+        <img
+          src="/wordmark.png"
+          alt="TwinThink Wordmark"
+          style={{
+            height: `${numericHeight}px`,
+            width: 'auto',
+            display: 'block',
+            objectFit: 'contain'
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Full Brand Mark: Clean transparent logo
   return (
     <div 
       className={className}
@@ -58,7 +91,7 @@ export default function BrandLogo({
       title="Twinth.ink — Give an idea a reality."
     >
       <img
-        src="/2twinthinklogo.png"
+        src="/logo.png"
         alt="Twinth.ink"
         style={{
           height: `${numericHeight}px`,
@@ -67,14 +100,8 @@ export default function BrandLogo({
           display: 'block',
           objectFit: 'contain'
         }}
-        onError={(e) => {
-          // Fallback to logo.png if 2twinthinklogo.png fails
-          const target = e.target as HTMLImageElement;
-          if (target && target.src.indexOf('/logo.png') === -1) {
-            target.src = '/logo.png';
-          }
-        }}
       />
     </div>
   );
 }
+

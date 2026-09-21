@@ -32,6 +32,7 @@ skills-lock.json
 
 # Ignore local archives and chat dumps
 ai chats/
+scratch/
 *.zip
 *.tar.gz
 .DS_Store

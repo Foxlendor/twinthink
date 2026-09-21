@@ -60,7 +60,7 @@ export default function Navbar() {
               color: '#111827' 
             }}
           >
-            <BrandLogo height={28} />
+            <BrandLogo height={34} />
           </Link>
 
           {/* Desktop Navigation Links */}
