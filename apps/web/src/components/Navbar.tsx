@@ -150,7 +150,7 @@ export default function Navbar() {
                     <Compass size={18} color="#2563EB" />
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Explore Twins</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Explore Records</div>
                     <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Concept previews & verified models</div>
                   </div>
                 </Link>

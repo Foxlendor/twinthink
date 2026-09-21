@@ -16,7 +16,7 @@ export default function ExplorePage() {
         <div style={{ marginBottom: '4rem' }}>
           <h1 style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-1px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Compass size={36} color="#111827" />
-            Explore Twins
+            Explore Public Records
           </h1>
           <p style={{ fontSize: '1.1rem', color: '#4B5563', maxWidth: '600px', lineHeight: 1.6 }}>
             Browse open engineering records, physical component bills of materials, and verified twins.
