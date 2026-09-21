@@ -180,7 +180,7 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
             2016 Regional Science Fair Prior Art Provenance
           </h4>
           <p style={{ fontSize: '0.8125rem', color: '#4B5563', margin: 0, lineHeight: 1.5 }}>
-            RESIP™ traces directly to hand-drawn notebook diagrams, heat transfer curves, and phase-change salt experiments documented in John Thompson&apos;s original 2016 invention journal slides (020, 021, 022, and 003-1).
+            redr.ink™ (formerly RESIP™) traces directly to hand-drawn notebook diagrams, heat transfer curves, and phase-change salt experiments documented in Foxlendor&apos;s original 2016 invention journal slides (020, 021, 022, and 003-1).
           </p>
         </div>
       </div>

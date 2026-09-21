@@ -246,20 +246,20 @@ export default function RoundUpPage() {
               fontFamily: 'var(--font-mono)',
               flexShrink: 0
             }}>
-              JT
+              FX
             </div>
             <div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 0.2rem 0', color: '#111827' }}>
-                John Thompson
+                Foxlendor
               </h3>
               <p style={{ fontSize: '0.8rem', color: '#6B7280', margin: 0 }}>
-                Building <strong>RESIP™</strong> (Self-Heating Drink Straw)
+                Building <strong>redr.ink™</strong> (Self-Heating Drink Straw)
               </p>
             </div>
           </div>
 
           <p style={{ fontSize: '0.85rem', color: '#4B5563', lineHeight: 1.45, marginBottom: '1.25rem' }}>
-            Original concept formulated during the 2016 Science Fair, now advancing into first batch CNC bimetal snap-disc machining. Every round-up buys raw 316L stainless tubing and laboratory phase-change salts.
+            Original concept formulated during the 2016 Science Fair, now advancing into first batch modular snap-in cartridges. Every round-up buys raw 316L stainless tubing and laboratory phase-change salts.
           </p>
 
           <div style={{
@@ -274,7 +274,7 @@ export default function RoundUpPage() {
           }}>
             <div>
               <span style={{ fontSize: '0.7rem', color: '#6B7280', display: 'block' }}>Specimen #0001</span>
-              <strong style={{ fontSize: '0.875rem', color: '#111827' }}>RESIP™ Straw</strong>
+              <strong style={{ fontSize: '0.875rem', color: '#111827' }}>redr.ink™ Origin</strong>
             </div>
             <span style={{ fontSize: '0.75rem', color: '#B45309', background: '#FEF3C7', border: '1px solid #FDE68A', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 700 }}>
               $0 / $2,500 (Pre-Launch)
@@ -299,7 +299,7 @@ export default function RoundUpPage() {
               Inspect Proof (Twin #0001) →
             </Link>
             <Link
-              href="/@john"
+              href="/@foxlendor"
               style={{
                 flex: 1,
                 textAlign: 'center',

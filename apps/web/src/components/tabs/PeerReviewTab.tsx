@@ -394,7 +394,7 @@ export default function PeerReviewTab({ twinId }: { twinId: string }) {
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#111827' }}>
-                    John Thompson (Inventor)
+                    Foxlendor (Inventor)
                   </span>
                   <span style={{ fontSize: '0.7rem', color: '#6B7280' }}>
                     · {item.replyDate}
