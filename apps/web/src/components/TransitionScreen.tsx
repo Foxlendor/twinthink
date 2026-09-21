@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import BrandVideoBanner from './BrandVideoBanner';
+
 
 export default function TransitionScreen() {
   const [mounted, setMounted] = useState(false);
@@ -79,10 +79,22 @@ export default function TransitionScreen() {
             justifyContent: 'center'
           }}
         >
-          {/* We scale the video so it completely covers the circle without letterboxing */}
-          <div style={{ position: 'absolute', width: '250%', height: '250%', opacity: 0.9 }}>
-            <BrandVideoBanner />
-          </div>
+          {/* We use object-fit cover so the video perfectly fills the circular peep hole and stays centered */}
+          <video
+            src="/twinthink.mp4?v=2"
+            autoPlay
+            loop
+            muted
+            playsInline
+            style={{
+              position: 'absolute',
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              opacity: 0.9,
+              mixBlendMode: 'multiply'
+            }}
+          />
           
           <div 
             style={{ 
