@@ -29,3 +29,9 @@ verify_state.json
 # Ignore Agent artifacts
 .agents/
 skills-lock.json
+
+# Ignore local archives and chat dumps
+ai chats/
+*.zip
+*.tar.gz
+.DS_Store
