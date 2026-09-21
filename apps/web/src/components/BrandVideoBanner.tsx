@@ -35,10 +35,11 @@ export default function BrandVideoBanner({
         position: 'relative',
         borderRadius: '20px',
         overflow: 'hidden',
-        border: '1px solid rgba(229, 231, 235, 0.8)',
-        background: '#0B0C10',
-        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)',
-        maxHeight: typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight
+        background: 'transparent',
+        aspectRatio: '1 / 1',
+        width: '100%',
+        maxWidth: '400px',
+        margin: '0 auto'
       }}
     >
       <video
@@ -51,19 +52,9 @@ export default function BrandVideoBanner({
         style={{
           width: '100%',
           height: '100%',
-          maxHeight: typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight,
-          objectFit: 'cover',
-          display: 'block'
-        }}
-      />
-
-      {/* Ambient gradient overlay */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.45) 100%)',
-          pointerEvents: 'none'
+          objectFit: 'contain',
+          display: 'block',
+          mixBlendMode: 'multiply'
         }}
       />
 
@@ -79,10 +70,10 @@ export default function BrandVideoBanner({
             gap: '0.45rem',
             padding: '0.3rem 0.75rem',
             borderRadius: '999px',
-            background: 'rgba(255, 255, 255, 0.18)',
+            background: 'rgba(17, 24, 39, 0.05)',
             backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            color: '#FFFFFF',
+            border: '1px solid rgba(17, 24, 39, 0.15)',
+            color: '#111827',
             fontSize: '0.72rem',
             fontWeight: 700,
             letterSpacing: '0.04em',
@@ -90,7 +81,7 @@ export default function BrandVideoBanner({
             fontFamily: 'var(--font-mono)'
           }}
         >
-          <Sparkles size={12} color="#F5B942" />
+          <Sparkles size={12} color="#B45309" />
           TwinThink Kinetic Identity
         </div>
       )}
@@ -103,10 +94,10 @@ export default function BrandVideoBanner({
           position: 'absolute',
           bottom: '0.85rem',
           right: '1rem',
-          background: 'rgba(0, 0, 0, 0.5)',
+          background: 'rgba(17, 24, 39, 0.08)',
           backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(255, 255, 255, 0.25)',
-          color: '#FFFFFF',
+          border: '1px solid rgba(17, 24, 39, 0.15)',
+          color: '#111827',
           borderRadius: '50%',
           width: '32px',
           height: '32px',
