@@ -41,7 +41,7 @@ export default function HomePage() {
             maxWidth: '600px'
           }}
         >
-          A living digital record for things people imagine, build, and test. Become a twinthink user today.
+          A living digital record for things people imagine, build, and test.
         </p>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'center' }}>
           <a
