@@ -215,7 +215,7 @@ export default function ArchivePage() {
                 redr.ink™ Origin (ReSip 2016)
               </h3>
               <p style={{ fontSize: '0.85rem', color: '#6B7280', lineHeight: 1.5, margin: 0, flex: 1 }}>
-                The original 2016 Science Fair prototype record that evolved into redr.ink™, protected by Private Private Access architecture.
+                The original Alpha R&D Phase prototype record that evolved into redr.ink™, protected by Private Private Access architecture.
               </p>
             </Link>
           </div>

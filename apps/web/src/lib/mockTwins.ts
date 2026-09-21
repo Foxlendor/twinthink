@@ -3,7 +3,7 @@ import { TwinData } from './types';
 export const CANONICAL_TWIN_0001: TwinData = {
   id: "0001",
   slug: "0001-resip-thermal-straw",
-  creator: "johne.boi",
+  creator: "anonymous",
   created_at: "2026-08-30 12:00:00",
   current_version: {
     semver: "1.0.0",

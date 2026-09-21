@@ -28,7 +28,7 @@ const INVENTOR_BUILD_PHOTOS: BuildPhotoItem[] = [
     title: 'Benchtop Prototyping & Nucleation Trigger Setup',
     stage: 'Phase 1: Physical Trigger Assembly',
     date: 'August 2026',
-    operator: '@johne.boi (Creator)',
+    operator: '@anonymous (Creator)',
     status: 'verified',
     description: 'Instrumenting the bistable stainless steel spring snap-disc into the sealed sodium acetate jacket for manual exothermic crystallization triggering.',
     specs: ['301 Full-Hard Stainless Spring Disc', '50g Analytical Sodium Acetate Trihydrate', 'Hermetic Seal Ring']
@@ -39,7 +39,7 @@ const INVENTOR_BUILD_PHOTOS: BuildPhotoItem[] = [
     title: 'Exothermic Latent Heat Crystallization Verification',
     stage: 'Phase 2: Thermal Yield Testing',
     date: 'August 2026',
-    operator: '@johne.boi (Creator)',
+    operator: '@anonymous (Creator)',
     status: 'verified',
     description: 'Instantaneous liquid-to-solid phase transition at 54.0°C. Verified 12.05 kJ latent heat release with K-type surface contact probe.',
     specs: ['T_peak: 54.0°C', 'Latent plateau duration: 190s', 'Zero battery/electrical input']
@@ -50,7 +50,7 @@ const INVENTOR_BUILD_PHOTOS: BuildPhotoItem[] = [
     title: 'Food-Grade 316L Conduit Tube & Internal Chamber',
     stage: 'Phase 3: Core Fluidics Assembly',
     date: 'August 2026',
-    operator: '@johne.boi (Creator)',
+    operator: '@anonymous (Creator)',
     status: 'verified',
     description: 'Precision 316L stainless steel central conduit tube (6mm ID x 7mm OD). Food-contact safe with conductive wall boundary layer.',
     specs: ['6mm ID / 7mm OD', '316L Stainless Steel', 'Food-contact passivation']
@@ -61,7 +61,7 @@ const INVENTOR_BUILD_PHOTOS: BuildPhotoItem[] = [
     title: 'Silicone Thermal Jacket & End-Cap Hermetic Sealing',
     stage: 'Phase 4: Outer Insulation & Ergonomics',
     date: 'August 2026',
-    operator: '@johne.boi (Creator)',
+    operator: '@anonymous (Creator)',
     status: 'verified',
     description: 'Outer medical-grade silicone sleeve installation with tactile grip ribbing and dual Viton O-ring hermetic retention caps.',
     specs: ['1.5mm wall silicone insulation', 'R_env: 2.20 K/W', 'Thermochromic status cue']
@@ -72,7 +72,7 @@ const INVENTOR_BUILD_PHOTOS: BuildPhotoItem[] = [
     title: 'Instrumented Dual-Thermocouple Flow Bench Rig',
     stage: 'Phase 5: Telemetry Calibration Rig',
     date: 'August 2026',
-    operator: '@johne.boi (Creator)',
+    operator: '@anonymous (Creator)',
     status: 'verified',
     description: 'Calibration flow bench setup measuring inlet fluid temp (T3), chamber wall (T2), and stream outlet (T4) during controlled sip cycles.',
     specs: ['Dual K-type thermocouples', 'Logged via microcontroller @ 10Hz', 'RMSE 1.6°C model correlation']
@@ -83,7 +83,7 @@ const INVENTOR_BUILD_PHOTOS: BuildPhotoItem[] = [
     title: 'Camp Stove Boiling Water Reset Cycle Test',
     stage: 'Phase 6: Backcountry Reusability',
     date: 'August 2026',
-    operator: '@johne.boi (Creator)',
+    operator: '@anonymous (Creator)',
     status: 'verified',
     description: 'Recharging the crystallized sodium acetate matrix in boiling water over a camping burner. Complete liquefaction achieved in 8.5 minutes.',
     specs: ['Boil reset time: 8.5 min', 'Sub-freezing supercooling stability', '100% reusable cycle']
@@ -94,7 +94,7 @@ const INVENTOR_BUILD_PHOTOS: BuildPhotoItem[] = [
     title: 'Final Outdoor Prototyping Assembly',
     stage: 'Phase 7: Integrated Field Prototype',
     date: 'August 2026',
-    operator: '@johne.boi (Creator)',
+    operator: '@anonymous (Creator)',
     status: 'verified',
     description: 'Fully assembled Resip™ Outdoor Edition straw ready for cold backcountry trail validation and user testing.',
     specs: ['Total Weight: 45g', 'BOM Cost: $4.50 USD', 'Solid-State & Battery-Free']
@@ -105,7 +105,7 @@ const INVENTOR_BUILD_PHOTOS: BuildPhotoItem[] = [
     title: 'Component Fit & Tolerance Bench Inspection',
     stage: 'Phase 8: Tolerance Verification',
     date: 'August 2026',
-    operator: '@johne.boi (Creator)',
+    operator: '@anonymous (Creator)',
     status: 'verified',
     description: 'Micrometer inspection of concentricity between outer silicone jacket and inner 316L conduit tube.',
     specs: ['Radial tolerance: ±0.08mm', 'Non-pressurized fluid seal', 'Ready for batch production']

@@ -29,8 +29,8 @@ export const metadata: Metadata = {
   title: "TWINTH.INK | Give an idea a reality.",
   description: "A living digital record for things people imagine, build, and test. Physical-to-twin protocol for hardware inventions.",
   keywords: ["twin", "thermodynamic simulation", "hardware engineering", "open source hardware", "Resip", "sodium acetate", "thermal straw"],
-  authors: [{ name: "johne.boi" }],
-  creator: "johne.boi",
+  authors: [{ name: "anonymous" }],
+  creator: "anonymous",
   publisher: "TwinThink",
   openGraph: {
     title: "TWINTH.INK | Give an idea a reality.",

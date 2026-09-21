@@ -61,7 +61,7 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
   // 020, 021, 022 (ScienceFair2016 Drawing, Chart, and Graph) and 003-1 (Ferro/Crystalline Display / phase change notes).
   const verifiedPrefixes = ['020-', '021-', '022-', '003-1-'];
   const VERIFIED_CAPTIONS: Record<string, string> = {
-    '020-e1628076238962.png': 'Original Hand Schematic (Science Fair 2016)',
+    '020-e1628076238962.png': 'Original Hand Schematic (Alpha R&D Phase)',
     '021-e1628076098948.png': 'Phase-Change Temperature Chart (2016)',
     '022-e1628076121431.png': 'Convective Heat Transfer Graph (2016)',
     '003-1-e1628076904523.png': 'Crystalline Phase Notes',
@@ -82,7 +82,7 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
       case 'verified_prototype':
         return { label: 'Verified Prototype → Twin #0001', bg: '#ECFDF5', color: '#059669', border: '#A7F3D0' };
       case 'ancestor_candidate':
-        return { label: 'Candidate Ancestor (2016 Science Fair)', bg: '#FFFBEB', color: '#D97706', border: '#FDE68A' };
+        return { label: 'Candidate Ancestor (Alpha R&D Phase)', bg: '#FFFBEB', color: '#D97706', border: '#FDE68A' };
       case 'not_established':
       default:
         return { label: 'Archive Note: Unestablished', bg: '#F3F4F6', color: '#6B7280', border: '#E5E7EB' };
@@ -177,10 +177,10 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
             </span>
           </div>
           <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', margin: '0 0 0.25rem 0' }}>
-            2016 Regional Science Fair Prior Art Provenance
+            2016 Regional R&D Prior Art Provenance
           </h4>
           <p style={{ fontSize: '0.8125rem', color: '#4B5563', margin: 0, lineHeight: 1.5 }}>
-            redr.ink™ (formerly RESIP™) traces directly to hand-drawn notebook diagrams, heat transfer curves, and phase-change salt experiments documented in johne.boi&apos;s original 2016 invention journal slides (020, 021, 022, and 003-1).
+            redr.ink™ (formerly RESIP™) traces directly to hand-drawn notebook diagrams, heat transfer curves, and phase-change salt experiments documented in anonymous&apos;s original 2016 invention journal slides (020, 021, 022, and 003-1).
           </p>
         </div>
       </div>
@@ -213,7 +213,7 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
             Specimen #0001 Provenance
           </span>
           <span style={{ fontSize: '0.8125rem', color: '#374151' }}>
-            Strictly isolated to <strong>4 verified slides</strong> (020, 021, 022 Science Fair 2016 &amp; 003-1 phase change).
+            Strictly isolated to <strong>4 verified slides</strong> (020, 021, 022 Alpha R&D Phase &amp; 003-1 phase change).
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -371,7 +371,7 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
                   PHASE 1 • NOVEMBER 2016
                 </span>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '0.6rem 0 0.2rem 0' }}>
-                  Science Fair Invention Journal & Ideation
+                  R&D Invention Journal & Ideation
                 </h3>
                 <p style={{ fontSize: '0.8125rem', color: '#6B7280', margin: 0 }}>
                   Early physical notebook pages containing hand-drawn thermodynamic concepts, fluid conduit geometry, and phase-change chemistry questions.

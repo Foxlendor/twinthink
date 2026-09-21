@@ -191,7 +191,7 @@ export default function CrowdfundingBar({
             <Flame size={12} /> PRE-LAUNCH · ACCEPTING FIRST PRODUCTION BACKERS
           </span>
           <span style={{ fontSize: '0.75rem', color: '#6B7280', fontWeight: 500 }}>
-            Ground truth hardware · Verified by 2016 Science Fair prior art &amp; real test logs
+            Ground truth hardware · Verified by Alpha R&D Phase prior art &amp; real test logs
           </span>
         </div>
 

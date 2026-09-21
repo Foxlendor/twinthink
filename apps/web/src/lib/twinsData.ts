@@ -4,7 +4,7 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
   'twizzlock': {
     id: 'twizzlock',
     slug: 'twizzlock',
-    creator: 'johne.boi',
+    creator: 'anonymous',
     created_at: '2026-09-20T18:00:00Z',
     lineage: {
       parent: null,
@@ -79,7 +79,7 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
   'redrink': {
     id: 'redrink',
     slug: 'redrink',
-    creator: 'johne.boi',
+    creator: 'anonymous',
     created_at: '2026-09-20T20:30:00Z',
     lineage: {
       parent: {
@@ -150,7 +150,7 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
   '0001': {
     id: '0001',
     slug: 'resip-straw',
-    creator: 'johne.boi',
+    creator: 'anonymous',
     created_at: '2016-04-12T00:00:00Z',
     lineage: {
       parent: null,
@@ -160,14 +160,14 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
     versions: [
       {
         semver: '1.0.0',
-        title: 'redr.ink™ Origin / ReSip Foundation (2016 Science Fair)',
+        title: 'redr.ink™ Origin / ReSip R&D Foundation (Alpha R&D Phase)',
         published_at: '2016-04-12T00:00:00Z'
       }
     ],
     current_version: {
       semver: '1.0.0',
-      title: 'redr.ink™ Origin / ReSip Foundation (2016)',
-      summary: 'The original 2016 Science Fair foundation record that pioneered battery-free phase-change thermal straws, rebranded and evolved into redr.ink™. Solid-state thermal exchange releasing 12.05 kJ latent heat.',
+      title: 'redr.ink™ Origin / ReSip R&D Foundation (2016)',
+      summary: 'The original Alpha R&D Phase foundation record that pioneered battery-free phase-change thermal straws, rebranded and evolved into redr.ink™. Solid-state thermal exchange releasing 12.05 kJ latent heat.',
       license: 'CERN-OHL-S-2.0',
       ontology_class: 'PhysicalObject',
       properties: [
@@ -208,7 +208,7 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
       disclosure: {
         public_preview_approved: true,
         level: 1,
-        public_note: 'Verified 2016 Science Fair invention record. Protected by PRIVATE ACCESS architecture.',
+        public_note: 'Verified Alpha R&D Phase invention record. Protected by PRIVATE ACCESS architecture.',
         public_tabs: ['object', 'evidence', 'history', 'community'],
         callouts: [
           { label: 'Latent Heat Capture', description: 'Uses sodium acetate trihydrate phase change to warm fluids.' },

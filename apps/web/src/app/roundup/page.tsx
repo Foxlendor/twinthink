@@ -250,7 +250,7 @@ export default function RoundUpPage() {
             </div>
             <div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 0.2rem 0', color: '#111827' }}>
-                johne.boi
+                anonymous
               </h3>
               <p style={{ fontSize: '0.8rem', color: '#6B7280', margin: 0 }}>
                 Building <strong>redr.ink™</strong> (Self-Heating Drink Straw)
@@ -259,7 +259,7 @@ export default function RoundUpPage() {
           </div>
 
           <p style={{ fontSize: '0.85rem', color: '#4B5563', lineHeight: 1.45, marginBottom: '1.25rem' }}>
-            Original concept formulated during the 2016 Science Fair, now advancing into first batch modular snap-in cartridges. Every round-up buys raw 316L stainless tubing and laboratory phase-change salts.
+            Original concept formulated during the Alpha R&D Phase, now advancing into first batch modular snap-in cartridges. Every round-up buys raw 316L stainless tubing and laboratory phase-change salts.
           </p>
 
           <div style={{
@@ -299,7 +299,7 @@ export default function RoundUpPage() {
               Inspect Proof (Twin #0001) →
             </Link>
             <Link
-              href="/@johne.boi"
+              href="/@anonymous"
               style={{
                 flex: 1,
                 textAlign: 'center',
