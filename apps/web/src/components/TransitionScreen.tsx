@@ -15,12 +15,12 @@ export default function TransitionScreen() {
     // Hold the loading screen for a short moment, then trigger the reveal
     const revealTimer = setTimeout(() => {
       setIsRevealing(true);
-    }, 800); // How long the transition logo stays visible
+    }, 2500); // How long the transition logo stays visible
 
     // After the reveal animation finishes, completely hide the overlay so it doesn't block clicks
     const hideTimer = setTimeout(() => {
       setIsHidden(true);
-    }, 2000); // 800 + 1200ms animation
+    }, 3700); // 2500 + 1200ms animation
 
     return () => {
       clearTimeout(revealTimer);
@@ -95,24 +95,6 @@ export default function TransitionScreen() {
               mixBlendMode: 'multiply'
             }}
           />
-          
-          <div 
-            style={{ 
-              position: 'relative', 
-              zIndex: 10, 
-              color: '#000000', 
-              fontWeight: 900, 
-              fontSize: '1.25rem', 
-              letterSpacing: '0.15em',
-              textTransform: 'lowercase',
-              background: 'rgba(255, 255, 255, 0.6)',
-              padding: '0.2rem 0.75rem',
-              borderRadius: '4px',
-              backdropFilter: 'blur(4px)'
-            }}
-          >
-            twin think
-          </div>
         </div>
       </div>
     </div>
