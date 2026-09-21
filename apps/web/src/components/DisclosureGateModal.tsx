@@ -1,16 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Lock, 
   Unlock, 
   KeyRound, 
   X, 
   Download, 
-  Eye
+  Eye,
+  CreditCard
 } from 'lucide-react';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
 import { usePitchAccess } from '@/lib/usePitchAccess';
+
+// Initialize Stripe outside component to avoid recreating the object on every render
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_TYooMQauvdEDq54NiTphI7jx');
 
 interface DisclosureGateModalProps {
   twinId: string;
@@ -19,7 +25,8 @@ interface DisclosureGateModalProps {
   onVaultUnlocked?: () => void;
 }
 
-export default function DisclosureGateModal({ 
+// Inner form component that has access to Stripe hooks
+function DisclosureGateModalContent({ 
   twinId, 
   creator, 
   onClose,
@@ -29,9 +36,12 @@ export default function DisclosureGateModal({
   const [legalName, setLegalName] = useState('');
   const [orgName, setOrgName] = useState('');
   const [acknowledgedNDA, setAcknowledgedNDA] = useState(false);
-  const [escrowDeposited, setEscrowDeposited] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
   const [signatureHash, setSignatureHash] = useState<string | null>(null);
+  const [stripeError, setStripeError] = useState<string | null>(null);
+
+  const stripe = useStripe();
+  const elements = useElements();
 
   // Pitch & Investor Access Code State
   const { isUnlocked, activeCode, unlockWithCode, relock, createPitchCode } = usePitchAccess();
@@ -42,7 +52,7 @@ export default function DisclosureGateModal({
   const [newGeneratedCode, setNewGeneratedCode] = useState<string | null>(null);
 
   // Auto-switch to vault if already unlocked via pitch pass
-  React.useEffect(() => {
+  useEffect(() => {
     if (isUnlocked && currentTier !== 'vault') {
       setCurrentTier('vault');
     }
@@ -76,21 +86,80 @@ export default function DisclosureGateModal({
     setPitchInput(code);
   };
 
-  const handleSignNDA = (e: React.FormEvent) => {
+  const handleSignNDA = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!acknowledgedNDA || !legalName.trim()) return;
+    if (!acknowledgedNDA || !legalName.trim() || !stripe || !elements) return;
 
     setIsSigning(true);
-    setTimeout(() => {
-      // Deterministic signature simulation for Private NDA
-      const fakeSig = `sig_ed25519_${Math.random().toString(16).substring(2, 10)}${Math.random().toString(16).substring(2, 10)}`;
-      setSignatureHash(fakeSig);
-      setIsSigning(false);
-      setCurrentTier('vault');
-      if (onVaultUnlocked) {
-        onVaultUnlocked();
+    setStripeError(null);
+
+    try {
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) throw new Error("Card element not found");
+
+      // 1. Get the zero-dollar SetupIntent client secret from our backend
+      const res = await fetch('/api/verify-identity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: legalName })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to initialize verification.');
       }
-    }, 1200);
+
+      // 2. Confirm the card details with Stripe (Zero-Dollar Auth)
+      const { error, setupIntent } = await stripe.confirmCardSetup(data.clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name: legalName,
+          },
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Identity verification failed.');
+      }
+
+      if (setupIntent && setupIntent.status === 'succeeded') {
+        // Verification succeeded!
+        const fakeSig = `sig_verify_${setupIntent.id.substring(0, 8)}_${Math.random().toString(16).substring(2, 10)}`;
+        setSignatureHash(fakeSig);
+        setCurrentTier('vault');
+        if (onVaultUnlocked) {
+          onVaultUnlocked();
+        }
+      } else {
+        throw new Error('Verification incomplete.');
+      }
+
+    } catch (err: any) {
+      console.error(err);
+      setStripeError(err.message || 'An error occurred during verification.');
+    } finally {
+      setIsSigning(false);
+    }
+  };
+
+  // CardElement styling to match our minimalist theme
+  const CARD_ELEMENT_OPTIONS = {
+    style: {
+      base: {
+        color: '#111827',
+        fontFamily: '"Inter", var(--font-sans)',
+        fontSmoothing: 'antialiased',
+        fontSize: '14px',
+        '::placeholder': {
+          color: '#9CA3AF'
+        }
+      },
+      invalid: {
+        color: '#DC2626',
+        iconColor: '#DC2626'
+      }
+    }
   };
 
   return (
@@ -249,7 +318,7 @@ export default function DisclosureGateModal({
               </h3>
             </div>
             <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.5, marginBottom: '1.25rem' }}>
-              To protect @{creator} from automated scraper harvesting and IP dilution, unlock full specs via an authorized Pitch Code or complete the mutual agreement.
+              To protect @{creator} from automated scraper harvesting and IP dilution, unlock full specs via an authorized Pitch Code or complete the mutual agreement via identity verification.
             </p>
 
             {/* PITCH / INVESTOR ACCESS PASS CARD (Light Minimalist Theme) */}
@@ -412,7 +481,7 @@ export default function DisclosureGateModal({
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1.25rem 0 1rem' }}>
               <div style={{ flex: 1, height: '1px', background: '#E5E7EB' }} />
               <span style={{ fontSize: '0.7rem', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Or Sign Mutual NDA
+                Or Sign Mutual NDA via Card Identity
               </span>
               <div style={{ flex: 1, height: '1px', background: '#E5E7EB' }} />
             </div>
@@ -446,20 +515,32 @@ export default function DisclosureGateModal({
                 </div>
               </div>
 
-              {/* Escrow Option */}
-              <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '0.85rem 1rem', marginBottom: '1.25rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', fontSize: '0.8125rem', color: '#374151', fontWeight: 600 }}>
-                  <input
-                    type="checkbox"
-                    checked={escrowDeposited}
-                    onChange={e => setEscrowDeposited(e.target.checked)}
-                  />
-                  <span>Attach Escrow Security Deposit</span>
+              {/* Zero-Dollar Card Verification via Stripe */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#374151', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
+                  <CreditCard size={14} color="#6B7280" /> Zero-Dollar Identity Verification (Auth Only)
                 </label>
+                <div style={{ 
+                  background: '#FFFFFF', 
+                  border: '1px solid #D1D5DB', 
+                  borderRadius: '8px', 
+                  padding: '0.75rem',
+                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
+                }}>
+                  <CardElement options={CARD_ELEMENT_OPTIONS} />
+                </div>
+                <p style={{ fontSize: '0.7rem', color: '#6B7280', marginTop: '0.4rem' }}>
+                  Your card is securely verified via Stripe AVS and fraud checks. You will not be charged.
+                </p>
+                {stripeError && (
+                  <div style={{ color: '#DC2626', fontSize: '0.75rem', marginTop: '0.4rem', fontWeight: 600 }}>
+                    {stripeError}
+                  </div>
+                )}
               </div>
 
               {/* Agreement Checkbox */}
-              <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ marginBottom: '1.5rem', background: '#F9FAFB', border: '1px solid #E5E7EB', padding: '0.85rem', borderRadius: '8px' }}>
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', cursor: 'pointer', fontSize: '0.8125rem', color: '#4B5563', lineHeight: 1.4 }}>
                   <input
                     type="checkbox"
@@ -476,7 +557,7 @@ export default function DisclosureGateModal({
 
               <button
                 type="submit"
-                disabled={isSigning || !acknowledgedNDA || !legalName.trim()}
+                disabled={isSigning || !acknowledgedNDA || !legalName.trim() || !stripe}
                 style={{
                   width: '100%',
                   background: isSigning ? '#4B5563' : '#111827',
@@ -494,10 +575,10 @@ export default function DisclosureGateModal({
                 }}
               >
                 {isSigning ? (
-                  <>Generating Keypair &amp; Signing...</>
+                  <>Verifying Identity &amp; Signing...</>
                 ) : (
                   <>
-                    <KeyRound size={16} /> Digitally Sign NDA &amp; Unlock Records
+                    <KeyRound size={16} /> Authenticate Card &amp; Sign NDA
                   </>
                 )}
               </button>
@@ -518,7 +599,7 @@ export default function DisclosureGateModal({
 
             <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.5rem', fontSize: '0.75rem', color: '#065F46', fontFamily: 'var(--font-mono)' }}>
               Signed by: {legalName} {orgName ? `(${orgName})` : ''}<br />
-              Signature: {signatureHash || 'sig_ed25519_verified_offline'}
+              Signature ID: {signatureHash}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.75rem' }}>
@@ -574,5 +655,14 @@ export default function DisclosureGateModal({
 
       </div>
     </div>
+  );
+}
+
+// Wrapper component to provide the Stripe Elements context
+export default function DisclosureGateModal(props: DisclosureGateModalProps) {
+  return (
+    <Elements stripe={stripePromise}>
+      <DisclosureGateModalContent {...props} />
+    </Elements>
   );
 }
