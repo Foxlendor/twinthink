@@ -70,7 +70,7 @@ export async function GET(
     return NextResponse.json({ error: "Twin not found" }, { status: 404 });
   }
 
-  // 4. Server-Side Dark Capsule Data Masking
+  // 4. Server-Side PRIVATE ACCESS Data Masking
   // If NOT pitch authorized, mask all private assets, proprietary supplier trees, and confidential tolerances
   if (!authorized) {
     const maskedTwin = {
@@ -82,7 +82,7 @@ export async function GET(
           vault_access: 'RESTRICTED_DARK_CAPSULE',
           server_enforced: true,
           authorized: false,
-          unlock_hint: 'Provide valid ?pitch=<CODE> or x-pitch-code header to unlock Level-3 Vault'
+          unlock_hint: 'Provide valid ?pitch=<CODE> or x-pitch-code header to unlock Private Records'
         },
         // Strip private assets (e.g. raw .step files, internal tooling drafts)
         assets: (rawTwin.current_version?.assets || []).filter(

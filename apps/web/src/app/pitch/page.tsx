@@ -39,18 +39,16 @@ export default function PitchAccessPage() {
     >
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '2rem', letterSpacing: '-1px' }}>
-          Pitch & Investor Paywall Bypass
+          Pitch & Investor Access
         </h1>
         
-        {/* Pitch / Investor Unlock Bar */}
+        {/* Pitch / Investor Unlock Bar (Light Minimalist Theme) */}
         <div
           style={{
             marginBottom: '3rem',
-            background: isUnlocked 
-              ? 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)' 
-              : 'linear-gradient(135deg, #111827 0%, #1F2937 100%)',
-            color: isUnlocked ? '#065F46' : '#FFFFFF',
-            borderRadius: '20px',
+            background: '#FFFFFF',
+            color: '#111827',
+            borderRadius: '16px',
             padding: '1.5rem 2rem',
             display: 'flex',
             alignItems: 'center',
@@ -58,7 +56,7 @@ export default function PitchAccessPage() {
             flexWrap: 'wrap',
             gap: '1.25rem',
             boxShadow: '0 8px 30px rgba(0,0,0,0.06)',
-            border: isUnlocked ? '1px solid #A7F3D0' : '1px solid #374151'
+            border: isUnlocked ? '1px solid #10B981' : '1px solid #E5E7EB'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
@@ -67,10 +65,11 @@ export default function PitchAccessPage() {
                 width: '42px',
                 height: '42px',
                 borderRadius: '12px',
-                background: isUnlocked ? '#10B981' : 'rgba(255,255,255,0.1)',
+                background: isUnlocked ? '#ECFDF5' : '#F3F4F6',
+                border: isUnlocked ? '1px solid #A7F3D0' : '1px solid #E5E7EB',
                 display: 'grid',
                 placeItems: 'center',
-                color: '#FFFFFF'
+                color: isUnlocked ? '#059669' : '#4B5563'
               }}
             >
               {isUnlocked ? <Unlock size={22} /> : <Key size={22} />}
@@ -79,10 +78,10 @@ export default function PitchAccessPage() {
               <div style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.2px' }}>
                 {isUnlocked ? 'Pitch & Investor Pass Active' : 'Restricted Access'}
               </div>
-              <div style={{ fontSize: '0.85rem', opacity: 0.85, marginTop: '0.2rem' }}>
+              <div style={{ fontSize: '0.85rem', color: '#4B5563', marginTop: '0.2rem' }}>
                 {isUnlocked 
-                  ? `Authenticated with code: ${activeCode} — Full Vault unlocked`
-                  : 'Have a pitch invitation code? Enter it below to unlock all private engineering vaults.'}
+                  ? `Authenticated with code: ${activeCode} — Full private records unlocked.`
+                  : 'Have a pitch invitation code? Enter it below to unlock all private engineering records.'}
               </div>
             </div>
           </div>
@@ -96,8 +95,8 @@ export default function PitchAccessPage() {
                     padding: '0.45rem 0.85rem',
                     borderRadius: '8px',
                     background: '#FFFFFF',
-                    border: '1px solid #A7F3D0',
-                    color: '#065F46',
+                    border: '1px solid #D1D5DB',
+                    color: '#111827',
                     fontSize: '0.78rem',
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -113,15 +112,15 @@ export default function PitchAccessPage() {
                   style={{
                     padding: '0.45rem 0.85rem',
                     borderRadius: '8px',
-                    background: 'rgba(6, 95, 70, 0.1)',
-                    border: 'none',
-                    color: '#065F46',
+                    background: '#FEF2F2',
+                    border: '1px solid #FCA5A5',
+                    color: '#DC2626',
                     fontSize: '0.78rem',
                     fontWeight: 700,
                     cursor: 'pointer'
                   }}
                 >
-                  Re-lock Vault
+                  Re-lock Access
                 </button>
               </div>
             ) : (
@@ -134,9 +133,9 @@ export default function PitchAccessPage() {
                   style={{
                     padding: '0.5rem 0.85rem',
                     borderRadius: '8px',
-                    border: '1px solid rgba(255,255,255,0.25)',
-                    background: 'rgba(255,255,255,0.08)',
-                    color: '#FFFFFF',
+                    border: '1px solid #D1D5DB',
+                    background: '#FFFFFF',
+                    color: '#111827',
                     fontSize: '0.82rem',
                     fontFamily: 'var(--font-mono)',
                     width: '210px',
@@ -148,8 +147,8 @@ export default function PitchAccessPage() {
                   style={{
                     padding: '0.5rem 1rem',
                     borderRadius: '8px',
-                    background: '#FFFFFF',
-                    color: '#111827',
+                    background: '#111827',
+                    color: '#FFFFFF',
                     border: 'none',
                     fontWeight: 700,
                     fontSize: '0.82rem',
@@ -170,8 +169,9 @@ export default function PitchAccessPage() {
               padding: '0.6rem 1rem',
               borderRadius: '8px',
               fontSize: '0.82rem',
-              background: pitchStatus.success ? '#D1FAE5' : '#FEE2E2',
+              background: pitchStatus.success ? '#ECFDF5' : '#FEF2F2',
               color: pitchStatus.success ? '#065F46' : '#991B1B',
+              border: pitchStatus.success ? '1px solid #A7F3D0' : '1px solid #FCA5A5',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'

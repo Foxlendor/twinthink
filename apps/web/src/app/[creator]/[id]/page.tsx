@@ -42,7 +42,7 @@ export default async function CreatorTwinPage({
 
   return (
     <div style={{ width: '100%' }}>
-      {/* Dark Capsule Direct-Link Trajectory Badge */}
+      {/* Private Access Trajectory Badge */}
       <div style={{
         maxWidth: '1120px',
         margin: '0.75rem auto 0',
@@ -62,7 +62,7 @@ export default async function CreatorTwinPage({
           fontWeight: 700,
           fontSize: '0.7rem'
         }}>
-          DARK CAPSULE
+          PRIVATE ACCESS
         </span>
         <span>Direct Trajectory: <strong>{creator}/{id}</strong> (Encrypted Capsule)</span>
       </div>

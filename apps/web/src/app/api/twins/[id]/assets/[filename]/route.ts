@@ -40,7 +40,7 @@ export async function GET(
   if (targetAsset && targetAsset.publication_scope === 'private' && !authorized) {
     return NextResponse.json(
       {
-        error: "Forbidden: Dark Capsule Level-3 Vault Restricted",
+        error: "Forbidden: PRIVATE ACCESS Private Records Restricted",
         asset: filename,
         twin_id: id,
         access_requirement: "Valid pitch pass or cryptographic release key required",

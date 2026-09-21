@@ -109,7 +109,7 @@ function RestrictedAccessCard({
         Restricted Engineering Detail
       </h2>
       <p style={{ margin: '0 auto 1.5rem', maxWidth: '520px', color: '#6B7280', lineHeight: 1.6, fontSize: '0.88rem' }}>
-        CAD solid models, granular BOM suppliers, manufacturing tooling paths, and laboratory logs remain controlled by the inventor under Dark Capsule IP protection.
+        CAD solid models, granular BOM suppliers, manufacturing tooling paths, and laboratory logs remain controlled by the inventor under Private Access protection.
       </p>
 
       {/* Instant Pitch Pass Unlock Form */}
@@ -214,7 +214,7 @@ function RestrictedAccessCard({
             cursor: 'pointer'
           }}
         >
-          Sign P2P NDA for Permanent Access
+          Sign Mutual NDA for Permanent Access
         </button>
       </div>
     </div>
@@ -440,7 +440,7 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }}>
                 <Unlock size={15} color="#059669" />
                 <span>
-                  Pitch &amp; Vault Access Active {activeCode ? `(${activeCode})` : ''} — Level-3 Engineering Disclosed
+                  Pitch &amp; Vault Access Active {activeCode ? `(${activeCode})` : ''} — Private Engineering Disclosed
                 </span>
               </div>
               <button

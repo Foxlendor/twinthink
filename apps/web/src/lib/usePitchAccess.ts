@@ -111,7 +111,7 @@ export function usePitchAccess() {
 
       return {
         success: true,
-        message: `Pitch Code "${normalized}" verified. Level-3 Engineering Vault and full specs are now unlocked.`
+        message: `Pitch Code "${normalized}" verified. Private Engineering Vault and full specs are now unlocked.`
       };
     }
 

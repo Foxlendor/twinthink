@@ -65,7 +65,7 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
       disclosure: {
         public_preview_approved: true,
         level: 2,
-        public_note: 'Public concept preview with interactive 3D physics simulation. Production tooling and supplier pricing protected under Level-3 Pitch Pass.',
+        public_note: 'Public concept preview with interactive 3D physics simulation. Production tooling and supplier pricing protected under Private Pitch Pass.',
         public_tabs: ['object', 'behavior', 'history', 'community'],
         callouts: [
           { label: 'Bottle-as-Piston Pumping', description: 'Eliminates separate external bulbs or CO2 charger cartridges.' },
@@ -208,7 +208,7 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
       disclosure: {
         public_preview_approved: true,
         level: 1,
-        public_note: 'Verified 2016 Science Fair invention record. Protected by Dark Capsule architecture.',
+        public_note: 'Verified 2016 Science Fair invention record. Protected by PRIVATE ACCESS architecture.',
         public_tabs: ['object', 'evidence', 'history', 'community'],
         callouts: [
           { label: 'Latent Heat Capture', description: 'Uses sodium acetate trihydrate phase change to warm fluids.' },

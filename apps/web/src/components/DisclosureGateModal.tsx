@@ -5,15 +5,9 @@ import {
   Lock, 
   Unlock, 
   KeyRound, 
-  ShieldCheck, 
-  FileText, 
-  CheckCircle2, 
   X, 
   Download, 
-  DollarSign, 
-  AlertCircle,
-  Eye,
-  Layers
+  Eye
 } from 'lucide-react';
 
 import { usePitchAccess } from '@/lib/usePitchAccess';
@@ -40,7 +34,7 @@ export default function DisclosureGateModal({
   const [signatureHash, setSignatureHash] = useState<string | null>(null);
 
   // Pitch & Investor Access Code State
-  const { isUnlocked, activeCode, unlockWithCode, relock, createPitchCode, validCodes } = usePitchAccess();
+  const { isUnlocked, activeCode, unlockWithCode, relock, createPitchCode } = usePitchAccess();
   const [pitchInput, setPitchInput] = useState('');
   const [pitchMessage, setPitchMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showCreatorTools, setShowCreatorTools] = useState(false);
@@ -88,7 +82,7 @@ export default function DisclosureGateModal({
 
     setIsSigning(true);
     setTimeout(() => {
-      // Deterministic Ed25519-style signature simulation for P2P NDA
+      // Deterministic signature simulation for Private NDA
       const fakeSig = `sig_ed25519_${Math.random().toString(16).substring(2, 10)}${Math.random().toString(16).substring(2, 10)}`;
       setSignatureHash(fakeSig);
       setIsSigning(false);
@@ -104,7 +98,7 @@ export default function DisclosureGateModal({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0, 0, 0, 0.65)',
+        background: 'rgba(0, 0, 0, 0.45)',
         backdropFilter: 'blur(6px)',
         zIndex: 120,
         display: 'flex',
@@ -117,14 +111,15 @@ export default function DisclosureGateModal({
       <div 
         style={{
           background: '#FFFFFF',
-          borderRadius: '20px',
+          borderRadius: '16px',
           maxWidth: '680px',
           width: '100%',
           maxHeight: '90vh',
           overflowY: 'auto',
           padding: '2.25rem',
-          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.25)',
-          position: 'relative'
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.1)',
+          position: 'relative',
+          border: '1px solid #E5E7EB'
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -138,11 +133,11 @@ export default function DisclosureGateModal({
         {/* Tier Header Navigation */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
           <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.75px', fontFamily: 'var(--font-mono)' }}>
-            DISCLOSURE GATE
+            ACCESS RESTRICTED
           </span>
-          <span style={{ color: '#9CA3AF' }}>/</span>
+          <span style={{ color: '#E5E7EB' }}>/</span>
           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#111827' }}>
-            Dark Capsule Protection Architecture
+            Private Records Authorization
           </span>
         </div>
 
@@ -159,7 +154,7 @@ export default function DisclosureGateModal({
               background: currentTier === 'public' ? '#111827' : '#F9FAFB',
               color: currentTier === 'public' ? '#FFFFFF' : '#4B5563',
               border: `1px solid ${currentTier === 'public' ? '#111827' : '#E5E7EB'}`,
-              borderRadius: '10px',
+              borderRadius: '8px',
               padding: '0.65rem 0.5rem',
               fontSize: '0.75rem',
               fontWeight: 700,
@@ -175,7 +170,7 @@ export default function DisclosureGateModal({
               background: currentTier === 'access_gate' ? '#111827' : '#F9FAFB',
               color: currentTier === 'access_gate' ? '#FFFFFF' : '#4B5563',
               border: `1px solid ${currentTier === 'access_gate' ? '#111827' : '#E5E7EB'}`,
-              borderRadius: '10px',
+              borderRadius: '8px',
               padding: '0.65rem 0.5rem',
               fontSize: '0.75rem',
               fontWeight: 700,
@@ -183,7 +178,7 @@ export default function DisclosureGateModal({
               textAlign: 'center'
             }}
           >
-            2. Access Gate (P2P NDA)
+            2. Private Access Gate
           </button>
           <button
             onClick={() => signatureHash && setCurrentTier('vault')}
@@ -191,7 +186,7 @@ export default function DisclosureGateModal({
               background: currentTier === 'vault' ? '#059669' : '#F9FAFB',
               color: currentTier === 'vault' ? '#FFFFFF' : signatureHash ? '#059669' : '#9CA3AF',
               border: `1px solid ${currentTier === 'vault' ? '#059669' : '#E5E7EB'}`,
-              borderRadius: '10px',
+              borderRadius: '8px',
               padding: '0.65rem 0.5rem',
               fontSize: '0.75rem',
               fontWeight: 700,
@@ -199,7 +194,7 @@ export default function DisclosureGateModal({
               textAlign: 'center'
             }}
           >
-            3. Decrypted Vault
+            3. Decrypted Records
           </button>
         </div>
 
@@ -211,7 +206,7 @@ export default function DisclosureGateModal({
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Public Disclosure Tier</h3>
             </div>
             <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.5, marginBottom: '1.5rem' }}>
-              Unauthenticated viewers and web crawlers are restricted to this tier. High-resolution CAD, granular BOM costs, and manufacturing recipes remain strictly dark.
+              Unauthenticated viewers and web crawlers are restricted to this tier. High-resolution CAD, granular BOM costs, and manufacturing recipes remain strictly private.
             </p>
 
             <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
@@ -244,53 +239,52 @@ export default function DisclosureGateModal({
           </div>
         )}
 
-        {/* TIER 2: Access Gate (P2P NDA + Escrow) */}
+        {/* TIER 2: Access Gate (Private NDA) */}
         {currentTier === 'access_gate' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#111827', marginBottom: '0.75rem' }}>
               <Lock size={20} />
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>
-                P2P Non-Disclosure &amp; Escrow Gate
+                Private Access Gate
               </h3>
             </div>
             <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.5, marginBottom: '1.25rem' }}>
-              To protect @{creator} from automated scraper harvesting and IP dilution, unlock full vault specs via an authorized Pitch Code or complete the peer-to-peer agreement.
+              To protect @{creator} from automated scraper harvesting and IP dilution, unlock full specs via an authorized Pitch Code or complete the mutual agreement.
             </p>
 
-            {/* PITCH / INVESTOR ACCESS PASS CARD */}
+            {/* PITCH / INVESTOR ACCESS PASS CARD (Light Minimalist Theme) */}
             <div style={{
-              background: 'linear-gradient(135deg, #1E1B4B 0%, #0F172A 100%)',
-              border: '1px solid #6366F1',
-              borderRadius: '14px',
+              background: '#FAFAFA',
+              border: '1px solid #E5E7EB',
+              borderRadius: '12px',
               padding: '1.25rem',
-              color: '#FFFFFF',
-              marginBottom: '1.5rem',
-              boxShadow: '0 8px 24px rgba(99, 102, 241, 0.18)'
+              color: '#111827',
+              marginBottom: '1.5rem'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ background: '#4F46E5', padding: '0.35rem', borderRadius: '8px', display: 'grid', placeItems: 'center' }}>
-                    <KeyRound size={16} color="#FFFFFF" />
+                  <span style={{ background: '#F3F4F6', border: '1px solid #E5E7EB', padding: '0.35rem', borderRadius: '8px', display: 'grid', placeItems: 'center' }}>
+                    <KeyRound size={16} color="#111827" />
                   </span>
                   <div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 800, letterSpacing: '-0.2px' }}>
                       Pitch &amp; Investor Pass
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: '#C7D2FE' }}>
-                      Instant Level-3 Vault &amp; Full BOM Unlock for Pitch Meetings
+                    <div style={{ fontSize: '0.72rem', color: '#4B5563' }}>
+                      Instant Private Vault &amp; Full BOM Unlock for Pitch Meetings
                     </div>
                   </div>
                 </div>
 
                 {isUnlocked ? (
-                  <span style={{ background: '#059669', color: '#FFFFFF', fontSize: '0.68rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: '999px', textTransform: 'uppercase' }}>
+                  <span style={{ background: '#ECFDF5', color: '#065F46', fontSize: '0.68rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: '999px', textTransform: 'uppercase', border: '1px solid #A7F3D0' }}>
                     Pass Active ({activeCode})
                   </span>
                 ) : (
                   <button
                     type="button"
                     onClick={() => setShowCreatorTools(!showCreatorTools)}
-                    style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: '#E0E7FF', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.7rem', cursor: 'pointer' }}
+                    style={{ background: '#FFFFFF', border: '1px solid #D1D5DB', color: '#4B5563', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.7rem', cursor: 'pointer' }}
                   >
                     {showCreatorTools ? 'Hide Pitch Tools' : 'Host / Pitcher Tools'}
                   </button>
@@ -311,9 +305,9 @@ export default function DisclosureGateModal({
                     flex: 1,
                     padding: '0.65rem 0.85rem',
                     borderRadius: '8px',
-                    border: '1px solid #475569',
-                    background: '#0F172A',
-                    color: '#FFFFFF',
+                    border: '1px solid #D1D5DB',
+                    background: '#FFFFFF',
+                    color: '#111827',
                     fontSize: '0.85rem',
                     fontFamily: 'var(--font-mono)',
                     letterSpacing: '0.5px'
@@ -322,7 +316,7 @@ export default function DisclosureGateModal({
                 <button
                   type="submit"
                   style={{
-                    background: '#6366F1',
+                    background: '#111827',
                     color: '#FFFFFF',
                     border: 'none',
                     borderRadius: '8px',
@@ -333,7 +327,7 @@ export default function DisclosureGateModal({
                     whiteSpace: 'nowrap'
                   }}
                 >
-                  Unlock Vault
+                  Unlock Records
                 </button>
               </form>
 
@@ -341,7 +335,7 @@ export default function DisclosureGateModal({
                 <div style={{
                   marginTop: '0.65rem',
                   fontSize: '0.75rem',
-                  color: pitchMessage.type === 'success' ? '#34D399' : '#F87171',
+                  color: pitchMessage.type === 'success' ? '#059669' : '#DC2626',
                   fontWeight: 600
                 }}>
                   {pitchMessage.text}
@@ -349,7 +343,7 @@ export default function DisclosureGateModal({
               )}
 
               {/* Sample codes helper chips */}
-              <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.7rem', color: '#94A3B8' }}>
+              <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.7rem', color: '#6B7280' }}>
                 <span>Verified codes:</span>
                 {['PITCH2026', 'INVESTOR', 'FOUNDER', 'TWINTHINK'].map(code => (
                   <button
@@ -360,9 +354,9 @@ export default function DisclosureGateModal({
                       unlockWithCode(code);
                     }}
                     style={{
-                      background: 'rgba(255,255,255,0.08)',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      color: '#E2E8F0',
+                      background: '#F3F4F6',
+                      border: '1px solid #E5E7EB',
+                      color: '#4B5563',
                       padding: '0.15rem 0.45rem',
                       borderRadius: '4px',
                       fontFamily: 'var(--font-mono)',
@@ -375,24 +369,24 @@ export default function DisclosureGateModal({
                 ))}
               </div>
 
-              {/* Pitch Host Tools (Generator & Link Copy) */}
+              {/* Pitch Host Tools */}
               {showCreatorTools && (
-                <div style={{ marginTop: '1rem', paddingTop: '0.85rem', borderTop: '1px solid rgba(255,255,255,0.15)', fontSize: '0.75rem' }}>
-                  <div style={{ fontWeight: 700, color: '#FCD34D', marginBottom: '0.4rem' }}>
+                <div style={{ marginTop: '1rem', paddingTop: '0.85rem', borderTop: '1px solid #E5E7EB', fontSize: '0.75rem' }}>
+                  <div style={{ fontWeight: 700, color: '#4B5563', marginBottom: '0.4rem' }}>
                     Founder Pitch Deck &amp; Meeting Controls:
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                     <button
                       type="button"
                       onClick={handleGenerateCode}
-                      style={{ background: '#3B82F6', color: '#FFF', border: 'none', padding: '0.4rem 0.75rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}
+                      style={{ background: '#F3F4F6', color: '#111827', border: '1px solid #D1D5DB', padding: '0.4rem 0.75rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}
                     >
                       Generate New One-Time Code
                     </button>
                     <button
                       type="button"
                       onClick={() => handleCopyPitchLink(pitchInput || 'PITCH2026')}
-                      style={{ background: 'rgba(255,255,255,0.15)', color: '#FFF', border: 'none', padding: '0.4rem 0.75rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}
+                      style={{ background: '#F3F4F6', color: '#111827', border: '1px solid #D1D5DB', padding: '0.4rem 0.75rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}
                     >
                       {copiedLink ? 'Copied 1-Click Link!' : 'Copy 1-Click Pitch URL'}
                     </button>
@@ -400,15 +394,15 @@ export default function DisclosureGateModal({
                       <button
                         type="button"
                         onClick={relock}
-                        style={{ background: '#EF4444', color: '#FFF', border: 'none', padding: '0.4rem 0.75rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}
+                        style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5', padding: '0.4rem 0.75rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}
                       >
                         Lock / Reset Pitch State
                       </button>
                     )}
                   </div>
                   {newGeneratedCode && (
-                    <div style={{ color: '#6EE7B7', fontFamily: 'var(--font-mono)' }}>
-                      New Code Ready: <strong>{newGeneratedCode}</strong> (active for pitch audience)
+                    <div style={{ color: '#059669', fontFamily: 'var(--font-mono)' }}>
+                      New Code Ready: <strong>{newGeneratedCode}</strong>
                     </div>
                   )}
                 </div>
@@ -418,7 +412,7 @@ export default function DisclosureGateModal({
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1.25rem 0 1rem' }}>
               <div style={{ flex: 1, height: '1px', background: '#E5E7EB' }} />
               <span style={{ fontSize: '0.7rem', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Or Sign Mutual P2P NDA
+                Or Sign Mutual NDA
               </span>
               <div style={{ flex: 1, height: '1px', background: '#E5E7EB' }} />
             </div>
@@ -453,14 +447,14 @@ export default function DisclosureGateModal({
               </div>
 
               {/* Escrow Option */}
-              <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '10px', padding: '0.85rem 1rem', marginBottom: '1.25rem' }}>
+              <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '0.85rem 1rem', marginBottom: '1.25rem' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', fontSize: '0.8125rem', color: '#374151', fontWeight: 600 }}>
                   <input
                     type="checkbox"
                     checked={escrowDeposited}
                     onChange={e => setEscrowDeposited(e.target.checked)}
                   />
-                  <span>Attach $100 Escrow Security Deposit (Simulated Creator Royalty Guarantee)</span>
+                  <span>Attach Escrow Security Deposit</span>
                 </label>
               </div>
 
@@ -475,7 +469,7 @@ export default function DisclosureGateModal({
                     style={{ marginTop: '0.2rem' }}
                   />
                   <span>
-                    I legally covenant that CAD solid geometries, vendor BOM pricing, and CNC tooling paths accessed under Twin #{twinId} will not be ingested into open AI model training corpuses or used without license attribution.
+                    I legally covenant that CAD solid geometries, vendor BOM pricing, and CNC tooling paths accessed under Twin #{twinId} will not be used without license attribution.
                   </span>
                 </label>
               </div>
@@ -500,10 +494,10 @@ export default function DisclosureGateModal({
                 }}
               >
                 {isSigning ? (
-                  <>Generating Ed25519 Keypair &amp; Signing...</>
+                  <>Generating Keypair &amp; Signing...</>
                 ) : (
                   <>
-                    <KeyRound size={16} /> Digitally Sign P2P NDA &amp; Unlock Vault
+                    <KeyRound size={16} /> Digitally Sign NDA &amp; Unlock Records
                   </>
                 )}
               </button>
@@ -516,44 +510,44 @@ export default function DisclosureGateModal({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#059669', marginBottom: '0.75rem' }}>
               <Unlock size={20} />
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Decrypted Engineering Vault</h3>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Decrypted Engineering Records</h3>
             </div>
             <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.5, marginBottom: '1.5rem' }}>
               Capability token verified. Full engineering genetic code released under signed mutual non-disclosure.
             </p>
 
-            <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px', padding: '0.75rem 1rem', marginBottom: '1.5rem', fontSize: '0.75rem', color: '#065F46', fontFamily: 'var(--font-mono)' }}>
+            <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.5rem', fontSize: '0.75rem', color: '#065F46', fontFamily: 'var(--font-mono)' }}>
               Signed by: {legalName} {orgName ? `(${orgName})` : ''}<br />
               Signature: {signatureHash || 'sig_ed25519_verified_offline'}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F9FAFB', border: '1px solid #E5E7EB', padding: '0.85rem 1rem', borderRadius: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F9FAFB', border: '1px solid #E5E7EB', padding: '0.85rem 1rem', borderRadius: '8px' }}>
                 <div>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111827' }}>Full Parametric Solid Model (.STEP)</div>
                   <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Contains 9 individual component solids with passivated wall clearances</div>
                 </div>
-                <a href={`/api/twins/${twinId}/assets/resip_assembly.step`} download className="button-secondary" style={{ textDecoration: 'none', padding: '0.4rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <a href={`/api/twins/${twinId}/assets/resip_assembly.step`} download className="button-secondary" style={{ textDecoration: 'none', padding: '0.4rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#FFFFFF', border: '1px solid #D1D5DB', borderRadius: '6px', color: '#111827' }}>
                   <Download size={14} /> Download .STEP
                 </a>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F9FAFB', border: '1px solid #E5E7EB', padding: '0.85rem 1rem', borderRadius: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F9FAFB', border: '1px solid #E5E7EB', padding: '0.85rem 1rem', borderRadius: '8px' }}>
                 <div>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111827' }}>Granular BOM &amp; Vendor Quotes (bom.csv)</div>
                   <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Unmasked supplier catalog IDs, volume price breaks ($1.38 unit COGS)</div>
                 </div>
-                <a href={`/api/twins/${twinId}/assets/bom.csv`} download className="button-secondary" style={{ textDecoration: 'none', padding: '0.4rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <a href={`/api/twins/${twinId}/assets/bom.csv`} download className="button-secondary" style={{ textDecoration: 'none', padding: '0.4rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#FFFFFF', border: '1px solid #D1D5DB', borderRadius: '6px', color: '#111827' }}>
                   <Download size={14} /> Download BOM
                 </a>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F9FAFB', border: '1px solid #E5E7EB', padding: '0.85rem 1rem', borderRadius: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F9FAFB', border: '1px solid #E5E7EB', padding: '0.85rem 1rem', borderRadius: '8px' }}>
                 <div>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111827' }}>CNC Tooling Paths &amp; Mold Drafts</div>
                   <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>5-axis G-code for 316L inner tube and silicone overmold CAD</div>
                 </div>
-                <span style={{ fontSize: '0.75rem', color: '#059669', background: '#ECFDF5', padding: '0.3rem 0.6rem', borderRadius: '6px', fontWeight: 700 }}>
+                <span style={{ fontSize: '0.75rem', color: '#059669', background: '#ECFDF5', padding: '0.3rem 0.6rem', borderRadius: '6px', fontWeight: 700, border: '1px solid #A7F3D0' }}>
                   UNLOCKED
                 </span>
               </div>
@@ -563,7 +557,7 @@ export default function DisclosureGateModal({
               onClick={onClose}
               style={{
                 width: '100%',
-                background: '#059669',
+                background: '#111827',
                 color: '#FFFFFF',
                 border: 'none',
                 padding: '0.85rem',
