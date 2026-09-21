@@ -97,7 +97,7 @@ export default function TransitionScreen() {
         >
           {/* We use object-fit cover so the video perfectly fills the circular peep hole and stays centered */}
           <video
-            src="/twinthink.mp4?v=2"
+            src="/twinthink.mp4?v=3"
             autoPlay
             muted
             playsInline
