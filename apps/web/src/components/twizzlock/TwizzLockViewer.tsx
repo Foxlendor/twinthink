@@ -428,11 +428,13 @@ export default function TwizzLockViewer({ onUnlockRequest }: TwizzLockViewerProp
       </div>
 
       {/* Main 3D Stage & Telemetry Panel */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1.25fr 1fr',
-        gap: '1.25rem',
-        marginBottom: '1.5rem'
+      <div 
+        className="twizz-main-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1.25fr 1fr',
+          gap: '1.5rem',
+          marginBottom: '1.5rem'
       }}>
         {/* 3D Scene Viewport */}
         <div
@@ -549,10 +551,12 @@ export default function TwizzLockViewer({ onUnlockRequest }: TwizzLockViewerProp
           </div>
 
           {/* Stats Grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '0.65rem'
+          <div 
+            className="twizz-stats-grid"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '0.75rem',
           }}>
             <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '0.75rem', borderRadius: '10px' }}>
               <div style={{ fontSize: '0.68rem', color: '#64748B', textTransform: 'uppercase', fontWeight: 700 }}>Remaining Liquid</div>
@@ -720,6 +724,18 @@ export default function TwizzLockViewer({ onUnlockRequest }: TwizzLockViewerProp
           </a>
         </div>
       </div>
+      <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 850px) {
+          .twizz-main-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 500px) {
+          .twizz-stats-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}} />
     </div>
   );
 }

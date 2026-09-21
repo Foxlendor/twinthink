@@ -324,12 +324,12 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
       margin: '0 auto',
       padding: '2rem 1.5rem 6rem'
     }}>
-      <div style={{
+      <div className="twin-layout" style={{
         display: 'flex',
         gap: '2.5rem',
         alignItems: 'flex-start'
       }}>
-        <aside style={{
+        <aside className="twin-sidebar" style={{
           width: '240px',
           flexShrink: 0,
           display: 'flex',
@@ -516,6 +516,19 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
           onClose={() => setShowDisclosureGate(false)}
         />
       )}
+
+      <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 900px) {
+          .twin-layout {
+            flex-direction: column !important;
+          }
+          .twin-sidebar {
+            width: 100% !important;
+            position: relative !important;
+            top: 0 !important;
+          }
+        }
+      `}} />
     </div>
   );
 }

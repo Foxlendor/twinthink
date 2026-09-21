@@ -107,7 +107,7 @@ export default function PublicConceptPreview({ twin, onRequestAccess }: PublicCo
         )}
       </div>
 
-      <div style={{
+      <div className="concept-info-grid" style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(0, 1fr) minmax(260px, 0.65fr)',
         gap: '1rem',

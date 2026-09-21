@@ -207,11 +207,13 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
       </div>
 
       {/* Dual Canvas Stage */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: '1.25rem',
-        marginBottom: '1.5rem'
+      <div 
+        className="redrink-stage"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '1.25rem',
+          marginBottom: '1.5rem'
       }}>
         {/* Left: Redr.ink */}
         <div style={{
@@ -328,11 +330,13 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
       </div>
 
       {/* Real-time Telemetry Stats Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-        gap: '0.75rem',
-        marginBottom: '1.75rem'
+      <div 
+        className="redrink-stats"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+          gap: '0.75rem',
+          marginBottom: '1.75rem'
       }}>
         <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', padding: '0.85rem', borderRadius: '12px', textAlign: 'center' }}>
           <div style={{ fontSize: '0.68rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 700 }}>Inlet Liquid</div>
@@ -392,6 +396,17 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
           <li><strong>Passive Mouth-Temp Limiter:</strong> A calibrated silicone buffer zone limits mouth contact liquid to 41°C max, preventing lip and throat burns.</li>
         </ul>
       </div>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 500px) {
+          .redrink-stage {
+            grid-template-columns: 1fr !important;
+          }
+          .redrink-stats {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}} />
     </div>
   );
 }
