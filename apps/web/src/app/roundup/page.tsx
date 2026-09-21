@@ -246,11 +246,11 @@ export default function RoundUpPage() {
               fontFamily: 'var(--font-mono)',
               flexShrink: 0
             }}>
-              FX
+              JB
             </div>
             <div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 0.2rem 0', color: '#111827' }}>
-                Foxlendor
+                johne.boi
               </h3>
               <p style={{ fontSize: '0.8rem', color: '#6B7280', margin: 0 }}>
                 Building <strong>redr.ink™</strong> (Self-Heating Drink Straw)
@@ -299,7 +299,7 @@ export default function RoundUpPage() {
               Inspect Proof (Twin #0001) →
             </Link>
             <Link
-              href="/@foxlendor"
+              href="/@johne.boi"
               style={{
                 flex: 1,
                 textAlign: 'center',

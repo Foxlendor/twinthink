@@ -4,7 +4,7 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
   'twizzlock': {
     id: 'twizzlock',
     slug: 'twizzlock',
-    creator: 'Foxlendor',
+    creator: 'johne.boi',
     created_at: '2026-09-20T18:00:00Z',
     lineage: {
       parent: null,
@@ -79,7 +79,7 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
   'redrink': {
     id: 'redrink',
     slug: 'redrink',
-    creator: 'Foxlendor',
+    creator: 'johne.boi',
     created_at: '2026-09-20T20:30:00Z',
     lineage: {
       parent: {
@@ -150,7 +150,7 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
   '0001': {
     id: '0001',
     slug: 'resip-straw',
-    creator: 'Foxlendor',
+    creator: 'johne.boi',
     created_at: '2016-04-12T00:00:00Z',
     lineage: {
       parent: null,

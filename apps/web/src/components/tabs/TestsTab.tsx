@@ -45,7 +45,7 @@ export default function TestsTab({ twin }: TabProps) {
   // Upload State
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [uploadTitle, setUploadTitle] = useState<string>('');
-  const [uploadOperator, setUploadOperator] = useState<string>('@Foxlendor');
+  const [uploadOperator, setUploadOperator] = useState<string>('@johne.boi');
   const [uploadNotes, setUploadNotes] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState<boolean>(false);
@@ -89,7 +89,7 @@ export default function TestsTab({ twin }: TabProps) {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('title', uploadTitle || 'Benchtop Sensor Run');
-      formData.append('operator', uploadOperator || '@Foxlendor');
+      formData.append('operator', uploadOperator || '@johne.boi');
       formData.append('notes', uploadNotes);
 
       const res = await fetch(`${apiBase}/api/twins/${twin.id}/tests`, {
@@ -125,7 +125,7 @@ export default function TestsTab({ twin }: TabProps) {
       const formData = new FormData();
       formData.append('file', sampleFile);
       formData.append('title', `Bench Calibration Run #${(data?.summary.physical_tests_count || 0) + 1}`);
-      formData.append('operator', '@Foxlendor');
+      formData.append('operator', '@johne.boi');
       formData.append('notes', '1-Click benchmark calibration log from dual micro-thermocouple flow bench.');
 
       const res = await fetch(`${apiBase}/api/twins/${twin.id}/tests`, {
