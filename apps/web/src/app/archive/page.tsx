@@ -43,7 +43,7 @@ export default function ArchivePage() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FAFAFA', color: '#111827' }}>
+    <div style={{ minHeight: '100vh', background: 'transparent', color: '#111827' }}>
       <main style={{ maxWidth: '1120px', margin: '0 auto', padding: '2.5rem 1.5rem 6rem' }}>
         <div style={{ marginBottom: '1.5rem' }}>
           <Link

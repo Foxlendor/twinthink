@@ -9,7 +9,7 @@ export default function ExplorePage() {
   const twins = Object.values(TWINS_DATABASE);
 
   return (
-    <main style={{ minHeight: '100vh', background: '#FAFAFA', padding: '4rem 1.5rem', color: '#111827' }}>
+    <main style={{ minHeight: '100vh', background: 'transparent', padding: '4rem 1.5rem', color: '#111827' }}>
       <div style={{ maxWidth: '1120px', margin: '0 auto' }}>
         
         {/* Header */}

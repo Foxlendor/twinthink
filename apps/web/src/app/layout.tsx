@@ -55,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       className={`${plusJakartaSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      style={{ background: '#FAFAFA' }}
     >
       <head>
         <link rel="icon" href="/favicon.ico?v=20260921" sizes="any" />
@@ -62,7 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="icon" href="/icon.svg?v=20260921" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260921" />
       </head>
-      <body className="min-h-full flex flex-col" style={{ background: '#FAFAFA', color: '#111827' }}>
+      <body className="min-h-full flex flex-col" style={{ color: '#111827' }}>
         <Navbar />
         <div style={{ flex: 1 }}>
           {children}

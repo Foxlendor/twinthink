@@ -32,7 +32,7 @@ export default function PitchAccessPage() {
     <main
       style={{
         minHeight: '100vh',
-        background: '#FAFAFA',
+        background: 'transparent',
         color: '#111827',
         padding: '4rem 1.5rem 6rem'
       }}

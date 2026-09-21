@@ -10,7 +10,7 @@ export default async function CreatorProfilePage({ params }: CreatorProfileProps
   const { creator } = await params;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FAFAFA', color: '#111827' }}>
+    <div style={{ minHeight: '100vh', background: 'transparent', color: '#111827' }}>
       <main style={{ maxWidth: '860px', margin: '0 auto', padding: '4rem 1.5rem 6rem' }}>
         <Link
           href="/"

@@ -9,7 +9,7 @@ export default function HomePage() {
       style={{
         position: 'relative',
         minHeight: 'calc(100vh - 70px)',
-        background: '#FAFAFA',
+        background: 'transparent',
         color: '#111827',
         display: 'flex',
         alignItems: 'center',
