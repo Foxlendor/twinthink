@@ -58,7 +58,7 @@ export default function BrandLogo({
       title="Twinth.ink — Give an idea a reality."
     >
       <img
-        src="/logo.png"
+        src="/2twinthinklogo.png"
         alt="Twinth.ink"
         style={{
           height: `${numericHeight}px`,
@@ -66,6 +66,13 @@ export default function BrandLogo({
           maxWidth: '100%',
           display: 'block',
           objectFit: 'contain'
+        }}
+        onError={(e) => {
+          // Fallback to logo.png if 2twinthinklogo.png fails
+          const target = e.target as HTMLImageElement;
+          if (target && target.src.indexOf('/logo.png') === -1) {
+            target.src = '/logo.png';
+          }
         }}
       />
     </div>

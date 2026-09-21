@@ -16,18 +16,22 @@ import {
   Layers,
   LockKeyhole,
   MessageSquare,
-  ShieldCheck
+  ShieldCheck,
+  Unlock
 } from 'lucide-react';
-
 import BehaviorTab from './tabs/BehaviorTab';
 import EvidenceTab from './tabs/EvidenceTab';
 import HistoryTab from './tabs/HistoryTab';
 import LineageTab from './tabs/LineageTab';
 import PeerReviewTab from './tabs/PeerReviewTab';
 import ThoughtLogsTab from './tabs/ThoughtLogsTab';
+import StructureTab from './tabs/StructureTab';
+import BomTab from './tabs/BomTab';
+import FilesTab from './tabs/FilesTab';
 import ClaimInspectorModal from './ClaimInspectorModal';
 import DisclosureGateModal from './DisclosureGateModal';
 import PublicConceptPreview from './PublicConceptPreview';
+import { usePitchAccess } from '@/lib/usePitchAccess';
 
 interface TwinTabsProps {
   twin: TwinData;
@@ -58,41 +62,161 @@ const allTabs: Array<{ id: RealityTabKey; title: string; subtitle: string; icon:
   { id: 'files', title: 'All Files', subtitle: 'Engineering package', icon: Folder }
 ];
 
-function RestrictedAccessCard({ onRequestAccess }: { onRequestAccess: () => void }) {
+function RestrictedAccessCard({ 
+  onRequestAccess,
+  onUnlockWithCode
+}: { 
+  onRequestAccess: () => void;
+  onUnlockWithCode: (code: string) => { success: boolean; message: string };
+}) {
+  const [code, setCode] = useState('');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleSubmitCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = onUnlockWithCode(code);
+    if (!res.success) {
+      setErrorMsg(res.message);
+    } else {
+      setErrorMsg(null);
+    }
+  };
+
   return (
     <div style={{
       border: '1px solid #E5E7EB',
       borderRadius: '18px',
       background: '#FFFFFF',
-      padding: '3rem 2rem',
+      padding: '2.5rem 2rem',
       textAlign: 'center',
       maxWidth: '700px',
-      margin: '1rem auto'
+      margin: '1rem auto',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
     }}>
-      <LockKeyhole size={30} color="#6B7280" style={{ marginBottom: '0.85rem' }} />
-      <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.35rem', fontWeight: 800 }}>
-        Restricted technical detail
+      <div style={{
+        width: '54px',
+        height: '54px',
+        borderRadius: '50%',
+        background: '#F3F4F6',
+        display: 'grid',
+        placeItems: 'center',
+        margin: '0 auto 1rem'
+      }}>
+        <LockKeyhole size={24} color="#4B5563" />
+      </div>
+
+      <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.35rem', fontWeight: 800, color: '#111827' }}>
+        Restricted Engineering Detail
       </h2>
-      <p style={{ margin: '0 auto 1.25rem', maxWidth: '520px', color: '#6B7280', lineHeight: 1.6, fontSize: '0.88rem' }}>
-        This section is not part of the public concept disclosure. Engineering drawings,
-        complete BOM data, source files, and other sensitive material remain controlled by
-        the inventor.
+      <p style={{ margin: '0 auto 1.5rem', maxWidth: '520px', color: '#6B7280', lineHeight: 1.6, fontSize: '0.88rem' }}>
+        CAD solid models, granular BOM suppliers, manufacturing tooling paths, and laboratory logs remain controlled by the inventor under Dark Capsule IP protection.
       </p>
-      <button
-        onClick={onRequestAccess}
-        style={{
-          background: '#111827',
-          color: '#FFFFFF',
-          border: 'none',
-          borderRadius: '999px',
-          padding: '0.7rem 1.15rem',
-          fontWeight: 700,
-          fontSize: '0.8rem',
-          cursor: 'pointer'
-        }}
-      >
-        Request Technical Access
-      </button>
+
+      {/* Instant Pitch Pass Unlock Form */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1E1B4B 0%, #0F172A 100%)',
+        borderRadius: '12px',
+        padding: '1.25rem',
+        maxWidth: '480px',
+        margin: '0 auto 1.5rem',
+        textAlign: 'left',
+        color: '#FFFFFF'
+      }}>
+        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#FCD34D', marginBottom: '0.25rem' }}>
+          Pitch &amp; Investor Pass
+        </div>
+        <div style={{ fontSize: '0.72rem', color: '#C7D2FE', marginBottom: '0.75rem' }}>
+          Have a pitch invite code? Enter it below to unlock immediately.
+        </div>
+
+        <form onSubmit={handleSubmitCode} style={{ display: 'flex', gap: '0.5rem' }}>
+          <input
+            type="text"
+            value={code}
+            onChange={e => {
+              setCode(e.target.value);
+              setErrorMsg(null);
+            }}
+            placeholder="Try: PITCH2026 or INVESTOR"
+            style={{
+              flex: 1,
+              padding: '0.55rem 0.75rem',
+              borderRadius: '6px',
+              border: '1px solid #475569',
+              background: '#0B0F19',
+              color: '#FFFFFF',
+              fontSize: '0.8rem',
+              fontFamily: 'var(--font-mono)'
+            }}
+          />
+          <button
+            type="submit"
+            style={{
+              background: '#6366F1',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '0.55rem 1rem',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Unlock Now
+          </button>
+        </form>
+
+        {errorMsg && (
+          <div style={{ color: '#F87171', fontSize: '0.72rem', marginTop: '0.5rem' }}>
+            {errorMsg}
+          </div>
+        )}
+
+        {/* Quick chip demo helper */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.65rem', fontSize: '0.68rem', color: '#94A3B8' }}>
+          <span>Demo codes:</span>
+          {['PITCH2026', 'INVESTOR', 'FOUNDER'].map(sample => (
+            <button
+              key={sample}
+              type="button"
+              onClick={() => {
+                setCode(sample);
+                onUnlockWithCode(sample);
+              }}
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                border: 'none',
+                color: '#E0E7FF',
+                padding: '0.15rem 0.4rem',
+                borderRadius: '4px',
+                fontFamily: 'var(--font-mono)',
+                cursor: 'pointer'
+              }}
+            >
+              {sample}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}>
+        <button
+          onClick={onRequestAccess}
+          style={{
+            background: 'transparent',
+            color: '#111827',
+            border: '1px solid #D1D5DB',
+            borderRadius: '999px',
+            padding: '0.6rem 1.15rem',
+            fontWeight: 600,
+            fontSize: '0.8rem',
+            cursor: 'pointer'
+          }}
+        >
+          Sign P2P NDA for Permanent Access
+        </button>
+      </div>
     </div>
   );
 }
@@ -106,6 +230,10 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
   const [activeTab, setActiveTab] = useState<RealityTabKey>(initialTab);
   const [inspectedClaim, setInspectedClaim] = useState<string | null>(null);
   const [showDisclosureGate, setShowDisclosureGate] = useState(false);
+  const [ndaVaultUnlocked, setNdaVaultUnlocked] = useState(false);
+
+  const { isUnlocked: isPitchUnlocked, activeCode, unlockWithCode, relock } = usePitchAccess();
+  const isTechnicalUnlocked = isPitchUnlocked || ndaVaultUnlocked;
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
@@ -131,8 +259,31 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
       );
     }
 
-    if (!isPublicTab) {
-      return <RestrictedAccessCard onRequestAccess={() => setShowDisclosureGate(true)} />;
+    // If tab is restricted and neither pitch code nor NDA vault is unlocked
+    if (!isPublicTab && !isTechnicalUnlocked) {
+      return (
+        <RestrictedAccessCard
+          onRequestAccess={() => setShowDisclosureGate(true)}
+          onUnlockWithCode={(c) => unlockWithCode(c)}
+        />
+      );
+    }
+
+    if (activeTab === 'structure') {
+      return (
+        <StructureTab
+          twinId={twin.id}
+          onInspectClaim={(claimKey) => setInspectedClaim(claimKey)}
+        />
+      );
+    }
+
+    if (activeTab === 'bom') {
+      return <BomTab twin={twin} />;
+    }
+
+    if (activeTab === 'files') {
+      return <FilesTab twin={twin} />;
     }
 
     if (activeTab === 'behavior') {
@@ -159,7 +310,12 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
       return <LineageTab twin={twin} />;
     }
 
-    return <RestrictedAccessCard onRequestAccess={() => setShowDisclosureGate(true)} />;
+    return (
+      <RestrictedAccessCard
+        onRequestAccess={() => setShowDisclosureGate(true)}
+        onUnlockWithCode={(c) => unlockWithCode(c)}
+      />
+    );
   };
 
   return (
@@ -268,6 +424,43 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
         </aside>
 
         <main style={{ flex: 1, minWidth: 0 }}>
+          {isTechnicalUnlocked && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#ECFDF5',
+              border: '1px solid #A7F3D0',
+              borderRadius: '12px',
+              padding: '0.65rem 1rem',
+              marginBottom: '1rem',
+              fontSize: '0.8rem',
+              color: '#065F46'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }}>
+                <Unlock size={15} color="#059669" />
+                <span>
+                  Pitch &amp; Vault Access Active {activeCode ? `(${activeCode})` : ''} — Level-3 Engineering Disclosed
+                </span>
+              </div>
+              <button
+                onClick={relock}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #059669',
+                  color: '#059669',
+                  borderRadius: '6px',
+                  padding: '0.2rem 0.6rem',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Relock
+              </button>
+            </div>
+          )}
+
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -291,18 +484,18 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.4rem',
-                border: '1px solid #111827',
-                background: '#FFFFFF',
-                color: '#111827',
+                border: isTechnicalUnlocked ? '1px solid #059669' : '1px solid #111827',
+                background: isTechnicalUnlocked ? '#ECFDF5' : '#FFFFFF',
+                color: isTechnicalUnlocked ? '#065F46' : '#111827',
                 borderRadius: '999px',
-                padding: '0.5rem 0.8rem',
+                padding: '0.5rem 0.85rem',
                 fontSize: '0.75rem',
                 fontWeight: 700,
                 cursor: 'pointer'
               }}
             >
-              <LockKeyhole size={13} />
-              Request Technical Access
+              {isTechnicalUnlocked ? <Unlock size={13} /> : <LockKeyhole size={13} />}
+              {isTechnicalUnlocked ? 'Manage Pitch / Vault Pass' : 'Pitch Code / Technical Access'}
             </button>
           </div>
 

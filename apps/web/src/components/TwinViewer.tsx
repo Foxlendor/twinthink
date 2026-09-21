@@ -5,6 +5,8 @@ import styles from './TwinViewer.module.css';
 import { Maximize, RotateCcw, Code, Network, FileText } from 'lucide-react';
 import { TwinData } from '@/lib/types';
 import { getApiUrl } from '@/lib/api';
+import TwizzLockViewer from '@/components/twizzlock/TwizzLockViewer';
+import RedrinkViewer from '@/components/redrink/RedrinkViewer';
 
 
 interface TwinViewerProps {
@@ -28,6 +30,14 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
       viewerRef.current.cameraOrbit = "0deg 75deg 105%";
     }
   };
+
+  const normId = (twin.id || '').toLowerCase();
+  if (normId === 'twizzlock' || normId === '0002') {
+    return <TwizzLockViewer />;
+  }
+  if (normId === 'redrink' || normId === 'redr.ink' || normId === '0003') {
+    return <RedrinkViewer />;
+  }
   
   const ontologyClass = twin.current_version.ontology_class;
 

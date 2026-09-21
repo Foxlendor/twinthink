@@ -116,23 +116,135 @@ export default function ArchivePage() {
           </div>
         </div>
 
+        {/* Verified Hardware Twins */}
+        <section style={{ marginBottom: '3.5rem' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.35rem' }}>
+            Interactive Records
+          </div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 1.25rem', letterSpacing: '-0.4px' }}>
+            Verified Digital Twins
+          </h2>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: '1.5rem'
+            }}
+          >
+            <Link
+              href="/twins/twizzlock"
+              style={{
+                textDecoration: 'none',
+                color: 'inherit',
+                background: '#FFFFFF',
+                border: '1px solid #E5E7EB',
+                borderRadius: '16px',
+                padding: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                transition: 'border-color 0.2s',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 800, background: '#EEF2FF', color: '#4F46E5', padding: '0.2rem 0.55rem', borderRadius: '999px' }}>
+                  3D PISTON TWIN
+                </span>
+                <span style={{ fontSize: '0.72rem', color: '#10B981', fontWeight: 700 }}>● Active</span>
+              </div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 0.4rem' }}>
+                TwizzLock™ 2L Sleeve
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: '#6B7280', lineHeight: 1.5, margin: 0, flex: 1 }}>
+                Interactive 3D model simulating PET bottle compression, headspace reduction, and bubble kinetics.
+              </p>
+            </Link>
+
+            <Link
+              href="/twins/redrink"
+              style={{
+                textDecoration: 'none',
+                color: 'inherit',
+                background: '#FFFFFF',
+                border: '1px solid #E5E7EB',
+                borderRadius: '16px',
+                padding: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                transition: 'border-color 0.2s',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 800, background: '#FEF2F2', color: '#DC2626', padding: '0.2rem 0.55rem', borderRadius: '999px' }}>
+                  THERMAL FLUIDICS
+                </span>
+                <span style={{ fontSize: '0.72rem', color: '#10B981', fontWeight: 700 }}>● Active</span>
+              </div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 0.4rem' }}>
+                redr.ink™ Reheat Straw
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: '#6B7280', lineHeight: 1.5, margin: 0, flex: 1 }}>
+                Dual-channel comparative simulation of phase-change sodium acetate thermal transfer vs unheated conduit.
+              </p>
+            </Link>
+
+            <Link
+              href="/twins/0001"
+              style={{
+                textDecoration: 'none',
+                color: 'inherit',
+                background: '#FFFFFF',
+                border: '1px solid #E5E7EB',
+                borderRadius: '16px',
+                padding: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                transition: 'border-color 0.2s',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 800, background: '#F3F4F6', color: '#4B5563', padding: '0.2rem 0.55rem', borderRadius: '999px' }}>
+                  VERIFIED ORIGIN
+                </span>
+                <span style={{ fontSize: '0.72rem', color: '#6B7280', fontWeight: 600 }}>2016</span>
+              </div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 0.4rem' }}>
+                redr.ink™ Origin (ReSip 2016)
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: '#6B7280', lineHeight: 1.5, margin: 0, flex: 1 }}>
+                The original 2016 Science Fair prototype record that evolved into redr.ink™, protected by Level-3 Dark Capsule disclosure architecture.
+              </p>
+            </Link>
+          </div>
+        </section>
+
+        <section>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.35rem' }}>
+            Historical Artifacts
+          </div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 1.25rem', letterSpacing: '-0.4px' }}>
+            Approved Journal & Design Records
+          </h2>
+
         {entries.length === 0 ? (
           <div
             style={{
               background: '#FFFFFF',
               border: '1px dashed #D1D5DB',
               borderRadius: '18px',
-              padding: '4rem 2rem',
+              padding: '3rem 2rem',
               textAlign: 'center'
             }}
           >
             <LockKeyhole size={28} color="#9CA3AF" style={{ marginBottom: '1rem' }} />
-            <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem', fontWeight: 800 }}>
-              No public inventions yet.
-            </h2>
-            <p style={{ margin: 0, color: '#6B7280', fontSize: '0.9rem', lineHeight: 1.55 }}>
-              The public archive is intentionally empty until an inventor explicitly approves
-              a record for publication.
+            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.15rem', fontWeight: 800 }}>
+              Physical journals in archival verification.
+            </h3>
+            <p style={{ margin: 0, color: '#6B7280', fontSize: '0.85rem', lineHeight: 1.55 }}>
+              Scanned notebook pages are undergoing OCR and cryptographic timestamp verification before publication.
             </p>
           </div>
         ) : (
@@ -143,6 +255,7 @@ export default function ArchivePage() {
               gap: '1.5rem'
             }}
           >
+
             {entries.map((entry) => (
               <article
                 key={entry.filename}
@@ -169,7 +282,9 @@ export default function ArchivePage() {
             ))}
           </div>
         )}
+        </section>
       </main>
     </div>
   );
 }
+

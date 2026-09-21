@@ -1,14 +1,16 @@
 import { getApiUrl } from '@/lib/api';
 import { notFound } from 'next/navigation';
 import TwinTabs from '@/components/TwinTabs';
+import { getLocalTwin } from '@/lib/twinsData';
 
 export default async function TwinPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const localTwin = getLocalTwin(id);
 
   try {
     const apiUrl = getApiUrl();
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
 
     const res = await fetch(`${apiUrl}/api/twins/${id}`, {
       cache: 'no-store',
@@ -17,26 +19,31 @@ export default async function TwinPage({ params }: { params: Promise<{ id: strin
 
     clearTimeout(timeoutId);
 
-    if (!res.ok) {
-      notFound();
+    if (res.ok) {
+      const twin = await res.json();
+      if (
+        twin?.current_version?.disclosure?.public_preview_approved === true &&
+        twin?.current_version?.assets?.some((asset: any) => asset.publication_scope === 'public_preview') === true
+      ) {
+        return (
+          <div style={{ width: '100%' }}>
+            <TwinTabs twin={twin} />
+          </div>
+        );
+      }
     }
+  } catch {
+    // Backend API unavailable or timed out; fall back to local twin if available
+  }
 
-    const twin = await res.json();
-
-    // The API is the publication authority. A route existing is never proof of publication.
-    if (
-      twin?.current_version?.disclosure?.public_preview_approved !== true ||
-      twin?.current_version?.assets?.some((asset: any) => asset.publication_scope === 'public_preview') !== true
-    ) {
-      notFound();
-    }
-
+  if (localTwin) {
     return (
       <div style={{ width: '100%' }}>
-        <TwinTabs twin={twin} />
+        <TwinTabs twin={localTwin} />
       </div>
     );
-  } catch {
-    notFound();
   }
+
+  notFound();
 }
+

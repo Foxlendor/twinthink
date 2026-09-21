@@ -16,6 +16,8 @@ import {
   Layers
 } from 'lucide-react';
 
+import { usePitchAccess } from '@/lib/usePitchAccess';
+
 interface DisclosureGateModalProps {
   twinId: string;
   creator: string;
@@ -36,6 +38,49 @@ export default function DisclosureGateModal({
   const [escrowDeposited, setEscrowDeposited] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
   const [signatureHash, setSignatureHash] = useState<string | null>(null);
+
+  // Pitch & Investor Access Code State
+  const { isUnlocked, activeCode, unlockWithCode, relock, createPitchCode, validCodes } = usePitchAccess();
+  const [pitchInput, setPitchInput] = useState('');
+  const [pitchMessage, setPitchMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showCreatorTools, setShowCreatorTools] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [newGeneratedCode, setNewGeneratedCode] = useState<string | null>(null);
+
+  // Auto-switch to vault if already unlocked via pitch pass
+  React.useEffect(() => {
+    if (isUnlocked && currentTier !== 'vault') {
+      setCurrentTier('vault');
+    }
+  }, [isUnlocked, currentTier]);
+
+  const handleRedeemPitchCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    const result = unlockWithCode(pitchInput);
+    if (result.success) {
+      setPitchMessage({ type: 'success', text: result.message });
+      setSignatureHash(`pitch_pass_${activeCode || pitchInput.toUpperCase()}`);
+      setLegalName('Verified Pitch Attendee');
+      setCurrentTier('vault');
+      if (onVaultUnlocked) onVaultUnlocked();
+    } else {
+      setPitchMessage({ type: 'error', text: result.message });
+    }
+  };
+
+  const handleCopyPitchLink = (code: string) => {
+    if (typeof window === 'undefined') return;
+    const url = `${window.location.origin}${window.location.pathname}?pitch=${code}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 3000);
+  };
+
+  const handleGenerateCode = () => {
+    const code = createPitchCode();
+    setNewGeneratedCode(code);
+    setPitchInput(code);
+  };
 
   const handleSignNDA = (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,9 +253,175 @@ export default function DisclosureGateModal({
                 P2P Non-Disclosure &amp; Escrow Gate
               </h3>
             </div>
-            <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.5, marginBottom: '1.5rem' }}>
-              To protect @{creator} from automated scraper harvesting and IP dilution, complete this peer-to-peer agreement to generate an ephemeral decryption key.
+            <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+              To protect @{creator} from automated scraper harvesting and IP dilution, unlock full vault specs via an authorized Pitch Code or complete the peer-to-peer agreement.
             </p>
+
+            {/* PITCH / INVESTOR ACCESS PASS CARD */}
+            <div style={{
+              background: 'linear-gradient(135deg, #1E1B4B 0%, #0F172A 100%)',
+              border: '1px solid #6366F1',
+              borderRadius: '14px',
+              padding: '1.25rem',
+              color: '#FFFFFF',
+              marginBottom: '1.5rem',
+              boxShadow: '0 8px 24px rgba(99, 102, 241, 0.18)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ background: '#4F46E5', padding: '0.35rem', borderRadius: '8px', display: 'grid', placeItems: 'center' }}>
+                    <KeyRound size={16} color="#FFFFFF" />
+                  </span>
+                  <div>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 800, letterSpacing: '-0.2px' }}>
+                      Pitch &amp; Investor Pass
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#C7D2FE' }}>
+                      Instant Level-3 Vault &amp; Full BOM Unlock for Pitch Meetings
+                    </div>
+                  </div>
+                </div>
+
+                {isUnlocked ? (
+                  <span style={{ background: '#059669', color: '#FFFFFF', fontSize: '0.68rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: '999px', textTransform: 'uppercase' }}>
+                    Pass Active ({activeCode})
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowCreatorTools(!showCreatorTools)}
+                    style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: '#E0E7FF', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.7rem', cursor: 'pointer' }}
+                  >
+                    {showCreatorTools ? 'Hide Pitch Tools' : 'Host / Pitcher Tools'}
+                  </button>
+                )}
+              </div>
+
+              {/* Redeem Form */}
+              <form onSubmit={handleRedeemPitchCode} style={{ display: 'flex', gap: '0.5rem', marginTop: '0.85rem' }}>
+                <input
+                  type="text"
+                  value={pitchInput}
+                  onChange={e => {
+                    setPitchInput(e.target.value);
+                    setPitchMessage(null);
+                  }}
+                  placeholder="Enter Pitch Code (e.g. PITCH2026)"
+                  style={{
+                    flex: 1,
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: '8px',
+                    border: '1px solid #475569',
+                    background: '#0F172A',
+                    color: '#FFFFFF',
+                    fontSize: '0.85rem',
+                    fontFamily: 'var(--font-mono)',
+                    letterSpacing: '0.5px'
+                  }}
+                />
+                <button
+                  type="submit"
+                  style={{
+                    background: '#6366F1',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.65rem 1.25rem',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Unlock Vault
+                </button>
+              </form>
+
+              {pitchMessage && (
+                <div style={{
+                  marginTop: '0.65rem',
+                  fontSize: '0.75rem',
+                  color: pitchMessage.type === 'success' ? '#34D399' : '#F87171',
+                  fontWeight: 600
+                }}>
+                  {pitchMessage.text}
+                </div>
+              )}
+
+              {/* Sample codes helper chips */}
+              <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.7rem', color: '#94A3B8' }}>
+                <span>Verified codes:</span>
+                {['PITCH2026', 'INVESTOR', 'FOUNDER', 'TWINTHINK'].map(code => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => {
+                      setPitchInput(code);
+                      unlockWithCode(code);
+                    }}
+                    style={{
+                      background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      color: '#E2E8F0',
+                      padding: '0.15rem 0.45rem',
+                      borderRadius: '4px',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '0.68rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>
+
+              {/* Pitch Host Tools (Generator & Link Copy) */}
+              {showCreatorTools && (
+                <div style={{ marginTop: '1rem', paddingTop: '0.85rem', borderTop: '1px solid rgba(255,255,255,0.15)', fontSize: '0.75rem' }}>
+                  <div style={{ fontWeight: 700, color: '#FCD34D', marginBottom: '0.4rem' }}>
+                    Founder Pitch Deck &amp; Meeting Controls:
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={handleGenerateCode}
+                      style={{ background: '#3B82F6', color: '#FFF', border: 'none', padding: '0.4rem 0.75rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Generate New One-Time Code
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyPitchLink(pitchInput || 'PITCH2026')}
+                      style={{ background: 'rgba(255,255,255,0.15)', color: '#FFF', border: 'none', padding: '0.4rem 0.75rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      {copiedLink ? 'Copied 1-Click Link!' : 'Copy 1-Click Pitch URL'}
+                    </button>
+                    {isUnlocked && (
+                      <button
+                        type="button"
+                        onClick={relock}
+                        style={{ background: '#EF4444', color: '#FFF', border: 'none', padding: '0.4rem 0.75rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        Lock / Reset Pitch State
+                      </button>
+                    )}
+                  </div>
+                  {newGeneratedCode && (
+                    <div style={{ color: '#6EE7B7', fontFamily: 'var(--font-mono)' }}>
+                      New Code Ready: <strong>{newGeneratedCode}</strong> (active for pitch audience)
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1.25rem 0 1rem' }}>
+              <div style={{ flex: 1, height: '1px', background: '#E5E7EB' }} />
+              <span style={{ fontSize: '0.7rem', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Or Sign Mutual P2P NDA
+              </span>
+              <div style={{ flex: 1, height: '1px', background: '#E5E7EB' }} />
+            </div>
 
             <form onSubmit={handleSignNDA}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
