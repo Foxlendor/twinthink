@@ -17,6 +17,13 @@ Milestones **M0** (Environment & Startup Repair), **M1** (Foundation & Creator S
 * **Two Core Safeguards Enforced**:
   - **Non-Certified DPP Previews**: Projections are strictly labeled as uncertified preview representations based on digital twin attributes.
   - **Declared Intent vs Legal Determination**: Declared rights policies document creator intent rather than indemnified warranties.
+* **Creator Identity Updated**:
+  - The inventor and creator display name across the entire platform, metadata, and twins database is set to **`johne.boi`** (initials badge **`JB`**), replacing all previous occurrences.
+  - Profile slug: `/@johne.boi`
+  - Build and calibration operator logs: `@johne.boi`
+  - Invention journal provenance: `johne.boi's original 2016 invention journal slides`
+* **Render Backend Deployment Fix**: Added `cryptography>=42.0.0` and `pydantic>=2.0.0` to [requirements.txt](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/api/requirements.txt) to resolve the Docker container startup crash on Render.
+* **Icon / Logo Polish**: Generated transparent, cropped high-res badges (`icon.png`, `apple-icon.png`, `icon.svg`, `favicon.ico`, `logo.png`, `2twinthinklogo.png`) with cache-busting headers.
 
 ### 2. Universal CLI Bridge (`apps/api/tt.py`)
 * `tt wrap` executes arbitrary engineering commands, monitors artifact generation, parses detected BOM files, and compiles canonical `TwinDocument` packages into the API.
