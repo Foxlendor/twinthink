@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 
 // Use a mock key if none provided so it doesn't crash in dev before the user adds keys
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_51MockSecretKeyForDevPurposeOnlyNoRealCharges123', {
-  apiVersion: '2025-01-27.acacia',
+  apiVersion: '2026-08-26.dahlia',
 });
 
 export async function POST(req: Request) {
