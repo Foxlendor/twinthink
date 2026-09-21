@@ -122,7 +122,7 @@ export default function ClaimInspectorModal({ claimKey, onClose, twinId }: Modal
       case 'MEASURED':
         return { bg: '#ECFDF5', color: '#059669', border: '#A7F3D0' };
       case 'LITERATURE':
-        return { bg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE' };
+        return { bg: '#F5F3FF', color: '#111827', border: '#DDD6FE' };
       case 'ASSUMED':
       case 'ESTIMATED':
       default:

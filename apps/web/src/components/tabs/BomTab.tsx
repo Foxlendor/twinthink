@@ -91,7 +91,7 @@ export default function BomTab({ twin }: TabProps) {
             <tbody>
               {mockAxioms.map((item, idx) => (
                 <tr key={idx}>
-                  <td style={{ fontWeight: 600, color: '#7C3AED' }}>{item.axiom}</td>
+                  <td style={{ fontWeight: 600, color: '#111827' }}>{item.axiom}</td>
                   <td>{item.author}</td>
                   <td>{item.epoch}</td>
                   <td>{item.truth}</td>
@@ -273,7 +273,7 @@ export default function BomTab({ twin }: TabProps) {
       case 'assembly':
         return { background: '#EFF6FF', color: '#0284C7', border: '1px solid #BAE6FD' };
       case 'subassembly':
-        return { background: '#F5F3FF', color: '#7C3AED', border: '1px solid #DDD6FE' };
+        return { background: '#F5F3FF', color: '#111827', border: '1px solid #DDD6FE' };
       case 'fastener':
         return { background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' };
       case 'raw_material':
@@ -658,7 +658,7 @@ export default function BomTab({ twin }: TabProps) {
               padding: '0.75rem'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
-                <Key size={14} style={{ color: '#7C3AED' }} />
+                <Key size={14} style={{ color: '#111827' }} />
                 <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
                   Declared Rights Policy
                 </span>
@@ -667,7 +667,7 @@ export default function BomTab({ twin }: TabProps) {
                 <span style={{
                   fontSize: '0.8125rem',
                   fontWeight: 700,
-                  color: '#7C3AED',
+                  color: '#111827',
                   background: '#F5F3FF',
                   border: '1px solid #DDD6FE',
                   padding: '0.2rem 0.5rem',
@@ -949,7 +949,7 @@ export default function BomTab({ twin }: TabProps) {
                   borderRadius: 'var(--radius-sm)',
                   border: dppTier === 'authority' ? '1px solid #DDD6FE' : '1px solid transparent',
                   background: dppTier === 'authority' ? '#F5F3FF' : 'transparent',
-                  color: dppTier === 'authority' ? '#7C3AED' : 'var(--text-secondary)',
+                  color: dppTier === 'authority' ? '#111827' : 'var(--text-secondary)',
                   fontWeight: 600,
                   fontSize: '0.8125rem',
                   cursor: 'pointer'

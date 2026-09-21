@@ -43,7 +43,7 @@ const INITIAL_FEEDBACK: FeedbackItem[] = [
     id: 'pr-2',
     author: 'Dr. Elena Rostova',
     role: 'Materials Engineer',
-    roleTagColor: '#7C3AED',
+    roleTagColor: '#111827',
     date: 'September 14, 2026',
     category: 'SAT Latent Heat Stability',
     comment: 'The 54.0°C plateau in your thermocouple logs matches published SAT equilibrium cleanly. What thickening agent are you using to prevent phase separation across repeated supercooling cycles?',
@@ -80,7 +80,7 @@ export default function PeerReviewTab({ twinId }: { twinId: string }) {
       id: `pr-${Date.now()}`,
       author: name,
       role: role,
-      roleTagColor: role === 'Machinist / Fabricator' ? '#2563EB' : role === 'Materials Engineer' ? '#7C3AED' : '#059669',
+      roleTagColor: role === 'Machinist / Fabricator' ? '#2563EB' : role === 'Materials Engineer' ? '#111827' : '#059669',
       date: 'Today',
       category: category || 'General Technical Review',
       comment: comment

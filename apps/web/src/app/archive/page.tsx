@@ -133,7 +133,7 @@ export default function ArchivePage() {
             }}
           >
             <Link
-              href="/twins/twizzlock"
+              href="/twins/twiizzlock"
               style={{
                 textDecoration: 'none',
                 color: 'inherit',
@@ -154,7 +154,7 @@ export default function ArchivePage() {
                 <span style={{ fontSize: '0.72rem', color: '#10B981', fontWeight: 700 }}>● Active</span>
               </div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 0.4rem' }}>
-                TwizzLock™ 2L Sleeve
+                TWIIZZLock™ 2L Sleeve
               </h3>
               <p style={{ fontSize: '0.85rem', color: '#6B7280', lineHeight: 1.5, margin: 0, flex: 1 }}>
                 Interactive 3D model simulating PET bottle compression, headspace reduction, and bubble kinetics.
@@ -183,7 +183,7 @@ export default function ArchivePage() {
                 <span style={{ fontSize: '0.72rem', color: '#10B981', fontWeight: 700 }}>● Active</span>
               </div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 0.4rem' }}>
-                redr.ink™ Reheat Straw
+                Redr.ink™ Reheat Straw
               </h3>
               <p style={{ fontSize: '0.85rem', color: '#6B7280', lineHeight: 1.5, margin: 0, flex: 1 }}>
                 Dual-channel comparative simulation of phase-change sodium acetate thermal transfer vs unheated conduit.
@@ -212,10 +212,10 @@ export default function ArchivePage() {
                 <span style={{ fontSize: '0.72rem', color: '#6B7280', fontWeight: 600 }}>2016</span>
               </div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 0.4rem' }}>
-                redr.ink™ Origin (ReSip 2016)
+                Redr.ink™ Origin (ReSip 2016)
               </h3>
               <p style={{ fontSize: '0.85rem', color: '#6B7280', lineHeight: 1.5, margin: 0, flex: 1 }}>
-                The original Alpha R&D Phase prototype record that evolved into redr.ink™, protected by Private Private Access architecture.
+                The original Alpha R&D Phase prototype record that evolved into Redr.ink™, protected by Private Private Access architecture.
               </p>
             </Link>
           </div>

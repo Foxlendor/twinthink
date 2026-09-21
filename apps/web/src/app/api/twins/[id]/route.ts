@@ -36,7 +36,7 @@ export async function GET(
 
   let rawTwin: any = null;
 
-  // 1. Check local structured twin database first (twizzlock, redrink, 0001)
+  // 1. Check local structured twin database first (twiizzlock, redrink, 0001)
   const local = getLocalTwin(id);
   if (local) {
     rawTwin = JSON.parse(JSON.stringify(local));

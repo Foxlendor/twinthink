@@ -22,7 +22,7 @@ export default function PitchAccessPage() {
 
   const handleCopyPitchLink = () => {
     if (typeof window === 'undefined') return;
-    const url = `${window.location.origin}/twins/twizzlock?pitch=PITCH2026`;
+    const url = `${window.location.origin}/twins/twiizzlock?pitch=PITCH2026`;
     navigator.clipboard.writeText(url);
     setCopiedPitchLink(true);
     setTimeout(() => setCopiedPitchLink(false), 2500);

@@ -125,7 +125,7 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
     ctx.lineTo(cx, bottom - 12);
     ctx.stroke();
 
-    // Cartridge Zone (only on the modular redr.ink straw)
+    // Cartridge Zone (only on the modular Redr.ink straw)
     if (isHeated) {
       const cartTop = top + len * 0.36;
       const cartH = len * 0.32;
@@ -188,7 +188,7 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: '#111827', letterSpacing: '-0.3px' }}>
-              redr.ink™ Twin
+              Redr.ink™ Twin
             </h2>
             <span style={{ background: '#EFF6FF', color: '#1D4ED8', fontSize: '0.7rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: '999px', textTransform: 'uppercase' }}>
               Simulation Mode
@@ -213,7 +213,7 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
         gap: '1.25rem',
         marginBottom: '1.5rem'
       }}>
-        {/* Left: redr.ink */}
+        {/* Left: Redr.ink */}
         <div style={{
           background: '#0F172A',
           borderRadius: '16px',
@@ -223,7 +223,7 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#F97316', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Flame size={15} /> With redr.ink Modular Cartridge
+              <Flame size={15} /> With Redr.ink Modular Cartridge
             </span>
             <span style={{ fontSize: '0.7rem', color: state.active ? '#34D399' : '#94A3B8', fontFamily: 'var(--font-mono)' }}>
               {state.active ? 'ACTIVE REHEAT' : 'READY'}
@@ -340,7 +340,7 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
         </div>
 
         <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '0.85rem', borderRadius: '12px', textAlign: 'center' }}>
-          <div style={{ fontSize: '0.68rem', color: '#1D4ED8', textTransform: 'uppercase', fontWeight: 700 }}>Mouthpiece (redr.ink)</div>
+          <div style={{ fontSize: '0.68rem', color: '#1D4ED8', textTransform: 'uppercase', fontWeight: 700 }}>Mouthpiece (Redr.ink)</div>
           <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#1D4ED8', fontFamily: 'var(--font-mono)' }}>{Math.round(state.outWith)} °C</div>
           <div style={{ fontSize: '0.65rem', color: '#2563EB' }}>Limiter active (41° max)</div>
         </div>
@@ -384,7 +384,7 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
         </div>
         <div>
           Unlike basic monolithic heating straws (e.g. 2013 Chinese utility patent CN203762794U which dumps all thermal energy instantaneously and scalds at 50°C+), 
-          <strong> redr.ink™</strong> introduces three critical mechanical innovations:
+          <strong> Redr.ink™</strong> introduces three critical mechanical innovations:
         </div>
         <ul style={{ margin: '0.5rem 0 0 1.25rem', padding: 0 }}>
           <li><strong>Modular Snap-In Slug:</strong> The user boils only the removable 25g cartridge to reset, keeping the drinking straw permanent and dishwasher safe.</li>

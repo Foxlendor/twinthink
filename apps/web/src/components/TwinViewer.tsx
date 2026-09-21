@@ -5,7 +5,7 @@ import styles from './TwinViewer.module.css';
 import { Maximize, RotateCcw, Code, Network, FileText } from 'lucide-react';
 import { TwinData } from '@/lib/types';
 import { getApiUrl } from '@/lib/api';
-import TwizzLockViewer from '@/components/twizzlock/TwizzLockViewer';
+import TwizzLockViewer from '@/components/twiizzlock/TwizzLockViewer';
 import RedrinkViewer from '@/components/redrink/RedrinkViewer';
 
 
@@ -32,10 +32,10 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
   };
 
   const normId = (twin.id || '').toLowerCase();
-  if (normId === 'twizzlock' || normId === '0002') {
+  if (normId === 'twiizzlock' || normId === '0002') {
     return <TwizzLockViewer />;
   }
-  if (normId === 'redrink' || normId === 'redr.ink' || normId === '0003') {
+  if (normId === 'redrink' || normId === 'Redr.ink' || normId === '0003') {
     return <RedrinkViewer />;
   }
   
@@ -151,7 +151,7 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
           }
         `}</style>
         
-        <Network size={80} color="#7C3AED" style={{ zIndex: 1, animation: 'spin 20s linear infinite' }} />
+        <Network size={80} color="#111827" style={{ zIndex: 1, animation: 'spin 20s linear infinite' }} />
         <h1 style={{ zIndex: 1, color: 'var(--text-primary)', marginTop: '2rem', letterSpacing: '2px', textTransform: 'uppercase' }}>{twin.current_version.title}</h1>
         <p style={{ zIndex: 1, maxWidth: '60%', textAlign: 'center', color: 'var(--text-secondary)', fontStyle: 'italic', marginTop: '1rem' }}>
           {twin.current_version.summary}
@@ -160,7 +160,7 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
         <div style={{ zIndex: 1, marginTop: '3rem', display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center' }}>
           {twin.current_version.relationships?.map((rel, i) => (
             <div key={i} style={{ padding: '1rem 2rem', background: '#FFFFFF', border: '1px solid #DDD6FE', borderRadius: '8px', fontSize: '1rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <span style={{ color: '#7C3AED', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '2px', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>{rel.type}</span>
+              <span style={{ color: '#111827', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '2px', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>{rel.type}</span>
               <strong>{rel.target_twin_id}</strong>
             </div>
           ))}

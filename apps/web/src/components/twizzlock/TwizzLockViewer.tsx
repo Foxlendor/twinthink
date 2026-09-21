@@ -698,7 +698,7 @@ export default function TwizzLockViewer({ onUnlockRequest }: TwizzLockViewerProp
         </div>
         <div style={{ fontSize: '0.84rem', lineHeight: 1.6, color: '#854D0E' }}>
           Agitating a carbonated beverage nucleates micro-bubbles and temporarily accelerates CO₂ escape from solution (which is why shaking a bottle makes it fizz over).
-          A rapid, forceful pump stroke on TwizzLock could locally accelerate fizz loss even while it shrinks the headspace that protects it long-term.
+          A rapid, forceful pump stroke on TWIIZZLock could locally accelerate fizz loss even while it shrinks the headspace that protects it long-term.
           Smooth, slow strokes largely avoid this penalty, but physical testing is required to map the exact threshold curves.
         </div>
         <div style={{ marginTop: '0.75rem' }}>

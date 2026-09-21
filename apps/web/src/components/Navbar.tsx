@@ -243,7 +243,7 @@ export default function Navbar() {
                   }}
                 >
                   <div style={{ padding: '6px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
-                    <Coffee size={18} color="#7C3AED" />
+                    <Coffee size={18} color="#111827" />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Local Roundup</div>

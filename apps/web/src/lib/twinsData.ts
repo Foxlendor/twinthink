@@ -1,26 +1,26 @@
 import { TwinData } from './types';
 
 export const TWINS_DATABASE: Record<string, TwinData> = {
-  'twizzlock': {
-    id: 'twizzlock',
-    slug: 'twizzlock',
+  'twiizzlock': {
+    id: 'twiizzlock',
+    slug: 'twiizzlock',
     creator: 'anonymous',
     created_at: '2026-09-20T18:00:00Z',
     lineage: {
       parent: null,
       descendants: [],
-      root_twin_id: 'twizzlock'
+      root_twin_id: 'twiizzlock'
     },
     versions: [
       {
         semver: '1.0.0',
-        title: 'TwizzLock™ 2L Volume Sleeve',
+        title: 'TWIIZZLock™ 2L Volume Sleeve',
         published_at: '2026-09-20T18:00:00Z'
       }
     ],
     current_version: {
       semver: '1.0.0',
-      title: 'TwizzLock™ 2L Volume Lock & Piston Sleeve',
+      title: 'TWIIZZLock™ 2L Volume Lock & Piston Sleeve',
       summary: 'Reusable outer compression sleeve using the bottle itself as a sliding piston against a base check valve to collapse headspace and preserve carbonation.',
       license: 'CERN-OHL-S-2.0',
       ontology_class: 'PhysicalObject',
@@ -93,13 +93,13 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
     versions: [
       {
         semver: '1.0.0',
-        title: 'redr.ink™ Modular Thermal Straw',
+        title: 'Redr.ink™ Modular Thermal Straw',
         published_at: '2026-09-20T20:30:00Z'
       }
     ],
     current_version: {
       semver: '1.0.0',
-      title: 'redr.ink™ Modular Thermal Drinking Straw',
+      title: 'Redr.ink™ Modular Thermal Drinking Straw',
       summary: 'Reusable, modular double-hulled drinking straw utilizing sodium acetate phase-change cartridges, gradual heat release, and a passive mouth-temperature limiter.',
       license: 'CERN-OHL-S-2.0',
       ontology_class: 'PhysicalObject',
@@ -160,14 +160,14 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
     versions: [
       {
         semver: '1.0.0',
-        title: 'redr.ink™ Origin / ReSip R&D Foundation (Alpha R&D Phase)',
+        title: 'Redr.ink™ Origin / ReSip R&D Foundation (Alpha R&D Phase)',
         published_at: '2016-04-12T00:00:00Z'
       }
     ],
     current_version: {
       semver: '1.0.0',
-      title: 'redr.ink™ Origin / ReSip R&D Foundation (2016)',
-      summary: 'The original Alpha R&D Phase foundation record that pioneered battery-free phase-change thermal straws, rebranded and evolved into redr.ink™. Solid-state thermal exchange releasing 12.05 kJ latent heat.',
+      title: 'Redr.ink™ Origin / ReSip R&D Foundation (2016)',
+      summary: 'The original Alpha R&D Phase foundation record that pioneered battery-free phase-change thermal straws, rebranded and evolved into Redr.ink™. Solid-state thermal exchange releasing 12.05 kJ latent heat.',
       license: 'CERN-OHL-S-2.0',
       ontology_class: 'PhysicalObject',
       properties: [
@@ -221,10 +221,10 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
 
 export function getLocalTwin(id: string): TwinData | null {
   const norm = id.toLowerCase().trim();
-  if (norm === 'twizzlock' || norm === 'twizzlock-v1' || norm === '0002') {
-    return TWINS_DATABASE['twizzlock'];
+  if (norm === 'twiizzlock' || norm === 'twiizzlock-v1' || norm === '0002') {
+    return TWINS_DATABASE['twiizzlock'];
   }
-  if (norm === 'redrink' || norm === 'redr-ink' || norm === 'redr.ink' || norm === '0003') {
+  if (norm === 'redrink' || norm === 'redr-ink' || norm === 'Redr.ink' || norm === '0003') {
     return TWINS_DATABASE['redrink'];
   }
   if (norm === '0001' || norm === 'resip' || norm === 'resip-straw') {

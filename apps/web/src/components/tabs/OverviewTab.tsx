@@ -219,7 +219,7 @@ export default function OverviewTab({ twin }: TabProps) {
 
           <div style={{ padding: '1rem', background: '#F9FAFB', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Gross Margin Profile</span>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#7C3AED', marginTop: '0.2rem' }}>82% DTC</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', marginTop: '0.2rem' }}>82% DTC</div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>55% Outdoor wholesale margin</span>
           </div>
         </div>

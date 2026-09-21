@@ -45,7 +45,7 @@ export default function CrowdfundingBar({
   targetMsrp = 25
 }: CrowdfundingBarProps) {
   // Title & description adapt to the twin
-  const title = twinTitle || (twinId.includes('twizz') ? 'TwizzLock 2L Volume Sleeve' : twinId.includes('redr') ? 'redr.ink Modular Thermal Straw' : 'redr.ink™ Thermal Straw');
+  const title = twinTitle || (twinId.includes('twizz') ? 'TWIIZZLock 2L Volume Sleeve' : twinId.includes('redr') ? 'Redr.ink Modular Thermal Straw' : 'Redr.ink™ Thermal Straw');
   const defaultBatchDesc = batchDescription || (
     twinId.includes('twizz') 
       ? 'Tooling for high-frequency RF welding of 2-chamber TPU sleeves & food-safe duckbill check valves'
@@ -396,7 +396,7 @@ export default function CrowdfundingBar({
               First Batch Pre-Order
             </div>
             <div style={{ fontSize: '0.75rem', color: '#4B5563', lineHeight: 1.4 }}>
-              Guaranteed Batch #1 redr.ink™ straw at target MSRP. Serialized engraved 316L stainless tube + silicone jacket.
+              Guaranteed Batch #1 Redr.ink™ straw at target MSRP. Serialized engraved 316L stainless tube + silicone jacket.
             </div>
           </div>
           <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>

@@ -383,10 +383,10 @@ export default function SimulationTab({ twin }: TabProps) {
           </div>
 
           <div style={{ padding: '0.75rem 1rem', background: '#F9FAFB', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)' }}>
-            <span style={{ fontSize: '0.7rem', color: '#7C3AED', textTransform: 'uppercase', fontWeight: 700 }}>
+            <span style={{ fontSize: '0.7rem', color: '#111827', textTransform: 'uppercase', fontWeight: 700 }}>
               Cumulative Enthalpy
             </span>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#7C3AED', marginTop: '0.2rem' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', marginTop: '0.2rem' }}>
               {simBaseline.total_yield_kJ.toFixed(1)} kJ
             </div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -568,8 +568,8 @@ export default function SimulationTab({ twin }: TabProps) {
             </button>
 
             {showForkMutation && (
-              <span style={{ color: '#7C3AED', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#7C3AED' }}></span>
+              <span style={{ color: '#111827', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#111827' }}></span>
                 CH5: Fork Mutation (T_fork)
               </span>
             )}
@@ -607,7 +607,7 @@ export default function SimulationTab({ twin }: TabProps) {
             {showWallNode && <path d={wallPath} fill="none" stroke="#CA8A04" strokeWidth="2.0" opacity="0.85" />}
             {showOutletFluid && <path d={fluidPath} fill="none" stroke="#0284C7" strokeWidth="2.5" />}
             {showPhysicalBench && <path d={benchPath} fill="none" stroke="#059669" strokeWidth="2.0" strokeDasharray="4 2" />}
-            {showForkMutation && forkPath && <path d={forkPath} fill="none" stroke="#7C3AED" strokeWidth="2.5" strokeDasharray="2 2" />}
+            {showForkMutation && forkPath && <path d={forkPath} fill="none" stroke="#111827" strokeWidth="2.5" strokeDasharray="2 2" />}
 
             {/* Interactive Vertical Scrubber Line */}
             {hoverIndex !== null && (
@@ -727,7 +727,7 @@ export default function SimulationTab({ twin }: TabProps) {
       <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '1.5rem', marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <GitFork size={18} color="#7C3AED" />
+            <GitFork size={18} color="#111827" />
             <h3 style={{ fontSize: '1rem', margin: 0, color: 'var(--text-primary)' }}>Lineage Fork & Geometry Mutation Simulator</h3>
           </div>
           <button
@@ -735,8 +735,8 @@ export default function SimulationTab({ twin }: TabProps) {
             onClick={() => setShowForkMutation(!showForkMutation)}
             style={{ 
               fontSize: '0.8125rem', 
-              borderColor: showForkMutation ? '#7C3AED' : undefined,
-              color: showForkMutation ? '#7C3AED' : undefined
+              borderColor: showForkMutation ? '#111827' : undefined,
+              color: showForkMutation ? '#111827' : undefined
             }}
           >
             {showForkMutation ? 'Hide Fork Mutation' : 'Simulate Fork Mutation'}
@@ -786,7 +786,7 @@ export default function SimulationTab({ twin }: TabProps) {
             {/* Delta Performance Cards */}
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
               <div style={{ padding: '0.75rem 1.25rem', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 'var(--radius-sm)' }}>
-                <span style={{ fontSize: '0.7rem', color: '#7C3AED', fontWeight: 700, display: 'block' }}>PEAK TEMP GAIN</span>
+                <span style={{ fontSize: '0.7rem', color: '#111827', fontWeight: 700, display: 'block' }}>PEAK TEMP GAIN</span>
                 <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                   {(simFork.peak_fluid_temp - simBaseline.peak_fluid_temp) >= 0 ? '+' : ''}
                   {(simFork.peak_fluid_temp - simBaseline.peak_fluid_temp).toFixed(1)}°C
@@ -794,7 +794,7 @@ export default function SimulationTab({ twin }: TabProps) {
               </div>
 
               <div style={{ padding: '0.75rem 1.25rem', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 'var(--radius-sm)' }}>
-                <span style={{ fontSize: '0.7rem', color: '#7C3AED', fontWeight: 700, display: 'block' }}>ENTHALPY DELTA</span>
+                <span style={{ fontSize: '0.7rem', color: '#111827', fontWeight: 700, display: 'block' }}>ENTHALPY DELTA</span>
                 <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                   {(simFork.total_yield_kJ - simBaseline.total_yield_kJ) >= 0 ? '+' : ''}
                   {(simFork.total_yield_kJ - simBaseline.total_yield_kJ).toFixed(1)} kJ
@@ -802,7 +802,7 @@ export default function SimulationTab({ twin }: TabProps) {
               </div>
 
               <div style={{ padding: '0.75rem 1.25rem', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 'var(--radius-sm)' }}>
-                <span style={{ fontSize: '0.7rem', color: '#7C3AED', fontWeight: 700, display: 'block' }}>PLATEAU DURATION DELTA</span>
+                <span style={{ fontSize: '0.7rem', color: '#111827', fontWeight: 700, display: 'block' }}>PLATEAU DURATION DELTA</span>
                 <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                   {(simFork.plateau_duration_s - simBaseline.plateau_duration_s) >= 0 ? '+' : ''}
                   {(simFork.plateau_duration_s - simBaseline.plateau_duration_s)}s
@@ -852,7 +852,7 @@ export default function SimulationTab({ twin }: TabProps) {
                       color: 
                         param.status === 'CALIBRATED' ? '#059669' :
                         param.status === 'MEASURED' ? '#0284C7' :
-                        param.status === 'LITERATURE' ? '#7C3AED' :
+                        param.status === 'LITERATURE' ? '#111827' :
                         '#D97706',
                       border: 
                         param.status === 'CALIBRATED' ? '1px solid #A7F3D0' :
