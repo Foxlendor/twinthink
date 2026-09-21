@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { FALLBACK_TWINS } from '@/lib/mockTwins';
-import { getLocalTwin } from '@/lib/twinsData';
+import { TWINS_DATABASE, getLocalTwin } from '@/lib/twinsData';
 import { DEFAULT_PITCH_CODES } from '@/lib/usePitchAccess';
 
 function isPitchAuthorized(request: Request, searchParams: URLSearchParams): boolean {
@@ -61,9 +60,9 @@ export async function GET(
     }
   }
 
-  // 3. Fallback mock if still not found
-  if (!rawTwin && FALLBACK_TWINS[id]) {
-    rawTwin = JSON.parse(JSON.stringify(FALLBACK_TWINS[id]));
+  // 3. Fallback to TWINS_DATABASE if still not found
+  if (!rawTwin && TWINS_DATABASE[id]) {
+    rawTwin = JSON.parse(JSON.stringify(TWINS_DATABASE[id]));
   }
 
   if (!rawTwin) {

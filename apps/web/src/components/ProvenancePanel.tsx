@@ -29,12 +29,12 @@ export interface RealityDimensionDetail {
   twinId: string;
 }
 
-interface RealityProvenanceDrawerProps {
+interface ProvenancePanelProps {
   detail: RealityDimensionDetail | null;
   onClose: () => void;
 }
 
-export default function RealityProvenanceDrawer({ detail, onClose }: RealityProvenanceDrawerProps) {
+export default function ProvenancePanel({ detail, onClose }: ProvenancePanelProps) {
   if (!detail) return null;
 
   const getStatusBadge = (status: string) => {

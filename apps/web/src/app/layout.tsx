@@ -26,15 +26,15 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "TWINTH.INK | Give an idea a reality.",
-  description: "A living digital record for things people imagine, build, and test. Physical-to-twin protocol for hardware inventions.",
-  keywords: ["twin", "thermodynamic simulation", "hardware engineering", "open source hardware", "Resip", "sodium acetate", "thermal straw"],
+  title: "TWINTH.INK | The digital shadow of physical reality.",
+  description: "A living digital shadow for things people imagine, build, and test. The ink is where you think.",
+  keywords: ["twin", "thermodynamic simulation", "hardware engineering", "open source hardware", "Resip", "sodium acetate", "thermal straw", "digital shadow"],
   authors: [{ name: "anonymous" }],
   creator: "anonymous",
   publisher: "TwinThink",
   openGraph: {
-    title: "TWINTH.INK | Give an idea a reality.",
-    description: "A living digital record for things people imagine, build, and test.",
+    title: "TWINTH.INK | The digital shadow of physical reality.",
+    description: "A living digital shadow for things people imagine, build, and test. The ink is where you think.",
     url: "https://www.twinth.ink",
     siteName: "TwinThink",
     type: "website",

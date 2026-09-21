@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import InventorTip from './InventorTip';
 
 let isFirstLoad = true;
 let globalPrevPath = '';
@@ -14,6 +15,7 @@ export default function TransitionScreen() {
   useEffect(() => {
     const fromHome = globalPrevPath === '/';
     const toElsewhere = pathname !== '/';
+    const toHome = pathname === '/';
 
     // Update global for the *next* navigation
     globalPrevPath = pathname;
@@ -24,7 +26,7 @@ export default function TransitionScreen() {
       return;
     }
 
-    if (fromHome && toElsewhere) {
+    if ((fromHome && toElsewhere) || (!fromHome && toHome)) {
       setIsHidden(false);
       setIsRevealing(false);
     } else {
@@ -33,15 +35,11 @@ export default function TransitionScreen() {
   }, [pathname]);
 
   const handleVideoEnd = () => {
-    // Add a slight delay to ensure the video's visual tail fully completes
-    // before the black doorway starts ripping open.
+    setIsRevealing(true);
+    // After the CSS fade animation finishes (800ms), completely hide the overlay
     setTimeout(() => {
-      setIsRevealing(true);
-      // After the CSS reveal animation finishes (600ms), completely hide the overlay
-      setTimeout(() => {
-        setIsHidden(true);
-      }, 700); 
-    }, 400); // reduced delay slightly for a snappier feel
+      setIsHidden(true);
+    }, 850); 
   };
 
   if (isHidden) return null;
@@ -54,64 +52,33 @@ export default function TransitionScreen() {
         zIndex: 9999,
         pointerEvents: 'none',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        background: '#FAFAFA',
+        opacity: isRevealing ? 0 : 1,
+        transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
-      {/* 
-        The "Black Doorway" & Expanding Hole 
-        We use a giant black box-shadow to create the solid black screen.
-        The div itself acts as the "hole". 
-      */}
-      <div 
+      <video
+        src="/brand_ink_reveal.mp4"
+        autoPlay
+        muted
+        playsInline
+        onEnded={handleVideoEnd}
         style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
           position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: isRevealing ? '300vmax' : '260px',
-          height: isRevealing ? '300vmax' : '260px',
-          borderRadius: '50%',
-          boxShadow: '0 0 0 150vmax #000000', // Black borders filling the screen
-          background: isRevealing ? 'transparent' : '#FFFFFF', // White peep hole base
-          transition: 'width 0.6s cubic-bezier(0.8, 0, 0.1, 1), height 0.6s cubic-bezier(0.8, 0, 0.1, 1), background 0.3s ease',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden' // Keeps the video constrained inside the circle initially
+          mixBlendMode: 'multiply',
+          transform: isRevealing ? 'scale(1.05)' : 'scale(1)',
+          transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
-      >
-        {/* The Video and Text content inside the white peep hole */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            opacity: isRevealing ? 0 : 1,
-            transform: isRevealing ? 'scale(1.2)' : 'scale(1)',
-            transition: 'opacity 0.4s ease, transform 0.6s cubic-bezier(0.8, 0, 0.1, 1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          {/* We use object-fit cover so the video perfectly fills the circular peep hole and stays centered */}
-          <video
-            src="/twinthink.mp4?v=3"
-            autoPlay
-            muted
-            playsInline
-            onEnded={handleVideoEnd}
-            style={{
-              position: 'absolute',
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              opacity: 0.9,
-              mixBlendMode: 'multiply'
-            }}
-          />
-        </div>
+      />
+      <div style={{ position: 'absolute', bottom: '4rem', zIndex: 10, maxWidth: '600px', width: '90%', opacity: isRevealing ? 0 : 1, transition: 'opacity 0.4s' }}>
+        <InventorTip style={{ background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(10px)', border: '1px solid rgba(0,0,0,0.1)' }} />
       </div>
     </div>
   );

@@ -52,6 +52,7 @@ export interface TwinVersion {
     }>;
   };
   manifest_metadata?: any;
+  telemetry_schema?: string[];
 }
 
 export interface TwinData {
@@ -59,9 +60,11 @@ export interface TwinData {
   slug: string;
   creator: string | null;
   created_at: string;
+  domain?: string;
+  status?: string;
   current_version: TwinVersion;
   lineage: {
-    parent: {
+    parent: string | {
       parent_twin_id: string;
       parent_version: string;
       mutation_notes: string;
@@ -77,16 +80,7 @@ export interface TwinData {
   document?: any;
 }
 
-export interface TwinTestMetrics {
-  rmse_C: number;
-  mae_C: number;
-  max_error_C: number;
-  r_squared: number;
-  sample_count: number;
-  predicted_peak_C: number;
-  measured_peak_C: number;
-  peak_delta_C: number;
-}
+export type TwinTestMetrics = Record<string, number>;
 
 export interface TwinTestRecord {
   id: string;
@@ -97,19 +91,8 @@ export interface TwinTestRecord {
   notes?: string;
   s3_csv_key: string;
   metrics: TwinTestMetrics;
-  initial_conditions: {
-    ambient_C: number;
-    inlet_C: number;
-    initial_pcm_C: number;
-  };
-  raw_preview: Array<{
-    time_s: number;
-    ambient_C: number;
-    pcm_C: number;
-    inlet_C: number;
-    outlet_C: number;
-    flow_ml_s: number;
-  }>;
+  initial_conditions: Record<string, number>;
+  raw_preview: Array<Record<string, number>>;
   created_at: string;
 }
 

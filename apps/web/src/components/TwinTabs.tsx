@@ -29,7 +29,7 @@ import StructureTab from './tabs/StructureTab';
 import BomTab from './tabs/BomTab';
 import FilesTab from './tabs/FilesTab';
 import ClaimInspectorModal from './ClaimInspectorModal';
-import DisclosureGateModal from './DisclosureGateModal';
+import AccessModal from './AccessModal';
 import PublicConceptPreview from './PublicConceptPreview';
 import { usePitchAccess } from '@/lib/usePitchAccess';
 
@@ -510,7 +510,7 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
       />
 
       {showDisclosureGate && (
-        <DisclosureGateModal
+        <AccessModal
           twinId={twin.id}
           creator={twin.creator || 'inventor'}
           onClose={() => setShowDisclosureGate(false)}

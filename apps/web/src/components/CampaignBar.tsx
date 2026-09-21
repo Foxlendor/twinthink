@@ -25,7 +25,7 @@ interface BackerRecord {
   date: string;
 }
 
-interface CrowdfundingBarProps {
+interface CampaignBarProps {
   twinId: string;
   twinTitle?: string;
   goalAmount?: number;
@@ -35,7 +35,7 @@ interface CrowdfundingBarProps {
   targetMsrp?: number;
 }
 
-export default function CrowdfundingBar({
+export default function CampaignBar({
   twinId,
   twinTitle,
   goalAmount = 2500,
@@ -43,7 +43,7 @@ export default function CrowdfundingBar({
   initialBackers = 18,
   batchDescription,
   targetMsrp = 25
-}: CrowdfundingBarProps) {
+}: CampaignBarProps) {
   // Title & description adapt to the twin
   const title = twinTitle || (twinId.includes('twizz') ? 'TWIIZZLock 2L Volume Sleeve' : twinId.includes('redr') ? 'Redr.ink Modular Thermal Straw' : 'Redr.ink™ Thermal Straw');
   const defaultBatchDesc = batchDescription || (

@@ -2,11 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { FALLBACK_TWINS } from '@/lib/mockTwins';
+import { TWINS_DATABASE } from '@/lib/twinsData';
 import { ArrowRight, Compass, Database } from 'lucide-react';
 
 export default function ExplorePage() {
-  const twins = Object.values(FALLBACK_TWINS);
+  const twins = Object.values(TWINS_DATABASE);
 
   return (
     <main style={{ minHeight: '100vh', background: '#FAFAFA', padding: '4rem 1.5rem', color: '#111827' }}>

@@ -25,17 +25,8 @@ interface TabProps {
   twin: TwinData;
 }
 
-const SAMPLE_CSV_TEMPLATE = `timestamp_s,ambient_C,pcm_C,inlet_C,outlet_C,flow_ml_s
-0,21.4,21.4,4.2,4.5,0
-15,21.4,54.0,4.2,13.8,8
-30,21.4,54.0,4.2,18.2,8
-45,21.4,53.9,4.2,17.6,8
-60,21.4,53.8,4.2,17.1,8
-90,21.4,53.2,4.2,15.9,8
-120,21.4,52.4,4.2,14.5,8
-180,21.4,48.6,4.2,12.1,8
-240,21.4,42.1,4.2,9.8,8
-300,21.4,35.8,4.2,7.6,0`;
+// The template is now generated dynamically based on twin.telemetry_schema
+// const SAMPLE_CSV_TEMPLATE = ...
 
 export default function TestsTab({ twin }: TabProps) {
   const [data, setData] = useState<TwinTestsResponse | null>(null);
@@ -78,6 +69,32 @@ export default function TestsTab({ twin }: TabProps) {
     fetchTests();
   }, [twin.id]);
 
+  const validateTelemetryCSV = async (file: File): Promise<void> => {
+    const text = await file.text();
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+    if (lines.length < 2) throw new Error("CSV must contain headers and at least one data row.");
+    
+    const headers = lines[0].split(',').map(h => h.trim());
+    const required = twin.current_version?.telemetry_schema || ['timestamp_s', 'ambient_C', 'pcm_C', 'inlet_C', 'outlet_C', 'flow_ml_s'];
+    const missing = required.filter(r => !headers.includes(r));
+    if (missing.length > 0) {
+      throw new Error(`Missing required sensor channels: ${missing.join(', ')}`);
+    }
+
+    const timeIdx = headers.indexOf('timestamp_s');
+    let prevTime = -1;
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(c => c.trim());
+      if (cols.length !== headers.length) continue;
+      const t = parseFloat(cols[timeIdx]);
+      if (isNaN(t)) throw new Error(`Invalid timestamp on row ${i + 1}`);
+      if (t <= prevTime) {
+        throw new Error(`Time-series monotonicity violation on row ${i + 1}: time ${t} is not strictly greater than previous time ${prevTime}`);
+      }
+      prevTime = t;
+    }
+  };
+
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) return;
@@ -85,6 +102,7 @@ export default function TestsTab({ twin }: TabProps) {
     try {
       setUploading(true);
       setError(null);
+      await validateTelemetryCSV(selectedFile);
       const apiBase = getApiUrl();
       const formData = new FormData();
       formData.append('file', selectedFile);
@@ -118,6 +136,10 @@ export default function TestsTab({ twin }: TabProps) {
   const handleSampleUpload = async () => {
     try {
       setUploading(true);
+      const required = twin.current_version?.telemetry_schema || ['timestamp_s', 'ambient_C', 'pcm_C', 'inlet_C', 'outlet_C', 'flow_ml_s'];
+      const dummyDataRow = required.map(key => key.includes('time') ? '0' : '0.0').join(',');
+      const SAMPLE_CSV_TEMPLATE = `${required.join(',')}\n${dummyDataRow}`;
+      
       const blob = new Blob([SAMPLE_CSV_TEMPLATE], { type: 'text/csv' });
       const sampleFile = new File([blob], 'bench_sample.csv', { type: 'text/csv' });
 
@@ -143,6 +165,10 @@ export default function TestsTab({ twin }: TabProps) {
   };
 
   const downloadCsvTemplate = () => {
+    const required = twin.current_version?.telemetry_schema || ['timestamp_s', 'ambient_C', 'pcm_C', 'inlet_C', 'outlet_C', 'flow_ml_s'];
+    const dummyDataRow = required.map(key => key.includes('time') ? '0' : '0.0').join(',');
+    const SAMPLE_CSV_TEMPLATE = `${required.join(',')}\n${dummyDataRow}`;
+
     const blob = new Blob([SAMPLE_CSV_TEMPLATE], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -392,196 +418,180 @@ export default function TestsTab({ twin }: TabProps) {
             gap: '0.75rem',
             marginBottom: '1.5rem'
           }}>
-            <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '10px', padding: '0.75rem 1rem' }}>
-              <span style={{ fontSize: '0.6875rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600 }}>Measured Peak</span>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#059669', marginTop: '0.1rem' }}>
-                {selectedTest.metrics.measured_peak_C}°C
+            {Object.entries(selectedTest.metrics).map(([key, val]) => (
+              <div key={key} style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '10px', padding: '0.75rem 1rem' }}>
+                <span style={{ fontSize: '0.6875rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600 }}>{key.replace(/_/g, ' ')}</span>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', marginTop: '0.1rem' }}>
+                  {val}
+                </div>
               </div>
-            </div>
-
-            <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '10px', padding: '0.75rem 1rem' }}>
-              <span style={{ fontSize: '0.6875rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600 }}>Model Predicted</span>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0284C7', marginTop: '0.1rem' }}>
-                {selectedTest.metrics.predicted_peak_C}°C
-              </div>
-            </div>
-
-            <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '10px', padding: '0.75rem 1rem' }}>
-              <span style={{ fontSize: '0.6875rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600 }}>RMSE Residual</span>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', marginTop: '0.1rem' }}>
-                {selectedTest.metrics.rmse_C}°C
-              </div>
-            </div>
-
-            <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '10px', padding: '0.75rem 1rem' }}>
-              <span style={{ fontSize: '0.6875rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600 }}>Goodness-of-Fit (R²)</span>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', marginTop: '0.1rem' }}>
-                {selectedTest.metrics.r_squared}
-              </div>
-            </div>
+            ))}
           </div>
 
           {/* SVG Visual Telemetry Chart */}
-          <div style={{
-            background: '#F9FAFB',
-            border: '1px solid #E5E7EB',
-            borderRadius: '12px',
-            padding: '1.25rem',
-            marginBottom: '1.5rem'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#111827' }}>
-                Live Telemetry Curve vs. Thermodynamic Model
+          {twin.domain !== 'Mechanisms' && (
+            <div style={{
+              background: '#F9FAFB',
+              border: '1px solid #E5E7EB',
+              borderRadius: '12px',
+              padding: '1.25rem',
+              marginBottom: '1.5rem'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#111827' }}>
+                  Live Telemetry Curve vs. Thermodynamic Model
+                </div>
+
+                {/* Chart Legend */}
+                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#059669', fontWeight: 600 }}>
+                    <span style={{ width: '10px', height: '3px', background: '#059669', borderRadius: '2px' }} />
+                    Measured Outlet Temp
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#D97706', fontWeight: 600 }}>
+                    <span style={{ width: '10px', height: '3px', background: '#D97706', borderRadius: '2px' }} />
+                    PCM Core Temp (54°C)
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#0284C7', fontWeight: 600 }}>
+                    <span style={{ width: '10px', height: '3px', background: '#0284C7', borderRadius: '2px' }} />
+                    Inlet Stream Temp (4.2°C)
+                  </span>
+                </div>
               </div>
 
-              {/* Chart Legend */}
-              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#059669', fontWeight: 600 }}>
-                  <span style={{ width: '10px', height: '3px', background: '#059669', borderRadius: '2px' }} />
-                  Measured Outlet Temp
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#D97706', fontWeight: 600 }}>
-                  <span style={{ width: '10px', height: '3px', background: '#D97706', borderRadius: '2px' }} />
-                  PCM Core Temp (54°C)
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#0284C7', fontWeight: 600 }}>
-                  <span style={{ width: '10px', height: '3px', background: '#0284C7', borderRadius: '2px' }} />
-                  Inlet Stream Temp (4.2°C)
-                </span>
-              </div>
-            </div>
-
-            {/* Render SVG */}
-            <div style={{ width: '100%', overflowX: 'auto' }}>
-              <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{ width: '100%', height: 'auto', minWidth: '480px', display: 'block' }}>
-                {/* Horizontal Grid lines */}
-                {[0, 15, 30, 45, 60].map((temp) => (
-                  <g key={temp}>
-                    <line
-                      x1={padX}
-                      y1={toSvgY(temp)}
-                      x2={chartW - padX}
-                      y2={toSvgY(temp)}
-                      stroke="#E5E7EB"
-                      strokeDasharray="3 3"
-                    />
-                    <text
-                      x={padX - 8}
-                      y={toSvgY(temp) + 3}
-                      fontSize="10"
-                      fill="#9CA3AF"
-                      textAnchor="end"
-                      fontFamily="var(--font-mono)"
-                    >
-                      {temp}°C
-                    </text>
-                  </g>
-                ))}
-
-                {/* Vertical Time lines */}
-                {[0, 60, 120, 180, 240, 300].map((t) => (
-                  <g key={t}>
-                    <line
-                      x1={toSvgX(t)}
-                      y1={padY}
-                      x2={toSvgX(t)}
-                      y2={chartH - padY}
-                      stroke="#E5E7EB"
-                      strokeDasharray="3 3"
-                    />
-                    <text
-                      x={toSvgX(t)}
-                      y={chartH - padY + 14}
-                      fontSize="10"
-                      fill="#9CA3AF"
-                      textAnchor="middle"
-                      fontFamily="var(--font-mono)"
-                    >
-                      {t}s
-                    </text>
-                  </g>
-                ))}
-
-                {/* Inlet Stream Temp (Cyan Line) */}
-                {inletPath && (
-                  <path
-                    d={inletPath}
-                    fill="none"
-                    stroke="#0284C7"
-                    strokeWidth="2"
-                    strokeDasharray="4 4"
-                  />
-                )}
-
-                {/* PCM Core Temp (Amber Line) */}
-                {pcmPath && (
-                  <path
-                    d={pcmPath}
-                    fill="none"
-                    stroke="#D97706"
-                    strokeWidth="2"
-                  />
-                )}
-
-                {/* Measured Outlet Temp (Emerald Line) */}
-                {measuredPath && (
-                  <path
-                    d={measuredPath}
-                    fill="none"
-                    stroke="#059669"
-                    strokeWidth="2.5"
-                  />
-                )}
-
-                {/* Plotted Points on Measured Curve */}
-                {points.map((p, idx) => {
-                  const cx = toSvgX(p.time_s);
-                  const cy = toSvgY(p.outlet_C);
-                  const isHovered = hoveredPointIndex === idx;
-
-                  return (
-                    <g key={idx} onMouseEnter={() => setHoveredPointIndex(idx)} onMouseLeave={() => setHoveredPointIndex(null)} style={{ cursor: 'pointer' }}>
-                      <circle
-                        cx={cx}
-                        cy={cy}
-                        r={isHovered ? 6 : 4}
-                        fill="#FFFFFF"
-                        stroke="#059669"
-                        strokeWidth="2"
+              {/* Render SVG */}
+              <div style={{ width: '100%', overflowX: 'auto' }}>
+                <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{ width: '100%', height: 'auto', minWidth: '480px', display: 'block' }}>
+                  {/* Horizontal Grid lines */}
+                  {[0, 15, 30, 45, 60].map((temp) => (
+                    <g key={temp}>
+                      <line
+                        x1={padX}
+                        y1={toSvgY(temp)}
+                        x2={chartW - padX}
+                        y2={toSvgY(temp)}
+                        stroke="#E5E7EB"
+                        strokeDasharray="3 3"
                       />
-                      {isHovered && (
-                        <g>
-                          <rect
-                            x={cx - 35}
-                            y={cy - 28}
-                            width="70"
-                            height="20"
-                            rx="4"
-                            fill="#111827"
-                          />
-                          <text
-                            x={cx}
-                            y={cy - 14}
-                            fontSize="10"
-                            fill="#FFFFFF"
-                            fontWeight="600"
-                            textAnchor="middle"
-                            fontFamily="var(--font-mono)"
-                          >
-                            {p.outlet_C}°C @ {p.time_s}s
-                          </text>
-                        </g>
-                      )}
+                      <text
+                        x={padX - 8}
+                        y={toSvgY(temp) + 3}
+                        fontSize="10"
+                        fill="#9CA3AF"
+                        textAnchor="end"
+                        fontFamily="var(--font-mono)"
+                      >
+                        {temp}°C
+                      </text>
                     </g>
-                  );
-                })}
-              </svg>
+                  ))}
+
+                  {/* Vertical Time lines */}
+                  {[0, 60, 120, 180, 240, 300].map((t) => (
+                    <g key={t}>
+                      <line
+                        x1={toSvgX(t)}
+                        y1={padY}
+                        x2={toSvgX(t)}
+                        y2={chartH - padY}
+                        stroke="#E5E7EB"
+                        strokeDasharray="3 3"
+                      />
+                      <text
+                        x={toSvgX(t)}
+                        y={chartH - padY + 14}
+                        fontSize="10"
+                        fill="#9CA3AF"
+                        textAnchor="middle"
+                        fontFamily="var(--font-mono)"
+                      >
+                        {t}s
+                      </text>
+                    </g>
+                  ))}
+
+                  {/* Inlet Stream Temp (Cyan Line) */}
+                  {inletPath && (
+                    <path
+                      d={inletPath}
+                      fill="none"
+                      stroke="#0284C7"
+                      strokeWidth="2"
+                      strokeDasharray="4 4"
+                    />
+                  )}
+
+                  {/* PCM Core Temp (Amber Line) */}
+                  {pcmPath && (
+                    <path
+                      d={pcmPath}
+                      fill="none"
+                      stroke="#D97706"
+                      strokeWidth="2"
+                    />
+                  )}
+
+                  {/* Measured Outlet Temp (Emerald Line) */}
+                  {measuredPath && (
+                    <path
+                      d={measuredPath}
+                      fill="none"
+                      stroke="#059669"
+                      strokeWidth="2.5"
+                    />
+                  )}
+
+                  {/* Plotted Points on Measured Curve */}
+                  {points.map((p, idx) => {
+                    const cx = toSvgX(p.time_s);
+                    // Use a fallback for p.outlet_C when undefined in non-thermal domains (even though chart is hidden, map runs)
+                    const cy = toSvgY(p.outlet_C || 0);
+                    const isHovered = hoveredPointIndex === idx;
+
+                    return (
+                      <g key={idx} onMouseEnter={() => setHoveredPointIndex(idx)} onMouseLeave={() => setHoveredPointIndex(null)} style={{ cursor: 'pointer' }}>
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={isHovered ? 6 : 4}
+                          fill="#FFFFFF"
+                          stroke="#059669"
+                          strokeWidth="2"
+                        />
+                        {isHovered && (
+                          <g>
+                            <rect
+                              x={cx - 35}
+                              y={cy - 28}
+                              width="70"
+                              height="20"
+                              rx="4"
+                              fill="#111827"
+                            />
+                            <text
+                              x={cx}
+                              y={cy - 14}
+                              fontSize="10"
+                              fill="#FFFFFF"
+                              fontWeight="600"
+                              textAnchor="middle"
+                              fontFamily="var(--font-mono)"
+                            >
+                              {p.outlet_C}°C @ {p.time_s}s
+                            </text>
+                          </g>
+                        )}
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+              
+              <div style={{ fontSize: '0.75rem', color: '#6B7280', textAlign: 'center', marginTop: '0.5rem' }}>
+                Hover over points to inspect exact temperature readings. Notice the steady 14–18°C warming delta maintained by latent phase-change heat.
+              </div>
             </div>
-            
-            <div style={{ fontSize: '0.75rem', color: '#6B7280', textAlign: 'center', marginTop: '0.5rem' }}>
-              Hover over points to inspect exact temperature readings. Notice the steady 14–18°C warming delta maintained by latent phase-change heat.
-            </div>
-          </div>
+          )}
 
           {/* Raw Telemetry Data Table */}
           {points.length > 0 && (
@@ -593,23 +603,17 @@ export default function TestsTab({ twin }: TabProps) {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', textAlign: 'left' }}>
                   <thead>
                     <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB', color: '#6B7280', fontSize: '0.75rem' }}>
-                      <th style={{ padding: '0.5rem 0.75rem' }}>Time (s)</th>
-                      <th style={{ padding: '0.5rem 0.75rem' }}>Ambient (°C)</th>
-                      <th style={{ padding: '0.5rem 0.75rem' }}>PCM Core (°C)</th>
-                      <th style={{ padding: '0.5rem 0.75rem' }}>Inlet Water (°C)</th>
-                      <th style={{ padding: '0.5rem 0.75rem' }}>Measured Outlet (°C)</th>
-                      <th style={{ padding: '0.5rem 0.75rem' }}>Flow Rate (mL/s)</th>
+                      {Object.keys(points[0]).map(key => (
+                        <th key={key} style={{ padding: '0.5rem 0.75rem' }}>{key}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {points.map((pt, i) => (
+                    {points.map((pt: any, i) => (
                       <tr key={i} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                        <td style={{ padding: '0.5rem 0.75rem', fontFamily: 'var(--font-mono)' }}>{pt.time_s}s</td>
-                        <td style={{ padding: '0.5rem 0.75rem', fontFamily: 'var(--font-mono)' }}>{pt.ambient_C}°C</td>
-                        <td style={{ padding: '0.5rem 0.75rem', fontFamily: 'var(--font-mono)', color: '#D97706', fontWeight: 600 }}>{pt.pcm_C}°C</td>
-                        <td style={{ padding: '0.5rem 0.75rem', fontFamily: 'var(--font-mono)', color: '#0284C7' }}>{pt.inlet_C}°C</td>
-                        <td style={{ padding: '0.5rem 0.75rem', fontFamily: 'var(--font-mono)', color: '#059669', fontWeight: 700 }}>{pt.outlet_C}°C</td>
-                        <td style={{ padding: '0.5rem 0.75rem', fontFamily: 'var(--font-mono)' }}>{pt.flow_ml_s} mL/s</td>
+                        {Object.values(pt).map((val: any, colIdx) => (
+                          <td key={colIdx} style={{ padding: '0.5rem 0.75rem', fontFamily: 'var(--font-mono)' }}>{val}</td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>

@@ -16,6 +16,7 @@ import {
   Droplets
 } from 'lucide-react';
 import styles from './Tabs.module.css';
+import InventorTip from '../InventorTip';
 
 interface TabProps {
   twin: TwinData;
@@ -48,6 +49,8 @@ export default function OverviewTab({ twin }: TabProps) {
   return (
     <div className={styles.tabContentContainer}>
       
+      <InventorTip style={{ marginBottom: '1.5rem' }} />
+
       {/* Hero Overview Banner */}
       <div style={{
         background: '#FFFFFF',

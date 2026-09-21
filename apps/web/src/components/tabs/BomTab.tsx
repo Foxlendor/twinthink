@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TwinData, BomNode, ProvenanceEntry } from '@/lib/types';
 import {
   ChevronRight,
   ChevronDown,
   Layers,
+  PenTool,
+  Download,
   ShieldCheck,
   Box,
   Wrench,
@@ -255,7 +257,8 @@ export default function BomTab({ twin }: TabProps) {
         depth: 0,
         hasChildren: false,
         isAssembly: false,
-        provenance: []
+        provenance: [],
+        evidenceRefs: ['/resip_schematic_2016.png']
       });
     }
   }
@@ -734,6 +737,25 @@ export default function BomTab({ twin }: TabProps) {
                 </div>
               )}
             </div>
+
+            {/* Notebook Evidence */}
+            {selectedNode.evidenceRefs && selectedNode.evidenceRefs.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <FileText size={14} style={{ color: 'var(--accent-primary)' }} />
+                  <h4 style={{ margin: 0, fontSize: '0.8125rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>
+                    Notebook Evidence
+                  </h4>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {selectedNode.evidenceRefs.map((ref, idx) => (
+                    <a key={idx} href={ref} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.6rem', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '4px', fontSize: '0.75rem', color: '#0284C7', textDecoration: 'none', fontWeight: 600, transition: 'all 0.2s ease' }}>
+                      <PenTool size={12} /> View Notebook Sketch
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Cost Rollup Trace */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

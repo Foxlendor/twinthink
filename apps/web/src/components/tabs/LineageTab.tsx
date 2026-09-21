@@ -2,35 +2,74 @@
 
 import React, { useState } from 'react';
 import { TwinData } from '@/lib/types';
-import { GitFork, ArrowDown, Sparkles, Sliders, Play, CheckCircle2, ArrowRight } from 'lucide-react';
+import { GitFork, ArrowDown, Sparkles, Sliders, Play, ArrowRight, Lightbulb } from 'lucide-react';
 import styles from './Tabs.module.css';
+import { getLocalTwin } from '@/lib/twinsData';
+import ForkModal from '../ForkModal';
 
 interface LineageTabProps {
   twin: TwinData;
 }
 
 export default function LineageTab({ twin }: LineageTabProps) {
-  // Mutation Simulator state
-  const [pcmMassG, setPcmMassG] = useState<number>(50);
-  const [wallThicknessMm, setWallThicknessMm] = useState<number>(0.5);
-  const [insulationWallMm, setInsulationWallMm] = useState<number>(1.5);
   const [simulated, setSimulated] = useState<boolean>(false);
-
-  // Computed simulation deltas
-  const baselineEnthalpy = 12.05; // kJ
-  const baselineWeight = 45.0; // g
-  const baselineCost = 4.50; // USD
-
-  const mutatedEnthalpy = (pcmMassG * 0.241).toFixed(2);
-  const deltaEnthalpy = ((Number(mutatedEnthalpy) - baselineEnthalpy) / baselineEnthalpy * 100).toFixed(1);
+  const [showForkModal, setShowForkModal] = useState<boolean>(false);
   
-  const mutatedWeight = (30 + pcmMassG * 0.3).toFixed(1);
-  const deltaWeight = ((Number(mutatedWeight) - baselineWeight) / baselineWeight * 100).toFixed(1);
+  // Create state for dynamic properties based on the current twin
+  const numericProps = twin.current_version.properties.filter(p => p.type === 'number');
+  
+  // Simple state dictionary for the sliders
+  const [mutatedValues, setMutatedValues] = useState<Record<string, number>>(() => {
+    const init: Record<string, number> = {};
+    numericProps.forEach(p => {
+      init[p.key] = p.value as number;
+    });
+    return init;
+  });
 
-  const mutatedCost = (4.50 + (pcmMassG - 50) * 0.013 + (wallThicknessMm - 0.5) * 0.4).toFixed(2);
+  const handleSliderChange = (key: string, val: number) => {
+    setMutatedValues(prev => ({ ...prev, [key]: val }));
+    setSimulated(true);
+  };
+
+  // Fetch parent and descendants for DAG visualization
+  const parentTwin = twin.lineage.parent && typeof twin.lineage.parent === 'string' 
+    ? getLocalTwin(twin.lineage.parent) 
+    : null;
+    
+  const descendantTwins = twin.lineage.descendants
+    .map(id => getLocalTwin(id))
+    .filter(t => t !== null) as TwinData[];
 
   return (
     <div className={styles.tabContent}>
+      
+      {/* TwizzFizz Tutorial Banner (Only show on ReSip #0001) */}
+      {twin.id === '0001' && (
+        <div style={{
+          background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 100%)',
+          border: '1px solid #4F46E5',
+          borderRadius: 'var(--radius-md)',
+          padding: '1.5rem',
+          marginBottom: '2rem',
+          color: '#FFFFFF',
+          boxShadow: '0 4px 15px rgba(79, 70, 229, 0.2)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
+            <Lightbulb size={20} color="#FCD34D" />
+            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#FCD34D', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              Lineage Tutorial: The "TwizzFizz" Mutation
+            </span>
+          </div>
+          <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#E0E7FF', lineHeight: 1.6 }}>
+            Did you know that <strong>Twin #0003 (TwizzFizz)</strong> was born directly from this thermal straw? 
+            An inventor clicked <strong>Fork</strong> below, swapped the <em>Thermal Phase-Change</em> payload for a <em>Pressurized Gas Widget</em>, and evolved the invention into the <strong>Fluid Dynamics</strong> domain to create on-demand carbonation. 
+            <br/><br/>
+            Check out the <strong>Descendants</strong> in the DAG tree below to see the resulting child Twin!
+          </p>
+        </div>
+      )}
+
       {/* Concept Lineage Header */}
       <div style={{
         background: '#FFFFFF',
@@ -50,44 +89,85 @@ export default function LineageTab({ twin }: LineageTabProps) {
           Where Did This Idea Come From, and What Can It Become?
         </h2>
         <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-          Every twin records its genetic lineage. Fork this baseline to mutate physical parameters, run the ODE simulation on the new physics matrix, and produce a child revision.
+          Every twin records its genetic lineage. Fork this baseline to mutate physical parameters, run simulations on the new physics matrix, and produce a child revision.
         </p>
       </div>
 
-      {/* Lineage Tree Visualization */}
+      {/* Dynamic Lineage Tree Visualization (DAG) */}
       <div className={styles.section} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1.5rem 0' }}>
         
-        {/* Ancestor Concept Node */}
-        <div style={{
-          background: 'var(--bg-primary)',
-          border: '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-sm)',
-          padding: '0.875rem 1.5rem',
-          textAlign: 'center',
-          maxWidth: '420px',
-          width: '100%'
-        }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>CONCEPT ANCESTOR (Alpha)</div>
-          <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9375rem' }}>Phase Change Beverage Reheating Calorimeter</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Benchtop glass rig with supersaturated sodium acetate core</div>
-        </div>
+        {/* Parent Node (if exists) */}
+        {parentTwin && (
+          <>
+            <a href={`/twins/${parentTwin.id}?tab=lineage`} style={{ textDecoration: 'none', width: '100%', maxWidth: '420px' }}>
+              <div style={{
+                background: 'var(--bg-primary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '0.875rem 1.5rem',
+                textAlign: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>PARENT ANCESTOR ({parentTwin.domain})</div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9375rem' }}>{parentTwin.current_version.title}</div>
+              </div>
+            </a>
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0.75rem 0' }}>
-          <div style={{ width: '2px', height: '24px', background: 'var(--border-color)' }} />
-          <div style={{
-            padding: '0.35rem 0.8rem',
-            background: 'rgba(0, 102, 255, 0.1)',
-            border: '1px dashed var(--accent-primary)',
-            borderRadius: '4px',
-            fontSize: '0.75rem',
-            color: 'var(--accent-primary)',
-            fontFamily: 'var(--font-mono)'
-          }}>
-            + INVENTIONS JOURNAL MUTATION (2021): Annular Conduit + Snap-Disc Trigger
-          </div>
-          <div style={{ width: '2px', height: '24px', background: 'var(--border-color)' }} />
-          <ArrowDown size={14} color="var(--text-muted)" style={{ marginTop: '-4px' }} />
-        </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0.75rem 0' }}>
+              <div style={{ width: '2px', height: '24px', background: 'var(--border-color)' }} />
+              <div style={{
+                padding: '0.35rem 0.8rem',
+                background: 'rgba(0, 102, 255, 0.1)',
+                border: '1px dashed var(--accent-primary)',
+                borderRadius: '4px',
+                fontSize: '0.75rem',
+                color: 'var(--accent-primary)',
+                fontFamily: 'var(--font-mono)'
+              }}>
+                + DOMAIN MUTATION APPLIED
+              </div>
+              <div style={{ width: '2px', height: '24px', background: 'var(--border-color)' }} />
+              <ArrowDown size={14} color="var(--text-muted)" style={{ marginTop: '-4px' }} />
+            </div>
+          </>
+        )}
+
+        {/* Concept Ancestor Fallback (if no parent) */}
+        {!parentTwin && twin.id === '0001' && (
+          <>
+            <div style={{
+              background: 'var(--bg-primary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '0.875rem 1.5rem',
+              textAlign: 'center',
+              maxWidth: '420px',
+              width: '100%'
+            }}>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>CONCEPT ANCESTOR (Alpha)</div>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9375rem' }}>Phase Change Beverage Reheating Calorimeter</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Benchtop glass rig with supersaturated sodium acetate core</div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0.75rem 0' }}>
+              <div style={{ width: '2px', height: '24px', background: 'var(--border-color)' }} />
+              <div style={{
+                padding: '0.35rem 0.8rem',
+                background: 'rgba(0, 102, 255, 0.1)',
+                border: '1px dashed var(--accent-primary)',
+                borderRadius: '4px',
+                fontSize: '0.75rem',
+                color: 'var(--accent-primary)',
+                fontFamily: 'var(--font-mono)'
+              }}>
+                + INVENTIONS JOURNAL MUTATION (2021)
+              </div>
+              <div style={{ width: '2px', height: '24px', background: 'var(--border-color)' }} />
+              <ArrowDown size={14} color="var(--text-muted)" style={{ marginTop: '-4px' }} />
+            </div>
+          </>
+        )}
 
         {/* Current Canonical Twin Node */}
         <div style={{
@@ -102,13 +182,42 @@ export default function LineageTab({ twin }: LineageTabProps) {
         }}>
           <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#059669', letterSpacing: '0.5px' }}>CURRENT CANONICAL SPECIMEN</div>
           <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0.25rem 0' }}>
-            RESIP™ — Twin #0001 (Outdoor Edition)
+            {twin.current_version.title} — Twin #{twin.id}
           </div>
           <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-            50g SAT Core • 316L Food-Grade Conduit • $4.50 BOM • Calibrated ODE Engine
+            {twin.domain} • Status: {twin.status}
           </div>
         </div>
 
+        {/* Descendants (Children) */}
+        {descendantTwins.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '0.75rem', width: '100%' }}>
+            <div style={{ width: '2px', height: '24px', background: 'var(--border-color)' }} />
+            <ArrowDown size={14} color="var(--text-muted)" style={{ marginTop: '-4px', marginBottom: '1rem' }} />
+            
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {descendantTwins.map(desc => (
+                <a key={desc.id} href={`/twins/${desc.id}?tab=lineage`} style={{ textDecoration: 'none' }}>
+                  <div style={{
+                    background: '#F8FAFC',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '0.75rem 1rem',
+                    textAlign: 'center',
+                    minWidth: '220px',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                    transition: 'transform 0.1s ease'
+                  }} className="hover:scale-105">
+                    <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800, letterSpacing: '0.5px' }}>DESCENDANT (FORK)</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0F172A', marginTop: '0.2rem' }}>{desc.current_version.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: '#3B82F6', marginTop: '0.3rem', fontWeight: 600 }}>{desc.domain}</div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Interactive Fork & Parameter Mutation Simulator */}
@@ -119,12 +228,12 @@ export default function LineageTab({ twin }: LineageTabProps) {
               Fork & Re-Simulate Mutation Engine
             </h3>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Evaluate parameter mutations before generating child Twin #0002
+              Evaluate parameter mutations before generating a child Twin
             </span>
           </div>
 
           <button
-            onClick={() => setSimulated(true)}
+            onClick={() => setShowForkModal(true)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -140,79 +249,53 @@ export default function LineageTab({ twin }: LineageTabProps) {
               boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
             }}
           >
-            <Play size={14} fill="#FFFFFF" />
-            Run Fork Simulation
+            <GitFork size={14} fill="#FFFFFF" />
+            Branch & Fork Twin
           </button>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
           
-          {/* Sliders */}
+          {/* Dynamic Sliders based on Properties */}
           <div style={{ background: 'var(--bg-primary)', padding: '1.25rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-            
-            <div style={{ marginBottom: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.4rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>PCM Core Mass</span>
-                <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-primary)' }}>{pcmMassG} g</strong>
-              </div>
-              <input
-                type="range"
-                min={30}
-                max={100}
-                step={5}
-                value={pcmMassG}
-                onChange={(e) => { setPcmMassG(Number(e.target.value)); setSimulated(true); }}
-                style={{ width: '100%' }}
-              />
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', marginTop: '0.2rem' }}>
-                <span>30g (Ultralight)</span>
-                <span>50g (Baseline)</span>
-                <span>100g (Expedition)</span>
-              </div>
-            </div>
+            {numericProps.map((prop, i) => {
+              const val = mutatedValues[prop.key];
+              const baseline = prop.value as number;
+              // Simple arbitrary min/max for the simulator
+              const min = baseline * 0.2;
+              const max = baseline * 3.0;
+              const step = baseline > 10 ? 1 : 0.1;
 
-            <div style={{ marginBottom: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.4rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Inner Conduit Wall (316L)</span>
-                <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-primary)' }}>{wallThicknessMm} mm</strong>
+              return (
+                <div key={prop.key} style={{ marginBottom: i === numericProps.length - 1 ? 0 : '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.4rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{prop.label}</span>
+                    <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-primary)' }}>
+                      {Number(val).toFixed(2)} {prop.unit}
+                    </strong>
+                  </div>
+                  <input
+                    type="range"
+                    min={min}
+                    max={max}
+                    step={step}
+                    value={val}
+                    onChange={(e) => handleSliderChange(prop.key, Number(e.target.value))}
+                    style={{ width: '100%', accentColor: 'var(--accent-primary)' }}
+                  />
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', marginTop: '0.2rem' }}>
+                    <span>{min.toFixed(1)} (Min)</span>
+                    <span>{baseline.toFixed(1)} (Base)</span>
+                    <span>{max.toFixed(1)} (Max)</span>
+                  </div>
+                </div>
+              );
+            })}
+            {numericProps.length === 0 && (
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '1rem 0' }}>
+                No numeric parameters available to mutate on this twin.
               </div>
-              <input
-                type="range"
-                min={0.3}
-                max={1.2}
-                step={0.1}
-                value={wallThicknessMm}
-                onChange={(e) => { setWallThicknessMm(Number(e.target.value)); setSimulated(true); }}
-                style={{ width: '100%' }}
-              />
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', marginTop: '0.2rem' }}>
-                <span>0.3mm (High Flux)</span>
-                <span>0.5mm (Baseline)</span>
-                <span>1.2mm (Heavy Duty)</span>
-              </div>
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.4rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Silicone Outer Insulation</span>
-                <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-primary)' }}>{insulationWallMm} mm</strong>
-              </div>
-              <input
-                type="range"
-                min={1.0}
-                max={3.0}
-                step={0.25}
-                value={insulationWallMm}
-                onChange={(e) => { setInsulationWallMm(Number(e.target.value)); setSimulated(true); }}
-                style={{ width: '100%' }}
-              />
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', marginTop: '0.2rem' }}>
-                <span>1.0mm (Slim)</span>
-                <span>1.5mm (Baseline)</span>
-                <span>3.0mm (Alpine Insulated)</span>
-              </div>
-            </div>
-
+            )}
           </div>
 
           {/* Mutation Impact Radar */}
@@ -223,34 +306,24 @@ export default function LineageTab({ twin }: LineageTabProps) {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Latent Enthalpy Yield</span>
-                  <div style={{ textAlign: 'right' }}>
-                    <strong style={{ fontFamily: 'var(--font-mono)', color: '#059669', fontSize: '0.9375rem' }}>{mutatedEnthalpy} kJ</strong>
-                    <span style={{ fontSize: '0.7rem', color: Number(deltaEnthalpy) >= 0 ? '#059669' : '#DC2626', marginLeft: '0.4rem' }}>
-                      ({Number(deltaEnthalpy) >= 0 ? `+${deltaEnthalpy}` : deltaEnthalpy}%)
-                    </span>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Total Assembly Mass</span>
-                  <div style={{ textAlign: 'right' }}>
-                    <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', fontSize: '0.9375rem' }}>{mutatedWeight} g</strong>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.4rem' }}>
-                      ({Number(deltaWeight) >= 0 ? `+${deltaWeight}` : deltaWeight}%)
-                    </span>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Estimated Unit COGS</span>
-                  <div style={{ textAlign: 'right' }}>
-                    <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', fontSize: '0.9375rem' }}>${mutatedCost} USD</strong>
-                  </div>
-                </div>
-
+                {numericProps.slice(0, 3).map(prop => {
+                  const baseline = prop.value as number;
+                  const mutated = mutatedValues[prop.key];
+                  const delta = baseline === 0 ? 0 : ((mutated - baseline) / baseline * 100).toFixed(1);
+                  const isPositive = Number(delta) >= 0;
+                  
+                  return (
+                    <div key={`delta-${prop.key}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{prop.label}</span>
+                      <div style={{ textAlign: 'right' }}>
+                        <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', fontSize: '0.9375rem' }}>{mutated.toFixed(2)} {prop.unit}</strong>
+                        <span style={{ fontSize: '0.7rem', color: isPositive ? '#059669' : '#DC2626', marginLeft: '0.4rem' }}>
+                          ({isPositive ? `+${delta}` : delta}%)
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -266,9 +339,16 @@ export default function LineageTab({ twin }: LineageTabProps) {
           </div>
 
         </div>
-
       </div>
 
+      {/* The Fork Modal */}
+      {showForkModal && (
+        <ForkModal 
+          parentTwin={twin} 
+          mutatedValues={mutatedValues} 
+          onClose={() => setShowForkModal(false)} 
+        />
+      )}
     </div>
   );
 }

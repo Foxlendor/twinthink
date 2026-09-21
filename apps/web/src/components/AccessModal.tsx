@@ -18,7 +18,7 @@ import { usePitchAccess } from '@/lib/usePitchAccess';
 // Initialize Stripe outside component to avoid recreating the object on every render
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_TYooMQauvdEDq54NiTphI7jx');
 
-interface DisclosureGateModalProps {
+interface AccessModalProps {
   twinId: string;
   creator: string;
   onClose: () => void;
@@ -26,12 +26,12 @@ interface DisclosureGateModalProps {
 }
 
 // Inner form component that has access to Stripe hooks
-function DisclosureGateModalContent({ 
+function AccessModalContent({ 
   twinId, 
   creator, 
   onClose,
   onVaultUnlocked 
-}: DisclosureGateModalProps) {
+}: AccessModalProps) {
   const [currentTier, setCurrentTier] = useState<'public' | 'access_gate' | 'vault'>('access_gate');
   const [legalName, setLegalName] = useState('');
   const [orgName, setOrgName] = useState('');
@@ -659,10 +659,10 @@ function DisclosureGateModalContent({
 }
 
 // Wrapper component to provide the Stripe Elements context
-export default function DisclosureGateModal(props: DisclosureGateModalProps) {
+export default function AccessModal(props: AccessModalProps) {
   return (
     <Elements stripe={stripePromise}>
-      <DisclosureGateModalContent {...props} />
+      <AccessModalContent {...props} />
     </Elements>
   );
 }

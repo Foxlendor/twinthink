@@ -182,7 +182,7 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
   }, [state]);
 
   return (
-    <div style={{ background: '#FFFFFF', borderRadius: '20px', border: '1px solid #E5E7EB', padding: '1.75rem', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+    <div style={{ height: '100%', minHeight: '400px', background: '#FAFAFA', borderRadius: '16px', border: '1px solid #E5E7EB', padding: '1.75rem', overflow: 'hidden', position: 'relative' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>

@@ -17,7 +17,8 @@ import {
   Compass,
   ArrowRight,
   Eye,
-  CheckCircle2
+  CheckCircle2,
+  Settings
 } from 'lucide-react';
 import styles from './Tabs.module.css';
 
@@ -84,7 +85,7 @@ const PARAMETER_PROVENANCE = [
   { key: "R_env", label: "Ambient Dissipation Res. (R_env)", value: "2.20 K/W", status: "CALIBRATED", source: "Calorimetric Cooling Test #002", uncertainty: "±12%" }
 ];
 
-export default function SimulationTab({ twin }: TabProps) {
+function ThermalSolver({ twin }: TabProps) {
   const [selectedScenario, setSelectedScenario] = useState<string>('baseline');
   const [sipInterval, setSipInterval] = useState<number>(30);
   const [sipDuration, setSipDuration] = useState<number>(3);
@@ -284,6 +285,11 @@ export default function SimulationTab({ twin }: TabProps) {
   const fluidPath = simBaseline.t_fluid_arr.map((val, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(val)}`).join(' ');
   const benchPath = physicalBenchData.map((val, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(val)}`).join(' ');
   const forkPath = simFork ? simFork.t_fluid_arr.map((val, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(val)}`).join(' ') : '';
+  
+  const driftPath = (showOutletFluid && showPhysicalBench) ? 
+    `M ${getX(0)} ${getY(simBaseline.t_fluid_arr[0])} ` +
+    simBaseline.t_fluid_arr.map((val, i) => `L ${getX(i)} ${getY(val)}`).join(' ') + ' ' +
+    physicalBenchData.map((val, i) => `L ${getX(physicalBenchData.length - 1 - i)} ${getY(physicalBenchData[physicalBenchData.length - 1 - i])}`).join(' ') + ' Z' : '';
 
   return (
     <div className={styles.tabContentContainer}>
@@ -603,6 +609,20 @@ export default function SimulationTab({ twin }: TabProps) {
             ))}
 
             {/* Channels */}
+            {driftPath && (
+              <path 
+                d={driftPath} 
+                fill="url(#driftGradient)" 
+                opacity="0.3" 
+              />
+            )}
+            <defs>
+              <linearGradient id="driftGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#059669" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="#0284C7" stopOpacity="0.1" />
+              </linearGradient>
+            </defs>
+
             {showPcmCore && <path d={pcmPath} fill="none" stroke="#D97706" strokeWidth="2.5" />}
             {showWallNode && <path d={wallPath} fill="none" stroke="#CA8A04" strokeWidth="2.0" opacity="0.85" />}
             {showOutletFluid && <path d={fluidPath} fill="none" stroke="#0284C7" strokeWidth="2.5" />}
@@ -872,6 +892,117 @@ export default function SimulationTab({ twin }: TabProps) {
         </div>
       </div>
 
+    </div>
+  );
+}
+
+export default function SimulationTab({ twin }: TabProps) {
+  if (twin.domain === 'Mechanisms') {
+    return <KinematicSolver twin={twin} />;
+  }
+  return <ThermalSolver twin={twin} />;
+}
+
+function KinematicSolver({ twin }: TabProps) {
+  const [strokeLimit, setStrokeLimit] = useState(65);
+  const [bladeFriction, setBladeFriction] = useState(0.12);
+  
+  // Simple kinematic solver (mock curve)
+  const angleArr: number[] = [];
+  const apertureArr: number[] = [];
+  const torqueArr: number[] = [];
+  
+  for (let angle = 0; angle <= 90; angle += 1) {
+    angleArr.push(angle);
+    if (angle <= strokeLimit) {
+      apertureArr.push(Math.min(24, angle * (24 / 65)));
+      torqueArr.push(10 + (angle * bladeFriction));
+    } else {
+      apertureArr.push(24);
+      torqueArr.push(10 + (strokeLimit * bladeFriction) + Math.pow((angle - strokeLimit), 2)); // Binding
+    }
+  }
+
+  const svgWidth = 800;
+  const svgHeight = 240;
+  const paddingLeft = 50;
+  const paddingRight = 30;
+  const paddingTop = 20;
+  const paddingBottom = 30;
+
+  const getX = (angle: number) => paddingLeft + (angle / 90) * (svgWidth - paddingLeft - paddingRight);
+  const getY = (val: number, max: number) => svgHeight - paddingBottom - (val / max) * (svgHeight - paddingTop - paddingBottom);
+
+  return (
+    <div style={{ padding: '2rem 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <div style={{ background: '#EEF2FF', color: '#4F46E5', width: 48, height: 48, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Settings size={24} />
+        </div>
+        <div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>Kinematic Stroke Engine</h2>
+          <p style={{ color: '#6B7280', fontSize: '0.875rem', margin: '0.2rem 0 0 0' }}>Planetary aperture mechanism binding simulation.</p>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 300px', background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '1.5rem' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.5rem' }}>Mechanism Parameters</h3>
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+              <span>Stroke Hard Stop (deg)</span>
+              <span style={{ color: '#4F46E5' }}>{strokeLimit}°</span>
+            </label>
+            <input type="range" min="40" max="90" value={strokeLimit} onChange={(e) => setStrokeLimit(Number(e.target.value))} style={{ width: '100%' }} />
+          </div>
+          <div>
+            <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+              <span>Blade Friction Coeff (μ)</span>
+              <span style={{ color: '#4F46E5' }}>{bladeFriction.toFixed(2)}</span>
+            </label>
+            <input type="range" min="0.05" max="0.30" step="0.01" value={bladeFriction} onChange={(e) => setBladeFriction(Number(e.target.value))} style={{ width: '100%' }} />
+          </div>
+        </div>
+
+        <div style={{ flex: '2 1 500px', background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Stroke Actuation Trace</h3>
+            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', fontWeight: 600 }}>
+              <span style={{ color: '#0284C7', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: 10, height: 10, background: '#0284C7', borderRadius: '50%' }}></span> Aperture (mm)
+              </span>
+              <span style={{ color: '#DC2626', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: 10, height: 10, background: '#DC2626', borderRadius: '50%' }}></span> Torque (N·cm)
+              </span>
+            </div>
+          </div>
+          
+          <div style={{ width: '100%', height: '240px' }}>
+            <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+              {/* Grid */}
+              {[0, 10, 20, 30].map(val => (
+                <line key={val} x1={paddingLeft} y1={getY(val, 30)} x2={svgWidth - paddingRight} y2={getY(val, 30)} stroke="#F3F4F6" strokeDasharray="4 4" />
+              ))}
+              
+              {/* Aperture Line */}
+              <polyline 
+                fill="none" 
+                stroke="#0284C7" 
+                strokeWidth="3" 
+                points={angleArr.map((a, i) => `${getX(a)},${getY(apertureArr[i], 30)}`).join(' ')} 
+              />
+              
+              {/* Torque Line */}
+              <polyline 
+                fill="none" 
+                stroke="#DC2626" 
+                strokeWidth="3" 
+                points={angleArr.map((a, i) => `${getX(a)},${getY(torqueArr[i], 100)}`).join(' ')} 
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

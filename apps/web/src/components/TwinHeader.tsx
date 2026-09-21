@@ -83,7 +83,7 @@ export default function TwinHeader({ twin }: TwinHeaderProps) {
       {twin.lineage.parent && (
         <div className={styles.lineageInfo}>
           <GitFork size={14} />
-          Forked from Twin #{twin.lineage.parent.parent_twin_id}
+          Forked from Twin #{typeof twin.lineage.parent === 'string' ? twin.lineage.parent : twin.lineage.parent.parent_twin_id}
         </div>
       )}
     </div>

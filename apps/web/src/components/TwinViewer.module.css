@@ -1,11 +1,19 @@
 .viewerContainer {
   height: 100%;
   min-height: 400px;
-  background: #F8FAFC;
+  background: #FAFAFA;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
   overflow: hidden;
   position: relative;
+  box-shadow: var(--shadow-twin);
+  will-change: transform, box-shadow;
+  transition: box-shadow var(--transition-normal), transform var(--transition-normal);
+}
+
+.viewerContainer:hover {
+  box-shadow: var(--shadow-twin-hover);
+  transform: translateY(-2px);
 }
 
 .viewerWrapper {
@@ -65,4 +73,63 @@
   background: var(--bg-tertiary);
   color: var(--accent-primary);
   border-color: var(--border-strong);
+}
+
+.hotspotButton {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #1f2937;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease;
+  pointer-events: auto;
+}
+
+.hotspotButton:hover {
+  background: #ffffff;
+  transform: scale(1.05);
+  color: #0284c7;
+  border-color: #bae6fd;
+}
+
+.traceSliderContainer {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(209, 213, 219, 0.5);
+  border-radius: 999px;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 300px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  pointer-events: auto;
+}
+
+.traceSlider {
+  width: 100%;
+  cursor: pointer;
+}
+
+.traceImageOverlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 1;
+  transition: opacity 0.1s linear;
 }

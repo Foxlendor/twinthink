@@ -15,12 +15,12 @@ import {
   ShieldAlert
 } from 'lucide-react';
 
-interface KineticForgeBarProps {
+interface FundingProgressProps {
   twinId: string;
   targetMsrp?: number;
 }
 
-export default function KineticForgeBar({ twinId, targetMsrp = 25 }: KineticForgeBarProps) {
+export default function FundingProgress({ twinId, targetMsrp = 25 }: FundingProgressProps) {
   const [activeModal, setActiveModal] = useState<'alloy' | 'shear' | 'spark' | 'ether' | null>(null);
   const [sparkCount, setSparkCount] = useState<number>(342);
   const [shearCount, setShearCount] = useState<number>(14);

@@ -1,7 +1,7 @@
 import { TwinData } from '@/lib/types';
 import TwinTabs from '@/components/TwinTabs';
 import { getApiUrl } from '@/lib/api';
-import { FALLBACK_TWINS } from '@/lib/mockTwins';
+import { TWINS_DATABASE } from '@/lib/twinsData';
 import { notFound } from 'next/navigation';
 
 export default async function CreatorTwinPage({ 
@@ -32,8 +32,8 @@ export default async function CreatorTwinPage({
   }
 
   // Fallback support for canonical specimens
-  if (!twin && FALLBACK_TWINS[id]) {
-    twin = FALLBACK_TWINS[id];
+  if (!twin && TWINS_DATABASE[id]) {
+    twin = TWINS_DATABASE[id];
   }
 
   if (!twin) {

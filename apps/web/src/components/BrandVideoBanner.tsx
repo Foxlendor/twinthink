@@ -40,7 +40,8 @@ export default function BrandVideoBanner({
     >
       <video
         ref={videoRef}
-        src="/twinthink.mp4?v=2"
+        src="/brand_ink_reveal.mp4"
+        poster="/brand_ink_reveal_poster.jpg"
         autoPlay
         loop
         muted

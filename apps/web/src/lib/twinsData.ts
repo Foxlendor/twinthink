@@ -6,6 +6,8 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
     slug: 'twiizzlock',
     creator: 'anonymous',
     created_at: '2026-09-20T18:00:00Z',
+    domain: 'Mechanisms',
+    status: 'Physical Bench Tested',
     lineage: {
       parent: null,
       descendants: [],
@@ -80,7 +82,9 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
     id: 'redrink',
     slug: 'redrink',
     creator: 'anonymous',
-    created_at: '2026-09-20T20:30:00Z',
+    created_at: '2024-03-12T14:30:00Z',
+    domain: 'Thermal Systems',
+    status: 'Simulated Prior Art',
     lineage: {
       parent: {
         parent_twin_id: '0001',
@@ -152,9 +156,11 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
     slug: 'resip-straw',
     creator: 'anonymous',
     created_at: '2026-01-01T00:00:00Z',
+    domain: 'Thermal Systems',
+    status: 'Concept Preview',
     lineage: {
       parent: null,
-      descendants: ['redrink'],
+      descendants: ['redrink', '0003-twizzfizz'],
       root_twin_id: '0001'
     },
     versions: [
@@ -216,6 +222,121 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
         ]
       }
     }
+  },
+
+  '0002-iris': {
+    id: '0002-iris',
+    slug: 'iris-shutter',
+    creator: 'anonymous',
+    created_at: '2026-02-15T09:00:00Z',
+    domain: 'Mechanisms',
+    status: 'Physical Bench Tested',
+    lineage: {
+      parent: null,
+      descendants: [],
+      root_twin_id: '0002-iris'
+    },
+    versions: [
+      {
+        semver: '1.0.0',
+        title: 'Mechanical Iris Privacy Shutter (v1.0)',
+        published_at: '2026-02-15T09:00:00Z'
+      }
+    ],
+    current_version: {
+      semver: '1.0.0',
+      title: 'Mechanical Iris Privacy Shutter',
+      summary: 'Zero-fastener monitor-mounted privacy shutter with a planetary aperture ring for seamless mechanical closure without electronic reliance.',
+      license: 'CERN-OHL-S-2.0',
+      ontology_class: 'PhysicalObject',
+      telemetry_schema: ['timestamp_s', 'cycle_count', 'actuation_torque_ncm', 'jam_detected'],
+      properties: [
+        { key: 'estimated_bom_usd', value: 1.85, type: 'number', unit: 'USD', label: 'Estimated Unit BOM' },
+        { key: 'material', value: 'PLA/PETG', type: 'string', label: 'Material' },
+        { key: 'blade_count', value: 6, type: 'number', label: 'Blade Count' },
+        { key: 'max_aperture_mm', value: 24.0, type: 'number', unit: 'mm', label: 'Max Aperture Diameter' },
+        { key: 'stroke_angle', value: 65.0, type: 'number', unit: 'deg', label: 'Kinematic Stroke Angle' }
+      ],
+      relationships: [],
+      assets: [
+        {
+          relative_path: 'iris_preview.glb',
+          url: 'https://images.unsplash.com/photo-1550541704-20d750fb90a8?q=80&w=800&auto=format&fit=crop',
+          media_type: 'image/jpeg',
+          size_bytes: 120500,
+          is_entrypoint: 1,
+          entrypoint_name: 'Kinematic Render',
+          publication_scope: 'public_preview'
+        }
+      ],
+      disclosure: {
+        public_preview_approved: true,
+        level: 1,
+        public_note: 'Demonstrating kinematic testing without thermal logic.',
+        public_tabs: ['object', 'behavior', 'evidence', 'history', 'community'],
+        callouts: [
+          { label: 'Planetary Aperture', description: 'Smooth rotation via driven planetary gear mechanism.' },
+          { label: 'Zero Fasteners', description: 'Snap-fit assembly reduces BOM and assembly time.' }
+        ]
+      }
+    }
+  },
+
+  '0003-twizzfizz': {
+    id: '0003-twizzfizz',
+    slug: 'twizzfizz-straw',
+    creator: 'anonymous',
+    created_at: '2026-04-10T14:00:00Z',
+    domain: 'Fluid Dynamics',
+    status: 'Simulated Prior Art',
+    lineage: {
+      parent: '0001',
+      descendants: [],
+      root_twin_id: '0001'
+    },
+    versions: [
+      {
+        semver: '1.0.0',
+        title: 'TwizzFizz Carbonation Widget Straw (v1.0)',
+        published_at: '2026-04-10T14:00:00Z'
+      }
+    ],
+    current_version: {
+      semver: '1.0.0',
+      title: 'TwizzFizz Carbonation Widget Straw',
+      summary: 'A twist-lock actuated straw containing a pressurized nitrogen widget to on-demand nucleate bubbles in any beverage, directly forked from the ReSip phase-change straw.',
+      license: 'CERN-OHL-S-2.0',
+      ontology_class: 'PhysicalObject',
+      telemetry_schema: ['timestamp_s', 'ambient_pressure_psi', 'widget_pressure_psi', 'bubble_nucleation_rate', 'head_thickness_mm'],
+      properties: [
+        { key: 'estimated_bom_usd', value: 2.15, type: 'number', unit: 'USD', label: 'Estimated Unit BOM' },
+        { key: 'gas_pressure_psi', value: 45.0, type: 'number', unit: 'psi', label: 'Widget Gas Pressure' },
+        { key: 'pinhole_diameter_mm', value: 0.2, type: 'number', unit: 'mm', label: 'Pinhole Diameter' },
+        { key: 'widget_volume_ml', value: 15.0, type: 'number', unit: 'mL', label: 'Widget Volume' }
+      ],
+      relationships: [],
+      assets: [
+        {
+          relative_path: 'twizzfizz_preview.glb',
+          url: 'https://images.unsplash.com/photo-1615887023516-9bfae345e656?q=80&w=800&auto=format&fit=crop',
+          media_type: 'image/jpeg',
+          size_bytes: 340000,
+          is_entrypoint: 1,
+          entrypoint_name: 'Concept Render',
+          publication_scope: 'public_preview'
+        }
+      ],
+      disclosure: {
+        public_preview_approved: true,
+        level: 1,
+        public_note: 'Tutorial Fork demonstrating domain shift from Thermal to Fluid Dynamics.',
+        public_tabs: ['object', 'behavior', 'evidence', 'history', 'community', 'lineage'],
+        callouts: [
+          { label: 'Guinness Widget Principle', description: 'Uses a pressure differential and a pinhole to agitate the fluid.' },
+          { label: 'Twizzlock Actuation', description: 'Twist mechanical lock to release the pressurized gas payload.' }
+        ]
+      }
+    }
   }
 };
 
@@ -224,8 +345,14 @@ export function getLocalTwin(id: string): TwinData | null {
   if (norm === 'twiizzlock' || norm === 'twiizzlock-v1' || norm === '0002') {
     return TWINS_DATABASE['twiizzlock'];
   }
-  if (norm === 'redrink' || norm === 'redr-ink' || norm === 'Redr.ink' || norm === '0003') {
+  if (norm === 'redrink' || norm === 'redr-ink' || norm === 'Redr.ink') {
     return TWINS_DATABASE['redrink'];
+  }
+  if (norm === '0003' || norm === 'twizzfizz' || norm === 'twizzfizz-straw' || norm === '0003-twizzfizz') {
+    return TWINS_DATABASE['0003-twizzfizz'];
+  }
+  if (norm === '0002-iris' || norm === 'iris-shutter' || norm === 'iris') {
+    return TWINS_DATABASE['0002-iris'];
   }
   if (norm === '0001' || norm === 'resip' || norm === 'resip-straw') {
     return TWINS_DATABASE['0001'];

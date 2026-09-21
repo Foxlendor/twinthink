@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import styles from './TwinViewer.module.css';
-import { Maximize, RotateCcw, Code, Network, FileText } from 'lucide-react';
+import { Maximize, RotateCcw, Code, Network, FileText, PenTool, Box, Camera, ExternalLink } from 'lucide-react';
 import { TwinData } from '@/lib/types';
 import { getApiUrl } from '@/lib/api';
-import TwizzLockViewer from '@/components/twizzlock/TwizzLockViewer';
+import PistonViewer from '@/components/twizzlock/PistonViewer';
 import RedrinkViewer from '@/components/redrink/RedrinkViewer';
 
 
@@ -17,6 +17,7 @@ interface TwinViewerProps {
 export default function TwinViewer({ twin, fallbackText = "No preview available" }: TwinViewerProps) {
   const [mounted, setMounted] = useState(false);
   const viewerRef = React.useRef<any>(null);
+  const [traceValue, setTraceValue] = useState(50);
 
   useEffect(() => {
     // Dynamically import model-viewer on the client to avoid SSR issues
@@ -33,7 +34,7 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
 
   const normId = (twin.id || '').toLowerCase();
   if (normId === 'twiizzlock' || normId === '0002') {
-    return <TwizzLockViewer />;
+    return <PistonViewer />;
   }
   if (normId === 'redrink' || normId === 'Redr.ink' || normId === '0003') {
     return <RedrinkViewer />;
@@ -48,8 +49,8 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
       a => a.relative_path.toLowerCase().endsWith('.glb') &&
         a.publication_scope === 'public_preview'
     );
-    const apiUrl = getApiUrl();
-    const url = glbAsset ? `${apiUrl}/api/twins/${twin.id}/assets/${glbAsset.relative_path}` : undefined;
+    // Public preview GLB assets are stored in the public directory and served at the root path
+    const url = glbAsset ? `/${glbAsset.relative_path}` : undefined;
     
     if (!url) {
       return (
@@ -67,10 +68,30 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
         </div>
       );
     }
+    const inkOpacity = traceValue < 50 ? (50 - traceValue) / 50 : 0;
+    const shadowOpacity = traceValue <= 50 ? traceValue / 50 : (100 - traceValue) / 50;
+    const physicalOpacity = traceValue > 50 ? (traceValue - 50) / 50 : 0;
+
     return (
       <div className={styles.viewerContainer}>
         {mounted ? (
           <div className={styles.viewerWrapper}>
+            {/* Analog Ink Overlay */}
+            <img 
+              src="/resip_schematic_2016.png" 
+              alt="Analog Ink Sketch" 
+              className={styles.traceImageOverlay}
+              style={{ opacity: inkOpacity }}
+            />
+            
+            {/* Physical Evidence Overlay */}
+            <img 
+              src="/resip_exploded_parts.jpg" 
+              alt="Physical Evidence" 
+              className={styles.traceImageOverlay}
+              style={{ opacity: physicalOpacity, objectFit: 'cover' }}
+            />
+
             {/* Bypass TS type checking for custom element */}
             {React.createElement('model-viewer', {
               ref: viewerRef,
@@ -83,12 +104,47 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
               "environment-image": "neutral",
               exposure: "1",
               className: styles.modelViewer,
-              style: { width: '100%', height: '100%', backgroundColor: '#F8FAFC' }
+              style: { width: '100%', height: '100%', backgroundColor: 'transparent', opacity: shadowOpacity }
             }, (
-              <div className={styles.controlsOverlay} slot="poster">
-              </div>
+              <>
+                <button
+                  slot="hotspot-sketch1"
+                  data-position="0.05 0.25 -0.05"
+                  data-normal="0 1 0"
+                  className={styles.hotspotButton}
+                  onClick={() => setTraceValue(0)}
+                >
+                  <PenTool size={14} color="#D97706" /> Notebook Trace
+                </button>
+                <button
+                  slot="hotspot-photo1"
+                  data-position="-0.05 0.05 0.05"
+                  data-normal="0 1 0"
+                  className={styles.hotspotButton}
+                  onClick={() => setTraceValue(100)}
+                >
+                  <Camera size={14} color="#059669" /> Physical Trace
+                </button>
+              </>
             ))}
             
+            {/* Thought Trace Slider */}
+            <div className={styles.traceSliderContainer}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', fontWeight: 700, color: '#4B5563', textTransform: 'uppercase', marginBottom: '0.2rem' }}>
+                <span style={{ color: traceValue < 25 ? '#D97706' : 'inherit', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><PenTool size={12} /> Analog Ink</span>
+                <span style={{ color: traceValue >= 25 && traceValue <= 75 ? '#2563EB' : 'inherit', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Box size={12} /> Digital Shadow</span>
+                <span style={{ color: traceValue > 75 ? '#059669' : 'inherit', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Camera size={12} /> Physical Evidence</span>
+              </div>
+              <input 
+                type="range" 
+                min="0" 
+                max="100" 
+                value={traceValue} 
+                onChange={(e) => setTraceValue(Number(e.target.value))}
+                className={styles.traceSlider}
+              />
+            </div>
+
             <div style={{
               position: 'absolute',
               top: '0.75rem',

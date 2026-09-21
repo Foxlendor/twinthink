@@ -1,11 +1,13 @@
 'use client';
 
 import React from 'react';
+import BrandVideoBanner from '@/components/BrandVideoBanner';
 
 export default function HomePage() {
   return (
     <main
       style={{
+        position: 'relative',
         minHeight: 'calc(100vh - 70px)',
         background: '#FAFAFA',
         color: '#111827',
@@ -16,11 +18,37 @@ export default function HomePage() {
         overflow: 'hidden'
       }}
     >
+      {/* Background Ink Video */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        zIndex: 0,
+        pointerEvents: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: 0.8 // Subtle presence
+      }}>
+        <BrandVideoBanner />
+      </div>
+
       {/* Central Typography */}
-      <div style={{ position: 'relative', zIndex: 10, maxWidth: '800px', textAlign: 'center' }}>
+      <div style={{ 
+        position: 'relative', 
+        zIndex: 10, 
+        maxWidth: '850px', 
+        textAlign: 'center',
+        background: 'rgba(250, 250, 250, 0.65)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        padding: '3rem 2rem',
+        borderRadius: '24px',
+        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.05)',
+        border: '1px solid rgba(255, 255, 255, 0.3)'
+      }}>
         <h1
           style={{
-            fontSize: 'clamp(3.5rem, 6vw, 5.5rem)',
+            fontSize: 'clamp(3rem, 5vw, 4.5rem)',
             fontWeight: 800,
             letterSpacing: '-0.04em',
             lineHeight: 1.05,
@@ -28,8 +56,8 @@ export default function HomePage() {
             color: '#111827'
           }}
         >
-          Give an idea<br />
-          a reality.
+          Every physical invention<br />
+          casts a digital shadow.
         </h1>
         <p
           style={{
@@ -38,10 +66,10 @@ export default function HomePage() {
             lineHeight: 1.6,
             margin: '0 auto 3rem',
             fontWeight: 400,
-            maxWidth: '600px'
+            maxWidth: '650px'
           }}
         >
-          A living digital record for things people imagine, build, and test.
+          <strong>The ink is where you think.</strong> TwinThink is where physical matter meets its living twin. Track the entire arc of an invention: from the first drop of ink in an inventor's notebook, to CAD geometry, ODE physics simulations, and empirical benchtop telemetry.
         </p>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'center' }}>
           <a
@@ -59,7 +87,7 @@ export default function HomePage() {
             onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.02)')}
             onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           >
-            Explore Public Records
+            Explore Public Shadows
           </a>
           <a
             href="/pitch"
@@ -94,13 +122,13 @@ export default function HomePage() {
           main {
             padding: 4rem 1.5rem !important;
           }
-          main > div:first-child h1 {
-            font-size: 3rem !important;
+          main > div:nth-child(2) h1 {
+            font-size: 2.5rem !important;
           }
-          main > div:first-child div {
+          main > div:nth-child(2) div {
             flex-direction: column;
           }
-          main > div:first-child div a {
+          main > div:nth-child(2) div a {
             width: 100%;
           }
         }

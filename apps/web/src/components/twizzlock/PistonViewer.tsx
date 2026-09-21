@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Sparkles, ShieldCheck, Lock, Unlock, RotateCcw, AlertTriangle, ExternalLink } from 'lucide-react';
 
-interface TwizzLockViewerProps {
+interface PistonViewerProps {
   onUnlockRequest?: () => void;
 }
 
@@ -20,7 +20,7 @@ const defaultState = {
 
 type TwizzLockState = typeof defaultState;
 
-export default function TwizzLockViewer({ onUnlockRequest }: TwizzLockViewerProps) {
+export default function PistonViewer({ onUnlockRequest }: PistonViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Simulation State
@@ -395,7 +395,7 @@ export default function TwizzLockViewer({ onUnlockRequest }: TwizzLockViewerProp
   const sealScore = Math.max(0, 100 - Math.round(state.strokes * 1.3));
 
   return (
-    <div style={{ background: '#FFFFFF', borderRadius: '20px', border: '1px solid #E5E7EB', padding: '1.75rem', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+    <div style={{ height: '100%', minHeight: '400px', background: '#FAFAFA', borderRadius: '16px', border: '1px solid #E5E7EB', padding: '1.75rem', overflow: 'hidden', position: 'relative' }}>
       {/* Header Banner */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
         <div>

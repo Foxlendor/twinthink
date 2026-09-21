@@ -115,6 +115,47 @@ const CANONICAL_0001_TESTS: TwinTestsResponse = {
   ]
 };
 
+const CANONICAL_0002_TESTS: TwinTestsResponse = {
+  twin_id: "0002-iris",
+  summary: {
+    physical_tests_count: 1,
+    mean_absolute_error_C: 0,
+    root_mean_square_error_C: 0,
+    model_status: "EXPERIMENTALLY_CALIBRATED",
+    last_test: "Test #001 (Endurance Cycle Test)"
+  },
+  tests: [
+    {
+      id: "1",
+      test_number: 1,
+      title: "Endurance Cycle Test (1000 Actuations)",
+      operator: "@anonymous",
+      status: "verified",
+      notes: "Actuated planetary ring from 0 to 65 degrees. Measured torque increase over cycle count to identify PLA layer binding.",
+      s3_csv_key: "twins/0002-iris/tests/test_001_endurance.csv",
+      metrics: {
+        cycle_count: 1000,
+        mean_torque_ncm: 12.5,
+        max_torque_ncm: 18.2,
+        jam_count: 3,
+        sample_count: 6
+      },
+      initial_conditions: {
+        ambient_C: 22.0
+      },
+      raw_preview: [
+        { timestamp_s: 0, cycle_count: 0, actuation_torque_ncm: 10.1, jam_detected: 0 },
+        { timestamp_s: 15, cycle_count: 200, actuation_torque_ncm: 11.0, jam_detected: 0 },
+        { timestamp_s: 30, cycle_count: 400, actuation_torque_ncm: 11.5, jam_detected: 0 },
+        { timestamp_s: 45, cycle_count: 600, actuation_torque_ncm: 13.2, jam_detected: 0 },
+        { timestamp_s: 60, cycle_count: 800, actuation_torque_ncm: 15.8, jam_detected: 1 },
+        { timestamp_s: 75, cycle_count: 1000, actuation_torque_ncm: 18.2, jam_detected: 2 }
+      ],
+      created_at: "2026-02-15 11:30:00"
+    }
+  ]
+};
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -144,6 +185,11 @@ export async function GET(
   // 2. Canonical test records for Twin 0001
   if (id === '0001') {
     return NextResponse.json(CANONICAL_0001_TESTS);
+  }
+
+  // 3. Canonical test records for Twin 0002-iris
+  if (id === '0002-iris') {
+    return NextResponse.json(CANONICAL_0002_TESTS);
   }
 
   return NextResponse.json({

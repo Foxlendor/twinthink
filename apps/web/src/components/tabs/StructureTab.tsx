@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { ChevronRight, ArrowRight, Download, Box } from 'lucide-react';
 import ClaimInspectorModal from '../ClaimInspectorModal';
-import RealityProvenanceDrawer, { RealityDimensionDetail } from '../RealityProvenanceDrawer';
+import ProvenancePanel, { RealityDimensionDetail } from '../ProvenancePanel';
 
 interface StructureTabProps {
   twinId: string;
@@ -515,7 +515,7 @@ export default function StructureTab({ twinId, stepDownloadUrl, onInspectClaim }
       )}
 
       {/* WHY? Provenance Drawer (Directive Phase 3) */}
-      <RealityProvenanceDrawer
+      <ProvenancePanel
         detail={provenanceDetail}
         onClose={() => setProvenanceDetail(null)}
       />

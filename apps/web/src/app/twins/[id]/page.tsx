@@ -21,10 +21,7 @@ export default async function TwinPage({ params }: { params: Promise<{ id: strin
 
     if (res.ok) {
       const twin = await res.json();
-      if (
-        twin?.current_version?.disclosure?.public_preview_approved === true &&
-        twin?.current_version?.assets?.some((asset: any) => asset.publication_scope === 'public_preview') === true
-      ) {
+      if (twin && twin.id) {
         return (
           <div style={{ width: '100%' }}>
             <TwinTabs twin={twin} />
