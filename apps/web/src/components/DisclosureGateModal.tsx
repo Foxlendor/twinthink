@@ -497,7 +497,7 @@ function DisclosureGateModalContent({
                     required
                     value={legalName}
                     onChange={e => setLegalName(e.target.value)}
-                    placeholder="e.g. Dr. Jane Smith"
+                    placeholder="e.g. Authorized Signatory"
                     style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.85rem', boxSizing: 'border-box' }}
                   />
                 </div>

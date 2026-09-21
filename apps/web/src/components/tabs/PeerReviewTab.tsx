@@ -197,7 +197,7 @@ export default function PeerReviewTab({ twinId }: { twinId: string }) {
                 required
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="e.g., Sarah Chen (CNC Lathes)"
+                placeholder="e.g. CNC Operator (Lathes)"
                 style={{
                   width: '100%',
                   padding: '0.65rem 0.85rem',

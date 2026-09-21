@@ -184,7 +184,7 @@ export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
                 type="text"
                 value={creator}
                 onChange={(e) => setCreator(e.target.value)}
-                placeholder="e.g. Alice or Machining Lab"
+                placeholder="e.g. Machining Lab or Operator"
                 style={{
                   width: '100%',
                   padding: '0.6rem 0.85rem',

@@ -632,7 +632,7 @@ export default function CrowdfundingBar({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Alex Backer"
+                  placeholder="e.g. Investor 001"
                   value={backerName}
                   onChange={e => setBackerName(e.target.value)}
                   style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.875rem', boxSizing: 'border-box' }}
