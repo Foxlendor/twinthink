@@ -47,17 +47,16 @@ export default function HomePage() {
         border: '1px solid rgba(255, 255, 255, 0.3)'
       }}>
         <h1
+          className="ink-text font-serif"
           style={{
             fontSize: 'clamp(3rem, 5vw, 4.5rem)',
             fontWeight: 800,
-            letterSpacing: '-0.04em',
             lineHeight: 1.05,
             margin: '0 0 1.5rem',
-            color: '#111827'
           }}
         >
           Every physical invention<br />
-          casts a digital shadow.
+          casts a digital shadow<span className="ink-dot">.</span>
         </h1>
         <p
           style={{
@@ -69,7 +68,7 @@ export default function HomePage() {
             maxWidth: '650px'
           }}
         >
-          <strong>The ink is where you think.</strong> TwinThink is where physical matter meets its living twin. Track the entire arc of an invention: from the first drop of ink in an inventor's notebook, to 3D designs, predictive math simulations, and real-world sensor data.
+          <strong className="ink-text font-serif" style={{ fontSize: '1.4rem' }}>The ink is where you think.</strong> TwinThink is where physical matter meets its living twin. Track the entire arc of an invention: from the first drop of ink in an inventor's notebook, to 3D designs, predictive math simulations, and real-world sensor data.
         </p>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'center' }}>
           <a

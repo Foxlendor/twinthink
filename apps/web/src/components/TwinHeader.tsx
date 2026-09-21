@@ -47,7 +47,7 @@ export default function TwinHeader({ twin }: TwinHeaderProps) {
             </span>
           </div>
 
-          <h1 className={styles.title} style={{ fontSize: '2rem', letterSpacing: '-0.5px', marginBottom: '0.2rem' }}>
+          <h1 className={`${styles.title} ink-text font-serif`} style={{ fontSize: '2.5rem', marginBottom: '0.2rem' }}>
             RESIP™
           </h1>
           <div style={{ fontSize: '1.05rem', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '0.5rem' }}>
