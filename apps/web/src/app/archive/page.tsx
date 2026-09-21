@@ -122,7 +122,7 @@ export default function ArchivePage() {
             Interactive Records
           </div>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 1.25rem', letterSpacing: '-0.4px' }}>
-            Verified Digital Twins
+            Verified Twins
           </h2>
 
           <div

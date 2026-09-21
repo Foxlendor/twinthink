@@ -416,7 +416,7 @@ export default function TwizzLockViewer({ onUnlockRequest }: TwizzLockViewerProp
             </span>
           </div>
           <div style={{ color: '#6B7280', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-            3D interactive digital twin, bottle-as-piston kinematics, and bubble agitation physics.
+            3D interactive twin, bottle-as-piston kinematics, and bubble agitation physics.
           </div>
         </div>
 

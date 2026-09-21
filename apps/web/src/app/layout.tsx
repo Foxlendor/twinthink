@@ -27,8 +27,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "TWINTH.INK | Give an idea a reality.",
-  description: "A living digital record for things people imagine, build, and test. Physical-to-digital twin protocol for hardware inventions.",
-  keywords: ["digital twin", "thermodynamic simulation", "hardware engineering", "open source hardware", "Resip", "sodium acetate", "thermal straw"],
+  description: "A living digital record for things people imagine, build, and test. Physical-to-twin protocol for hardware inventions.",
+  keywords: ["twin", "thermodynamic simulation", "hardware engineering", "open source hardware", "Resip", "sodium acetate", "thermal straw"],
   authors: [{ name: "johne.boi" }],
   creator: "johne.boi",
   publisher: "TwinThink",

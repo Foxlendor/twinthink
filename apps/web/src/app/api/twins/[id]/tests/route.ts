@@ -186,7 +186,7 @@ export async function POST(
   // Fallback simulated success response
   return NextResponse.json({
     status: "success",
-    message: "Physical test telemetry calibrated and recorded to digital twin.",
+    message: "Physical test telemetry calibrated and recorded to twin.",
     test_id: Math.floor(Math.random() * 1000) + 10,
     metrics: {
       measured_peak_C: 53.8,

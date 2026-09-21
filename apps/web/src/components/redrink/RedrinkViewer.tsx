@@ -188,7 +188,7 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: '#111827', letterSpacing: '-0.3px' }}>
-              redr.ink™ Digital Twin
+              redr.ink™ Twin
             </h2>
             <span style={{ background: '#EFF6FF', color: '#1D4ED8', fontSize: '0.7rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: '999px', textTransform: 'uppercase' }}>
               Simulation Mode

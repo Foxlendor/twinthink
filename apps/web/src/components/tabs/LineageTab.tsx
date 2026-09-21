@@ -50,7 +50,7 @@ export default function LineageTab({ twin }: LineageTabProps) {
           Where Did This Idea Come From, and What Can It Become?
         </h2>
         <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-          Every digital twin records its genetic lineage. Fork this baseline to mutate physical parameters, run the ODE simulation on the new physics matrix, and produce a child revision.
+          Every twin records its genetic lineage. Fork this baseline to mutate physical parameters, run the ODE simulation on the new physics matrix, and produce a child revision.
         </p>
       </div>
 
@@ -259,7 +259,7 @@ export default function LineageTab({ twin }: LineageTabProps) {
                 READY TO SPAWN CHILD REVISION
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                This mutation can be packaged into a standalone digital twin bundle preserving ancestor provenance.
+                This mutation can be packaged into a standalone twin bundle preserving ancestor provenance.
               </div>
             </div>
 

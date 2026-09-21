@@ -42,7 +42,7 @@ export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
     'Extracting physical components & materials',
     'Analyzing claims & epistemic provenance',
     'Deriving Reality State matrix',
-    'Compiling living digital twin'
+    'Compiling living twin'
   ];
 
   const handleFiles = (newFiles: FileList | null) => {

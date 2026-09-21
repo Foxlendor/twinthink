@@ -272,7 +272,7 @@ export default function CreateTwinPage() {
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
               }}
             >
-              {files.length > 0 ? 'Compile Digital Twin' : 'Select Files'}
+              {files.length > 0 ? 'Compile Twin' : 'Select Files'}
             </button>
           </div>
         ) : isProcessing ? (

@@ -146,7 +146,7 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
           margin: 0,
           lineHeight: 1.6
         }}>
-          Every physical digital twin in TwinThink preserves an unbroken chain of custody: from 2016 handwritten research notebooks to 2026 physical hardware machining, benchtop sensor testing, and signed cryptographic releases.
+          Every physical twin in TwinThink preserves an unbroken chain of custody: from 2016 handwritten research notebooks to 2026 physical hardware machining, benchtop sensor testing, and signed cryptographic releases.
         </p>
       </div>
 
@@ -492,7 +492,7 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
                   padding: '0.2rem 0.6rem',
                   borderRadius: '100px'
                 }}>
-                  PHASE 3 • TODAY (LIVING DIGITAL TWIN)
+                  PHASE 3 • TODAY (LIVING TWIN)
                 </span>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '0.6rem 0 0.2rem 0' }}>
                   Canonical Twin Compilation & Differential Equation Fitting
@@ -806,7 +806,7 @@ export default function HistoryTab({ twin }: { twin: TwinData }) {
               Signed Cryptographic Releases
             </h3>
             <p style={{ fontSize: '0.8125rem', color: '#6B7280', margin: 0 }}>
-              Immutable digital twin revisions signed with Ed25519 creator keys. Guarantees tamper-evident authorship.
+              Immutable twin revisions signed with Ed25519 creator keys. Guarantees tamper-evident authorship.
             </p>
           </div>
 

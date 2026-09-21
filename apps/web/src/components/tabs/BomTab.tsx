@@ -902,7 +902,7 @@ export default function BomTab({ twin }: TabProps) {
               color: '#92400E',
               lineHeight: 1.5
             }}>
-              <strong>Regulatory Notice:</strong> This representation is projected directly from the canonical digital twin record for engineering review and supply-chain audit. It does <em>not</em> constitute an official legally certified EU Battery Passport or CE marking. Formal compliance requires designated notified bodies and registration in the official 2026/2027 EU DPP Registry.
+              <strong>Regulatory Notice:</strong> This representation is projected directly from the canonical twin record for engineering review and supply-chain audit. It does <em>not</em> constitute an official legally certified EU Battery Passport or CE marking. Formal compliance requires designated notified bodies and registration in the official 2026/2027 EU DPP Registry.
             </div>
 
             {/* Role-Filtered Tier Selector */}

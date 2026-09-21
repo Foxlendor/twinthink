@@ -102,7 +102,7 @@ export default function TestsTab({ twin }: TabProps) {
         throw new Error(errJson.detail || `Upload failed with HTTP ${res.status}`);
       }
 
-      setUploadSuccessMsg('Telemetry successfully calibrated and recorded to digital twin!');
+      setUploadSuccessMsg('Telemetry successfully calibrated and recorded to twin!');
       setSelectedFile(null);
       setUploadTitle('');
       setUploadNotes('');
@@ -207,7 +207,7 @@ export default function TestsTab({ twin }: TabProps) {
           margin: 0,
           lineHeight: 1.6
         }}>
-          Physical digital twins require empirical ground truth. Every test run uploads real-world sensor streams, aligns them against thermodynamic differential equations, and computes residual error (RMSE) to prove claims against reality.
+          Physical twins require empirical ground truth. Every test run uploads real-world sensor streams, aligns them against thermodynamic differential equations, and computes residual error (RMSE) to prove claims against reality.
         </p>
       </div>
 
@@ -237,7 +237,7 @@ export default function TestsTab({ twin }: TabProps) {
             </div>
             <div>
               <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#111827', margin: '0 0 0.25rem 0' }}>
-                How Sensor Tests Calibrate the Digital Twin
+                How Sensor Tests Calibrate the Twin
               </h3>
               <p style={{ fontSize: '0.8125rem', color: '#4B5563', margin: 0, maxWidth: '620px', lineHeight: 1.5 }}>
                 When physical prototypes are tested on the lab bench, micro-thermocouples record the real temperature of water passing through the straw. TwinThink fits this data to the ODE model to verify that measured warming matches predictions within <strong>RMSE &lt; 2.5°C</strong>.
@@ -770,7 +770,7 @@ export default function TestsTab({ twin }: TabProps) {
               Ingest Physical Test Telemetry CSV
             </h3>
             <p style={{ fontSize: '0.8125rem', color: '#6B7280', margin: '0 0 1.5rem 0' }}>
-              Upload sensor CSV logs from flow benches or thermocouples to calibrate the digital twin.
+              Upload sensor CSV logs from flow benches or thermocouples to calibrate the twin.
             </p>
 
             <form onSubmit={handleUploadSubmit}>

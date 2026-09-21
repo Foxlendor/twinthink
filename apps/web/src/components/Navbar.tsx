@@ -65,60 +65,6 @@ export default function Navbar() {
 
           {/* Desktop Navigation Links */}
           <nav className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '1.75rem' }}>
-            <Link
-              href="/twins/0001"
-              style={{
-                fontSize: '0.875rem',
-                color: pathname.startsWith('/twins') ? '#111827' : '#4B5563',
-                textDecoration: 'none',
-                fontWeight: pathname.startsWith('/twins') ? 700 : 500,
-                transition: 'color 0.15s'
-              }}
-            >
-              Explore
-            </Link>
-
-            <Link
-              href="/archive"
-              style={{
-                fontSize: '0.875rem',
-                color: pathname === '/archive' ? '#111827' : '#4B5563',
-                textDecoration: 'none',
-                fontWeight: pathname === '/archive' ? 700 : 500,
-                transition: 'color 0.15s'
-              }}
-            >
-              Archive
-            </Link>
-
-            <button
-              onClick={() => setShowCreateModal(true)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                fontSize: '0.875rem',
-                color: '#4B5563',
-                fontWeight: 500,
-                cursor: 'pointer',
-                padding: 0
-              }}
-            >
-              Create Twin
-            </button>
-
-            <Link
-              href="/roundup"
-              style={{
-                fontSize: '0.875rem',
-                color: pathname === '/roundup' ? '#111827' : '#4B5563',
-                textDecoration: 'none',
-                fontWeight: pathname === '/roundup' ? 700 : 500,
-                transition: 'color 0.15s'
-              }}
-            >
-              Roundup
-            </Link>
-
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: '0.25rem', color: '#4B5563' }}>
               <button 
                 style={{ 
@@ -254,6 +200,30 @@ export default function Navbar() {
                   <div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Concept Studio</div>
                     <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Prepare concept preview for review</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/pitch"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '12px',
+                    background: '#F9FAFB',
+                    border: '1px solid #F3F4F6',
+                    textDecoration: 'none',
+                    color: '#111827'
+                  }}
+                >
+                  <div style={{ padding: '6px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                    <ShieldCheck size={18} color="#DC2626" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Pitch Access</div>
+                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Investor paywall bypass</div>
                   </div>
                 </Link>
 
