@@ -37,11 +37,11 @@ export default function TransitionScreen() {
     // before the black doorway starts ripping open.
     setTimeout(() => {
       setIsRevealing(true);
-      // After the CSS reveal animation finishes (1000ms), completely hide the overlay
+      // After the CSS reveal animation finishes (600ms), completely hide the overlay
       setTimeout(() => {
         setIsHidden(true);
-      }, 1200); 
-    }, 800);
+      }, 700); 
+    }, 400); // reduced delay slightly for a snappier feel
   };
 
   if (isHidden) return null;
@@ -75,7 +75,7 @@ export default function TransitionScreen() {
           borderRadius: '50%',
           boxShadow: '0 0 0 150vmax #000000', // Black borders filling the screen
           background: isRevealing ? 'transparent' : '#FFFFFF', // White peep hole base
-          transition: 'width 1s cubic-bezier(0.7, 0, 0.2, 1), height 1s cubic-bezier(0.7, 0, 0.2, 1), background 0.4s ease',
+          transition: 'width 0.6s cubic-bezier(0.8, 0, 0.1, 1), height 0.6s cubic-bezier(0.8, 0, 0.1, 1), background 0.3s ease',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -89,7 +89,7 @@ export default function TransitionScreen() {
             inset: 0,
             opacity: isRevealing ? 0 : 1,
             transform: isRevealing ? 'scale(1.2)' : 'scale(1)',
-            transition: 'opacity 0.6s ease, transform 1s cubic-bezier(0.7, 0, 0.2, 1)',
+            transition: 'opacity 0.4s ease, transform 0.6s cubic-bezier(0.8, 0, 0.1, 1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
