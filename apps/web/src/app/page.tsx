@@ -61,7 +61,7 @@ export default function HomePage() {
         
         {/* Animated Brand Banner */}
         <div style={{ marginBottom: '2.5rem' }}>
-          <BrandVideoBanner maxHeight="260px" />
+          <BrandVideoBanner />
         </div>
 
         {/* Pitch / Investor Unlock Bar */}
