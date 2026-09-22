@@ -12,7 +12,10 @@ import {
   ShieldCheck, 
   Package, 
   Coffee,
-  Heart
+  Heart,
+  Coins,
+  GitFork,
+  Eye
 } from 'lucide-react';
 
 interface BackerRecord {
@@ -176,9 +179,9 @@ export default function CampaignBar({
           <span style={{
             fontSize: '0.7rem',
             fontWeight: 800,
-            color: '#B45309',
-            background: '#FEF3C7',
-            border: '1px solid #FDE68A',
+            color: '#059669',
+            background: '#ECFDF5',
+            border: '1px solid #A7F3D0',
             padding: '0.2rem 0.6rem',
             borderRadius: '999px',
             textTransform: 'uppercase',
@@ -188,10 +191,10 @@ export default function CampaignBar({
             gap: '0.35rem',
             fontFamily: 'var(--font-mono)'
           }}>
-            <Flame size={12} /> PRE-LAUNCH · ACCEPTING FIRST PRODUCTION BACKERS
+            <Coins size={12} /> THE IP KIOSK · PATRON TOOLING &amp; ROYALTY PIGGY BANK
           </span>
           <span style={{ fontSize: '0.75rem', color: '#6B7280', fontWeight: 500 }}>
-            Ground truth hardware · Verified by Alpha R&D Phase prior art &amp; real test logs
+            Open to view · Community-backed to manufacture · Eligible for Batch #1 royalty kickbacks
           </span>
         </div>
 
@@ -203,7 +206,7 @@ export default function CampaignBar({
           alignItems: 'center',
           gap: '0.35rem'
         }}>
-          <ShieldCheck size={15} /> 100% Honest Prototype Stage
+          <ShieldCheck size={15} /> Goldilocks Royalty Zone
         </div>
       </div>
 
@@ -300,13 +303,39 @@ export default function CampaignBar({
         </div>
       )}
 
+      {/* Goldilocks Zone & Forking Guarantee Callout */}
+      <div style={{
+        background: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)',
+        border: '1.5px solid #A7F3D0',
+        borderRadius: '14px',
+        padding: '1rem 1.25rem',
+        marginBottom: '1.25rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.4rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 800, fontSize: '0.825rem', color: '#065F46', textTransform: 'uppercase', letterSpacing: '0.5px', fontFamily: 'var(--font-mono)' }}>
+            <Coins size={15} color="#059669" /> The Goldilocks Zone · Money In = Money Out (or More)
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.72rem', color: '#047857', fontWeight: 700, background: '#D1FAE5', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>
+            <GitFork size={12} /> Community Forking Guarantee Active
+          </div>
+        </div>
+        <p style={{ fontSize: '0.78rem', color: '#047857', margin: '0 0 0.5rem 0', lineHeight: 1.45 }}>
+          Backing this prototype run enters you into the <strong>Patron Dividend Pool</strong>. When Batch #1 ships, every dollar backed is returned pro-rata from early unit sales before protocol dividends. If development is inactive for &gt; 12 months, <strong>anyone can fork the CAD &amp; manufacturing tooling</strong> to ship it.
+        </p>
+        <div style={{ display: 'flex', gap: '1.25rem', fontSize: '0.72rem', color: '#065F46', fontWeight: 600, flexWrap: 'wrap' }}>
+          <span>✓ 100% Free Public Viewing</span>
+          <span>✓ 85% Creator Tooling Pool</span>
+          <span>✓ Pro-Rata Retail Royalty Kickbacks</span>
+        </div>
+      </div>
+
       {/* 3 Clear Pledge Tiers */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: '0.85rem'
       }}>
-        {/* Tier 1: $5 Fuel the Idea */}
+        {/* Tier 1: $5 Micro-Patron Royalty Kickback */}
         <button
           onClick={() => handleOpenPledge(5)}
           style={{
@@ -336,10 +365,10 @@ export default function CampaignBar({
               <Coffee size={16} color="#6B7280" />
             </div>
             <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#111827', marginBottom: '0.2rem' }}>
-              Fuel the Idea
+              Micro-Patron Kickback
             </div>
             <div style={{ fontSize: '0.75rem', color: '#6B7280', lineHeight: 1.4 }}>
-              Micro-backer pass. Your name etched into Twin #0001&apos;s immutable provenance ledger + notebook updates.
+              Eligible for Batch #1 retail dividend kickbacks. Your handle etched into the immutable tooling ledger.
             </div>
           </div>
           <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', fontWeight: 700, color: '#2563EB', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -347,7 +376,7 @@ export default function CampaignBar({
           </div>
         </button>
 
-        {/* Tier 2: $25 Pre-Order Production Straw */}
+        {/* Tier 2: $25 Pre-Order Production Hardware */}
         <button
           onClick={() => handleOpenPledge(25)}
           style={{
@@ -384,7 +413,7 @@ export default function CampaignBar({
             borderRadius: '999px',
             letterSpacing: '0.5px'
           }}>
-            RECOMMENDED
+            GOLDILOCKS TIER
           </div>
 
           <div>
@@ -393,14 +422,14 @@ export default function CampaignBar({
               <Package size={16} color="#059669" />
             </div>
             <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#065F46', marginBottom: '0.2rem' }}>
-              First Batch Pre-Order
+              Batch #1 Unit + Royalty
             </div>
             <div style={{ fontSize: '0.75rem', color: '#4B5563', lineHeight: 1.4 }}>
-              Guaranteed Batch #1 Redr.ink™ straw at target MSRP. Serialized engraved 316L stainless tube + silicone jacket.
+              Guaranteed Batch #1 serialized hardware unit at target MSRP + priority pro-rata patron kickback distribution.
             </div>
           </div>
           <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            Pre-Order Straw ($25) →
+            Pre-Order Unit ($25) →
           </div>
         </button>
 
@@ -434,10 +463,10 @@ export default function CampaignBar({
               <Heart size={16} color="#EC4899" />
             </div>
             <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#111827', marginBottom: '0.2rem' }}>
-              Angel / Patron Backer
+              Angel / Tooling Patron
             </div>
             <div style={{ fontSize: '0.75rem', color: '#6B7280', lineHeight: 1.4 }}>
-              Fund tooling, prototyping materials, or production batches directly with the inventor.
+              Directly fund CNC molds, extrusion dies, and raw materials with pro-rata gross margin kickback covenants.
             </div>
           </div>
           <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', fontWeight: 700, color: '#111827', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -596,15 +625,30 @@ export default function CampaignBar({
 
             <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#111827', margin: '0 0 0.5rem 0' }}>
               {isFreeWaitlist && "Join Early Founder Waitlist ($0)"}
-              {selectedTier === 5 && "Fuel the Idea & Waitlist ($5)"}
-              {selectedTier === 25 && "Reserve Batch #1 Prototype ($25)"}
-              {selectedTier === 100 && "Co-Inventor Ledger Tier ($100)"}
-              {selectedTier === -1 && "Patron / Custom Contribution"}
+              {selectedTier === 5 && "Micro-Patron Royalty Kickback ($5)"}
+              {selectedTier === 25 && "Batch #1 Hardware Unit + Kickback ($25)"}
+              {selectedTier === 100 && "Co-Inventor Tooling Patron ($100)"}
+              {selectedTier === -1 && "Patron / Custom Tooling Contribution"}
             </h3>
 
-            <p style={{ fontSize: '0.85rem', color: '#4B5563', lineHeight: 1.5, marginBottom: '1.5rem' }}>
-              {defaultBatchDesc}. All funds are dedicated to hardware validation and production runs.
+            <p style={{ fontSize: '0.85rem', color: '#4B5563', lineHeight: 1.5, marginBottom: '0.75rem' }}>
+              {defaultBatchDesc}. 85% of funds go straight to inventor tooling, 10% to the prototype pool, and 5% to protocol escrow.
             </p>
+
+            {!isFreeWaitlist && (
+              <div style={{
+                background: '#ECFDF5',
+                border: '1px solid #A7F3D0',
+                borderRadius: '8px',
+                padding: '0.6rem 0.85rem',
+                fontSize: '0.75rem',
+                color: '#065F46',
+                lineHeight: 1.4,
+                marginBottom: '1.25rem'
+              }}>
+                <strong>Goldilocks Rule:</strong> Your pledge is anchored to Batch #1 retail cash flows. You are entitled to pro-rata royalty kickbacks back to your wallet as units ship.
+              </div>
+            )}
 
             <form onSubmit={handleConfirmPledge}>
               {selectedTier === -1 && (

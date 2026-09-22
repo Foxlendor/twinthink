@@ -122,7 +122,6 @@ Command: `npm run build` in `apps/web`
 * **JSON-LD Dossier Export in [`BomTab.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/tabs/BomTab.tsx)**:
   - Added an **Export EU DPP JSON-LD Dossier** action inside the role-filtered DPP projection modal.
   - Generates W3C / GS1 compatible `application/ld+json` dossiers conforming to EU Regulation 2023/1542 and Ecodesign (ESPR) specifications, complete with constituent node rollups, circularity statements, material declarations, dismantling guidance, and cryptographic acyclic audit verification.
-
 ### 6. Milestone M7: Competitive Markets, Honest IP Royalties & Laboratory Easter Eggs
 * **Commercial Hardware Production & Royalty Engine**:
   - In [`AccessModal.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/AccessModal.tsx), added a dedicated 4th tier: **Commercial Rights & Honest Royalties**.
@@ -132,15 +131,26 @@ Command: `npm run build` in `apps/web`
     - **10%** to the Albuquerque Physical Prototyping & Calibration Tooling Pool.
     - **5%** to Protocol Verification Escrow.
   - 1-Click download of legally binding, cryptographically timestamped Commercial Production Covenants (`COMMERCIAL_LICENSE_<ID>.txt`).
-* **Physical Prototype Batch Tooling Crowdfund**:
-  - Embedded [`CampaignBar.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/CampaignBar.tsx) directly into [`PublicConceptPreview.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/PublicConceptPreview.tsx).
-  - Displays real funding progress for physical tooling runs (RF welding dies, silicone overmold molds, CNC passes) across Redrink, TWIIZZLock, and Specimen 0001, allowing community patrons to pledge towards real fabrication.
+* **The IP Kiosk & Patron Royalty Piggy Bank ([`/roundup`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/app/roundup/page.tsx))**:
+  - Implemented the grocery counter IP kiosk vision: rather than taxes vanishing into government opacity, citizens allocate micro-patronage directly into physical inventions they want to see manufactured.
+  - **The Goldilocks Zone (Money In = Money Out or More)**: Backing prototype tooling enters patrons into the pro-rata retail dividend pool. When Batch #1 hardware ships, early retail sales cash flows return capital back to patron wallets before protocol profits.
+  - **Open to View, Community-Backed to Build**: 100% free public inspection without paywalls to explore ideas; payments are purely for physical tooling backing and commercial licensing.
+  - **The Community Forking Guarantee**: If an inventor creates a digital twin and development stalls or goes inactive for > 12 months, any community member retains the guaranteed right to FORK the twin, inherit the tooling/CAD files, and manufacture it.
+* **Physical Prototype Batch Tooling Campaign Bars ([`CampaignBar.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/CampaignBar.tsx))**:
+  - Embedded directly into [`PublicConceptPreview.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/PublicConceptPreview.tsx) and across all digital twins.
+  - Features the Goldilocks Zone callout banner, live community backer ledger, Micro-Patron royalty kickback tier ($5), Batch #1 hardware pre-order ($25), and Custom Tooling Patron options.
 * **Authentic 2015-2026 Inventor Laboratory Notebook Easter Egg**:
   - Built [`InventorNotebookModal.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/InventorNotebookModal.tsx) showcasing John's original 2015 benchtop notes, motto (&ldquo;i th.ink there for i am?&rdquo;), 2-liter bottle headspace physics, and latent heat thermodynamic laws.
   - Interactive "Stamp Witness Seal in Ink" action rendering a dated, verified circular ink impression seal.
   - Triggerable via 3 rapid clicks on the brand logo in [`Navbar.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/Navbar.tsx), typing `twin` on the keyboard, or via menu links.
+* **The Genesis Pitch Portal ([`/pitch`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/app/pitch/page.tsx))**:
+  - Features the founder's authentic childhood inventor motivation: &ldquo;What do you want to be when you grow up? An inventor... If I have a good idea, I want to see it exist. I don't just want to look at it in my head.&rdquo;
 * **Streamlined Core IP Focus**:
   - Purged experimental non-profit and bio-connectome concepts, refocusing TwinThink 100% on market-ready physical hardware inventions, honest creator royalties, and commercial production feasibility.
 
+---
 
-
+## Final Verification Summary
+* **Backend Pytest Suite**: **77/77 tests PASSED** in 13.45s (`apps/api/tests/` & `packages/twinthink/`).
+* **Next.js Web Build**: **13/13 routes compiled and statically optimized** in ~4s with 0 TypeScript/Turbopack errors.
+* **Git State**: Clean branch `main` synchronized and tracked with `origin/main`.

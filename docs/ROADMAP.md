@@ -94,7 +94,10 @@
 - 1-Click export of W3C / GS1 compatible `application/ld+json` compliance dossiers with cryptographic acyclic structural verification.
 
 ### ✅ M7: Crowdfunding & Honest IP Royalty Distribution (Completed)
-- Point-of-sale micro-roundup treasury pool ("Think Twice" shop counter checkout & Albuquerque prototype tooling support).
-- Physical Prototype Tooling Campaign Bars (`CampaignBar.tsx`) embedded directly into twins (Redrink, TWIIZZLock, Specimen 0001) tracking real batch tooling funding goals and community patrons.
-- Commercial Production & Hardware Royalty Licensing Engine (`AccessModal.tsx` Tier 4) with 85% creator profit guarantee (`did:twin:johne.boi`), 10% prototype pool, 5% protocol escrow, and instant signed legal covenants.
-- Interactive 2015-2026 Inventor Laboratory Notebook Easter Egg (`InventorNotebookModal.tsx`) with authentic lore, quotes, and interactive witness ink stamp.
+- **The IP Kiosk & Patron Royalty Piggy Bank**: Point-of-sale micro-patronage counter display (`/roundup`) where citizens allocate funding directly into physical inventions they want to see manufactured (like an IP piggy bank instead of taxes disappearing into a void).
+- **The Goldilocks Zone (Money In = Money Out or More)**: Backing prototype tooling enters patrons into the pro-rata retail dividend pool. When Batch #1 hardware ships, early sales cash flows return funds back to patron wallets before protocol profits.
+- **Open to View, Community-Backed to Build**: Public previews are completely free to inspect and explore (patronage-supported, no paywall to discover).
+- **The Community Forking Guarantee**: If an inventor creates a digital twin and development goes inactive for > 12 months, any community member retains the guaranteed right to FORK the twin, inherit the tooling/CAD files, and manufacture it.
+- **Physical Prototype Tooling Campaign Bars** (`CampaignBar.tsx`) embedded directly into twins (Redrink, TWIIZZLock, Specimen 0001) tracking real batch tooling funding goals, backer provenance, and royalty kickback tiers.
+- **Commercial Production & Hardware Royalty Licensing Engine** (`AccessModal.tsx` Tier 4) with 85% creator profit guarantee (`did:twin:johne.boi`), 10% prototype pool, 5% protocol escrow, and instant signed legal covenants.
+- **Interactive 2015-2026 Inventor Laboratory Notebook Easter Egg** (`InventorNotebookModal.tsx`) with authentic lore, quotes, and interactive witness ink stamp.
