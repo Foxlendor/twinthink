@@ -180,27 +180,31 @@ export default function TestsTab({ twin }: TabProps) {
 
   // Chart coordinate helper for raw_preview
   const points = selectedTest?.raw_preview || [];
-  const maxTime = Math.max(300, ...points.map(p => p.time_s));
-  const maxTemp = 60; // deg C
+  const maxTime = points.length > 0 ? Math.max(...points.map(p => p.timestamp_s || p.time_s || 10)) : 10;
+  
+  // Dynamic scaling based on domain
+  const isFluid = twin.domain === 'Fluid Dynamics';
+  const maxY = isFluid ? 100 : 60; 
+  
   const chartW = 600;
   const chartH = 220;
   const padX = 45;
   const padY = 25;
 
   const toSvgX = (t: number) => padX + (t / maxTime) * (chartW - padX * 2);
-  const toSvgY = (temp: number) => chartH - padY - (temp / maxTemp) * (chartH - padY * 2);
+  const toSvgY = (val: number) => chartH - padY - (val / maxY) * (chartH - padY * 2);
 
-  // SVG Paths
+  // SVG Paths (dynamically mapping standard thermal or fluid properties)
   const measuredPath = points.length > 0 
-    ? points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${toSvgX(p.time_s).toFixed(1)} ${toSvgY(p.outlet_C).toFixed(1)}`).join(' ')
+    ? points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${toSvgX(p.timestamp_s || p.time_s).toFixed(1)} ${toSvgY(isFluid ? p.widget_pressure_psi : p.outlet_C).toFixed(1)}`).join(' ')
     : '';
 
   const pcmPath = points.length > 0
-    ? points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${toSvgX(p.time_s).toFixed(1)} ${toSvgY(p.pcm_C).toFixed(1)}`).join(' ')
+    ? points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${toSvgX(p.timestamp_s || p.time_s).toFixed(1)} ${toSvgY(isFluid ? (p.bubble_nucleation_rate || 0) : p.pcm_C).toFixed(1)}`).join(' ')
     : '';
 
   const inletPath = points.length > 0
-    ? points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${toSvgX(p.time_s).toFixed(1)} ${toSvgY(p.inlet_C).toFixed(1)}`).join(' ')
+    ? points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${toSvgX(p.timestamp_s || p.time_s).toFixed(1)} ${toSvgY(isFluid ? (p.ambient_pressure_psi || 0) : p.inlet_C).toFixed(1)}`).join(' ')
     : '';
 
   return (
@@ -233,7 +237,7 @@ export default function TestsTab({ twin }: TabProps) {
           margin: 0,
           lineHeight: 1.6
         }}>
-          Physical twins require empirical ground truth. Every test run uploads real-world sensor streams, aligns them against thermodynamic math models, and computes residual error (RMSE) to prove claims against reality.
+          Physical twins require empirical ground truth. Every test run uploads real-world sensor streams, aligns them against physics models, and computes residual error (RMSE) to prove claims against reality.
         </p>
       </div>
 
@@ -266,7 +270,7 @@ export default function TestsTab({ twin }: TabProps) {
                 How Sensor Tests Calibrate the Twin
               </h3>
               <p style={{ fontSize: '0.8125rem', color: '#4B5563', margin: 0, maxWidth: '620px', lineHeight: 1.5 }}>
-                When physical prototypes are tested on the lab bench, micro-thermocouples record the real temperature of water passing through the straw. TwinThink fits this data to the ODE model to verify that measured warming matches predictions within <strong>RMSE &lt; 2.5°C</strong>.
+                When physical prototypes are tested on the lab bench, sensors record raw telemetry. TwinThink fits this data to the physics model to verify that measured outputs match theoretical predictions within allowable error bands.
               </p>
             </div>
           </div>

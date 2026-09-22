@@ -900,6 +900,9 @@ export default function SimulationTab({ twin }: TabProps) {
   if (twin.domain === 'Mechanisms') {
     return <KinematicSolver twin={twin} />;
   }
+  if (twin.domain === 'Fluid Dynamics') {
+    return <FluidSolver twin={twin} />;
+  }
   return <ThermalSolver twin={twin} />;
 }
 
@@ -999,6 +1002,100 @@ function KinematicSolver({ twin }: TabProps) {
                 strokeWidth="3" 
                 points={angleArr.map((a, i) => `${getX(a)},${getY(torqueArr[i], 100)}`).join(' ')} 
               />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FluidSolver({ twin }: TabProps) {
+  const [pressure, setPressure] = React.useState(45.0);
+  const [pinhole, setPinhole] = React.useState(0.2);
+  
+  // Simple fluid dynamics nucleation solver
+  const timeArr: number[] = [];
+  const volumeArr: number[] = [];
+  const pressureArr: number[] = [];
+  
+  // Pressure drops as volume of gas nucleates
+  for (let t = 0; t <= 10; t += 0.5) {
+    timeArr.push(t);
+    // Rate of volume expansion depends on pressure and pinhole
+    const nucleatedVol = Math.min(150, (pressure * pinhole * t * 2));
+    volumeArr.push(nucleatedVol);
+    
+    // Pressure drops exponentially as gas escapes
+    const p = pressure * Math.exp(-t * (pinhole / 2));
+    pressureArr.push(p);
+  }
+
+  const svgWidth = 800;
+  const svgHeight = 240;
+  const paddingLeft = 50;
+  const paddingRight = 30;
+  const paddingTop = 20;
+  const paddingBottom = 30;
+
+  const getX = (t: number) => paddingLeft + (t / 10) * (svgWidth - paddingLeft - paddingRight);
+  const getY = (val: number, max: number) => svgHeight - paddingBottom - (val / max) * (svgHeight - paddingTop - paddingBottom);
+
+  return (
+    <div style={{ padding: '2rem 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <div style={{ background: '#DBEAFE', color: '#2563EB', width: 48, height: 48, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Waves size={24} />
+        </div>
+        <div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>Fluid Dynamics Nucleation</h2>
+          <p style={{ color: '#6B7280', fontSize: '0.875rem', margin: '0.2rem 0 0 0' }}>Widget pressure decay and bubble nucleation modeling.</p>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 300px', background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '1.5rem' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.5rem' }}>Widget Parameters</h3>
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+              <span>Initial Pressure (PSI)</span>
+              <span style={{ color: '#2563EB' }}>{pressure.toFixed(1)}</span>
+            </label>
+            <input type="range" min="10" max="100" step="1" value={pressure} onChange={(e) => setPressure(Number(e.target.value))} style={{ width: '100%' }} />
+          </div>
+          <div>
+            <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+              <span>Pinhole Diameter (mm)</span>
+              <span style={{ color: '#2563EB' }}>{pinhole.toFixed(2)}</span>
+            </label>
+            <input type="range" min="0.05" max="1.0" step="0.05" value={pinhole} onChange={(e) => setPinhole(Number(e.target.value))} style={{ width: '100%' }} />
+          </div>
+        </div>
+
+        <div style={{ flex: '2 1 500px', background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Nucleation & Pressure Trace</h3>
+            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', fontWeight: 600 }}>
+              <span style={{ color: '#0284C7', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: 10, height: 10, background: '#0284C7', borderRadius: '50%' }}></span> Nucleation Volume (mL)
+              </span>
+              <span style={{ color: '#DC2626', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: 10, height: 10, background: '#DC2626', borderRadius: '50%' }}></span> Internal Pressure (PSI)
+              </span>
+            </div>
+          </div>
+          
+          <div style={{ width: '100%', height: '240px' }}>
+            <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+              {[0, 25, 50, 75, 100].map(val => (
+                <line key={val} x1={paddingLeft} y1={getY(val, 150)} x2={svgWidth - paddingRight} y2={getY(val, 150)} stroke="#F3F4F6" strokeDasharray="4 4" />
+              ))}
+              
+              {/* Volume Line */}
+              <polyline fill="none" stroke="#0284C7" strokeWidth="3" points={timeArr.map((t, i) => `${getX(t)},${getY(volumeArr[i], 150)}`).join(' ')} />
+              
+              {/* Pressure Line */}
+              <polyline fill="none" stroke="#DC2626" strokeWidth="3" points={timeArr.map((t, i) => `${getX(t)},${getY(pressureArr[i], 100)}`).join(' ')} />
             </svg>
           </div>
         </div>
