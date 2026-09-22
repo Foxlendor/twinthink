@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Archive, ArrowLeft, ShieldCheck, LockKeyhole, GitFork } from 'lucide-react';
+import { Archive, ArrowLeft, ShieldCheck, LockKeyhole, GitFork, Box } from 'lucide-react';
 import { TWINS_DATABASE } from '@/lib/twinsData';
 
 interface PublicArchiveEntry {

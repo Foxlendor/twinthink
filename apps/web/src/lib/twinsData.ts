@@ -339,21 +339,63 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
 };
 
 export function getLocalTwin(id: string): TwinData | null {
+  if (!id) return null;
   const norm = id.toLowerCase().trim();
-  if (norm === 'twiizzlock' || norm === 'twiizzlock-v1' || norm === '0002') {
+
+  // Exact match first
+  if (TWINS_DATABASE[norm]) {
+    return TWINS_DATABASE[norm];
+  }
+
+  // Twiizzlock / Piston sleeve aliases
+  if (
+    norm.includes('twiizzlock') ||
+    norm.includes('twizzlock') ||
+    norm.includes('piston') ||
+    norm === '0002'
+  ) {
     return TWINS_DATABASE['twiizzlock'];
   }
-  if (norm === 'redrink' || norm === 'redr-ink' || norm === 'Redr.ink') {
+
+  // Redr.ink / Modular thermal straw aliases
+  if (
+    norm.includes('redrink') ||
+    norm.includes('redr.ink') ||
+    norm.includes('redr-ink') ||
+    norm.includes('exothermic') ||
+    norm.includes('thermal-straw')
+  ) {
     return TWINS_DATABASE['redrink'];
   }
-  if (norm === '0003' || norm === 'twizzfizz' || norm === 'twizzfizz-straw' || norm === '0003-twizzfizz') {
+
+  // Twizzfizz carbonation straw aliases
+  if (
+    norm.includes('twizzfizz') ||
+    norm.includes('fizz') ||
+    norm === '0003' ||
+    norm === '0003-twizzfizz'
+  ) {
     return TWINS_DATABASE['0003-twizzfizz'];
   }
-  if (norm === '0002-iris' || norm === 'iris-shutter' || norm === 'iris') {
+
+  // Mechanical Iris Shutter
+  if (
+    norm.includes('iris') ||
+    norm.includes('shutter') ||
+    norm === '0002-iris'
+  ) {
     return TWINS_DATABASE['0002-iris'];
   }
-  if (norm === '0001' || norm === 'resip' || norm === 'resip-straw') {
+
+  // ReSip Alpha / Specimen 0001
+  if (
+    norm.includes('resip') ||
+    norm.includes('specimen') ||
+    norm === '0001' ||
+    norm === '1'
+  ) {
     return TWINS_DATABASE['0001'];
   }
+
   return null;
 }

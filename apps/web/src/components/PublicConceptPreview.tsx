@@ -79,28 +79,31 @@ export default function PublicConceptPreview({ twin, onRequestAccess }: PublicCo
       </div>
 
       <div style={{
-        height: '360px',
-        borderRadius: '14px',
-        overflow: 'hidden',
-        background: '#F8FAFC',
-        border: '1px solid #F3F4F6'
+        minHeight: '480px',
+        borderRadius: '16px',
+        overflow: 'visible',
+        background: 'transparent',
+        marginBottom: '1.25rem'
       }}>
         {previewApproved ? (
           <TwinViewer twin={twin} />
         ) : (
           <div style={{
-            height: '100%',
+            minHeight: '360px',
             display: 'grid',
             placeItems: 'center',
             color: '#6B7280',
             textAlign: 'center',
-            padding: '2rem'
+            padding: '3rem 2rem',
+            background: '#F8FAFC',
+            border: '1px solid #E5E7EB',
+            borderRadius: '16px'
           }}>
             <div>
-              <LockKeyhole size={30} style={{ marginBottom: '0.75rem' }} />
-              <div style={{ fontWeight: 700, color: '#374151' }}>No public preview approved</div>
-              <div style={{ fontSize: '0.8rem', marginTop: '0.35rem' }}>
-                The inventor has not published a public concept representation.
+              <LockKeyhole size={32} style={{ margin: '0 auto 0.75rem', color: '#9CA3AF' }} />
+              <div style={{ fontWeight: 700, color: '#374151', fontSize: '1rem' }}>No public preview approved</div>
+              <div style={{ fontSize: '0.825rem', marginTop: '0.35rem', color: '#6B7280', maxWidth: '380px' }}>
+                The inventor has not published an open concept representation for this twin.
               </div>
             </div>
           </div>
@@ -109,18 +112,18 @@ export default function PublicConceptPreview({ twin, onRequestAccess }: PublicCo
 
       <div className="concept-info-grid" style={{
         display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr) minmax(260px, 0.65fr)',
-        gap: '1rem',
-        marginTop: '1rem'
+        gridTemplateColumns: 'minmax(0, 1.2fr) minmax(280px, 0.8fr)',
+        gap: '1.25rem',
+        marginTop: '1.25rem'
       }}>
         <div style={{
           background: '#F9FAFB',
           border: '1px solid #E5E7EB',
-          borderRadius: '12px',
-          padding: '1rem'
+          borderRadius: '14px',
+          padding: '1.25rem'
         }}>
           <div style={{
-            fontSize: '0.7rem',
+            fontSize: '0.72rem',
             fontWeight: 800,
             color: '#374151',
             letterSpacing: '0.06em',
@@ -129,7 +132,7 @@ export default function PublicConceptPreview({ twin, onRequestAccess }: PublicCo
           }}>
             What this shows
           </div>
-          <p style={{ margin: 0, fontSize: '0.82rem', lineHeight: 1.55, color: '#4B5563' }}>
+          <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: 1.6, color: '#4B5563' }}>
             A simplified representation of the approved concept. It is intended to communicate
             the idea and major functional regions, not provide manufacturing geometry.
           </p>
@@ -138,11 +141,11 @@ export default function PublicConceptPreview({ twin, onRequestAccess }: PublicCo
         <div style={{
           background: '#FFFFFF',
           border: '1px solid #E5E7EB',
-          borderRadius: '12px',
-          padding: '1rem'
+          borderRadius: '14px',
+          padding: '1.25rem'
         }}>
           <div style={{
-            fontSize: '0.7rem',
+            fontSize: '0.72rem',
             fontWeight: 800,
             color: '#374151',
             letterSpacing: '0.06em',
@@ -151,10 +154,16 @@ export default function PublicConceptPreview({ twin, onRequestAccess }: PublicCo
           }}>
             What stays restricted
           </div>
-          <div style={{ display: 'grid', gap: '0.35rem', fontSize: '0.78rem', color: '#6B7280' }}>
-            <div>🔒 Exact manufacturing geometry</div>
-            <div>🔒 Full BOM and supplier data</div>
-            <div>🔒 Tolerances and production files</div>
+          <div style={{ display: 'grid', gap: '0.45rem', fontSize: '0.8rem', color: '#6B7280' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span>🔒</span> <span>Exact manufacturing geometry</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span>🔒</span> <span>Full BOM and supplier data</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span>🔒</span> <span>Tolerances and production files</span>
+            </div>
           </div>
         </div>
       </div>
@@ -162,20 +171,37 @@ export default function PublicConceptPreview({ twin, onRequestAccess }: PublicCo
       {callouts.length > 0 && (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: '0.75rem',
-          marginTop: '1rem'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '1rem',
+          marginTop: '1.25rem'
         }}>
           {callouts.map((callout, index) => (
             <div key={index} style={{
+              background: '#FFFFFF',
               border: '1px solid #E5E7EB',
-              borderRadius: '12px',
-              padding: '0.85rem 1rem'
+              borderRadius: '14px',
+              padding: '1.1rem 1.25rem',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
+              transition: 'all 0.2s ease',
             }}>
-              <div style={{ fontWeight: 750, fontSize: '0.82rem', color: '#111827' }}>
-                {index + 1}. {callout.label}
+              <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  width: '22px', 
+                  height: '22px', 
+                  borderRadius: '50%', 
+                  background: '#EFF6FF', 
+                  color: '#2563EB', 
+                  fontSize: '0.72rem', 
+                  fontWeight: 800 
+                }}>
+                  {index + 1}
+                </span>
+                {callout.label}
               </div>
-              <div style={{ marginTop: '0.3rem', fontSize: '0.76rem', color: '#6B7280', lineHeight: 1.45 }}>
+              <div style={{ marginTop: '0.45rem', fontSize: '0.8rem', color: '#4B5563', lineHeight: 1.55 }}>
                 {callout.description}
               </div>
             </div>

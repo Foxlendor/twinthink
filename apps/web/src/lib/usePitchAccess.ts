@@ -100,6 +100,9 @@ export function usePitchAccess() {
       try {
         localStorage.setItem(STORAGE_KEY_UNLOCKED, 'true');
         localStorage.setItem(STORAGE_KEY_CODE, normalized);
+        if (typeof document !== 'undefined') {
+          document.cookie = `twinthink_pitch_code=${encodeURIComponent(normalized)}; path=/; max-age=86400; SameSite=Lax`;
+        }
       } catch {}
 
       setIsUnlocked(true);
@@ -125,6 +128,9 @@ export function usePitchAccess() {
     try {
       localStorage.removeItem(STORAGE_KEY_UNLOCKED);
       localStorage.removeItem(STORAGE_KEY_CODE);
+      if (typeof document !== 'undefined') {
+        document.cookie = 'twinthink_pitch_code=; path=/; max-age=0; SameSite=Lax';
+      }
     } catch {}
 
     setIsUnlocked(false);

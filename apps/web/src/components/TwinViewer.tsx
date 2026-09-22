@@ -7,7 +7,7 @@ import { TwinData } from '@/lib/types';
 import { getApiUrl } from '@/lib/api';
 import PistonViewer from '@/components/twizzlock/PistonViewer';
 import RedrinkViewer from '@/components/redrink/RedrinkViewer';
-
+import FullscreenWrapper from './FullscreenWrapper';
 
 interface TwinViewerProps {
   twin: TwinData;
@@ -73,7 +73,7 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
     const physicalOpacity = traceValue > 50 ? (traceValue - 50) / 50 : 0;
 
     return (
-      <div className={styles.viewerContainer}>
+      <FullscreenWrapper>
         {mounted ? (
           <div className={styles.viewerWrapper}>
             {/* Analog Ink Overlay */}
@@ -208,9 +208,11 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
             </div>
           </div>
         ) : (
-          <div className={styles.loadingState}>Loading 3D Viewer...</div>
+          <div className={styles.loadingState}>
+            Loading Engine...
+          </div>
         )}
-      </div>
+      </FullscreenWrapper>
     );
   }
   

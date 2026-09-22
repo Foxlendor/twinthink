@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import BrandVideoBanner from '@/components/BrandVideoBanner';
+import { Compass, KeyRound, Cpu } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -27,7 +29,7 @@ export default function HomePage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: 0.8 // Subtle presence
+        opacity: 0.85
       }}>
         <BrandVideoBanner />
       </div>
@@ -38,15 +40,16 @@ export default function HomePage() {
         zIndex: 10, 
         maxWidth: '850px', 
         textAlign: 'center',
-        background: 'rgba(250, 250, 250, 0.95)',
-        padding: '3rem 2rem',
+        background: 'rgba(250, 250, 250, 0.92)',
+        backdropFilter: 'blur(10px)',
+        padding: '3rem 2.5rem',
         borderRadius: '24px',
-        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.05)',
-        border: '1px solid rgba(255, 255, 255, 0.3)'
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
+        border: '1px solid rgba(255, 255, 255, 0.5)'
       }}>
         <h1
           style={{
-            fontSize: 'clamp(3.5rem, 6vw, 5rem)',
+            fontSize: 'clamp(3.2rem, 5.5vw, 4.8rem)',
             fontWeight: 800,
             lineHeight: 1.05,
             margin: '0 0 1.5rem',
@@ -58,58 +61,76 @@ export default function HomePage() {
         </h1>
         <p
           style={{
-            fontSize: '1.25rem',
+            fontSize: '1.2rem',
             color: '#4B5563',
             lineHeight: 1.6,
-            margin: '0 auto 3rem',
+            margin: '0 auto 2.5rem',
             fontWeight: 400,
             maxWidth: '700px'
           }}
         >
           TwinThink is the bridge between imagination and physics. We provide the infrastructure to test, simulate, and prove your inventions—empowering you to preserve your ideas, generate insight, and turn concepts into valuable, real-world assets.
         </p>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'center' }}>
-          <a
+        <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link
             href="/explore"
             style={{
               padding: '0.85rem 1.75rem',
               background: '#111827',
               color: '#FFFFFF',
-              borderRadius: '8px',
+              borderRadius: '10px',
               textDecoration: 'none',
               fontWeight: 600,
               fontSize: '0.95rem',
-              transition: 'background 0.2s, transform 0.1s'
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'transform 0.15s ease'
             }}
-            onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.02)')}
-            onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           >
-            Explore Public Shadows
-          </a>
-          <a
-            href="/pitch"
+            <Compass size={17} />
+            <span>Explore Public Shadows</span>
+          </Link>
+          <Link
+            href="/pitch?pitch=VIPDEMO"
             style={{
               padding: '0.85rem 1.75rem',
               background: 'transparent',
               color: '#111827',
               border: '1px solid #D1D5DB',
-              borderRadius: '8px',
+              borderRadius: '10px',
               textDecoration: 'none',
               fontWeight: 600,
               fontSize: '0.95rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
               transition: 'border-color 0.2s, background 0.2s'
             }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.borderColor = '#111827';
-              e.currentTarget.style.background = '#F3F4F6';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.borderColor = '#D1D5DB';
-              e.currentTarget.style.background = 'transparent';
+          >
+            <KeyRound size={17} />
+            <span>Investor Access</span>
+          </Link>
+          <Link
+            href="/rnd"
+            style={{
+              padding: '0.85rem 1.75rem',
+              background: '#F1F5F9',
+              color: '#0F172A',
+              border: '1px solid #CBD5E1',
+              borderRadius: '10px',
+              textDecoration: 'none',
+              fontWeight: 600,
+              fontSize: '0.95rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'background 0.2s'
             }}
           >
-            Investor Access
-          </a>
+            <Cpu size={17} />
+            <span>MIT FlyBrain R&D</span>
+          </Link>
         </div>
       </div>
       

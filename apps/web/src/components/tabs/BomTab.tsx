@@ -120,6 +120,59 @@ export default function BomTab({ twin }: TabProps) {
     setCollapsedNodes(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const handleExportDppJsonLd = () => {
+    const passportId = bomRoot?.dpp_id || `urn:dpp:eu:twinthink:${twin.id.toLowerCase()}:2026`;
+    const dppPayload = {
+      "@context": [
+        "https://www.w3.org/2018/credentials/v1",
+        "https://schema.org",
+        "https://dpp.europa.eu/contexts/espr-battery-2027.jsonld"
+      ],
+      "id": passportId,
+      "type": ["DigitalProductPassport", "VerifiableCredential"],
+      "issuer": `did:twin:creator:${twin.creator || 'anonymous'}`,
+      "issuanceDate": new Date().toISOString(),
+      "credentialSubject": {
+        "id": `urn:twin:${twin.id}`,
+        "name": twin.current_version?.title || twin.id,
+        "partNumber": bomRoot?.part_number || twin.id.toUpperCase(),
+        "revision": bomRoot?.revision || twin.current_version?.semver || '1.0.0',
+        "regulatoryFramework": "EU Regulation 2023/1542 / ESPR Ecodesign",
+        "complianceStatus": "UNOFFICIAL_PREVIEW_REPRESENTATION",
+        "manufacturer": {
+          "name": twin.creator || "TwinThink Verified Creator",
+          "origin": "Decentralized Physical Ingestion"
+        },
+        "circularityProfile": {
+          "totalConstituentNodes": rows.length,
+          "mechanicalFastenersCount": rows.filter(r => r.nodeType === 'fastener').length,
+          "separableMaterialStreams": Array.from(new Set(rows.map(r => r.material).filter(Boolean))),
+          "dismantlingManual": "Standard non-destructive manual disassembly using Phillips/Hex tooling."
+        },
+        "materialDeclarations": rows.filter(r => !r.isAssembly).map(r => ({
+          "partName": r.name,
+          "material": r.material || 'Standard Engineering Polymer/Alloy',
+          "materialGrade": r.materialGrade || null,
+          "recycledContentPct": r.recycledContentPct || 0,
+          "substancesOfConcern": "None reported (< 0.1% w/w REACH SVHC)"
+        })),
+        "auditChain": {
+          "verificationEngine": "TwinThink 3-Color DFS Acyclic Engine",
+          "totalBOMRollupUSD": Number(totalCost).toFixed(2),
+          "currency": currency
+        }
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(dppPayload, null, 2)], { type: 'application/ld+json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dpp_eu_regulation_${twin.id}_${Date.now()}.jsonld`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Build flattened hierarchy for rendering
   const rows: BomRowItem[] = [];
 
@@ -1118,7 +1171,25 @@ export default function BomTab({ twin }: TabProps) {
             )}
 
             {/* Modal Footer */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.85rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <button
+                onClick={handleExportDppJsonLd}
+                style={{
+                  padding: '0.55rem 1.15rem',
+                  borderRadius: 'var(--radius-sm)',
+                  background: '#111827',
+                  border: 'none',
+                  color: '#FFFFFF',
+                  fontWeight: 700,
+                  fontSize: '0.8125rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem'
+                }}
+              >
+                <Download size={14} /> Export EU DPP JSON-LD Dossier
+              </button>
               <button
                 onClick={() => setShowDppModal(false)}
                 style={{

@@ -42,9 +42,9 @@ export default function Navbar() {
         width: '100%'
       }}>
         <div style={{
-          maxWidth: '1120px',
+          maxWidth: '1280px',
           margin: '0 auto',
-          padding: '0.85rem 1.5rem',
+          padding: '0.85rem 1.75rem',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'

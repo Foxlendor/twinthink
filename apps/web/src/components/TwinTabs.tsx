@@ -17,7 +17,9 @@ import {
   LockKeyhole,
   MessageSquare,
   ShieldCheck,
-  Unlock
+  Unlock,
+  Award,
+  Brain
 } from 'lucide-react';
 import BehaviorTab from './tabs/BehaviorTab';
 import EvidenceTab from './tabs/EvidenceTab';
@@ -31,6 +33,7 @@ import FilesTab from './tabs/FilesTab';
 import ClaimInspectorModal from './ClaimInspectorModal';
 import AccessModal from './AccessModal';
 import PublicConceptPreview from './PublicConceptPreview';
+import FlyBrainSpecialist from './FlyBrainSpecialist';
 import { usePitchAccess } from '@/lib/usePitchAccess';
 
 interface TwinTabsProps {
@@ -47,10 +50,12 @@ export type RealityTabKey =
   | 'thoughtlogs'
   | 'community'
   | 'lineage'
-  | 'files';
+  | 'files'
+  | 'rnd';
 
 const allTabs: Array<{ id: RealityTabKey; title: string; subtitle: string; icon: any }> = [
   { id: 'object', title: 'Concept Preview', subtitle: 'What is public?', icon: Box },
+  { id: 'rnd', title: 'MIT FlyBrain R&D', subtitle: 'Bio-mechanical connectome', icon: Brain },
   { id: 'structure', title: 'Structure', subtitle: 'Engineering detail', icon: Layers },
   { id: 'bom', title: 'BOM Tree', subtitle: 'Materials & sourcing', icon: GitFork },
   { id: 'behavior', title: 'Behavior', subtitle: 'Functional detail', icon: Activity },
@@ -247,7 +252,7 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
     return configured && configured.length > 0 ? configured : ['object'];
   }, [twin.current_version.disclosure]);
 
-  const isPublicTab = publicTabs.includes(activeTab);
+  const isPublicTab = publicTabs.includes(activeTab) || activeTab === 'rnd';
 
   const renderActiveTab = () => {
     if (activeTab === 'object') {
@@ -255,6 +260,16 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
         <PublicConceptPreview
           twin={twin}
           onRequestAccess={() => setShowDisclosureGate(true)}
+        />
+      );
+    }
+
+    if (activeTab === 'rnd') {
+      return (
+        <FlyBrainSpecialist
+          twinId={twin.id}
+          twinTitle={twin.current_version?.title || twin.id}
+          domain={twin.domain}
         />
       );
     }
@@ -320,9 +335,9 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
 
   return (
     <div style={{
-      maxWidth: '1120px',
+      maxWidth: '1280px',
       margin: '0 auto',
-      padding: '2rem 1.5rem 6rem'
+      padding: '2rem 1.75rem 8rem'
     }}>
       <div className="twin-layout" style={{
         display: 'flex',
@@ -461,42 +476,110 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
             </div>
           )}
 
+          {/* Universal Twin Identity Bar */}
           <div style={{
+            background: '#FFFFFF',
+            border: '1px solid #E5E7EB',
+            borderRadius: '16px',
+            padding: '1.25rem 1.5rem',
+            marginBottom: '1.5rem',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '1rem',
-            paddingBottom: '1rem',
-            marginBottom: '1.25rem',
-            borderBottom: '1px solid #E5E7EB',
-            flexWrap: 'wrap'
+            flexWrap: 'wrap',
+            gap: '1.25rem'
           }}>
-            <div style={{
-              fontSize: '0.75rem',
-              color: '#6B7280',
-              fontFamily: 'var(--font-mono)'
-            }}>
-              PUBLIC TWIN / {twin.id}
+            <div style={{ minWidth: 0, flex: '1 1 320px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                  color: '#4B5563',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  fontFamily: 'var(--font-mono)'
+                }}>
+                  TWIN #{twin.id.toUpperCase()}
+                </span>
+                <span style={{ color: '#D1D5DB' }}>/</span>
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  color: '#059669',
+                  background: '#ECFDF5',
+                  border: '1px solid #A7F3D0',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: '999px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem'
+                }}>
+                  <Award size={11} />
+                  {twin.status || 'Verified Record'}
+                </span>
+                {twin.domain && (
+                  <span style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    color: '#4B5563',
+                    background: '#F3F4F6',
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: '999px'
+                  }}>
+                    {twin.domain}
+                  </span>
+                )}
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  color: '#6B7280',
+                  fontFamily: 'var(--font-mono)'
+                }}>
+                  v{twin.current_version.semver || '1.0.0'}
+                </span>
+              </div>
+
+              <h1 style={{
+                fontSize: '1.35rem',
+                fontWeight: 800,
+                margin: '0 0 0.25rem',
+                color: '#111827',
+                letterSpacing: '-0.3px',
+                lineHeight: 1.25
+              }}>
+                {twin.current_version.title}
+              </h1>
+
+              <div style={{ fontSize: '0.8rem', color: '#6B7280', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span>Creator: <strong style={{ color: '#374151' }}>@{twin.creator || 'johne.boi'}</strong></span>
+                <span>•</span>
+                <span>License: <strong style={{ color: '#374151' }}>{twin.current_version.license || 'CERN-OHL-S-2.0'}</strong></span>
+              </div>
             </div>
-            <button
-              onClick={() => setShowDisclosureGate(true)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                border: isTechnicalUnlocked ? '1px solid #059669' : '1px solid #111827',
-                background: isTechnicalUnlocked ? '#ECFDF5' : '#FFFFFF',
-                color: isTechnicalUnlocked ? '#065F46' : '#111827',
-                borderRadius: '999px',
-                padding: '0.5rem 0.85rem',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-            >
-              {isTechnicalUnlocked ? <Unlock size={13} /> : <LockKeyhole size={13} />}
-              {isTechnicalUnlocked ? 'Manage Pitch / Vault Pass' : 'Pitch Code / Technical Access'}
-            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexShrink: 0 }}>
+              <button
+                onClick={() => setShowDisclosureGate(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  border: isTechnicalUnlocked ? '1px solid #059669' : '1px solid #111827',
+                  background: isTechnicalUnlocked ? '#ECFDF5' : '#111827',
+                  color: isTechnicalUnlocked ? '#065F46' : '#FFFFFF',
+                  borderRadius: '8px',
+                  padding: '0.55rem 0.95rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'background 0.15s, border-color 0.15s'
+                }}
+              >
+                {isTechnicalUnlocked ? <Unlock size={13} /> : <LockKeyhole size={13} />}
+                {isTechnicalUnlocked ? 'Manage Pitch / Vault Pass' : 'Pitch Pass / Technical Access'}
+              </button>
+            </div>
           </div>
 
           {renderActiveTab()}

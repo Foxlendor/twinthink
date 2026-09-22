@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { Sparkles, ShieldCheck, Lock, Unlock, RotateCcw, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Lock, Unlock, Sparkles, MoveUp, MoveDown, RotateCcw, AlertTriangle, ExternalLink } from 'lucide-react';
+import FullscreenWrapper from '../FullscreenWrapper';
 
 interface PistonViewerProps {
   onUnlockRequest?: () => void;
@@ -394,8 +395,13 @@ export default function PistonViewer({ onUnlockRequest }: PistonViewerProps) {
   const estPressure = (2.2 + state.compression * 1.6).toFixed(1);
   const sealScore = Math.max(0, 100 - Math.round(state.strokes * 1.3));
 
+  const lockedGlowStyle = state.locked ? {
+    boxShadow: '0 0 30px rgba(16, 185, 129, 0.4), inset 0 0 20px rgba(16, 185, 129, 0.1)',
+    borderColor: 'rgba(16, 185, 129, 0.5)'
+  } : {};
+
   return (
-    <div style={{ height: '100%', minHeight: '400px', background: '#FAFAFA', borderRadius: '16px', border: '1px solid #E5E7EB', padding: '1.75rem', overflow: 'hidden', position: 'relative' }}>
+    <FullscreenWrapper style={{ padding: '1.75rem', ...lockedGlowStyle }}>
       {/* Header Banner */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
         <div>
@@ -736,6 +742,6 @@ export default function PistonViewer({ onUnlockRequest }: PistonViewerProps) {
           }
         }
       `}} />
-    </div>
+    </FullscreenWrapper>
   );
 }

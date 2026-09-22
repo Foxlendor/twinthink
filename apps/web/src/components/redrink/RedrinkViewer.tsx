@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Flame, Sparkles, RotateCcw, Play, CheckCircle2, ShieldCheck, Thermometer, Layers, Info } from 'lucide-react';
+import FullscreenWrapper from '../FullscreenWrapper';
 
 interface RedrinkViewerProps {
   onUnlockRequest?: () => void;
@@ -83,11 +84,14 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
     });
   };
 
-  // Draw Straw Routine
+  // Draw Straw Routine (HiDPI 2x calibrated)
   const drawStraw = (ctx: CanvasRenderingContext2D, isHeated: boolean) => {
-    const w = ctx.canvas.width;
-    const h = ctx.canvas.height;
-    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    const dpr = 2;
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.scale(dpr, dpr);
+    const w = ctx.canvas.width / dpr;
+    const h = ctx.canvas.height / dpr;
 
     const cx = w * 0.32;
     const top = 35;
@@ -164,10 +168,12 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
     }
 
     // Anatomical labels
-    ctx.fillStyle = '#94A3B8';
+    ctx.fillStyle = isHeated ? '#94A3B8' : '#64748B';
     ctx.font = '11px system-ui, sans-serif';
     ctx.fillText('Mouthpiece', cx + 42, top + 8);
     ctx.fillText('Drink Inlet', cx + 42, bottom);
+
+    ctx.restore();
   };
 
   useEffect(() => {
@@ -182,7 +188,7 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
   }, [state]);
 
   return (
-    <div style={{ height: '100%', minHeight: '400px', background: '#FAFAFA', borderRadius: '16px', border: '1px solid #E5E7EB', padding: '1.75rem', overflow: 'hidden', position: 'relative' }}>
+    <FullscreenWrapper style={{ padding: '1.75rem' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
@@ -231,7 +237,19 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
               {state.active ? 'ACTIVE REHEAT' : 'READY'}
             </span>
           </div>
-          <canvas ref={canvasWithRef} width={380} height={280} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '8px', background: '#090D16' }} />
+          <canvas 
+            ref={canvasWithRef} 
+            width={760} 
+            height={560} 
+            style={{ 
+              width: '100%', 
+              height: 'auto', 
+              aspectRatio: '380 / 280', 
+              display: 'block', 
+              borderRadius: '10px', 
+              background: '#090D16' 
+            }} 
+          />
         </div>
 
         {/* Right: Plain Control */}
@@ -250,7 +268,19 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
               NO HEAT TRANSFER
             </span>
           </div>
-          <canvas ref={canvasPlainRef} width={380} height={280} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '8px', background: '#F1F5F9' }} />
+          <canvas 
+            ref={canvasPlainRef} 
+            width={760} 
+            height={560} 
+            style={{ 
+              width: '100%', 
+              height: 'auto', 
+              aspectRatio: '380 / 280', 
+              display: 'block', 
+              borderRadius: '10px', 
+              background: '#F1F5F9' 
+            }} 
+          />
         </div>
       </div>
 
@@ -398,15 +428,17 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
       </div>
 
       <style dangerouslySetInnerHTML={{__html: `
-        @media (max-width: 500px) {
+        @media (max-width: 768px) {
           .redrink-stage {
             grid-template-columns: 1fr !important;
           }
+        }
+        @media (max-width: 540px) {
           .redrink-stats {
-            grid-template-columns: 1fr !important;
+            grid-template-columns: repeat(2, 1fr) !important;
           }
         }
       `}} />
-    </div>
+    </FullscreenWrapper>
   );
 }

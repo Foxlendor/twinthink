@@ -47,12 +47,11 @@ export default function BrandVideoBanner({
         muted
         playsInline
         style={{
-          width: '140%',
-          height: '140%',
+          width: '100%',
+          height: '100%',
           objectFit: 'contain',
           display: 'block',
-          mixBlendMode: 'multiply',
-          transform: 'scale(1.2)'
+          mixBlendMode: 'multiply'
         }}
       />
     </div>

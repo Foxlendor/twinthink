@@ -69,9 +69,11 @@ export default function TransitionScreen() {
         onEnded={handleVideoEnd}
         style={{
           width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          position: 'absolute',
+          maxWidth: 'min(90vw, 680px)',
+          maxHeight: 'min(75vh, 680px)',
+          aspectRatio: '1 / 1',
+          objectFit: 'contain',
+          position: 'relative',
           mixBlendMode: 'multiply',
           transform: isRevealing ? 'scale(1.05)' : 'scale(1)',
           transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
