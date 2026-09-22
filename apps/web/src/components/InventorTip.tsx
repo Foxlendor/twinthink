@@ -14,6 +14,7 @@ interface TipData {
 const TIPS: TipData[] = [
   // Founder & Benchtop Engineering Lore
   { type: 'founder', content: "As a kid in 2015, I used to sign, date, and time all my logs. A habit that ensures your thoughts are eternally anchored." },
+  { type: 'founder', content: "When people asked what I'd invent as an inventor, I thought: First, why would I tell you? Second, I don't know yet. Third, if I have a good idea, I want to see it exist—not just look at it in my head." },
   { type: 'founder', content: "i th.ink there for i am? An idea without a compiled digital twin is just a ghost in the machine." },
   { type: 'founder', content: "Build it. Test it. Twin it." },
   { type: 'founder', content: "The physical world is just a rendering engine for your mind." },

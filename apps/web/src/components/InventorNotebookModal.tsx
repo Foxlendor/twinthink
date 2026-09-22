@@ -163,6 +163,24 @@ export default function InventorNotebookModal({ isOpen, onClose }: InventorNoteb
         {/* Journal Entries */}
         <div style={{ display: 'grid', gap: '1.25rem', marginBottom: '2rem' }}>
           
+          {/* Entry 0: The Origin */}
+          <div style={{ background: '#FFFFFF', border: '1px solid #BFDBFE', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1E3A8A', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Entry 00: What Would You Invent?
+              </span>
+              <span style={{ fontSize: '0.75rem', color: '#2563EB', fontWeight: 700, fontFamily: 'var(--font-mono, monospace)' }}>
+                Origin Lore
+              </span>
+            </div>
+            <p style={{ margin: '0 0 0.65rem', fontSize: '0.9rem', lineHeight: 1.6, color: '#1E293B', fontStyle: 'italic' }}>
+              &ldquo;I always hated it as a kid when people would ask, &lsquo;What do you want to be when you grow up?&rsquo; and I&rsquo;d say, &lsquo;I want to be an inventor.&rsquo; And then immediately they&rsquo;d go, &lsquo;Oh yeah? What would you invent?&rsquo;
+            </p>
+            <p style={{ margin: 0, fontSize: '0.88rem', lineHeight: 1.6, color: '#334155' }}>
+              And I&rsquo;d think: Well, first of all, <strong>why would I tell you?</strong> Second of all, I don&rsquo;t really know yet. And third of all, I&rsquo;m just wanting to make an idea, and I don&rsquo;t even care if I get credit for it most of the time. If I have a good idea, <strong>I want to see it exist. I don&rsquo;t just want to look at it in my head.</strong> You feel me?&rdquo;
+            </p>
+          </div>
+
           {/* Entry 1 */}
           <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>

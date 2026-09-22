@@ -15,7 +15,8 @@ import {
   ArrowRight,
   Eye,
   Award,
-  Layers
+  Layers,
+  Quote
 } from 'lucide-react';
 import { usePitchAccess, DEFAULT_PITCH_CODES } from '@/lib/usePitchAccess';
 import { TWINS_DATABASE } from '@/lib/twinsData';
@@ -82,6 +83,42 @@ export default function PitchAccessPage() {
           <p style={{ fontSize: '1.1rem', color: '#4B5563', margin: 0, lineHeight: 1.6, maxWidth: '750px' }}>
             TwinThink implements cryptographic key envelopes to protect unpatented CAD geometries, manufacturing toolpaths, and granular supplier pricing during investor meetings.
           </p>
+        </div>
+
+        {/* Founder's Pitch Story Hook */}
+        <div style={{
+          background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
+          borderRadius: '20px',
+          padding: '2rem 2.25rem',
+          color: '#F8FAFC',
+          marginBottom: '2.5rem',
+          boxShadow: '0 20px 40px -15px rgba(15, 23, 42, 0.35)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#60A5FA', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>
+            <Quote size={15} />
+            <span>The Genesis Pitch · Why TwinThink Exists</span>
+          </div>
+
+          <blockquote style={{ margin: 0, padding: 0, border: 'none' }}>
+            <p style={{ fontSize: '1.2rem', fontStyle: 'italic', lineHeight: 1.65, color: '#F1F5F9', margin: '0 0 1.25rem' }}>
+              &ldquo;I always hated it as a kid when people would ask, <span style={{ color: '#93C5FD' }}>&lsquo;What do you want to be when you grow up?&rsquo;</span> and I&rsquo;d say, <span style={{ color: '#93C5FD' }}>&lsquo;I want to be an inventor.&rsquo;</span> And then immediately they&rsquo;d go, <span style={{ color: '#93C5FD' }}>&lsquo;Oh yeah? What would you invent?&rsquo;</span>
+            </p>
+            <p style={{ fontSize: '1.15rem', fontStyle: 'italic', lineHeight: 1.65, color: '#E2E8F0', margin: '0 0 1.25rem' }}>
+              And I&rsquo;d be like: Well, first of all, <strong style={{ color: '#FFFFFF', textDecoration: 'underline decoration-blue-500' }}>why would I tell you?</strong> Second of all, I don&rsquo;t really know yet. And third of all, I&rsquo;m just wanting to make an idea, and I don&rsquo;t even care if I get credit for it most of the time. If I have a good idea, <strong style={{ color: '#38BDF8' }}>I want to see it exist. I don&rsquo;t just want to look at it in my head.</strong> You feel me?&rdquo;
+            </p>
+          </blockquote>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.12)', paddingTop: '1rem' }}>
+            <div style={{ fontSize: '0.85rem', color: '#94A3B8' }}>
+              <strong style={{ color: '#FFFFFF' }}>johne.boi (JB)</strong> — Founder &amp; Inventor · Albuquerque, NM
+            </div>
+            <div style={{ fontSize: '0.8rem', color: '#60A5FA', fontWeight: 600 }}>
+              TwinThink binds unshared ideas into cryptographically protected, living digital twins.
+            </div>
+          </div>
         </div>
 
         {/* Authentication Bar Card */}
