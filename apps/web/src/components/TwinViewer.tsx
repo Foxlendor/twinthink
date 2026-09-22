@@ -77,12 +77,24 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
         {mounted ? (
           <div className={styles.viewerWrapper}>
             {/* Analog Ink Overlay */}
-            <img 
-              src="/resip_schematic_2016.png" 
-              alt="Analog Ink Sketch" 
+            <div 
               className={styles.traceImageOverlay}
-              style={{ opacity: inkOpacity }}
-            />
+              style={{ 
+                opacity: inkOpacity, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                background: '#FAFAFA',
+                border: '2px dashed #D1D5DB',
+                borderRadius: '12px'
+              }}
+            >
+              <div style={{ textAlign: 'center', color: '#6B7280' }}>
+                <PenTool size={32} style={{ margin: '0 auto 0.5rem', opacity: 0.5 }} />
+                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Awaiting Analog Sketch</div>
+                <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>Upload the original notebook scan</div>
+              </div>
+            </div>
             
             {/* Physical Evidence Overlay */}
             <img 
