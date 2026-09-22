@@ -94,9 +94,14 @@
 - 1-Click export of W3C / GS1 compatible `application/ld+json` compliance dossiers with cryptographic acyclic structural verification.
 
 ### ✅ M7: Crowdfunding & Honest IP Royalty Distribution (Completed)
-- **The IP Kiosk & Patron Royalty Piggy Bank**: Point-of-sale micro-patronage counter display (`/roundup`) where citizens allocate funding directly into physical inventions they want to see manufactured (like an IP piggy bank instead of taxes disappearing into a void).
-- **The Goldilocks Zone (Money In = Money Out or More)**: Backing prototype tooling enters patrons into the pro-rata retail dividend pool. When Batch #1 hardware ships, early sales cash flows return funds back to patron wallets before protocol profits.
-- **Open to View, Community-Backed to Build**: Public previews are completely free to inspect and explore (patronage-supported, no paywall to discover).
+- **The Three Pillars of Invention Funding on TwinThink**:
+  1. *Direct Crowdsource & Tooling Pre-Orders*: Direct-to-inventor micro-patronage and the Goldilocks Zone retail dividend kickbacks.
+  2. *Corporate R&D Bounties & Think Tanks* (`/bounties`): The Indeed-style job board for hard engineering bottlenecks (Intel, Dyson, 3M, Tesla) where multidisciplinary inventor think tanks submit digital twin solutions to win escrowed funding ($30k–$100k).
+  3. *POS Roundups & Monthly Inventor Grant Lottery Pool* (`/roundup`): Point-of-sale micro-change rounded up from countertop stands, awarding lottery tickets per 50¢ and releasing the monthly treasury to an active hardware inventor.
+- **The Dual-Sided Google Review Countertop Stand Hustle**: Free countertop stands provided to restaurants and cafes ($50 retail value saved for venue). Side A captures 5-star Google reviews in 2 seconds; Side B captures Apple Pay / QR tap-to-roundup micro-donations into the monthly inventor treasury.
+- **The IP Kiosk & Patron Royalty Piggy Bank**: Physical counter display and online kiosk (`/roundup`) allowing citizens to allocate their tax/patronage dollars into specific inventions rather than government black boxes.
+- **The Goldilocks Zone (Money In = Money Out or More)**: Prototype tooling backers enter the pro-rata retail dividend pool; early sales cash flows return capital back to patron wallets before protocol profits.
+- **Open to View, Community-Backed to Build**: 100% free public inspection without discovery paywalls; payments are strictly for physical tooling backing and commercial licensing.
 - **The Community Forking Guarantee**: If an inventor creates a digital twin and development goes inactive for > 12 months, any community member retains the guaranteed right to FORK the twin, inherit the tooling/CAD files, and manufacture it.
 - **Physical Prototype Tooling Campaign Bars** (`CampaignBar.tsx`) embedded directly into twins (Redrink, TWIIZZLock, Specimen 0001) tracking real batch tooling funding goals, backer provenance, and royalty kickback tiers.
 - **Commercial Production & Hardware Royalty Licensing Engine** (`AccessModal.tsx` Tier 4) with 85% creator profit guarantee (`did:twin:johne.boi`), 10% prototype pool, 5% protocol escrow, and instant signed legal covenants.

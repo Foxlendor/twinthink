@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, Menu, X, Plus, ShieldCheck, Sparkles, FolderArchive, Compass, Coffee, BookOpen, Feather } from 'lucide-react';
+import { User, Menu, X, Plus, ShieldCheck, Sparkles, FolderArchive, Compass, Coffee, BookOpen, Feather, Briefcase, Coins } from 'lucide-react';
 import CreateTwinModal from './CreateTwinModal';
 import BrandLogo from './BrandLogo';
 import InventorNotebookModal from './InventorNotebookModal';
@@ -101,7 +101,47 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Navigation Links */}
-          <nav className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '1.75rem' }}>
+          <nav className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+            <Link 
+              href="/bounties" 
+              style={{ 
+                fontSize: '0.8125rem', 
+                fontWeight: 700, 
+                color: pathname === '/bounties' ? '#2563EB' : '#4B5563', 
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.35rem 0.65rem',
+                borderRadius: '8px',
+                background: pathname === '/bounties' ? '#EFF6FF' : 'transparent',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <Briefcase size={14} color="#2563EB" />
+              <span>R&amp;D Bounties</span>
+            </Link>
+
+            <Link 
+              href="/roundup" 
+              style={{ 
+                fontSize: '0.8125rem', 
+                fontWeight: 700, 
+                color: pathname === '/roundup' ? '#059669' : '#4B5563', 
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.35rem 0.65rem',
+                borderRadius: '8px',
+                background: pathname === '/roundup' ? '#ECFDF5' : 'transparent',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <Coins size={14} color="#059669" />
+              <span>IP Kiosk &amp; Pool</span>
+            </Link>
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: '0.25rem', color: '#4B5563' }}>
               <button 
                 style={{ 
@@ -265,6 +305,30 @@ export default function Navbar() {
                 </Link>
 
                 <Link
+                  href="/bounties"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '12px',
+                    background: '#F9FAFB',
+                    border: '1px solid #F3F4F6',
+                    textDecoration: 'none',
+                    color: '#111827'
+                  }}
+                >
+                  <div style={{ padding: '6px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                    <Briefcase size={18} color="#2563EB" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>R&amp;D Bounties</div>
+                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Corporate challenges &amp; think tanks</div>
+                  </div>
+                </Link>
+
+                <Link
                   href="/roundup"
                   onClick={() => setMobileMenuOpen(false)}
                   style={{
@@ -280,11 +344,11 @@ export default function Navbar() {
                   }}
                 >
                   <div style={{ padding: '6px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
-                    <Coffee size={18} color="#111827" />
+                    <Coins size={18} color="#059669" />
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Local Roundup</div>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Support benchtop prototyping</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>IP Kiosk &amp; Monthly Pool</div>
+                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Countertop stands &amp; grant lottery</div>
                   </div>
                 </Link>
 

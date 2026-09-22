@@ -22,7 +22,8 @@ import {
   TrendingUp,
   Award,
   Layers,
-  HelpCircle
+  HelpCircle,
+  Ticket
 } from 'lucide-react';
 import { TWINS_DATABASE } from '@/lib/twinsData';
 
@@ -179,7 +180,7 @@ export default function RoundUpPage() {
           borderRadius: '20px',
           padding: '1.75rem',
           color: '#F8FAFC',
-          marginBottom: '2rem',
+          marginBottom: '1.5rem',
           border: '1px solid rgba(255, 255, 255, 0.1)',
           boxShadow: '0 15px 30px -10px rgba(15, 23, 42, 0.25)'
         }}>
@@ -210,6 +211,48 @@ export default function RoundUpPage() {
                 If an inventor abandons an idea, anyone in the community has the right to FORK the twin and build it.
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Monthly Grant Lottery Treasury Pool */}
+        <div style={{
+          background: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)',
+          border: '1.5px solid #A7F3D0',
+          borderRadius: '20px',
+          padding: '1.5rem',
+          marginBottom: '2rem',
+          boxShadow: '0 4px 15px rgba(5, 150, 105, 0.06)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#047857', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'var(--font-mono)' }}>
+              <Ticket size={16} color="#059669" /> MONTHLY INVENTOR GRANT LOTTERY POOL
+            </div>
+            <span style={{ fontSize: '0.72rem', background: '#D1FAE5', color: '#065F46', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: '999px' }}>
+              Next Drawing: 8 Days
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+              <span style={{ fontSize: '2.2rem', fontWeight: 900, color: '#065F46', fontFamily: 'var(--font-mono)', letterSpacing: '-1px' }}>
+                $6,420
+              </span>
+              <span style={{ fontSize: '0.85rem', color: '#047857', fontWeight: 600 }}>
+                in current monthly treasury
+              </span>
+            </div>
+            <div style={{ fontSize: '0.8rem', color: '#047857', fontWeight: 700 }}>
+              1 Ticket per 50¢ Rounded Up
+            </div>
+          </div>
+
+          <p style={{ fontSize: '0.825rem', color: '#065F46', lineHeight: 1.5, margin: '0 0 0.75rem 0' }}>
+            Every time a customer rounds up at a register stand or taps to donate, they receive ticket entries into the monthly community draw. At the end of each month, 100% of the pooled treasury is released as a non-dilutive tooling grant to an active hardware inventor on TwinThink.
+          </p>
+
+          <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', color: '#047857', fontWeight: 600, flexWrap: 'wrap' }}>
+            <span>✓ Powered by countertop tap-to-pay &amp; browser extension</span>
+            <span>✓ 100% goes directly to physical tooling</span>
           </div>
         </div>
 
@@ -489,45 +532,76 @@ export default function RoundUpPage() {
                 <X size={18} />
               </button>
 
-              <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
                 <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#059669', background: '#ECFDF5', padding: '0.2rem 0.6rem', borderRadius: '999px', textTransform: 'uppercase' }}>
-                  RETAIL KIOSK HARDWARE SPEC
+                  THE $50 COUNTER STAND HUSTLE
                 </span>
                 <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0.5rem 0 0.25rem 0', color: '#111827' }}>
-                  Grocery Store Piggy Bank Stand
+                  Dual-Sided Google Review Stand
                 </h3>
                 <p style={{ fontSize: '0.8rem', color: '#6B7280', margin: 0 }}>
-                  Placed directly by grocery registers and coffee shop counters across Albuquerque.
+                  A win-win physical distribution hack deployed at local Albuquerque coffee shops and restaurants.
                 </p>
               </div>
 
-              {/* Graphic Mockup Card */}
+              {/* Dual-Sided Graphic Mockup */}
               <div style={{
                 background: '#F9FAFB',
-                border: '2px dashed #D1D5DB',
+                border: '1.5px solid #E5E7EB',
                 borderRadius: '16px',
-                padding: '2rem 1.5rem',
-                textAlign: 'center',
-                marginBottom: '1.5rem'
+                padding: '1.25rem',
+                marginBottom: '1.25rem'
               }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                  {/* Side A: Restaurant Google Review */}
+                  <div style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    padding: '0.85rem 0.5rem',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                      SIDE A: VENUE
+                    </div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E293B', marginBottom: '0.25rem' }}>
+                      Google Review
+                    </div>
+                    <div style={{ fontSize: '0.65rem', color: '#64748B', lineHeight: 1.3 }}>
+                      NFC tap gives venue a 5-star review in 2 seconds. Free for the restaurant owner ($50 saved).
+                    </div>
+                  </div>
+
+                  {/* Side B: TwinThink IP Kiosk */}
+                  <div style={{
+                    background: '#FFFFFF',
+                    border: '1.5px solid #10B981',
+                    borderRadius: '12px',
+                    padding: '0.85rem 0.5rem',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#059669', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                      SIDE B: TWINTHINK
+                    </div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E293B', marginBottom: '0.25rem' }}>
+                      Round-Up Kiosk
+                    </div>
+                    <div style={{ fontSize: '0.65rem', color: '#64748B', lineHeight: 1.3 }}>
+                      Apple Pay / QR tap-to-roundup builds monthly inventor pool &amp; earns royalty kickbacks.
+                    </div>
+                  </div>
+                </div>
+
                 <div style={{
-                  width: '80px',
-                  height: '80px',
-                  margin: '0 auto 1rem auto',
                   background: '#FFFFFF',
-                  borderRadius: '12px',
-                  border: '1px solid #E5E7EB',
-                  display: 'grid',
-                  placeItems: 'center',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+                  borderRadius: '10px',
+                  padding: '0.75rem',
+                  fontSize: '0.75rem',
+                  color: '#475569',
+                  lineHeight: 1.45,
+                  textAlign: 'left'
                 }}>
-                  <QrCode size={52} color="#111827" />
-                </div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#111827' }}>
-                  Round-Up For Local Hardware IP
-                </div>
-                <div style={{ fontSize: '0.8rem', color: '#6B7280', marginTop: '0.35rem' }}>
-                  Scan to drop $1 or $5 into Albuquerque benchtop prototypes &amp; earn royalty kickbacks.
+                  <strong>Why it works:</strong> Restaurant owners happily place the stand because they get free customer reviews. TwinThink gets permanent countertop real estate in high-traffic checkout lanes to capture micro-patronage!
                 </div>
               </div>
 
