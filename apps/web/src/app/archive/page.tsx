@@ -127,7 +127,7 @@ export default function ArchivePage() {
         <section style={{ marginBottom: '3.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.35rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.35rem' }}>
                 Interactive Records
               </div>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, letterSpacing: '-0.4px' }}>
@@ -218,7 +218,7 @@ export default function ArchivePage() {
                   
                   <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                      <span style={{ fontSize: '0.65rem', fontWeight: 800, background: '#EEF2FF', color: '#4F46E5', padding: '0.2rem 0.55rem', borderRadius: '999px', textTransform: 'uppercase' }}>
+                      <span style={{ fontSize: '0.65rem', fontWeight: 800, background: '#DBEAFE', color: '#2563EB', padding: '0.2rem 0.55rem', borderRadius: '999px', textTransform: 'uppercase' }}>
                         {twin.domain || 'Uncategorized'}
                       </span>
                       <span style={{ fontSize: '0.7rem', color: getStatusColor(twin.status || ''), fontWeight: 700 }}>

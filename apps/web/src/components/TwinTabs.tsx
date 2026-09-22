@@ -152,7 +152,7 @@ function RestrictedAccessCard({
           <button
             type="submit"
             style={{
-              background: '#6366F1',
+              background: '#3B82F6',
               color: '#FFFFFF',
               border: 'none',
               borderRadius: '6px',
@@ -187,7 +187,7 @@ function RestrictedAccessCard({
               style={{
                 background: 'rgba(255,255,255,0.1)',
                 border: 'none',
-                color: '#E0E7FF',
+                color: '#BFDBFE',
                 padding: '0.15rem 0.4rem',
                 borderRadius: '4px',
                 fontFamily: 'var(--font-mono)',

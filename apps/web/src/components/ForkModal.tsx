@@ -79,7 +79,7 @@ export default function ForkModal({ parentTwin, mutatedValues, onClose }: ForkMo
           </div>
         ) : isSubmitting ? (
           <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
-            <Loader2 size={48} className="animate-spin" color="#4F46E5" style={{ margin: '0 auto 1.5rem auto' }} />
+            <Loader2 size={48} className="animate-spin" color="#2563EB" style={{ margin: '0 auto 1.5rem auto' }} />
             <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.5rem', fontWeight: 800, color: '#111827' }}>
               Forging New Twin...
             </h2>
@@ -99,8 +99,8 @@ export default function ForkModal({ parentTwin, mutatedValues, onClose }: ForkMo
               borderBottom: '1px solid #E5E7EB'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ background: '#EEF2FF', padding: '0.4rem', borderRadius: '8px' }}>
-                  <GitFork size={20} color="#4F46E5" />
+                <div style={{ background: '#DBEAFE', padding: '0.4rem', borderRadius: '8px' }}>
+                  <GitFork size={20} color="#2563EB" />
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>
@@ -252,7 +252,7 @@ export default function ForkModal({ parentTwin, mutatedValues, onClose }: ForkMo
                   type="submit"
                   disabled={isSubmitting}
                   style={{
-                    background: '#4F46E5',
+                    background: '#2563EB',
                     border: 'none',
                     borderRadius: '8px',
                     padding: '0.6rem 1.5rem',

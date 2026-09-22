@@ -936,7 +936,7 @@ function KinematicSolver({ twin }: TabProps) {
   return (
     <div style={{ padding: '2rem 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <div style={{ background: '#EEF2FF', color: '#4F46E5', width: 48, height: 48, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#DBEAFE', color: '#2563EB', width: 48, height: 48, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Settings size={24} />
         </div>
         <div>
@@ -951,14 +951,14 @@ function KinematicSolver({ twin }: TabProps) {
           <div style={{ marginBottom: '1.25rem' }}>
             <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
               <span>Stroke Hard Stop (deg)</span>
-              <span style={{ color: '#4F46E5' }}>{strokeLimit}°</span>
+              <span style={{ color: '#2563EB' }}>{strokeLimit}°</span>
             </label>
             <input type="range" min="40" max="90" value={strokeLimit} onChange={(e) => setStrokeLimit(Number(e.target.value))} style={{ width: '100%' }} />
           </div>
           <div>
             <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
               <span>Blade Friction Coeff (μ)</span>
-              <span style={{ color: '#4F46E5' }}>{bladeFriction.toFixed(2)}</span>
+              <span style={{ color: '#2563EB' }}>{bladeFriction.toFixed(2)}</span>
             </label>
             <input type="range" min="0.05" max="0.30" step="0.01" value={bladeFriction} onChange={(e) => setBladeFriction(Number(e.target.value))} style={{ width: '100%' }} />
           </div>

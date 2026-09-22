@@ -15,8 +15,8 @@ const TIPS: TipData[] = [
   // Founder Quotes (Retained)
   { type: 'founder', content: "As a kid in 2015, I used to sign, date, and time all my logs. A habit that ensures your thoughts are eternally anchored." },
   { type: 'founder', content: "i th.ink there for i am?" },
-  { type: 'founder', content: "When you think, you ink, you think twin." },
-  { type: 'founder', content: "The shadow of your mind is cast by the ink of your pen." },
+  { type: 'founder', content: "Build it. Test it. Twin it." },
+  { type: 'founder', content: "The physical world is just a rendering engine for your mind." },
   { type: 'founder', content: "Simulation drift is a feature, not a bug. It tells you exactly where reality diverges from theory." },
 
   // A Priori & Philosophical Quotes
@@ -35,7 +35,7 @@ const TIPS: TipData[] = [
   { type: 'fact', content: "Ada Lovelace conceptualized the idea of a machine manipulating symbols rather than just numbers in 1843, pre-dating the modern digital computer by a full century." },
   { type: 'fact', content: "Johannes Gutenberg repurposed an agricultural wine press to invent the printing press. Breakthroughs often come from looking at an old tool from a new angle." },
   { type: 'fact', content: "Philo Farnsworth conceived the core concept for the electronic television while looking at the parallel lines of dirt he was plowing in a potato field." },
-  { type: 'fact', content: "Archimedes discovered the principle of fluid displacement while taking a bath. True insight often strikes when the mind is at rest, but only if the ink is ready to catch it." }
+  { type: 'fact', content: "Archimedes discovered the principle of fluid displacement while taking a bath. True insight often strikes when the mind is at rest, but only if you are ready to document it." }
 ];
 
 interface InventorTipProps {
@@ -67,8 +67,8 @@ export default function InventorTip({ style }: InventorTipProps) {
 
   return (
     <div style={{
-      background: 'rgba(79, 70, 229, 0.05)',
-      border: '1px solid rgba(79, 70, 229, 0.2)',
+      background: 'rgba(37, 99, 235, 0.05)',
+      border: '1px solid rgba(37, 99, 235, 0.2)',
       borderRadius: '12px',
       padding: '1rem 1.25rem',
       display: 'flex',
@@ -78,7 +78,7 @@ export default function InventorTip({ style }: InventorTipProps) {
       ...style
     }}>
       <div style={{
-        background: '#4F46E5',
+        background: '#2563EB',
         color: '#FFFFFF',
         borderRadius: '50%',
         padding: '0.4rem',
@@ -91,7 +91,7 @@ export default function InventorTip({ style }: InventorTipProps) {
         {getIcon()}
       </div>
       <div>
-        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
+        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
           {getLabel()}
         </div>
         <div style={{ fontSize: '0.9rem', color: '#374151', fontStyle: 'italic', lineHeight: 1.6 }}>

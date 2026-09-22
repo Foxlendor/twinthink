@@ -48,12 +48,12 @@ export default function LineageTab({ twin }: LineageTabProps) {
       {twin.id === '0001' && (
         <div style={{
           background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 100%)',
-          border: '1px solid #4F46E5',
+          border: '1px solid #2563EB',
           borderRadius: 'var(--radius-md)',
           padding: '1.5rem',
           marginBottom: '2rem',
           color: '#FFFFFF',
-          boxShadow: '0 4px 15px rgba(79, 70, 229, 0.2)'
+          boxShadow: '0 4px 15px rgba(37, 99, 235, 0.2)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
             <Lightbulb size={20} color="#FCD34D" />
@@ -61,7 +61,7 @@ export default function LineageTab({ twin }: LineageTabProps) {
               Lineage Tutorial: The "TwizzFizz" Mutation
             </span>
           </div>
-          <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#E0E7FF', lineHeight: 1.6 }}>
+          <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#BFDBFE', lineHeight: 1.6 }}>
             Did you know that <strong>Twin #0003 (TwizzFizz)</strong> was born directly from this thermal straw? 
             An inventor clicked <strong>Fork</strong> below, swapped the <em>Thermal Phase-Change</em> payload for a <em>Pressurized Gas Widget</em>, and evolved the invention into the <strong>Fluid Dynamics</strong> domain to create on-demand carbonation. 
             <br/><br/>
