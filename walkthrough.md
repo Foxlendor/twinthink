@@ -270,6 +270,12 @@ Command: `npm run build` in `apps/web`
   - **The Goldilocks Zone (Money In = Money Out or More)**: Backing prototype tooling enters patrons into the pro-rata retail dividend pool. When Batch #1 hardware ships, early retail sales cash flows return capital back to patron wallets before protocol profits.
   - **Open to View, Community-Backed to Build**: 100% free public inspection without paywalls to explore ideas; payments are purely for physical tooling backing and commercial licensing.
   - **The Community Forking Guarantee**: If an inventor creates a digital twin and development stalls or goes inactive for > 12 months, any community member retains the guaranteed right to FORK the twin, inherit the tooling/CAD files, and manufacture it.
+* **TikTok-Style Hardware Idea Stream & 4-Tier Privacy Architecture ([`/explore`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/app/explore/page.tsx))**:
+  - Vertical snap-scrolling idea reel with keyboard (`↑` / `↓`) and sidebar navigation.
+  - **Level 0: Public Shadow Twin (Copyleft GNU GPL / CERN-OHL & Creative Commons CC-BY-NC-SA 4.0)**: Unpatentable dummied-down vector blueprint and physical law abstract. 100% free to view, protecting creator geometry while educating the public.
+  - **Level 1: Community Coffee Patron ($5 / Buy-Me-A-Coffee)**: Unlocks benchtop sensor telemetry, real-time thermal/pressure delta curves, and Goldilocks retail dividend kickback ledger.
+  - **Level 2: Verified Identity & P2P Mutual NDA ($0 Stripe Card AVS Authorization)**: Requires matched cardholder name verification to unlock the photorealistic 3D parametric CAD solid, exploded kinematic view, and manufacturing tolerances.
+  - **Level 3: Commercial Production License (85% Creator Royalty Covenant)**: Full manufacturing STEP models, CNC tooling G-code, and executed legal production contract.
 * **Physical Prototype Batch Tooling Campaign Bars ([`CampaignBar.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/CampaignBar.tsx))**:
   - Embedded directly into [`PublicConceptPreview.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/PublicConceptPreview.tsx) and across all digital twins.
   - Features the Goldilocks Zone callout banner, live community backer ledger, Micro-Patron royalty kickback tier ($5), Batch #1 hardware pre-order ($25), and Custom Tooling Patron options.

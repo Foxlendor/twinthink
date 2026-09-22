@@ -4,7 +4,7 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
   'twiizzlock': {
     id: 'twiizzlock',
     slug: 'twiizzlock',
-    creator: 'anonymous',
+    creator: 'johne.boi',
     created_at: '2026-09-20T18:00:00Z',
     domain: 'Mechanisms',
     status: 'Physical Bench Tested',
@@ -81,7 +81,7 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
   'redrink': {
     id: 'redrink',
     slug: 'redrink',
-    creator: 'anonymous',
+    creator: 'johne.boi',
     created_at: '2024-03-12T14:30:00Z',
     domain: 'Thermal Systems',
     status: 'Simulated Prior Art',
@@ -154,7 +154,7 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
   '0001': {
     id: '0001',
     slug: 'resip-straw',
-    creator: 'anonymous',
+    creator: 'johne.boi',
     created_at: '2026-01-01T00:00:00Z',
     domain: 'Thermal Systems',
     status: 'Concept Preview',
@@ -227,7 +227,7 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
   '0002-iris': {
     id: '0002-iris',
     slug: 'iris-shutter',
-    creator: 'anonymous',
+    creator: 'johne.boi',
     created_at: '2026-02-15T09:00:00Z',
     domain: 'Mechanisms',
     status: 'Physical Bench Tested',

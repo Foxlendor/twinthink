@@ -103,6 +103,12 @@
 - **The Goldilocks Zone (Money In = Money Out or More)**: Prototype tooling backers enter the pro-rata retail dividend pool; early sales cash flows return capital back to patron wallets before protocol profits.
 - **Open to View, Community-Backed to Build**: 100% free public inspection without discovery paywalls; payments are strictly for physical tooling backing and commercial licensing.
 - **The Community Forking Guarantee**: If an inventor creates a digital twin and development goes inactive for > 12 months, any community member retains the guaranteed right to FORK the twin, inherit the tooling/CAD files, and manufacture it.
+- **TikTok-Style Hardware Idea Stream & 4-Tier Privacy Architecture** (`/explore`):
+  - Vertical snap-scrolling idea reel with keyboard (`↑` / `↓`) and sidebar navigation.
+  - **Level 0: Public Shadow Twin (Copyleft GNU GPL / CERN-OHL & Creative Commons CC-BY-NC-SA 4.0)**: Unpatentable dummied-down vector blueprint and physical law abstract. 100% free to view, protecting creator geometry while educating the public.
+  - **Level 1: Community Coffee Patron ($5 / Buy-Me-A-Coffee)**: Unlocks benchtop sensor telemetry, real-time thermal/pressure delta curves, and Goldilocks retail dividend kickback ledger.
+  - **Level 2: Verified Identity & P2P Mutual NDA ($0 Stripe Card AVS Authorization)**: Requires matched cardholder name verification to unlock the photorealistic 3D parametric CAD solid, exploded kinematic view, and manufacturing tolerances.
+  - **Level 3: Commercial Production License (85% Creator Royalty Covenant)**: Full manufacturing STEP models, CNC tooling G-code, and executed legal production contract.
 - **Physical Prototype Tooling Campaign Bars** (`CampaignBar.tsx`) embedded directly into twins (Redrink, TWIIZZLock, Specimen 0001) tracking real batch tooling funding goals, backer provenance, and royalty kickback tiers.
 - **Commercial Production & Hardware Royalty Licensing Engine** (`AccessModal.tsx` Tier 4) with 85% creator profit guarantee (`did:twin:johne.boi`), 10% prototype pool, 5% protocol escrow, and instant signed legal covenants.
 - **Interactive 2015-2026 Inventor Laboratory Notebook Easter Egg** (`InventorNotebookModal.tsx`) with authentic lore, quotes, and interactive witness ink stamp.
