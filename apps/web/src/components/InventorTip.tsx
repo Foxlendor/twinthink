@@ -12,12 +12,17 @@ interface TipData {
 }
 
 const TIPS: TipData[] = [
-  // Founder Quotes (Retained)
+  // Founder & Benchtop Engineering Lore
   { type: 'founder', content: "As a kid in 2015, I used to sign, date, and time all my logs. A habit that ensures your thoughts are eternally anchored." },
-  { type: 'founder', content: "i th.ink there for i am?" },
+  { type: 'founder', content: "i th.ink there for i am? An idea without a compiled digital twin is just a ghost in the machine." },
   { type: 'founder', content: "Build it. Test it. Twin it." },
   { type: 'founder', content: "The physical world is just a rendering engine for your mind." },
   { type: 'founder', content: "Simulation drift is a feature, not a bug. It tells you exactly where reality diverges from theory." },
+  { type: 'founder', content: "The 2-Liter Carbonation Law: Carbon dioxide leaves liquid when headspace pressure drops. If you collapse the volume, you preserve the fizz." },
+  { type: 'founder', content: "Latent heat is nature's solid-state battery: Sodium acetate releases 12.05 kJ of phase-change warmth without a single wire or lithium cell." },
+  { type: 'founder', content: "Never hide an unknown quote behind a fake estimate. An honest null with a pending vendor RFQ builds far more market trust." },
+  { type: 'founder', content: "Keep your unit cost and extended cost strictly distinct: assembly labor, scrap rates, and tooling amortization make or break your BOM." },
+  { type: 'founder', content: "Honest profits must flow back to the inventor who spent the midnight hours drafting and building—not lost in corporate overhead." },
 
   // A Priori & Philosophical Quotes
   { type: 'quote', content: "Divide each difficulty into as many parts as is feasible and necessary to resolve it.", author: "René Descartes" },
@@ -35,7 +40,8 @@ const TIPS: TipData[] = [
   { type: 'fact', content: "Ada Lovelace conceptualized the idea of a machine manipulating symbols rather than just numbers in 1843, pre-dating the modern digital computer by a full century." },
   { type: 'fact', content: "Johannes Gutenberg repurposed an agricultural wine press to invent the printing press. Breakthroughs often come from looking at an old tool from a new angle." },
   { type: 'fact', content: "Philo Farnsworth conceived the core concept for the electronic television while looking at the parallel lines of dirt he was plowing in a potato field." },
-  { type: 'fact', content: "Archimedes discovered the principle of fluid displacement while taking a bath. True insight often strikes when the mind is at rest, but only if you are ready to document it." }
+  { type: 'fact', content: "Archimedes discovered the principle of fluid displacement while taking a bath. True insight often strikes when the mind is at rest, but only if you are ready to document it." },
+  { type: 'fact', content: "The Wright Brothers funded their wind tunnel experiments with revenues from their Dayton bicycle repair shop—true benchtop bootstrapping." }
 ];
 
 interface InventorTipProps {

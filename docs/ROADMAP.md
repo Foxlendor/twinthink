@@ -9,9 +9,9 @@
 | **M2** | **Canonical Hierarchical Product Graph** | ✅ **Completed** | Structural BOM tree backbone with attached engineering domains (material, manufacturing, recursive cost rollups, provenance history, declared rights intent, and role-filtered DPP projection previews). Passed 14/14 acceptance criteria. |
 | **M3** | **Identity, Private Access & Cryptographic Rights** | ✅ **Completed** | Asymmetric keypairs (Ed25519), did:twin identities, signed revision chains, capability tokens, AES-256-GCM envelope encryption, rights inheritance, and 100% offline portable .twin verification. Passed 20/20 acceptance criteria. |
 | **M4** | **Universal TwinThink Tooling & Integrations** | ✅ **Completed** | Unified `TwinService` canonical protocol layer, complete `tt` CLI surface (`twin`, `bom`, `access`, `evidence`, `provenance`, `dpp`), zero-dependency JSON-RPC stdio MCP server (`tt mcp` / `python -m twinthink.mcp`), and verified multi-client state equivalence across CLI, MCP, and Web/API. |
-| **M5** | **P2P NDA & Cryptographic IP Paywalls** | 📋 Scheduled | Blind catalog profile views, no-search direct-link access, dynamic P2P NDA signing, escrow payment integration (Stripe/Simulated). |
-| **M6** | **2027 EU Digital Product Passport (DPP) Compliance Exports** | 📋 Scheduled | Formal EU Regulation 2023/1542 battery passport compliance dossier integration, third-party conformity assessment bridge, open JSON-LD / GS1 interoperability. |
-| **M7** | **Crowdfunding & Data Royalty Rewards Pilots** | 📋 Scheduled | Point-of-sale micro-roundup treasury, browser extension privacy wrapper, data revenue dividend payouts. |
+| **M5** | **P2P NDA & Cryptographic IP Paywalls** | ✅ **Completed** | Blind catalog profile views, no-search direct-link access, dynamic P2P NDA signing, zero-dollar AVS card authorization, encrypted vault decryption. |
+| **M6** | **2027 EU Digital Product Passport (DPP) Compliance Exports** | ✅ **Completed** | EU Ecodesign / ESPR compliant JSON-LD dossier exports, role-filtered previews (Public, Recycler, Authority). |
+| **M7** | **Crowdfunding & Honest IP Royalty Distribution** | ✅ **Completed** | Albuquerque physical prototype tooling campaigns ("Think Twice" POS roundup), direct-to-inventor 85% royalty split guarantee, and automated commercial production licensing covenants. |
 
 ---
 
@@ -82,15 +82,19 @@
 - **Multi-Client State Equivalence**: Automated tests prove that twins created via CLI, signed via MCP, and queried via API/Web operate on the exact same graph hashes, signature chains, and rolled-up BOM structures.
 - **Full Test Suite & Web Build Verified**: 71/71 tests passing across M0-M4 with 0 errors on production Next.js build.
 
-### 📋 M5: P2P NDA & Cryptographic IP Paywalls
-- Blind catalog discovery links (direct creator links without global search).
-- Cryptographic P2P Non-Disclosure Agreements with digital signatures before decryption key release.
-- Escrow payment gate (one-time unlocks and creator vault subscriptions).
+### ✅ M5: P2P NDA & Cryptographic IP Paywalls (Completed)
+- Blind catalog discovery links (`/pitch`, `?pitch=TOKEN`) allowing private investor sharing without public search index leakage.
+- Cryptographic P2P Mutual Non-Disclosure Agreement execution with downloadable signed covenants (.txt).
+- Zero-Dollar Stripe AVS card verification with instant sandbox token fallback for seamless local/dev verification.
+- Encrypted engineering vault holding parametric .STEP solids, tooling G-code, and granular supplier pricing.
 
-### 📋 M6: 2027 EU Digital Product Passport (DPP) Compliance Exports
-- Implementation of EU Regulation 2023/1542 battery passport data structures.
-- Export interoperable JSON-LD and GS1 compliant QR data carriers for material recycling, repairability, and carbon footprints.
+### ✅ M6: 2027 EU Digital Product Passport (DPP) Compliance Exports (Completed)
+- Implementation of EU Regulation 2023/1542 and Ecodesign (ESPR) digital product passport schemas.
+- Interactive multi-tier role-filtered projections (Public, Recycler, Authority) with strict non-certified preview safeguards.
+- 1-Click export of W3C / GS1 compatible `application/ld+json` compliance dossiers with cryptographic acyclic structural verification.
 
-### 📋 M7: Crowdfunding & Data Royalty Rewards Pilots
-- POS micro-roundup treasury pool ("Think Twice").
-- Browser extension privacy wrapper to negotiate data dividends from AI search and training loops.
+### ✅ M7: Crowdfunding & Honest IP Royalty Distribution (Completed)
+- Point-of-sale micro-roundup treasury pool ("Think Twice" shop counter checkout & Albuquerque prototype tooling support).
+- Physical Prototype Tooling Campaign Bars (`CampaignBar.tsx`) embedded directly into twins (Redrink, TWIIZZLock, Specimen 0001) tracking real batch tooling funding goals and community patrons.
+- Commercial Production & Hardware Royalty Licensing Engine (`AccessModal.tsx` Tier 4) with 85% creator profit guarantee (`did:twin:johne.boi`), 10% prototype pool, 5% protocol escrow, and instant signed legal covenants.
+- Interactive 2015-2026 Inventor Laboratory Notebook Easter Egg (`InventorNotebookModal.tsx`) with authentic lore, quotes, and interactive witness ink stamp.

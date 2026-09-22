@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import BrandVideoBanner from '@/components/BrandVideoBanner';
-import { Compass, KeyRound, Cpu } from 'lucide-react';
+import { Compass, KeyRound, Coins } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -112,7 +112,7 @@ export default function HomePage() {
             <span>Investor Access</span>
           </Link>
           <Link
-            href="/rnd"
+            href="/roundup"
             style={{
               padding: '0.85rem 1.75rem',
               background: '#F1F5F9',
@@ -128,8 +128,8 @@ export default function HomePage() {
               transition: 'background 0.2s'
             }}
           >
-            <Cpu size={17} />
-            <span>MIT FlyBrain R&D</span>
+            <Coins size={17} color="#059669" />
+            <span>Support Prototyping</span>
           </Link>
         </div>
       </div>

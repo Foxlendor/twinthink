@@ -8,7 +8,11 @@ import {
   X, 
   Download, 
   Eye,
-  CreditCard
+  CreditCard,
+  Award,
+  Scale,
+  Coins,
+  CheckCircle2
 } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -33,13 +37,19 @@ function AccessModalContent({
   onClose,
   onVaultUnlocked 
 }: AccessModalProps) {
-  const [currentTier, setCurrentTier] = useState<'public' | 'access_gate' | 'vault'>('access_gate');
+  const [currentTier, setCurrentTier] = useState<'public' | 'access_gate' | 'vault' | 'licensing'>('access_gate');
   const [legalName, setLegalName] = useState('');
   const [orgName, setOrgName] = useState('');
   const [acknowledgedNDA, setAcknowledgedNDA] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
   const [signatureHash, setSignatureHash] = useState<string | null>(null);
   const [stripeError, setStripeError] = useState<string | null>(null);
+
+  // Commercial Licensing & Royalty State
+  const [selectedLicenseTier, setSelectedLicenseTier] = useState<'academic' | 'pilot' | 'mass'>('pilot');
+  const [licenseOrg, setLicenseOrg] = useState('');
+  const [licenseSigner, setLicenseSigner] = useState('');
+  const [licenseDownloaded, setLicenseDownloaded] = useState(false);
 
   const stripe = useStripe();
   const elements = useElements();
@@ -220,6 +230,51 @@ Status: EXECUTED & LEGALLY BINDING
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadCommercialLicense = () => {
+    const executedAt = new Date().toISOString();
+    const rate = selectedLicenseTier === 'pilot' ? '2.5% Net Revenue' : selectedLicenseTier === 'mass' ? '3.0% Net Revenue' : '0.0% (Academic / CERN-OHL-S-2.0)';
+    const fee = selectedLicenseTier === 'pilot' ? '$250 USD' : selectedLicenseTier === 'mass' ? '$1,500 USD' : '$0 USD';
+    const certificateText = `================================================================================
+TWINTHINK PROTOCOL · COMMERCIAL PRODUCTION & ROYALTY COVENANT
+================================================================================
+Twin Document ID: ${twinId}
+Invention Title: ${localTwin?.current_version?.title || 'Physical Digital Twin'}
+Licensor / Inventor: johne.boi (did:twin:johne.boi)
+
+LICENSEE ENTITY:
+Organization: ${licenseOrg || orgName || 'Independent Production Partner'}
+Authorized Signatory: ${licenseSigner || legalName || 'Authorized Production Officer'}
+Execution Timestamp: ${executedAt}
+
+COMMERCIAL PRODUCTION TERMS:
+Tier Selected: ${selectedLicenseTier.toUpperCase()}
+Upfront Tooling Reserve Fee: ${fee}
+Net Sales Hardware Royalty: ${rate}
+Accounting Period: Quarterly (Within 30 days of calendar quarter close)
+
+HONEST REVENUE DISTRIBUTION GUARANTEE:
+In accordance with the TwinThink Protocol Charter:
+- 85.0% of all licensing fees & sales royalties flow directly to Creator (did:twin:johne.boi).
+- 10.0% allocated to the Albuquerque Physical Prototyping & Calibration Tooling Pool.
+-  5.0% retained for cryptographic verification, decentralized bundle hosting, and escrow.
+
+LEGAL NOTICE:
+This covenant constitutes a binding commercial agreement under international patent,
+copyright, and trade secret frameworks. Reverse engineering, unregistered white-labeling,
+or unauthorized mass-distribution without quarterly royalty reporting breaches the
+cryptographic license envelope.
+================================================================================`;
+
+    const blob = new Blob([certificateText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `twinthink_commercial_license_${twinId}_${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setLicenseDownloaded(true);
+  };
+
   return (
     <div 
       style={{
@@ -268,11 +323,11 @@ Status: EXECUTED & LEGALLY BINDING
           </span>
         </div>
 
-        {/* 3-Tier Indicator Strip */}
+        {/* 4-Tier Indicator Strip */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '0.5rem',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '0.4rem',
           marginBottom: '2rem'
         }}>
           <button
@@ -282,8 +337,8 @@ Status: EXECUTED & LEGALLY BINDING
               color: currentTier === 'public' ? '#FFFFFF' : '#4B5563',
               border: `1px solid ${currentTier === 'public' ? '#111827' : '#E5E7EB'}`,
               borderRadius: '8px',
-              padding: '0.65rem 0.5rem',
-              fontSize: '0.75rem',
+              padding: '0.65rem 0.35rem',
+              fontSize: '0.72rem',
               fontWeight: 700,
               cursor: 'pointer',
               textAlign: 'center'
@@ -298,14 +353,14 @@ Status: EXECUTED & LEGALLY BINDING
               color: currentTier === 'access_gate' ? '#FFFFFF' : '#4B5563',
               border: `1px solid ${currentTier === 'access_gate' ? '#111827' : '#E5E7EB'}`,
               borderRadius: '8px',
-              padding: '0.65rem 0.5rem',
-              fontSize: '0.75rem',
+              padding: '0.65rem 0.35rem',
+              fontSize: '0.72rem',
               fontWeight: 700,
               cursor: 'pointer',
               textAlign: 'center'
             }}
           >
-            2. Private Access Gate
+            2. NDA Gate
           </button>
           <button
             onClick={() => signatureHash && setCurrentTier('vault')}
@@ -314,14 +369,30 @@ Status: EXECUTED & LEGALLY BINDING
               color: currentTier === 'vault' ? '#FFFFFF' : signatureHash ? '#059669' : '#9CA3AF',
               border: `1px solid ${currentTier === 'vault' ? '#059669' : '#E5E7EB'}`,
               borderRadius: '8px',
-              padding: '0.65rem 0.5rem',
-              fontSize: '0.75rem',
+              padding: '0.65rem 0.35rem',
+              fontSize: '0.72rem',
               fontWeight: 700,
               cursor: signatureHash ? 'pointer' : 'not-allowed',
               textAlign: 'center'
             }}
           >
-            3. Decrypted Records
+            3. Vault Files
+          </button>
+          <button
+            onClick={() => setCurrentTier('licensing')}
+            style={{
+              background: currentTier === 'licensing' ? '#2563EB' : '#EFF6FF',
+              color: currentTier === 'licensing' ? '#FFFFFF' : '#1E3A8A',
+              border: `1px solid ${currentTier === 'licensing' ? '#2563EB' : '#BFDBFE'}`,
+              borderRadius: '8px',
+              padding: '0.65rem 0.35rem',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              textAlign: 'center'
+            }}
+          >
+            4. IP Royalties
           </button>
         </div>
 
@@ -754,6 +825,186 @@ Status: EXECUTED & LEGALLY BINDING
             >
               Done — Return to Twin Viewer
             </button>
+          </div>
+        )}
+
+        {/* TIER 4: Commercial Rights & Honest Royalty Engine */}
+        {currentTier === 'licensing' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#2563EB', marginBottom: '0.75rem' }}>
+              <Scale size={20} />
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Commercial Rights &amp; Honest Royalties</h3>
+            </div>
+            <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.5, marginBottom: '1.5rem' }}>
+              TwinThink enables direct, transparent manufacturing licenses for physical inventions. Every dollar of royalty flows through honest cryptographic splits to the original builder.
+            </p>
+
+            {/* License Tier Selector */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              
+              <div 
+                onClick={() => setSelectedLicenseTier('academic')}
+                style={{
+                  border: selectedLicenseTier === 'academic' ? '2px solid #2563EB' : '1px solid #E5E7EB',
+                  background: selectedLicenseTier === 'academic' ? '#EFF6FF' : '#FFFFFF',
+                  borderRadius: '12px',
+                  padding: '1rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#2563EB', textTransform: 'uppercase' }}>Academic &amp; R&amp;D</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#111827', margin: '0.25rem 0' }}>$0 Free</div>
+                <div style={{ fontSize: '0.72rem', color: '#6B7280' }}>CERN-OHL-S-2.0 reciprocal open attribution.</div>
+              </div>
+
+              <div 
+                onClick={() => setSelectedLicenseTier('pilot')}
+                style={{
+                  border: selectedLicenseTier === 'pilot' ? '2px solid #2563EB' : '1px solid #E5E7EB',
+                  background: selectedLicenseTier === 'pilot' ? '#EFF6FF' : '#FFFFFF',
+                  borderRadius: '12px',
+                  padding: '1rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#059669', textTransform: 'uppercase' }}>Pilot Run (1-100)</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#111827', margin: '0.25rem 0' }}>$250 + 2.5%</div>
+                <div style={{ fontSize: '0.72rem', color: '#6B7280' }}>Tooling reserve + 2.5% net hardware sales royalty.</div>
+              </div>
+
+              <div 
+                onClick={() => setSelectedLicenseTier('mass')}
+                style={{
+                  border: selectedLicenseTier === 'mass' ? '2px solid #2563EB' : '1px solid #E5E7EB',
+                  background: selectedLicenseTier === 'mass' ? '#EFF6FF' : '#FFFFFF',
+                  borderRadius: '12px',
+                  padding: '1rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#D97706', textTransform: 'uppercase' }}>Mass Production</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#111827', margin: '0.25rem 0' }}>$1,500 + 3.0%</div>
+                <div style={{ fontSize: '0.72rem', color: '#6B7280' }}>Global manufacturing license + 3% net royalty.</div>
+              </div>
+
+            </div>
+
+            {/* Transparent Honest Profit Split Box */}
+            <div style={{
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              borderRadius: '12px',
+              padding: '1.25rem',
+              marginBottom: '1.5rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+                <Coins size={14} color="#059669" />
+                <span>Honest Revenue Split Guarantee</span>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', textAlign: 'center' }}>
+                <div style={{ background: '#FFFFFF', padding: '0.75rem', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#059669' }}>85%</div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155', marginTop: '0.2rem' }}>Direct to Creator</div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748B' }}>did:twin:johne.boi</div>
+                </div>
+
+                <div style={{ background: '#FFFFFF', padding: '0.75rem', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#2563EB' }}>10%</div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155', marginTop: '0.2rem' }}>Prototyping Pool</div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748B' }}>Benchtop tooling fund</div>
+                </div>
+
+                <div style={{ background: '#FFFFFF', padding: '0.75rem', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#64748B' }}>5%</div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155', marginTop: '0.2rem' }}>Protocol Escrow</div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748B' }}>Hosting &amp; verification</div>
+                </div>
+              </div>
+            </div>
+
+            {/* License Signatory Form */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#374151', display: 'block', marginBottom: '0.35rem' }}>
+                  Licensee Organization / Company
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Acme Precision Tooling"
+                  value={licenseOrg}
+                  onChange={e => setLicenseOrg(e.target.value)}
+                  style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#374151', display: 'block', marginBottom: '0.35rem' }}>
+                  Authorized Signatory Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Lead Engineer / Director"
+                  value={licenseSigner}
+                  onChange={e => setLicenseSigner(e.target.value)}
+                  style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+
+            {/* Download Covenant Button */}
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={handleDownloadCommercialLicense}
+                style={{
+                  flex: 1,
+                  background: '#2563EB',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '0.85rem',
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+                }}
+              >
+                <Download size={16} />
+                <span>Download Executed Commercial Covenant (.txt)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  background: '#F1F5F9',
+                  color: '#475569',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '8px',
+                  padding: '0.85rem 1.25rem',
+                  fontSize: '0.88rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
+            </div>
+
+            {licenseDownloaded && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#059669', fontSize: '0.78rem', fontWeight: 600, marginTop: '0.75rem' }}>
+                <CheckCircle2 size={15} />
+                <span>Commercial covenant dossier downloaded. Ready for manufacturing execution.</span>
+              </div>
+            )}
           </div>
         )}
 

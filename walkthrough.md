@@ -123,4 +123,24 @@ Command: `npm run build` in `apps/web`
   - Added an **Export EU DPP JSON-LD Dossier** action inside the role-filtered DPP projection modal.
   - Generates W3C / GS1 compatible `application/ld+json` dossiers conforming to EU Regulation 2023/1542 and Ecodesign (ESPR) specifications, complete with constituent node rollups, circularity statements, material declarations, dismantling guidance, and cryptographic acyclic audit verification.
 
+### 6. Milestone M7: Competitive Markets, Honest IP Royalties & Laboratory Easter Eggs
+* **Commercial Hardware Production & Royalty Engine**:
+  - In [`AccessModal.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/AccessModal.tsx), added a dedicated 4th tier: **Commercial Rights & Honest Royalties**.
+  - Provides instant tier selection: Academic / R&D ($0 / CERN-OHL-S-2.0), Pilot Run ($250 upfront + 2.5% net hardware sales royalty, up to 100 units), and Mass Production ($1,500 upfront + 3.0% net royalty).
+  - Enforces the **Direct-to-Inventor Profit Split Guarantee**:
+    - **85%** directly to Creator did:twin account (`did:twin:johne.boi`).
+    - **10%** to the Albuquerque Physical Prototyping & Calibration Tooling Pool.
+    - **5%** to Protocol Verification Escrow.
+  - 1-Click download of legally binding, cryptographically timestamped Commercial Production Covenants (`COMMERCIAL_LICENSE_<ID>.txt`).
+* **Physical Prototype Batch Tooling Crowdfund**:
+  - Embedded [`CampaignBar.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/CampaignBar.tsx) directly into [`PublicConceptPreview.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/PublicConceptPreview.tsx).
+  - Displays real funding progress for physical tooling runs (RF welding dies, silicone overmold molds, CNC passes) across Redrink, TWIIZZLock, and Specimen 0001, allowing community patrons to pledge towards real fabrication.
+* **Authentic 2015-2026 Inventor Laboratory Notebook Easter Egg**:
+  - Built [`InventorNotebookModal.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/InventorNotebookModal.tsx) showcasing John's original 2015 benchtop notes, motto (&ldquo;i th.ink there for i am?&rdquo;), 2-liter bottle headspace physics, and latent heat thermodynamic laws.
+  - Interactive "Stamp Witness Seal in Ink" action rendering a dated, verified circular ink impression seal.
+  - Triggerable via 3 rapid clicks on the brand logo in [`Navbar.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/Navbar.tsx), typing `twin` on the keyboard, or via menu links.
+* **Streamlined Core IP Focus**:
+  - Purged experimental non-profit and bio-connectome concepts, refocusing TwinThink 100% on market-ready physical hardware inventions, honest creator royalties, and commercial production feasibility.
+
+
 

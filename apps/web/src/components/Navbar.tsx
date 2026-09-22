@@ -3,14 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, Menu, X, Plus, ShieldCheck, Sparkles, FolderArchive, Compass, Coffee } from 'lucide-react';
+import { User, Menu, X, Plus, ShieldCheck, Sparkles, FolderArchive, Compass, Coffee, BookOpen, Feather } from 'lucide-react';
 import CreateTwinModal from './CreateTwinModal';
 import BrandLogo from './BrandLogo';
+import InventorNotebookModal from './InventorNotebookModal';
 
 export default function Navbar() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showNotebookModal, setShowNotebookModal] = useState(false);
+  const [logoClickCount, setLogoClickCount] = useState(0);
   const pathname = usePathname();
 
   // Close menu on route change
@@ -18,17 +21,36 @@ export default function Navbar() {
     setMobileMenuOpen(false);
   }, [pathname]);
 
-  // Close menu on Escape key
+  // Close menu on Escape key or trigger Easter egg on shortcut
   useEffect(() => {
+    let keyBuffer = '';
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setMobileMenuOpen(false);
         setShowProfileModal(false);
+        setShowNotebookModal(false);
+      }
+      // Secret easter egg shortcut: Ctrl+Alt+I
+      if (e.ctrlKey && e.altKey && (e.key === 'i' || e.key === 'I')) {
+        setShowNotebookModal(true);
+      }
+      // Secret easter egg word typing: "twin"
+      keyBuffer = (keyBuffer + e.key.toLowerCase()).slice(-4);
+      if (keyBuffer === 'twin') {
+        setShowNotebookModal(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Reset logo click count after 1.5 seconds
+  useEffect(() => {
+    if (logoClickCount > 0) {
+      const timer = setTimeout(() => setLogoClickCount(0), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [logoClickCount]);
 
   return (
     <>
@@ -50,18 +72,33 @@ export default function Navbar() {
           alignItems: 'center'
         }}>
           
-          {/* Brand Logo */}
-          <Link 
-            href="/" 
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              textDecoration: 'none', 
-              color: '#111827' 
+          {/* Brand Logo with 3-click Easter Egg */}
+          <div 
+            onClick={() => {
+              setLogoClickCount(prev => {
+                const next = prev + 1;
+                if (next >= 3) {
+                  setShowNotebookModal(true);
+                  return 0;
+                }
+                return next;
+              });
             }}
+            style={{ display: 'inline-flex', cursor: 'pointer' }}
+            title="Twinth.ink (Tip: Triple-click for Inventor Journal)"
           >
-            <BrandLogo height={34} />
-          </Link>
+            <Link 
+              href="/" 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                textDecoration: 'none', 
+                color: '#111827' 
+              }}
+            >
+              <BrandLogo height={34} />
+            </Link>
+          </div>
 
           {/* Desktop Navigation Links */}
           <nav className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '1.75rem' }}>
@@ -250,6 +287,33 @@ export default function Navbar() {
                     <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Support benchtop prototyping</div>
                   </div>
                 </Link>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setShowNotebookModal(true);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '12px',
+                    background: '#EFF6FF',
+                    border: '1px solid #BFDBFE',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    color: '#1E3A8A'
+                  }}
+                >
+                  <div style={{ padding: '6px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #BFDBFE' }}>
+                    <BookOpen size={18} color="#1E3A8A" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Inventor Journal</div>
+                    <div style={{ fontSize: '0.75rem', color: '#3B82F6' }}>&ldquo;i th.ink there for i am&rdquo; · 2015 Lore</div>
+                  </div>
+                </button>
               </div>
 
               {/* Bottom Quick Bar */}
@@ -376,6 +440,32 @@ export default function Navbar() {
             </div>
 
             <button
+              onClick={() => {
+                setShowProfileModal(false);
+                setShowNotebookModal(true);
+              }}
+              style={{
+                background: '#EFF6FF',
+                border: '1px solid #BFDBFE',
+                borderRadius: '10px',
+                padding: '0.65rem 1rem',
+                color: '#1E3A8A',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                width: '100%',
+                marginBottom: '1rem',
+                cursor: 'pointer'
+              }}
+            >
+              <Feather size={14} />
+              <span>Read Albuquerque 2015 Inventor Journal</span>
+            </button>
+
+            <button
               onClick={() => setShowProfileModal(false)}
               className="button-primary"
               style={{ width: '100%', borderRadius: '10px' }}
@@ -385,6 +475,12 @@ export default function Navbar() {
           </div>
         </div>
       )}
+
+      {/* Inventor Laboratory Notebook Easter Egg Modal */}
+      <InventorNotebookModal
+        isOpen={showNotebookModal}
+        onClose={() => setShowNotebookModal(false)}
+      />
     </>
   );
 }

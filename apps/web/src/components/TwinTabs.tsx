@@ -18,8 +18,7 @@ import {
   MessageSquare,
   ShieldCheck,
   Unlock,
-  Award,
-  Brain
+  Award
 } from 'lucide-react';
 import BehaviorTab from './tabs/BehaviorTab';
 import EvidenceTab from './tabs/EvidenceTab';
@@ -33,7 +32,6 @@ import FilesTab from './tabs/FilesTab';
 import ClaimInspectorModal from './ClaimInspectorModal';
 import AccessModal from './AccessModal';
 import PublicConceptPreview from './PublicConceptPreview';
-import FlyBrainSpecialist from './FlyBrainSpecialist';
 import { usePitchAccess } from '@/lib/usePitchAccess';
 
 interface TwinTabsProps {
@@ -50,12 +48,10 @@ export type RealityTabKey =
   | 'thoughtlogs'
   | 'community'
   | 'lineage'
-  | 'files'
-  | 'rnd';
+  | 'files';
 
 const allTabs: Array<{ id: RealityTabKey; title: string; subtitle: string; icon: any }> = [
   { id: 'object', title: 'Concept Preview', subtitle: 'What is public?', icon: Box },
-  { id: 'rnd', title: 'MIT FlyBrain R&D', subtitle: 'Bio-mechanical connectome', icon: Brain },
   { id: 'structure', title: 'Structure', subtitle: 'Engineering detail', icon: Layers },
   { id: 'bom', title: 'BOM Tree', subtitle: 'Materials & sourcing', icon: GitFork },
   { id: 'behavior', title: 'Behavior', subtitle: 'Functional detail', icon: Activity },
@@ -252,7 +248,7 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
     return configured && configured.length > 0 ? configured : ['object'];
   }, [twin.current_version.disclosure]);
 
-  const isPublicTab = publicTabs.includes(activeTab) || activeTab === 'rnd';
+  const isPublicTab = publicTabs.includes(activeTab);
 
   const renderActiveTab = () => {
     if (activeTab === 'object') {
@@ -260,16 +256,6 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
         <PublicConceptPreview
           twin={twin}
           onRequestAccess={() => setShowDisclosureGate(true)}
-        />
-      );
-    }
-
-    if (activeTab === 'rnd') {
-      return (
-        <FlyBrainSpecialist
-          twinId={twin.id}
-          twinTitle={twin.current_version?.title || twin.id}
-          domain={twin.domain}
         />
       );
     }

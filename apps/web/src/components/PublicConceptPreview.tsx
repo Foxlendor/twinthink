@@ -4,6 +4,7 @@ import React from 'react';
 import { LockKeyhole, ShieldCheck, MousePointer2 } from 'lucide-react';
 import { TwinData } from '@/lib/types';
 import TwinViewer from './TwinViewer';
+import CampaignBar from './CampaignBar';
 
 interface PublicConceptPreviewProps {
   twin: TwinData;
@@ -209,8 +210,20 @@ export default function PublicConceptPreview({ twin, onRequestAccess }: PublicCo
         </div>
       )}
 
+      {/* Benchtop Prototype Batch & Tooling Crowdfund */}
+      <div style={{ marginTop: '1.5rem' }}>
+        <CampaignBar
+          twinId={twin.id}
+          twinTitle={twin.current_version?.title}
+          targetMsrp={
+            typeof twin.current_version?.properties?.find(p => p.key?.includes('msrp'))?.value === 'number'
+              ? (twin.current_version.properties.find(p => p.key.includes('msrp'))!.value as number)
+              : 25
+          }
+        />
+      </div>
+
       <div style={{
-        marginTop: '1rem',
         padding: '1rem',
         borderRadius: '12px',
         background: '#F8FAFC',
