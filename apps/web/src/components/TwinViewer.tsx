@@ -97,12 +97,24 @@ export default function TwinViewer({ twin, fallbackText = "No preview available"
             </div>
             
             {/* Physical Evidence Overlay */}
-            <img 
-              src="/resip_exploded_parts.jpg" 
-              alt="Physical Evidence" 
+            <div 
               className={styles.traceImageOverlay}
-              style={{ opacity: physicalOpacity, objectFit: 'cover' }}
-            />
+              style={{ 
+                opacity: physicalOpacity, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                background: '#FAFAFA',
+                border: '2px dashed #D1D5DB',
+                borderRadius: '12px'
+              }}
+            >
+              <div style={{ textAlign: 'center', color: '#6B7280' }}>
+                <Camera size={32} style={{ margin: '0 auto 0.5rem', opacity: 0.5 }} />
+                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Awaiting Physical Evidence</div>
+                <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>Upload workbench photos or exploded views</div>
+              </div>
+            </div>
 
             {/* Bypass TS type checking for custom element */}
             {React.createElement('model-viewer', {

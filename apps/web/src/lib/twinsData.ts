@@ -261,8 +261,7 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
       assets: [
         {
           relative_path: 'iris_preview.glb',
-          url: 'https://images.unsplash.com/photo-1550541704-20d750fb90a8?q=80&w=800&auto=format&fit=crop',
-          media_type: 'image/jpeg',
+          media_type: 'model/gltf-binary',
           size_bytes: 120500,
           is_entrypoint: 1,
           entrypoint_name: 'Kinematic Render',
@@ -317,9 +316,8 @@ export const TWINS_DATABASE: Record<string, TwinData> = {
       relationships: [],
       assets: [
         {
-          relative_path: 'twizzfizz_preview.glb',
-          url: 'https://images.unsplash.com/photo-1615887023516-9bfae345e656?q=80&w=800&auto=format&fit=crop',
-          media_type: 'image/jpeg',
+          relative_path: 'twizzfizz_mesh.stl',
+          media_type: 'model/stl',
           size_bytes: 340000,
           is_entrypoint: 1,
           entrypoint_name: 'Concept Render',

@@ -170,12 +170,11 @@ export default function ArchivePage() {
             {filteredTwins.map((twin) => {
               const bomCost = twin.current_version.properties.find(p => p.key === 'estimated_bom_usd' || p.key === 'estimated_bom_usd')?.value || 'N/A';
               const descendantCount = twin.lineage?.descendants?.length || 0;
-              // Mock poster images based on slug
-              const posterImg = twin.slug === 'twiizzlock' 
-                ? 'https://images.unsplash.com/photo-1620916297397-a4a5402a3c6c?q=80&w=600&auto=format&fit=crop' 
-                : twin.slug === 'redrink'
-                ? 'https://images.unsplash.com/photo-1544252890-4a7db7667d71?q=80&w=600&auto=format&fit=crop'
-                : '/resip_schematic_2016.png';
+              // Find a valid image asset from the twin's database entry
+              const imageAsset = twin.current_version.assets.find(
+                a => a.relative_path.match(/\.(jpg|jpeg|png)$/i)
+              );
+              const posterImg = imageAsset ? `/${imageAsset.relative_path}` : null;
                 
               const getStatusColor = (status: string) => {
                 if (status === 'Verified Build') return '#10B981';
@@ -209,8 +208,15 @@ export default function ArchivePage() {
                     e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)';
                   }}
                 >
-                  <div style={{ height: '180px', position: 'relative', background: '#F3F4F6' }}>
-                    <img src={posterImg} alt={twin.current_version.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ height: '180px', position: 'relative', background: '#F9FAFB', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {posterImg ? (
+                      <img src={posterImg} alt={twin.current_version.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ textAlign: 'center', color: '#9CA3AF' }}>
+                        <Box size={32} style={{ margin: '0 auto 0.5rem', opacity: 0.5 }} />
+                        <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>No Image Available</div>
+                      </div>
+                    )}
                     <div style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(255,255,255,0.9)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, color: '#111827', backdropFilter: 'blur(4px)', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
                       ${typeof bomCost === 'number' ? bomCost.toFixed(2) : bomCost} BOM
                     </div>
