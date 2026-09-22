@@ -45,16 +45,16 @@ export default function HomePage() {
         border: '1px solid rgba(255, 255, 255, 0.3)'
       }}>
         <h1
-         
           style={{
-            fontSize: 'clamp(3rem, 5vw, 4.5rem)',
+            fontSize: 'clamp(3.5rem, 6vw, 5rem)',
             fontWeight: 800,
             lineHeight: 1.05,
             margin: '0 0 1.5rem',
+            letterSpacing: '-0.02em',
+            color: '#111827'
           }}
         >
-          Every physical invention<br />
-          casts a digital shadow.
+          Give an idea a reality.
         </h1>
         <p
           style={{
@@ -63,10 +63,10 @@ export default function HomePage() {
             lineHeight: 1.6,
             margin: '0 auto 3rem',
             fontWeight: 400,
-            maxWidth: '650px'
+            maxWidth: '700px'
           }}
         >
-          <strong style={{ fontSize: '1.4rem' }}>The ink is where you think.</strong> TwinThink is where physical matter meets its living twin. Track the entire arc of an invention: from the first sketch in a notebook, to 3D designs, predictive math simulations, and real-world sensor data.
+          TwinThink is the bridge between imagination and physics. We provide the infrastructure to test, simulate, and prove your inventions—empowering you to preserve your ideas, generate insight, and turn concepts into valuable, real-world assets.
         </p>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'center' }}>
           <a
