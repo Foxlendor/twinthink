@@ -80,16 +80,16 @@ body::before {
   opacity: 0.02;
   pointer-events: none;
   z-index: -1;
-  transform: rotate(-12deg);
+  will-change: transform;
   animation: scrollLogoBg 90s linear infinite;
 }
 
 @keyframes scrollLogoBg {
   0% {
-    background-position: 0 0;
+    transform: rotate(-12deg) translate3d(0, 0, 0);
   }
   100% {
-    background-position: 240px 240px;
+    transform: rotate(-12deg) translate3d(-240px, -240px, 0);
   }
 }
 
