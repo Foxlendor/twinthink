@@ -285,12 +285,16 @@ Command: `npm run build` in `apps/web`
   - Triggerable via 3 rapid clicks on the brand logo in [`Navbar.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/Navbar.tsx), typing `twin` on the keyboard, or via menu links.
 * **The Genesis Pitch Portal ([`/pitch`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/app/pitch/page.tsx))**:
   - Features the founder's authentic childhood inventor motivation: &ldquo;What do you want to be when you grow up? An inventor... If I have a good idea, I want to see it exist. I don't just want to look at it in my head.&rdquo;
+* **Physical Blind Catalog & Secret BOM Isolation Architecture ([`schema.sql`](file:///c:/Users/Foxle/Downloads/twinth.ink/schema.sql) & [`/capsule/[id]`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/app/capsule/[id]/page.tsx))**:
+  - **Database-Level Isolation**: Physically separates public `blind_catalog` (structural tags, shadow image, ethical manifest, unlock price) from encrypted `secret_bom` (CAD JSON, STEP URL, battery UUID).
+  - **Server Action Gate** ([`getCapsule.ts`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/actions/getCapsule.ts)): Strictly blocks BOM database queries until the `access_ledger` confirms verified cryptographic NDA signature (`sig_ed25519_...`) and payment status (`Released`).
+  - **Direct Capsule Route & Unlock Flow** ([`CapsuleUnlockFlow.tsx`](file:///c:/Users/Foxle/Downloads/twinth.ink/apps/web/src/components/CapsuleUnlockFlow.tsx)): Dedicated page for creator direct links with live P2P NDA execution, Stripe AVS Card $0 checkout, and instant decrypted JSON BOM / STEP solid download.
 * **Streamlined Core IP Focus**:
   - Purged experimental non-profit and bio-connectome concepts, refocusing TwinThink 100% on market-ready physical hardware inventions, honest creator royalties, and commercial production feasibility.
 
 ---
 
 ## Final Verification Summary
-* **Backend Pytest Suite**: **77/77 tests PASSED** in 12.08s (`apps/api/tests/` & `packages/twinthink/`).
-* **Next.js Web Build**: **14/14 routes compiled and statically optimized** in ~4s with 0 TypeScript/Turbopack errors.
+* **Backend Pytest Suite**: **77/77 tests PASSED** in 18.85s (`apps/api/tests/` & `packages/twinthink/`).
+* **Next.js Web Build**: **15/15 routes compiled and statically optimized** in ~3s with 0 TypeScript/Turbopack errors.
 * **Git State**: Clean branch `main` synchronized and tracked with `origin/main`.
