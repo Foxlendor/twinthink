@@ -64,6 +64,11 @@ export interface IdeaNode {
   summarizes?: boolean;
   /** An empty frame opened while zooming into blank space (keeps precision unbounded). */
   void?: boolean;
+  /**
+   * Relationships to sibling ideas (same parent): a challenge (antithesis of
+   * 'to') or a resolution (synthesis drawing on 'to').
+   */
+  links?: { to: string; kind: 'challenges' | 'resolves' }[];
   /** A way back into the Canvas from the end of a path: its children are the Canvas's. */
   portal?: boolean;
   /** Builds children on first approach (large synthetic fields). Called once by layout. */
@@ -102,8 +107,33 @@ export function countEvents(node: IdeaNode): number {
 export function findPath(root: IdeaNode, id: string): IdeaNode[] | null {
   if (root.id === id) return [root];
   for (const c of root.children) {
+    if (c.portal) continue; // a portal holds the Canvas again; never recurse into it
     const p = findPath(c, id);
     if (p) return [root, ...p];
   }
   return null;
+}
+
+/** Size of an idea's web: how many ideas it holds, at any depth (portals excluded). */
+export function webSize(node: IdeaNode): number {
+  let n = 1;
+  for (const c of node.children) if (!c.portal && !c.void) n += webSize(c);
+  return n;
+}
+
+/**
+ * How far (in Canvas units) a change in this Shadow ripples across the Canvas.
+ * A bigger web reaches further. Position on the Canvas is closeness of topic,
+ * so the ripple touches the ideas nearest to it first.
+ */
+export function rippleReach(node: IdeaNode): number {
+  return Math.min(0.9, 0.08 + 0.035 * Math.sqrt(webSize(node)));
+}
+
+/** Other Shadows a ripple from `source` reaches, nearest first. */
+export function reachedBy(source: IdeaNode, field: IdeaNode[]): IdeaNode[] {
+  const reach = rippleReach(source);
+  return field
+    .filter((c) => c !== source && Math.hypot(c.x - source.x, c.y - source.y) <= reach)
+    .sort((a, b) => Math.hypot(a.x - source.x, a.y - source.y) - Math.hypot(b.x - source.x, b.y - source.y));
 }

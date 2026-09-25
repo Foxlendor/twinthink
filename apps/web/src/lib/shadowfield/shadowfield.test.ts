@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Camera, ENTER } from './camera';
 import { topologyOf, strandAt } from './layout';
-import { IdeaNode, countEvents } from './model';
+import { IdeaNode, countEvents, findPath, reachedBy, rippleReach, webSize } from './model';
 import { buildWorld, resolvePath } from './world';
 import { createLocalStore, localShadowNode } from './sources/local';
 import { Access, stepFlight, zoomAt } from './navigate';
@@ -273,5 +273,34 @@ describe('cleared archive ideas', () => {
       expect(a.note && a.note.length).toBeGreaterThan(10);
       expect(Math.hypot(a.x, a.y)).toBeLessThan(1);
     }
+  });
+});
+
+describe('ripples', () => {
+  it('finds paths without falling into portals', () => {
+    const world = buildWorld([]);
+    const tw = world.children[0];
+    // expand every leaf so portals exist
+    const walk = (n: IdeaNode, d: number) => {
+      if (d > 4) return;
+      topologyOf(n);
+      for (const c of n.children) if (!c.portal) walk(c, d + 1);
+    };
+    walk(tw, 0);
+    const leaf = tw.children[0].children[0];
+    expect(findPath(world, leaf.id)?.map((n) => n.id)).toEqual(['canvas', 'twinthink', tw.children[0].id, leaf.id]);
+    expect(findPath(world, 'nope')).toBeNull();
+  });
+
+  it('a bigger web reaches further, touching the nearest ideas first', () => {
+    const world = buildWorld([]);
+    const tw = world.children[0];
+    const lone = world.children.find((c) => c.id.startsWith('archive/'))!;
+    expect(webSize(tw)).toBeGreaterThan(webSize(lone));
+    expect(rippleReach(tw)).toBeGreaterThan(rippleReach(lone));
+    const reached = reachedBy(tw, world.children);
+    const d = reached.map((c) => Math.hypot(c.x - tw.x, c.y - tw.y));
+    expect([...d].sort((a, b) => a - b)).toEqual(d);
+    for (const x of d) expect(x).toBeLessThanOrEqual(rippleReach(tw));
   });
 });

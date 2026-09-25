@@ -46,8 +46,15 @@ export function strandU(s: Strand, t: number) {
   return clamp((t - s.t0) / Math.max(s.t1 - s.t0, 1), 0, 1);
 }
 
+export interface Link {
+  kind: 'challenges' | 'resolves';
+  strand: Strand;
+}
+
 export interface Topology {
   strands: Strand[];
+  /** Dialectic relationships between siblings. */
+  links: Link[];
   /** Strands sorted most important first (revealed first as Z increases). */
   order: number[];
 }
@@ -283,5 +290,39 @@ function buildTopology(node: IdeaNode): Topology {
   }
 
   const order = strands.map((_, i) => i).sort((a, b) => strands[b].weight - strands[a].weight);
-  return { strands, order };
+
+  // thesis -> antithesis (a challenge), and each source -> synthesis (convergence)
+  const links: Link[] = [];
+  for (const c of node.children) {
+    for (const l of c.links ?? []) {
+      const from = node.children.find((k) => k.id === l.to);
+      if (!from) continue;
+      const seed = hashString(`${from.id}>${c.id}`);
+      const d = Math.hypot(c.x - from.x, c.y - from.y) || 1;
+      const ux = (c.x - from.x) / d;
+      const uy = (c.y - from.y) / d;
+      const pts = samplePath(from.x + ux * from.r, from.y + uy * from.r, c.x - ux * c.r, c.y - uy * c.r, seed, 0.6);
+      const cum = cumulative(pts);
+      links.push({
+        kind: l.kind,
+        strand: {
+          pts,
+          cum,
+          len: cum[cum.length - 1],
+          coherence: l.kind === 'resolves' ? 0.85 : 0.6,
+          taper: 0,
+          child: null,
+          // a challenge reads as a broken, tense line; a resolution as a whole one
+          gaps: l.kind === 'challenges' ? Array.from({ length: 8 }, (_, k): [number, number] => [k / 8 + 0.07, k / 8 + 0.12]) : [],
+          marks: [],
+          twigs: [],
+          weight: 6,
+          seed,
+          t0: Math.min(from.began, c.began),
+          t1: c.began,
+        },
+      });
+    }
+  }
+  return { strands, order, links };
 }

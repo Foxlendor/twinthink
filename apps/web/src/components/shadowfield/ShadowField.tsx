@@ -3,12 +3,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Camera } from '@/lib/shadowfield/camera';
-import { IdeaNode, LifeEvent, SEAL_MARGIN } from '@/lib/shadowfield/model';
+import { IdeaNode, LifeEvent, SEAL_MARGIN, findPath, lastActivity } from '@/lib/shadowfield/model';
 import { topologyOf } from '@/lib/shadowfield/layout';
 import { Access, Flight, pan as panCam, stepFlight, zoomAt } from '@/lib/shadowfield/navigate';
-import { Hit, Lens, RenderState, continuityLine, drawVoidLattice, render, shortDate } from '@/lib/shadowfield/render';
+import { Hit, Lens, RenderState, continuityLine, drawVoidLattice, pulseChain, relTime, render, shortDate } from '@/lib/shadowfield/render';
 import { buildWorld, resolvePath } from '@/lib/shadowfield/world';
-import { createLocalStore, ShadowStore } from '@/lib/shadowfield/sources/local';
+import { createLocalStore, LocalShadow, ShadowStore } from '@/lib/shadowfield/sources/local';
 import styles from './ShadowField.module.css';
 
 interface Props {
@@ -16,7 +16,9 @@ interface Props {
 }
 
 interface Composer {
-  mode: 'cast' | 'thought' | 'rewrite';
+  mode: 'cast' | 'thought' | 'rewrite' | 'challenge' | 'synthesis';
+  /** For dialectic modes: the thought ids this one answers. */
+  of?: string[];
   x: number;
   y: number;
   lx: number;
@@ -67,6 +69,41 @@ function localIds(node: IdeaNode): { shadowId: string; thoughtId: string | null 
   return { shadowId, thoughtId: thoughtId ?? null };
 }
 
+/** The owned thought a node represents, with its siblings and any unresolved thesis/antithesis pair. */
+function dialecticFor(list: LocalShadow[], node: IdeaNode | undefined) {
+  const ids = node ? localIds(node) : null;
+  if (!ids || !ids.thoughtId) return null;
+  const shadow = list.find((v) => v.id === ids.shadowId);
+  const me = shadow?.thoughts.find((t) => t.id === ids.thoughtId);
+  if (!shadow || !me) return null;
+  const siblings = shadow.thoughts.filter((t) => t.parent === me.parent);
+  const challenger = siblings.find((t) => t.role === 'antithesis' && t.of?.[0] === me.id);
+  const pair: string[] | null =
+    me.role === 'antithesis' && me.of?.[0] ? [me.of[0], me.id] : challenger ? [me.id, challenger.id] : null;
+  const resolved = pair ? siblings.some((t) => t.role === 'synthesis' && pair.every((p) => t.of?.includes(p))) : false;
+  return { shadow, me, siblings, pair: resolved ? null : pair };
+}
+
+/** An open spot among siblings, near an anchor, inside the parent's disk. */
+function spotNear(siblings: { x: number; y: number }[], ax: number, ay: number, dist: number): [number, number] {
+  let best: [number, number] = [ax, ay];
+  let bestScore = -Infinity;
+  for (let i = 0; i < 48; i++) {
+    const ang = (i / 48) * Math.PI * 2;
+    const x = ax + Math.cos(ang) * dist;
+    const y = ay + Math.sin(ang) * dist;
+    const rho = Math.hypot(x, y);
+    if (rho > 0.82 || rho < 0.18) continue;
+    let d = 1;
+    for (const c of siblings) d = Math.min(d, Math.hypot(c.x - x, c.y - y));
+    if (d > bestScore) {
+      bestScore = d;
+      best = [x, y];
+    }
+  }
+  return best;
+}
+
 /** The most open visible spot inside the current frame, for a new thought. */
 function openSpot(cam: Camera, node: IdeaNode): [number, number] {
   let best: [number, number] = [0.4, 0];
@@ -114,6 +151,7 @@ export default function ShadowField({ serif }: Props) {
   const monoRef = useRef('monospace');
   const lastPathKey = useRef('');
   const lastTapRef = useRef({ t: 0, x: 0, y: 0 });
+  const pulsesRef = useRef(new Map<string, number>());
   // replay: progress 0..1 through [from, to]; playing advances it over time
   const replayRef = useRef<{ from: number; to: number; progress: number; playing: boolean; hold: number } | null>(null);
 
@@ -125,6 +163,8 @@ export default function ShadowField({ serif }: Props) {
   const [hinted, setHinted] = useState(true);
   const [followed, setFollowed] = useState<Set<string>>(new Set());
   const [, setVersion] = useState(0);
+  const [localList, setLocalList] = useState<LocalShadow[]>([]);
+  const [news, setNews] = useState<{ ids: string[]; title: string; when: string } | null>(null);
   const [replayView, setReplayView] = useState<{ progress: number; t: number; playing: boolean } | null>(null);
 
   const access: Access = useMemo(
@@ -143,7 +183,9 @@ export default function ShadowField({ serif }: Props) {
 
   const rebuild = useCallback(() => {
     const store = storeRef.current!;
-    const world = buildWorld(store.list());
+    const list = store.list();
+    setLocalList(list);
+    const world = buildWorld(list);
     worldRef.current = world;
     const cam = camRef.current;
     if (cam) {
@@ -155,6 +197,15 @@ export default function ShadowField({ serif }: Props) {
     }
     setVersion((v) => v + 1);
   }, [access]);
+
+  /** Ripple a change from a node outward through everything that contains it. */
+  const ripple = useCallback((nodeId: string) => {
+    const world = worldRef.current;
+    if (!world) return 0;
+    const p = findPath(world, nodeId);
+    if (!p) return 0;
+    return pulseChain(pulsesRef.current, p, performance.now() / 1000);
+  }, []);
 
   const flyToIds = useCallback((ids: string[]) => {
     const world = worldRef.current;
@@ -187,6 +238,7 @@ export default function ShadowField({ serif }: Props) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setFollowed(new Set(followedSet));
     setHinted(wasHinted);
+    setLocalList(storeRef.current.list());
     const mono = getComputedStyle(document.documentElement).getPropertyValue('--font-jetbrains-mono').trim();
     monoRef.current = mono ? `${mono}, monospace` : 'monospace';
 
@@ -219,7 +271,35 @@ export default function ShadowField({ serif }: Props) {
       // ignore malformed hashes
     }
     setVersion((v) => v + 1);
-  }, [access, flyToIds]);
+
+    // news: a recent change inside TwinThink ripples out, and the viewer may go look
+    const tw = world.children.find((c) => c.id === 'twinthink');
+    const last = tw ? lastActivity(tw) : 0;
+    let newsTimer = 0;
+    if (tw && Date.now() - last < 3 * 86400000) {
+      let latest: IdeaNode[] | null = null;
+      let latestT = 0;
+      for (const b of tw.children)
+        for (const sn of b.children) {
+          const t = lastActivity(sn);
+          if (t > latestT) {
+            latestT = t;
+            latest = [b, sn];
+          }
+        }
+      if (latest) {
+        const target = latest;
+        newsTimer = window.setTimeout(() => {
+          const arrives = ripple(target[1].id);
+          window.setTimeout(
+            () => setNews({ ids: [tw.id, ...target.map((n) => n.id)], title: `TwinThink changed ${relTime(Date.now(), latestT)}`, when: target[0].title ?? '' }),
+            Math.max(0, (arrives - performance.now() / 1000) * 1000)
+          );
+        }, 1800);
+      }
+    }
+    return () => window.clearTimeout(newsTimer);
+  }, [access, flyToIds, ripple]);
 
   // ---------------------------------------------------------------- frame loop
   useEffect(() => {
@@ -308,6 +388,8 @@ export default function ShadowField({ serif }: Props) {
         hoverEv: hoverRef.current?.ev ?? null,
         now: cut ?? Date.now(),
         cut,
+        clock: nowMs / 1000,
+        pulses: pulsesRef.current,
       };
       render(st, cam.path[k], startPath, T, p, k === 0);
       if (cam.node.void) {
@@ -607,6 +689,22 @@ export default function ShadowField({ serif }: Props) {
     setFollowed(new Set(next));
   };
 
+  const startDialectic = (mode: 'challenge' | 'synthesis') => {
+    const d = dialecticFor(storeRef.current?.list() ?? [], camRef.current?.node);
+    const cam = camRef.current;
+    if (!d || !cam) return;
+    setComposer({
+      mode,
+      x: cam.w / 2 - 140,
+      y: cam.h - 150,
+      lx: 0,
+      ly: 0,
+      shadowId: d.shadow.id,
+      parentId: d.me.parent,
+      of: mode === 'challenge' ? [d.me.id] : d.pair ?? [],
+    });
+  };
+
   const submitComposer = (text: string) => {
     const c = composer;
     const store = storeRef.current;
@@ -621,11 +719,39 @@ export default function ShadowField({ serif }: Props) {
       const node = world.children.find((n) => n.id === `local/${s.id}`);
       if (node) flyTo([world, node]);
     } else if (c.mode === 'thought' && c.shadowId) {
-      store.addThought(c.shadowId, c.parentId ?? null, value, c.lx, c.ly);
+      const made = store.addThought(c.shadowId, c.parentId ?? null, value, c.lx, c.ly);
       rebuild();
+      if (made) ripple(`local/${c.shadowId}/${made.id}`);
+    } else if ((c.mode === 'challenge' || c.mode === 'synthesis') && c.shadowId && c.of?.length) {
+      const shadow = store.list().find((v) => v.id === c.shadowId);
+      if (!shadow) return;
+      const siblings = shadow.thoughts.filter((t) => t.parent === (c.parentId ?? null));
+      const src = c.of.map((id) => siblings.find((t) => t.id === id)).filter(Boolean) as typeof siblings;
+      let ax = src.reduce((n, t) => n + t.x, 0) / Math.max(1, src.length);
+      let ay = src.reduce((n, t) => n + t.y, 0) / Math.max(1, src.length);
+      if (c.mode === 'synthesis') {
+        // a resolution grows outward, beyond the two it draws on
+        const r = Math.hypot(ax, ay) || 1;
+        ax += (ax / r) * 0.22;
+        ay += (ay / r) * 0.22;
+      }
+      const [x, y] = spotNear(siblings, ax, ay, c.mode === 'challenge' ? 0.3 : 0.12);
+      const made = store.addThought(c.shadowId, c.parentId ?? null, value, x, y, {
+        role: c.mode === 'challenge' ? 'antithesis' : 'synthesis',
+        of: c.of,
+      });
+      rebuild();
+      const cam = camRef.current;
+      if (cam && made) {
+        // step back into the frame that holds both, so the lines can be seen meeting
+        const parentPath = cam.path.slice(0, cam.path.length - 1);
+        flyTo(parentPath);
+        ripple(`local/${c.shadowId}/${made.id}`);
+      }
     } else if (c.mode === 'rewrite' && c.shadowId) {
       store.revise(c.shadowId, c.thoughtId ?? null, value);
       rebuild();
+      ripple(c.thoughtId ? `local/${c.shadowId}/${c.thoughtId}` : `local/${c.shadowId}`);
     }
   };
 
@@ -772,6 +898,16 @@ export default function ShadowField({ serif }: Props) {
               </button>
             )}
             {ownedHere.thoughtId && (
+              <button type="button" className={styles.quiet} onClick={() => startDialectic('challenge')}>
+                challenge it
+              </button>
+            )}
+            {ownedHere.thoughtId && dialecticFor(localList, current)?.pair && (
+              <button type="button" className={styles.quiet} onClick={() => startDialectic('synthesis')}>
+                resolve them
+              </button>
+            )}
+            {ownedHere.thoughtId && (
               <button
                 type="button"
                 className={styles.quiet}
@@ -827,6 +963,18 @@ export default function ShadowField({ serif }: Props) {
         </div>
       )}
 
+      {news && path.length <= 1 && (
+        <div className={styles.news} role="status">
+          <button type="button" className={styles.quiet} onClick={() => { flyToIds(news.ids); setNews(null); }}>
+            {news.title}
+            {news.when ? ` · in ${news.when}` : ''} — go there
+          </button>
+          <button type="button" className={styles.newsClose} aria-label="Dismiss" onClick={() => setNews(null)}>
+            ×
+          </button>
+        </div>
+      )}
+
       {tip && (
         <div className={styles.tip} style={{ left: tip.x + 14, top: tip.y - 8 }}>
           <div className={styles.tipTitle}>{tip.title}</div>
@@ -852,7 +1000,17 @@ export default function ShadowField({ serif }: Props) {
             autoFocus
             maxLength={280}
             defaultValue={composer.initial ?? ''}
-            placeholder={composer.mode === 'cast' ? 'what are you thinking about?' : composer.mode === 'thought' ? 'a thought inside it' : ''}
+            placeholder={
+              composer.mode === 'cast'
+                ? 'what are you thinking about?'
+                : composer.mode === 'thought'
+                  ? 'a thought inside it'
+                  : composer.mode === 'challenge'
+                    ? 'what argues against it?'
+                    : composer.mode === 'synthesis'
+                      ? 'what holds both?'
+                      : ''
+            }
             onKeyDown={(e) => {
               if (e.key === 'Escape') setComposer(null);
             }}

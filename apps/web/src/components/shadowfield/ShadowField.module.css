@@ -329,3 +329,26 @@
   letter-spacing: 0.04em;
   color: rgba(30, 28, 36, 0.55);
 }
+
+.news {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  animation: tipIn 400ms ease-out;
+}
+
+.news .quiet {
+  color: rgb(150, 92, 122);
+}
+
+.newsClose {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: rgba(30, 28, 36, 0.35);
+  cursor: pointer;
+}

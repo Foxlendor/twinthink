@@ -16,6 +16,9 @@ export interface LocalThought {
   y: number;
   revisions: number[];
   letGo?: number;
+  /** Dialectic role: an antithesis challenges one thought; a synthesis resolves two. */
+  role?: 'antithesis' | 'synthesis';
+  of?: string[];
 }
 
 export interface LocalShadow {
@@ -32,7 +35,14 @@ export interface LocalShadow {
 export interface ShadowStore {
   list(): LocalShadow[];
   cast(text: string, x: number, y: number): LocalShadow;
-  addThought(shadowId: string, parent: string | null, text: string, x: number, y: number): LocalThought | null;
+  addThought(
+    shadowId: string,
+    parent: string | null,
+    text: string,
+    x: number,
+    y: number,
+    dialectic?: { role: 'antithesis' | 'synthesis'; of: string[] }
+  ): LocalThought | null;
   revise(shadowId: string, thoughtId: string | null, text: string): void;
   letGo(shadowId: string, thoughtId: string): void;
   visit(shadowId: string): void;
@@ -80,12 +90,12 @@ export function createLocalStore(storage: Pick<Storage, 'getItem' | 'setItem'> |
       mutate((l) => l.push(s));
       return s;
     },
-    addThought(shadowId, parent, text, x, y) {
+    addThought(shadowId, parent, text, x, y, dialectic) {
       let made: LocalThought | null = null;
       mutate((l) => {
         const s = l.find((v) => v.id === shadowId);
         if (!s) return;
-        made = { id: uid(), parent, text, t: Date.now(), x, y, revisions: [] };
+        made = { id: uid(), parent, text, t: Date.now(), x, y, revisions: [], ...(dialectic ?? {}) };
         s.thoughts.push(made);
       });
       return made;
@@ -138,9 +148,24 @@ function thoughtNode(shadow: LocalShadow, th: LocalThought): IdeaNode {
     ...th.revisions.map((t) => ({ t, kind: 'revision' as const, note: 'rewritten' })),
   ];
   if (th.letGo) events.push({ t: th.letGo, kind: 'prune', note: 'let go' });
+  const nameOf = (id: string) => {
+    const t = shadow.thoughts.find((v) => v.id === id)?.text ?? '';
+    return `“${t.length > 28 ? t.slice(0, 26) + '…' : t}”`;
+  };
+  const links =
+    th.of?.map((id) => ({ to: `local/${shadow.id}/${id}`, kind: th.role === 'antithesis' ? ('challenges' as const) : ('resolves' as const) })) ??
+    undefined;
+  const note =
+    th.role === 'antithesis' && th.of?.length
+      ? `challenges ${nameOf(th.of[0])}`
+      : th.role === 'synthesis' && th.of?.length
+        ? `from ${th.of.map(nameOf).join(' and ')}`
+        : undefined;
   return {
     id: `local/${shadow.id}/${th.id}`,
     title: th.text.length > 48 ? th.text.slice(0, 46) + '…' : th.text,
+    note,
+    links,
     kind: 'unknown',
     origin: 'local',
     began: th.t,

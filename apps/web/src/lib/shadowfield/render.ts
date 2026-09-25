@@ -5,7 +5,7 @@
 // constellation, and finally an environment, with every representation
 // cross-fading continuously as R changes. Nothing here scales a bitmap.
 
-import { IdeaNode, LifeEvent, SEAL_MARGIN, lastActivity } from './model';
+import { IdeaNode, LifeEvent, SEAL_MARGIN, lastActivity, rippleReach } from './model';
 import { Strand, topologyOf, strandAt, strandU } from './layout';
 import { ScreenTransform } from './camera';
 import { spatialIndex } from './spatial';
@@ -52,6 +52,10 @@ export interface RenderState {
   cut: number | null;
   /** Labels are queued during the pass and placed afterwards by priority. */
   labels?: QueuedLabel[];
+  /** Wall-clock seconds (keeps running even when motion is reduced). */
+  clock?: number;
+  /** Change ripples: node id -> start (clock seconds). See pulseChain(). */
+  pulses?: Map<string, number>;
   /** prefers-reduced-motion: no ripples (time is also frozen by the caller). */
   reduced?: boolean;
   /** Batched sub-pixel marks, by alpha bucket. */
@@ -59,6 +63,23 @@ export interface RenderState {
 }
 
 const DOT_BUCKETS = 12;
+
+/** Seconds a change takes to travel one strand. */
+export const PULSE_EDGE = 1.5;
+
+/**
+ * Schedule a change to ripple outward from the changed node (last in path)
+ * through every idea that contains it, one strand after another, ending as a
+ * ring on the Canvas.
+ */
+export function pulseChain(pulses: Map<string, number>, path: IdeaNode[], now: number) {
+  let t = now;
+  for (let i = path.length - 1; i >= 1; i--) {
+    pulses.set(path[i].id, t);
+    t += PULSE_EDGE * 0.85;
+  }
+  return t; // when the ring reaches the Canvas
+}
 
 interface QueuedLabel {
   node: IdeaNode;
@@ -181,6 +202,19 @@ function drawMark(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: nu
     ctx.beginPath();
     ctx.arc(x, y, Math.min(R * 0.46, 70), 0, Math.PI * 2);
     ctx.stroke();
+  }
+
+  // a change arriving from inside: one clear ring the viewer can notice
+  const arrived = st.pulses?.get(node.id);
+  if (arrived !== undefined && st.clock !== undefined) {
+    const q = (st.clock - arrived) / 2.4;
+    if (q >= 0 && q <= 1) {
+      ctx.strokeStyle = `rgba(${ROSE},${alpha * 0.7 * (1 - q)})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(R * 0.5, 2) + q * (40 + R * 0.8), 0, Math.PI * 2);
+      ctx.stroke();
+    }
   }
 
   // recent activity leaves a slow ripple: evidence that something is alive here
@@ -307,6 +341,28 @@ function drawStrand(st: RenderState, s: Strand, T: ScreenTransform, alpha: numbe
   ctx.fill(solid);
   ctx.fillStyle = `rgba(${INK},${alpha * 0.78 * frac})`;
   ctx.fill(faint);
+
+  // a change travelling inward along this strand, from the thought to its parent
+  const pStart = s.child ? st.pulses?.get(s.child.id) : undefined;
+  if (pStart !== undefined && st.clock !== undefined) {
+    const prog = (st.clock - pStart) / PULSE_EDGE;
+    if (prog >= 0 && prog <= 1) {
+      const head = 1 - prog;
+      const g = new Path2D();
+      for (let k = 0; k < 9; k++) {
+        const u = head + k * 0.012;
+        if (u < 0 || u > 1) continue;
+        const [px, py] = strandAt(s, u);
+        const sx = T.ox + px * R;
+        const sy = T.oy + py * R;
+        const r0 = dotR * (2.4 - k * 0.2);
+        g.moveTo(sx + r0, sy);
+        g.arc(sx, sy, r0, 0, Math.PI * 2);
+      }
+      ctx.fillStyle = `rgba(${ROSE},${Math.min(1, alpha * 3) * 0.75 * Math.sin(Math.PI * prog) + 0.15})`;
+      ctx.fill(g);
+    }
+  }
 
   // pruned directions: short twigs that taper into nothing
   const twigA = alpha * smoothstep(140, 420, R);
@@ -596,6 +652,12 @@ export function drawNode(
     });
   }
 
+  if (!isRoot && ia > 0.004) {
+    for (const l of topo.links) {
+      drawStrand(st, l.strand, T, ia * smoothstep(40, 160, R) * (l.kind === 'resolves' ? 0.9 : 0.75), path);
+    }
+  }
+
   if (node.artifact && !isRoot) drawArtifact(st, node, T, alpha * outerFade);
 
   // large fields: only visit children near the viewport
@@ -603,6 +665,7 @@ export function drawNode(
   if (kids.length > 400) {
     kids = spatialIndex(node).query((0 - T.ox) / R, (0 - T.oy) / R, (st.w - T.ox) / R, (st.h - T.oy) / R, []);
   }
+  if (isRoot) drawWater(st, node, T);
   const crowded = kids.length > 400;
   for (const c of kids) {
     const cp = isRoot ? st.lens.closeness(c) : p;
@@ -651,6 +714,62 @@ function drawPortal(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: 
   if (inner < 0.004) return;
   drawLattice(st, T, inner * 0.2 * (1 - smoothstep(30 * M, 400 * M, R)), 1.2, R < 3 * M);
   drawNode(st, node, T, inner, 1, path, true);
+}
+
+/** Seconds a ripple takes to spread across the Canvas to its reach. */
+const WATER = 4.2;
+
+/**
+ * When a change reaches a Shadow on the Canvas it spills into the space
+ * around it like a ripple on water. Its reach grows with the size of the
+ * idea's web; Shadows nearby (closest in topic) glow as the ring touches them.
+ */
+function drawWater(st: RenderState, field: IdeaNode, T: ScreenTransform) {
+  if (!st.pulses || st.clock === undefined || st.reduced) return;
+  const { ctx } = st;
+  for (const src of field.children) {
+    const t0 = st.pulses.get(src.id);
+    if (t0 === undefined) continue;
+    const q = (st.clock - t0) / WATER;
+    if (q < 0 || q > 1.25) continue;
+    const reach = rippleReach(src);
+    const sx = T.ox + src.x * T.s;
+    const sy = T.oy + src.y * T.s;
+    // three rings, each trailing the last, easing out like water
+    for (let k = 0; k < 3; k++) {
+      const qk = q - k * 0.12;
+      if (qk <= 0 || qk >= 1) continue;
+      const e = 1 - Math.pow(1 - qk, 2.2);
+      const rr = e * reach * T.s;
+      const a = 0.32 * (1 - qk) * (1 - k * 0.3);
+      if (rr < 1 || a < 0.005) continue;
+      ctx.strokeStyle = `rgba(${ROSE},${a})`;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.arc(sx, sy, rr, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // the ideas it reaches light up as the first ring passes them
+    for (const other of field.children) {
+      if (other === src) continue;
+      const d = Math.hypot(other.x - src.x, other.y - src.y);
+      if (d > reach) continue;
+      const hit = 1 - Math.pow(1 - d / reach, 1 / 2.2); // when the first ring gets there
+      const g = q - hit;
+      if (g < 0 || g > 0.25) continue;
+      const glow = Math.sin((g / 0.25) * Math.PI);
+      const ox = T.ox + other.x * T.s;
+      const oy = T.oy + other.y * T.s;
+      const gr = Math.max(6, other.r * T.s * 0.9) + 10 * glow;
+      const grad = ctx.createRadialGradient(ox, oy, 0, ox, oy, gr);
+      grad.addColorStop(0, `rgba(${ROSE},${0.5 * glow})`);
+      grad.addColorStop(1, `rgba(${ROSE},0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(ox, oy, gr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 }
 
 export function render(st: RenderState, start: IdeaNode, startPath: IdeaNode[], T: ScreenTransform, p: number, isRoot: boolean) {

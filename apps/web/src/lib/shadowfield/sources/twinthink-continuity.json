@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-25T14:33:39.151Z",
+ "generated": "2026-09-25T14:46:04.042Z",
  "branches": {
   "surface": "how one idea is shown to people",
   "deploy": "keeping the site up and reachable",
@@ -617,6 +617,12 @@
   {
    "h": "ba0e62a",
    "t": "2026-09-25T14:29:50+00:00",
+   "b": "canvas",
+   "k": "change"
+  },
+  {
+   "h": "2a3de6e",
+   "t": "2026-09-25T14:33:39+00:00",
    "b": "canvas",
    "k": "change"
   }
