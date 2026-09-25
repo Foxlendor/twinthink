@@ -57,6 +57,8 @@ export type Media =
   | {
       kind: 'video';
       src: string;
+      /** The same film as WebM, for browsers that cannot play the MP4. */
+      webm?: string;
       poster: string;
       x: number;
       y: number;

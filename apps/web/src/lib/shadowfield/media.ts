@@ -53,7 +53,7 @@ export function getImage(src: string): Loaded | null {
 
 const videos = new Map<string, HTMLVideoElement>();
 
-export function getVideo(src: string): HTMLVideoElement | null {
+export function getVideo(src: string, webm?: string): HTMLVideoElement | null {
   if (typeof document === 'undefined') return null;
   let v = videos.get(src);
   if (!v) {
@@ -62,7 +62,8 @@ export function getVideo(src: string): HTMLVideoElement | null {
     v.playsInline = true;
     v.setAttribute('playsinline', '');
     v.preload = 'auto';
-    v.src = src;
+    const mp4 = v.canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
+    v.src = !mp4 && webm && v.canPlayType('video/webm; codecs="vp9, opus"') ? webm : src;
     videos.set(src, v);
   }
   return v;

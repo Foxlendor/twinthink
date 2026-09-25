@@ -123,6 +123,7 @@ const SHOWN: Record<string, { media: Media[]; t: number }> = {
       {
         kind: 'video',
         src: '/films/bubbleblock.mp4',
+        webm: '/films/bubbleblock.webm',
         poster: '/films/bubbleblock.jpg',
         x: 0,
         y: 0,

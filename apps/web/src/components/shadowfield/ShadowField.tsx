@@ -237,7 +237,9 @@ export default function ShadowField({ serif }: Props) {
   const framesRef = useRef(new Map<string, ScreenTransform>());
   // songs play as you pass them, once a tap has allowed sound; pausing stops that
   const autoplayRef = useRef(true);
-  const hereSinceRef = useRef({ id: '', t: 0, tried: false });
+  const hereSinceRef = useRef({ id: '', t: 0, tried: false, visited: false });
+  // what the flight skips this frame (not perceivable, or not born yet in a replay)
+  const skipRef = useRef<(s: Station) => boolean>(() => false);
 
   const [path, setPath] = useState<IdeaNode[]>([]);
   const [depthPos, setDepthPos] = useState(0);
@@ -327,6 +329,8 @@ export default function ShadowField({ serif }: Props) {
     const node = path[path.length - 1];
     const media = node.media?.find((m) => m.kind === 'audio');
     if (!media || media.kind !== 'audio') return;
+    // a hand on play/pause is final for this arrival: passing never overrides it
+    if (!auto) hereSinceRef.current.tried = true;
     let a = audioRef.current;
     if (!a) {
       // passing a song only plays it once the visitor has touched the page
@@ -361,14 +365,19 @@ export default function ShadowField({ serif }: Props) {
     const cur = playingRef.current;
     if (cur && cur.src === media.src) {
       if (auto) return;
-      if (a.el.paused) void a.el.play();
-      else {
+      if (a.el.paused) {
+        autoplayRef.current = true;
+        void a.el.play();
+      } else {
+        // paused by hand: songs stop playing themselves as you pass, until you play one again
+        autoplayRef.current = false;
         a.el.pause();
         playingRef.current = null;
         setPlayingId(null);
       }
       return;
     }
+    if (!auto) autoplayRef.current = true;
     a.el.src = media.src;
     void a.el.play().catch(() => {
       playingRef.current = null;
@@ -593,6 +602,7 @@ export default function ShadowField({ serif }: Props) {
         }
       }
       const skip = (s: Station) => hiddenStation(s) || (cut !== null && s.depth > 0 && s.node.began > cut);
+      skipRef.current = skip;
 
       // motion
       if (flying) {
@@ -664,12 +674,12 @@ export default function ShadowField({ serif }: Props) {
       // passing a song plays it (after a tap has allowed sound; once per arrival)
       if (here) {
         const since = hereSinceRef.current;
-        if (since.id !== here.node.id) hereSinceRef.current = { id: here.node.id, t: nowMs, tried: false };
+        if (since.id !== here.node.id) hereSinceRef.current = { id: here.node.id, t: nowMs, tried: false, visited: false };
         else if (
           autoplayRef.current &&
           !since.tried &&
           nowMs - since.t > 350 &&
-          Math.abs(fc.v) < 5 &&
+          Math.abs(fc.shown) < 5 &&
           hasMedia(here.node, 'audio') &&
           playingRef.current?.path[playingRef.current.path.length - 1]?.id !== here.node.id
         ) {
@@ -730,6 +740,7 @@ export default function ShadowField({ serif }: Props) {
             mv.setAttribute('src', m.src);
           }
           mv.style.display = 'block';
+          mv.style.pointerEvents = flying ? 'none' : 'auto';
           mv.style.left = `${m.x}px`;
           mv.style.top = `${m.y}px`;
           mv.style.width = `${m.w}px`;
@@ -756,13 +767,18 @@ export default function ShadowField({ serif }: Props) {
       let hover: Hit | null = null;
       // in the flight things pass under a resting pointer; only a moving hand is pointing
       if (ptr.inside && !dragRef.current.active && (!flying || nowMs - ptr.t < 1500)) {
-        let best = Infinity;
-        for (const h of hitsRef.current) {
-          const d = Math.hypot(h.x - ptr.x, h.y - ptr.y);
-          const bias = h.kind === 'event' ? 0.7 : 1;
-          if (d < h.r && d * bias < best) {
-            best = d * bias;
-            hover = h;
+        if (flying) {
+          // hits come nearest first: the thing in front covers what is behind it
+          hover = hitsRef.current.find((h) => Math.hypot(h.x - ptr.x, h.y - ptr.y) < h.r) ?? null;
+        } else {
+          let best = Infinity;
+          for (const h of hitsRef.current) {
+            const d = Math.hypot(h.x - ptr.x, h.y - ptr.y);
+            const bias = h.kind === 'event' ? 0.7 : 1;
+            if (d < h.r && d * bias < best) {
+              best = d * bias;
+              hover = h;
+            }
           }
         }
       }
@@ -799,7 +815,7 @@ export default function ShadowField({ serif }: Props) {
           setSketching(false);
         }
         setPath([...curPath]);
-        if (curPath.length > 1) {
+        if (!flying && curPath.length > 1) {
           const top = curPath[1];
           if (!lensRef.current.visited.has(top.id)) {
             lensRef.current.visited.add(top.id);
@@ -808,6 +824,18 @@ export default function ShadowField({ serif }: Props) {
           const ids = localIds(top);
           if (ids && storeRef.current) storeRef.current.visit(ids.shadowId);
         }
+      }
+      // in the flight, passing something is not visiting it: staying a moment is
+      const since = hereSinceRef.current;
+      if (flying && here && here.path.length > 1 && !since.visited && nowMs - since.t > 1500 && Math.abs(fc.shown) < 1) {
+        since.visited = true;
+        const top = here.path[1];
+        if (!lensRef.current.visited.has(top.id)) {
+          lensRef.current.visited.add(top.id);
+          writeSet(VISITED_KEY, lensRef.current.visited);
+        }
+        const ids = localIds(top);
+        if (ids && storeRef.current) storeRef.current.visit(ids.shadowId);
       }
       if (nowMs - lastDepthUpdate > 120) {
         lastDepthUpdate = nowMs;
@@ -824,14 +852,15 @@ export default function ShadowField({ serif }: Props) {
         const r = replayRef.current;
         if (r && cut !== null) setReplayView({ progress: r.progress, t: cut, playing: r.playing });
       }
-      if (nowMs - lastHash > 700 && (flying ? Math.abs(fc.v) < 1 : !cam.node.void)) {
+      if (nowMs - lastHash > 700 && (flying ? Math.abs(fc.shown) < 1 : !cam.node.void)) {
         lastHash = nowMs;
         const ids = curPath.slice(1).filter((n) => !n.void).map((n) => n.id);
-        const hash = !ids.length
-          ? ''
-          : flying
-            ? `path=${ids.map(encodeURIComponent).join('~')}`
-            : `path=${ids.map(encodeURIComponent).join('~')}&z=${(cam.s / cam.M).toPrecision(4)}&c=${cam.cx.toFixed(5)},${cam.cy.toFixed(5)}&view=map`;
+        const where = ids.length ? `path=${ids.map(encodeURIComponent).join('~')}` : '';
+        const hash = flying
+          ? where
+          : [where, ids.length ? `z=${(cam.s / cam.M).toPrecision(4)}&c=${cam.cx.toFixed(5)},${cam.cy.toFixed(5)}` : '', 'view=map']
+              .filter(Boolean)
+              .join('&');
         if (hash !== window.location.hash.slice(1)) {
           history.replaceState(null, '', hash ? `#${hash}` : window.location.pathname);
         }
@@ -867,10 +896,16 @@ export default function ShadowField({ serif }: Props) {
       if (modeRef.current === 'flight') {
         // scrolling is moving: down (or a pinch outward) carries you forward
         const fc = flightCamRef.current;
-        fc.target = null;
+        if (fc.target !== null) {
+          // a scroll takes over from a flight already under way
+          fc.target = null;
+          fc.v = 0;
+        }
         fc.idle = 0;
         const d = (Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX) * unit;
-        fc.v += e.ctrlKey ? -d * 0.06 : d * 0.018;
+        const push = e.ctrlKey ? -d * 0.06 : d * 0.018;
+        if (push) fc.dir = Math.sign(push);
+        fc.v += push;
         dismissHint();
         return;
       }
@@ -1035,7 +1070,11 @@ export default function ShadowField({ serif }: Props) {
         // spreading two fingers carries you in, pinching carries you back
         const [a, b] = [...pointersRef.current.values()];
         const d = Math.hypot(a.x - b.x, a.y - b.y);
-        if (pinchRef.current.d > 10 && d > 10) fc.z += Math.log(d / pinchRef.current.d) * 1.8;
+        if (pinchRef.current.d > 10 && d > 10) {
+          const step = Math.log(d / pinchRef.current.d) * 1.8;
+          fc.z += step;
+          if (Math.abs(step) > 0.002) fc.dir = Math.sign(step);
+        }
         pinchRef.current = { d, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
         dragRef.current.moved += 20;
         return;
@@ -1046,6 +1085,7 @@ export default function ShadowField({ serif }: Props) {
       dragRef.current.moved += Math.abs(dx) + Math.abs(dy);
       const step = (-dy / M) * SWIPE;
       fc.z += step;
+      if (Math.abs(step) > 0.002) fc.dir = Math.sign(step);
       fc.wx = clamp(fc.wx - (dx / M) * 0.6, -0.5, 0.5);
       const now = performance.now();
       const dtm = Math.max(1, now - dragRef.current.lastT);
@@ -1136,7 +1176,7 @@ export default function ShadowField({ serif }: Props) {
       toggleSong([...focused]);
       return;
     }
-    if (!hit && flying && film(focusedNode)) {
+    if (!hit && film(focusedNode)) {
       filmSound(film(focusedNode)!.src);
       return;
     }
@@ -1160,7 +1200,7 @@ export default function ShadowField({ serif }: Props) {
         const stream = streamRef.current;
         if (!stream) return;
         const go = (dir: 1 | -1) => {
-          const z = stepFocus(stream, fc.target ?? fc.z, dir, hiddenStation);
+          const z = stepFocus(stream, fc.target ?? fc.z, dir, skipRef.current);
           if (z !== null) {
             fc.target = z;
             fc.v = 0;
@@ -1444,6 +1484,14 @@ export default function ShadowField({ serif }: Props) {
           pointersRef.current.delete(e.pointerId);
           pinchRef.current = null;
           dragRef.current.active = false;
+          if (sketchRef.current) sketchRef.current.stroke = null;
+          if (pointersRef.current.size === 0) {
+            // the system took the touch (a back swipe, a notification): let the flight go
+            const fc = flightCamRef.current;
+            fc.held = false;
+            fc.v = 0;
+            fc.idle = 0;
+          }
         }}
         onPointerLeave={() => {
           pointerRef.current.inside = false;

@@ -21,6 +21,7 @@ export function buildDance(): IdeaNode {
       {
         kind: 'video',
         src: '/films/dance-1.mp4',
+        webm: '/films/dance-1.webm',
         poster: '/films/dance-1.jpg',
         x: 0,
         y: 0,

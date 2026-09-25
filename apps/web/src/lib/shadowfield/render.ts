@@ -664,7 +664,7 @@ export function drawVideo(
   const y0 = T.oy + m.y * T.s - H / 2;
   if (x0 > st.w || y0 > st.h || x0 + W < 0 || y0 + H < 0) return;
   const a = alpha * smoothstep(3, 30, W);
-  const live = reveal > 0.35 ? getVideo(m.src) : null;
+  const live = reveal > 0.35 ? getVideo(m.src, m.webm) : null;
   ctx.save();
   // far away it is a pale print of itself, darkening into the real thing as you near
   ctx.globalAlpha = a * (0.1 + 0.9 * Math.pow(reveal, 1.1));

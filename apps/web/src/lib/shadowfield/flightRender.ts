@@ -76,7 +76,7 @@ function drawSpecks(st: RenderState, v: View, cam: FlightCam, ink: Ink) {
   const { ctx } = st;
   const P = 4;
   const N = 70;
-  const streak = st.reduced ? 0 : clamp(cam.v * 0.03, -0.9, 0.9);
+  const streak = st.reduced ? 0 : clamp(cam.shown * 0.03, -0.9, 0.9);
   const j0 = Math.floor((v.z + NEAR) / P);
   const j1 = Math.floor((v.z + FAR) / P);
   ctx.lineCap = 'round';
@@ -142,7 +142,7 @@ function drawTube(st: RenderState, v: View, s: Station, L: number, ink: Ink) {
 function drawThread(st: RenderState, v: View, stream: Stream, ink: Ink, cam: FlightCam) {
   const { stations, length: L } = stream;
   const STEP = 0.055;
-  const streak = st.reduced ? 0 : clamp(cam.v * 0.02, -0.6, 0.6);
+  const streak = st.reduced ? 0 : clamp(cam.shown * 0.02, -0.6, 0.6);
   const { ctx } = st;
   for (let i = 0; i < stations.length; i++) {
     const a = stations[i];
@@ -266,6 +266,8 @@ function drawGate(st: RenderState, s: Station, x: number, y: number, R: number, 
       ink.dot(px, py, size * 2.6, alpha * (recent ? 0.75 : 0.5), recent);
     }
   }
+  // a ring can carry things of its own too (a drawing, a picture), inside it
+  if (!sealed && s.depth > 0 && node.media?.length) drawCarried(st, node, x, y, R, alpha, 0, ink, 1);
   drawPulse(st, s, x, y, R, alpha);
 }
 
@@ -307,13 +309,41 @@ function drawImage(st: RenderState, m: { src: string; x: number; y: number; w: n
   ctx.restore();
 }
 
+/** What an idea carries (images, films, songs, drawings, objects), in its own frame. */
+function drawCarried(st: RenderState, node: IdeaNode, x: number, y: number, R: number, alpha: number, speed: number, ink: Ink, p: number) {
+  const { M } = st;
+  const clock = st.reduced ? 0 : st.clock ?? 0;
+  const T: ScreenTransform = { ox: x, oy: y, s: R };
+  for (const m of node.media ?? []) {
+    if (m.kind === 'image') drawImage(st, m, T, alpha, p);
+    else if (m.kind === 'video') drawVideo(st, m, T, alpha, smoothstep(0.08 * M, (0.4 - 0.16 * p) * M, m.w * R));
+    else if (m.kind === 'audio') drawAudioRing(st, m.src, { ox: x, oy: y, s: R * 2 }, alpha);
+    else if (m.kind === 'sketch') drawSketch(st, m.strokes, T, alpha * smoothstep(0.05 * M, 0.16 * M, R));
+    else if (m.kind === 'model') {
+      const W = m.w * R * 1.5;
+      const H = W * m.aspect;
+      const cx = x + m.x * R;
+      const cy = y + m.y * R;
+      // the object itself turns in place once near and still enough to look at
+      const show = alpha * smoothstep(0.14 * M, 0.26 * M, W) * (1 - smoothstep(1.6, 4, Math.abs(speed)));
+      const ringA = alpha * smoothstep(12, 60, W) * (1 - show);
+      if (ringA > 0.01) {
+        for (let i = 0; i < 40; i++) {
+          const ang = (i / 40) * Math.PI * 2 + clock * 0.4;
+          ink.dot(cx + Math.cos(ang) * W * 0.3, cy + Math.sin(ang) * H * 0.3 * (0.35 + 0.25 * Math.sin(clock * 0.3)), 1.6, ringA * 0.5);
+        }
+      }
+      if (show > 0.01) (st.models ??= []).push({ src: m.src, x: cx - W / 2, y: cy - H / 2, w: W, h: H, alpha: show });
+    }
+  }
+}
+
 /** Anything else: an ink drop that resolves into what it carries. */
 function drawThing(st: RenderState, s: Station, x: number, y: number, R: number, alpha: number, speed: number, ink: Ink, sealed: boolean, p: number) {
   const { ctx, M } = st;
   const node = s.node;
   const clock = st.reduced ? 0 : st.clock ?? 0;
   const live = liveness(node, st.now);
-  const T: ScreenTransform = { ox: x, oy: y, s: R };
   const media = node.media ?? [];
   const song = media.find((m) => m.kind === 'audio');
   const content = !!(media.length || node.artifact);
@@ -370,28 +400,7 @@ function drawThing(st: RenderState, s: Station, x: number, y: number, R: number,
   }
 
   // what it carries
-  for (const m of media) {
-    if (m.kind === 'image') drawImage(st, m, T, alpha, p);
-    else if (m.kind === 'video') drawVideo(st, m, T, alpha, smoothstep(0.08 * M, (0.4 - 0.16 * p) * M, m.w * R));
-    else if (m.kind === 'audio') drawAudioRing(st, m.src, { ox: x, oy: y, s: R * 2 }, alpha);
-    else if (m.kind === 'sketch') drawSketch(st, m.strokes, T, alpha * smoothstep(0.05 * M, 0.16 * M, R));
-    else if (m.kind === 'model') {
-      const W = m.w * R * 1.5;
-      const H = W * m.aspect;
-      const cx = x + m.x * R;
-      const cy = y + m.y * R;
-      // the object itself turns in place once near and still enough to look at
-      const show = alpha * smoothstep(0.14 * M, 0.26 * M, W) * (1 - smoothstep(1.6, 4, Math.abs(speed)));
-      const ringA = alpha * smoothstep(12, 60, W) * (1 - show);
-      if (ringA > 0.01) {
-        for (let i = 0; i < 40; i++) {
-          const ang = (i / 40) * Math.PI * 2 + clock * 0.4;
-          ink.dot(cx + Math.cos(ang) * W * 0.3, cy + Math.sin(ang) * H * 0.3 * (0.35 + 0.25 * Math.sin(clock * 0.3)), 1.6, ringA * 0.5);
-        }
-      }
-      if (show > 0.01) (st.models ??= []).push({ src: m.src, x: cx - W / 2, y: cy - H / 2, w: W, h: H, alpha: show });
-    }
-  }
+  drawCarried(st, node, x, y, R, alpha, speed, ink, p);
   if (node.artifact) drawArtifact(st, node, { ox: x, oy: y + R * 0.2, s: R * 2.4 }, alpha);
   if (!content && node.events.length > 1) drawRhythm(st, node, { ox: x, oy: y + R * 0.25, s: R * 2 }, alpha);
 
@@ -428,7 +437,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   fs.frames.clear();
   const v = viewOf(stream, cam, st.w, st.h);
   const L = stream.length;
-  const speed = cam.v;
+  const speed = cam.shown;
   const ink = new Ink();
 
   const born = (s: Station) => st.cut === null || s.depth === 0 || s.node.began <= st.cut;
@@ -481,6 +490,8 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     }
   }
   ink.flush(ctx);
+  // the nearest thing under a finger is the one it means
+  st.hits.reverse();
 
   // names: nearest first, never on top of one another
   titles.sort((a, b) => b.near - a.near);

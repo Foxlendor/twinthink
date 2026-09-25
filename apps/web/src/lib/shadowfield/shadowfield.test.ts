@@ -10,6 +10,8 @@ import {
   mod,
   nearestFocus,
   newFlightCam,
+  restingPlace,
+  silence,
   project,
   spacing,
   stepFlightCam,
@@ -311,7 +313,7 @@ describe('media files', () => {
     const walk = (n: IdeaNode) => {
       for (const m of n.media ?? []) {
         if ('src' in m) srcs.push(m.src);
-        if (m.kind === 'video') srcs.push(m.poster);
+        if (m.kind === 'video') srcs.push(m.poster, ...(m.webm ? [m.webm] : []));
       }
       for (const c of n.children) if (!c.portal) walk(c);
     };
@@ -413,6 +415,29 @@ describe('the flight', () => {
     // and the camera leans toward it, so it arrives near the middle
     const [lx, ly] = leanAt(stream, cam.z);
     expect(Math.hypot(lx - song.x, ly - song.y)).toBeLessThan(Math.hypot(song.x, song.y));
+  });
+
+  it('comes to rest the way it was pushed: one small push forward reaches the next thing', () => {
+    const cam = newFlightCam();
+    const a = stepFocus(stream, cam.z, 1)!;
+    const b = stepFocus(stream, a, 1)!;
+    // pushed forward a little past a, with b near: rests on b, not back on a
+    const z = a + Math.min(0.7, (b - a) * 0.6);
+    if (b - z < 0.9) expect(restingPlace(stream, z, 1)).toBeCloseTo(b);
+    // pushed back from b the same way: rests on a
+    const z2 = b - Math.min(0.7, (b - a) * 0.6);
+    if (z2 - a < 0.9) expect(restingPlace(stream, z2, -1)).toBeCloseTo(a);
+    // with no push, whatever is very near
+    expect(restingPlace(stream, a + 0.1, 0)).toBeCloseTo(a);
+  });
+
+  it('a silence is only real time with nothing happening', () => {
+    const tw = world.children.find((c) => c.id === 'twinthink')!;
+    const canvas = tw.children.find((c) => c.id === 'twinthink/canvas')!;
+    // TwinThink was being worked on when its newest branch began: no silence
+    expect(silence(tw, canvas)).toBe(0);
+    const songs = world.children.find((c) => c.id === 'music')!.children;
+    expect(silence(songs[0], songs[1])).toBeLessThan(3600000);
   });
 
   it('stepping goes to the very next thing, and back', () => {

@@ -13,7 +13,7 @@
 // a dense stretch, a long silence is a long empty one. After the oldest thing on
 // the Canvas the track reaches the Canvas again, so there is no end either way.
 
-import { IdeaNode } from './model';
+import { IdeaNode, lastActivity } from './model';
 import { hash01 } from './rng';
 
 /** Distance ahead (track units) at which a thing is in focus: fully itself. */
@@ -85,6 +85,16 @@ function hasContent(n: IdeaNode) {
   return !!(n.media?.length || n.artifact);
 }
 
+/**
+ * The real silence between two things: the time between their lives, which is
+ * nothing if one was still being worked on when the other began.
+ */
+export function silence(a: IdeaNode, b: IdeaNode): number {
+  const a1 = Math.max(a.began, lastActivity(a));
+  const b1 = Math.max(b.began, lastActivity(b));
+  return Math.max(0, Math.max(a.began, b.began) - Math.min(a1, b1));
+}
+
 const cache = new WeakMap<IdeaNode, Stream>();
 
 export function buildStream(root: IdeaNode): Stream {
@@ -107,7 +117,7 @@ export function buildStream(root: IdeaNode): Stream {
   };
   stations.push(rootStation);
   let z = 0;
-  let prevT: number | null = null;
+  let prev: IdeaNode | null = null;
 
   const walk = (node: IdeaNode, path: IdeaNode[], depth: number) => {
     // newest first; ties keep their order
@@ -117,7 +127,7 @@ export function buildStream(root: IdeaNode): Stream {
       .map(({ c }) => c);
     const turn = hash01(node.seed, 7) * Math.PI * 2;
     kids.forEach((c, k) => {
-      const gap = prevT === null ? 0 : Math.abs(prevT - c.began);
+      const gap = prev === null ? 0 : silence(prev, c);
       z += spacing(gap) + (k === 0 ? ENTER_GAP : 0);
       const gate = travelled(c).length > 0;
       const ang = turn + k * GOLDEN;
@@ -133,10 +143,10 @@ export function buildStream(root: IdeaNode): Stream {
         y: gate ? 0 : Math.sin(ang) * ORBIT,
         r: gate ? GATE_R * Math.pow(NEST, depth - 1) : hasContent(c) ? CONTENT_R : LEAF_R,
         t: c.began,
-        quiet: prevT === null ? 0 : Math.abs(prevT - c.began),
+        quiet: gap,
       };
       stations.push(s);
-      prevT = c.began;
+      prev = c;
       if (gate) {
         walk(c, s.path, depth + 1);
         z += EXIT_GAP;
@@ -234,10 +244,14 @@ export interface FlightCam {
   idle: number;
   /** A finger or button is holding it. */
   held: boolean;
+  /** Which way the viewer last pushed (1 forward, -1 back, 0 not yet): where it comes to rest. */
+  dir: number;
+  /** How fast it is actually moving (flights included): what the ink streaks with. */
+  shown: number;
 }
 
 export function newFlightCam(): FlightCam {
-  return { z: -ARRIVE, v: 0, wx: 0, wy: 0, target: null, idle: 0, held: false };
+  return { z: -ARRIVE, v: 0, wx: 0, wy: 0, target: null, idle: 0, held: false, dir: 0, shown: 0 };
 }
 
 /** Speed is let go of gradually: a flick carries you through many things. */
@@ -282,41 +296,66 @@ export function stepFocus(stream: Stream, camZ: number, dir: 1 | -1, skip?: (s: 
   return best;
 }
 
+/** The nearest places behind and ahead of z where something is in focus. */
+export function focusAround(stream: Stream, camZ: number, skip?: (s: Station) => boolean): [number | null, number | null] {
+  let back = -Infinity;
+  let ahead = Infinity;
+  for (const s of stream.stations) {
+    if (skip?.(s)) continue;
+    const d = wrapDelta(s.z - FOCUS, camZ, stream.length);
+    if (d <= 0 && d > back) back = d;
+    if (d >= 0 && d < ahead) ahead = d;
+  }
+  return [back === -Infinity ? null : camZ + back, ahead === Infinity ? null : camZ + ahead];
+}
+
+/**
+ * Where a coasting camera comes to rest: the next thing in the direction it
+ * was pushed, if that is near; otherwise whatever is very near; in a long
+ * empty stretch, nowhere (the silence is left as it is).
+ */
+export function restingPlace(stream: Stream, camZ: number, dir: number, skip?: (s: Station) => boolean): number | null {
+  const [back, ahead] = focusAround(stream, camZ, skip);
+  const db = back === null ? Infinity : camZ - back;
+  const da = ahead === null ? Infinity : ahead - camZ;
+  const REACH = 0.9;
+  const NEARBY = 0.55;
+  if (dir > 0) return da < REACH ? ahead : db < NEARBY ? back : null;
+  if (dir < 0) return db < REACH ? back : da < NEARBY ? ahead : null;
+  if (db <= da) return db < NEARBY ? back : null;
+  return da < NEARBY ? ahead : null;
+}
+
 export function stepFlightCam(cam: FlightCam, stream: Stream, dt: number, skip?: (s: Station) => boolean) {
   cam.idle += dt;
   if (cam.target !== null) {
     const d = cam.target - cam.z;
     const k = 1 - Math.exp(-dt * 4.5);
     cam.z += d * k;
-    cam.v = dt > 0 ? (d * k) / dt : 0;
+    cam.v = 0;
+    cam.shown = dt > 0 ? (d * k) / dt : 0;
     if (Math.abs(d) < 0.002) {
       cam.z = cam.target;
       cam.target = null;
-      cam.v = 0;
+      cam.shown = 0;
     }
-  } else if (!cam.held) {
+    return;
+  }
+  if (!cam.held) {
     cam.v = Math.max(-MAX_V, Math.min(MAX_V, cam.v));
     cam.z += cam.v * dt;
     cam.v *= Math.exp(-dt * FRICTION);
     if (Math.abs(cam.v) < 0.02) cam.v = 0;
     // coming to rest, something settles into focus (a soft pull, never a snap)
     if (Math.abs(cam.v) < 0.45 && cam.idle > 0.2) {
-      const f = nearestFocus(stream, cam.z, skip);
-      if (f !== null && Math.abs(f - cam.z) < 0.55) cam.z += (f - cam.z) * (1 - Math.exp(-dt * 3));
+      const f = restingPlace(stream, cam.z, cam.dir, skip);
+      if (f !== null) cam.z += (f - cam.z) * (1 - Math.exp(-dt * 3));
     }
-  }
-  if (!cam.held) {
     const k = Math.exp(-dt * 2.4);
     cam.wx *= k;
     cam.wy *= k;
   }
-  // keep numbers small over very long journeys (the view is identical)
-  const L = stream.length;
-  if (Math.abs(cam.z) > 1000 * L) {
-    const shift = Math.trunc(cam.z / L) * L;
-    cam.z -= shift;
-    if (cam.target !== null) cam.target -= shift;
-  }
+  cam.shown = cam.v;
 }
 
 // ---------------------------------------------------------------------------
@@ -346,7 +385,7 @@ export function viewOf(stream: Stream, cam: FlightCam, w: number, h: number): Vi
   const M = flightScale(w, h);
   const [lx, ly] = leanAt(stream, cam.z);
   // at speed the field of view widens a little, as if pulled forward
-  const rush = smooth((Math.abs(cam.v) - 3) / 20);
+  const rush = smooth((Math.abs(cam.shown) - 3) / 20);
   return { z: cam.z, x: lx + cam.wx, y: ly + cam.wy, F: M * (1 - 0.16 * rush), cx: w / 2, cy: h * 0.47 };
 }
 
