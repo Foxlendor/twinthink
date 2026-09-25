@@ -79,6 +79,19 @@ export default function Navbar() {
             </Link>
 
             <Link
+              href="/canvas"
+              style={{
+                fontSize: '0.875rem',
+                color: pathname === '/canvas' ? '#111827' : '#4B5563',
+                textDecoration: 'none',
+                fontWeight: pathname === '/canvas' ? 700 : 500,
+                transition: 'color 0.15s'
+              }}
+            >
+              Canvas
+            </Link>
+
+            <Link
               href="/archive"
               style={{
                 fontSize: '0.875rem',
@@ -206,6 +219,30 @@ export default function Navbar() {
                   <div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Explore Twins</div>
                     <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Concept previews & verified models</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/canvas"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '12px',
+                    background: '#F9FAFB',
+                    border: '1px solid #F3F4F6',
+                    textDecoration: 'none',
+                    color: '#111827'
+                  }}
+                >
+                  <div style={{ padding: '6px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                    <Compass size={18} color="#111827" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Shadow Canvas</div>
+                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Discover living idea shadows</div>
                   </div>
                 </Link>
 
