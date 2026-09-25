@@ -30,6 +30,8 @@ export interface Hit {
   x: number;
   y: number;
   r: number;
+  /** On-screen radius of the node itself. */
+  size: number;
 }
 
 export interface RenderState {
@@ -157,6 +159,23 @@ function drawMark(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: nu
     ctx.beginPath();
     ctx.arc(x, y, Math.min(R * 0.46, 70), 0, Math.PI * 2);
     ctx.stroke();
+  }
+
+  // recent activity leaves a slow ripple: evidence that something is alive here
+  const quietDays = (st.now - lastActivity(node)) / 86400000;
+  if (!sealed && R < 40 && quietDays < 21) {
+    const period = 7;
+    const phase = ((time + (seed % 13) * 0.53) % period) / period;
+    const liveness = 1 - quietDays / 21;
+    const rr = Math.max(R * 0.5, 1.5) + phase * (16 + R * 0.6);
+    const ra = alpha * 0.16 * liveness * Math.pow(1 - phase, 2) * (1 - smoothstep(10, 40, R));
+    if (ra > 0.004) {
+      ctx.strokeStyle = `rgba(${INK},${ra})`;
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.arc(x, y, rr, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   }
 
   const followed = st.lens.followed.has(node.id);
@@ -340,7 +359,7 @@ function drawStrand(st: RenderState, s: Strand, T: ScreenTransform, alpha: numbe
         ctx.stroke();
       }
       if (s.child) {
-        st.hits.push({ kind: 'event', node: s.child, path: [...path, s.child], ev: m.ev, x: sx, y: sy, r: 7 });
+        st.hits.push({ kind: 'event', node: s.child, path: [...path, s.child], ev: m.ev, x: sx, y: sy, r: 7, size: 0 });
       }
     }
   }
@@ -372,13 +391,13 @@ function drawArtifact(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha
   const R = T.s;
   const { ctx } = st;
   const isLedger = art.type === 'ledger';
-  const fpx = R * (isLedger ? 0.042 : 0.062);
-  const a = alpha * smoothstep(6.5, 10, fpx) * (1 - smoothstep(70, 160, fpx));
+  const fpx = R * (isLedger ? 0.0105 : 0.016);
+  const a = alpha * smoothstep(5, 9, fpx) * (1 - smoothstep(48, 110, fpx));
   if (a < 0.01) return;
   ctx.font = isLedger ? `${fpx}px ${st.mono}` : `italic ${fpx}px ${st.serif}`;
   ctx.fillStyle = `rgba(${INK},${a * 0.82})`;
   ctx.textBaseline = 'alphabetic';
-  const width = R * 1.15;
+  const width = isLedger ? fpx * 30 : R * 0.9;
   const lines = art.type === 'ledger' ? art.lines : wrap(ctx, art.body, width);
   const lh = fpx * (isLedger ? 1.55 : 1.45);
   const total = lines.length * lh;
@@ -439,7 +458,7 @@ function drawLabel(st: RenderState, node: IdeaNode, x: number, y: number, cs: nu
   ctx.fillStyle = `rgba(${INK},${a * (hovered ? 0.95 : 0.72)})`;
   ctx.textBaseline = 'alphabetic';
   ctx.fillText(node.title ?? 'untitled', x + off, y + size * 0.3);
-  const a2 = a * smoothstep(26, 70, cs) * 0.5;
+  const a2 = a * Math.max(smoothstep(90, 180, cs), hovered ? 1 : 0) * 0.5;
   if (a2 > 0.01) {
     ctx.font = `9.5px ${st.mono}`;
     ctx.fillStyle = `rgba(${INK},${a2})`;
@@ -469,24 +488,26 @@ export function drawNode(
   const ia = alpha * inner * outerFade;
 
   if (ia > 0.004) {
-    if (isRoot) drawLattice(st, T, ia * 0.22, 1.2, false);
+    if (isRoot) drawLattice(st, T, ia * 0.2, 400, false);
     else {
       drawWash(st, node, T, alpha * (1 - smoothstep(12 * M, 60 * M, R)));
-      drawLattice(st, T, ia * 0.2 * smoothstep(0.6 * M, 2.6 * M, R), 1.2, true);
+      drawLattice(st, T, ia * (node.artifact ? 0.08 : 0.2) * smoothstep(0.6 * M, 2.6 * M, R), 1.2, true);
     }
   }
 
   const topo = topologyOf(node);
-  const strandAlpha = new Map<IdeaNode, number>();
-  if (ia > 0.004 && !isRoot) {
+  // how revealed each child is (by rank), independent of how far past the
+  // parent the viewer has travelled
+  const reveal = new Map<IdeaNode, number>();
+  if (!isRoot) {
     topo.order.forEach((si, rank) => {
       const s = topo.strands[si];
       const child = s.child;
       if (child && child.disclosure > p + SEAL_MARGIN) return;
       const threshold = 18 * Math.pow(1.55, rank);
-      const a = ia * smoothstep(threshold, threshold * 2.6, R);
-      if (child) strandAlpha.set(child, a);
-      drawStrand(st, s, T, a * (child && child.state === 'abandoned' ? 0.7 : 1), path);
+      const r = alpha * inner * smoothstep(threshold, threshold * 2.6, R);
+      if (child) reveal.set(child, r);
+      if (ia > 0.004) drawStrand(st, s, T, r * outerFade * (child && child.state === 'abandoned' ? 0.7 : 1), path);
     });
   }
 
@@ -500,7 +521,7 @@ export function drawNode(
     const cx = T.ox + c.x * R;
     const cy = T.oy + c.y * R;
     if (!onScreen(st, cx, cy, Math.max(cs * 1.3, 3))) continue;
-    const ca = isRoot ? alpha * outerFade : strandAlpha.get(c) ?? 0;
+    const ca = isRoot ? alpha : reveal.get(c) ?? 0;
     if (ca < 0.004) continue;
     const CT = { ox: cx, oy: cy, s: cs };
     const cpath = [...path, c];
@@ -508,7 +529,7 @@ export function drawNode(
     else if (cs < 0.12) drawMark(st, c, CT, ca, false);
     else drawNode(st, c, CT, ca, cp, cpath, false);
     drawLabel(st, c, cx, cy, cs, ca, sealed);
-    if (cs < 0.5 * M) st.hits.push({ kind: 'node', node: c, path: cpath, sealed, x: cx, y: cy, r: Math.max(cs * 0.55, 12) });
+    if (cs < 0.5 * M) st.hits.push({ kind: 'node', node: c, path: cpath, sealed, x: cx, y: cy, r: Math.max(cs * 0.55, 12), size: cs });
   }
 }
 

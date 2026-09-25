@@ -60,6 +60,8 @@ export interface IdeaNode {
   seed: number;
   /** Id of the local record this node edits, when the viewer owns it. */
   ownedBy?: 'viewer';
+  /** True when the children's events are a finer breakdown of this node's own events. */
+  summarizes?: boolean;
   /** Aggregate continuity signals (for Shadows seen from far away). */
   signals?: {
     returns?: number;
@@ -79,8 +81,13 @@ export function lastActivity(node: IdeaNode): number {
   return t;
 }
 
+const STRUCTURAL = new Set(['dormant', 'revival', 'return']);
+
+/** Number of real changes in a node's life (not double counting summaries). */
 export function countEvents(node: IdeaNode): number {
-  let n = node.events.length;
+  let n = 0;
+  for (const e of node.events) if (!STRUCTURAL.has(e.kind)) n++;
+  if (node.summarizes) return n;
   for (const c of node.children) n += countEvents(c);
   return n;
 }

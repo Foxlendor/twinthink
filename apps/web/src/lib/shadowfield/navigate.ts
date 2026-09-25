@@ -25,7 +25,7 @@ function perceivable(cam: Camera, access: Access) {
 /** Largest scale the camera may reach in its current frame, zooming toward focus (fx, fy). */
 export function maxScale(cam: Camera, access: Access, fx = cam.cx, fy = cam.cy): number {
   const M = cam.M;
-  let best = M * (cam.node.children.length ? 3 : 7);
+  let best = M * (cam.node.children.length ? 3 : 3.5);
   let nearest = Infinity;
   for (const c of perceivable(cam, access)) {
     const d = Math.hypot(fx - c.x, fy - c.y);

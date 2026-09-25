@@ -118,6 +118,7 @@ export function buildTwinThinkTwin(): IdeaNode {
       events,
       state: newest - last > 14 * DAY ? 'dormant' : 'alive',
       disclosure: 0,
+      summarizes: true,
       children,
       x: 0,
       y: 0,

@@ -58,6 +58,12 @@ function writeSet(key: string, set: Set<string>) {
   }
 }
 
+/** Viewer closeness p for a top-level Twin (see model.ts, disclosure). */
+function closenessFor(top: IdeaNode, followedSet: Set<string>) {
+  if (top.ownedBy === 'viewer') return 1;
+  return followedSet.has(top.id) ? 0.72 : 0.45;
+}
+
 function localIds(node: IdeaNode): { shadowId: string; thoughtId: string | null } | null {
   if (!node.id.startsWith('local/')) return null;
   const [, shadowId, thoughtId] = node.id.split('/');
@@ -91,6 +97,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
 
   const [path, setPath] = useState<IdeaNode[]>([]);
   const [depthPos, setDepthPos] = useState(0);
+  const [view, setView] = useState({ w: 800, h: 600 });
   const [tip, setTip] = useState<Tip | null>(null);
   const [composer, setComposer] = useState<Composer | null>(null);
   const [hinted, setHinted] = useState(true);
@@ -143,19 +150,20 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
     storeRef.current = createLocalStore(rehearsal ? null : storage);
     const followedSet = readSet(FOLLOW_KEY);
     lensRef.current = {
-      closeness: (top: IdeaNode) => {
-        if (top.ownedBy === 'viewer') return 1;
-        return lensRef.current.followed.has(top.id) ? 0.72 : 0.45;
-      },
+      closeness: (top: IdeaNode) => closenessFor(top, lensRef.current.followed),
       visited: readSet(VISITED_KEY),
       followed: followedSet,
     };
-    setFollowed(new Set(followedSet));
+    let wasHinted = false;
     try {
-      setHinted(window.localStorage.getItem(HINT_KEY) === '1');
+      wasHinted = window.localStorage.getItem(HINT_KEY) === '1';
     } catch {
-      setHinted(false);
+      wasHinted = false;
     }
+    // hydrate per-device state once, after mount (localStorage is client-only)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFollowed(new Set(followedSet));
+    setHinted(wasHinted);
     const mono = getComputedStyle(document.documentElement).getPropertyValue('--font-jetbrains-mono').trim();
     monoRef.current = mono ? `${mono}, monospace` : 'monospace';
 
@@ -277,9 +285,8 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
         else if (hover.kind === 'event' && hover.ev) {
           setTip({ x: hover.x, y: hover.y, title: hover.ev.note ?? hover.ev.kind, line: eventLabel(hover.ev) });
         } else if (hover.node) {
-          const R = hover.r;
-          // big marks already carry their own label
-          if (R < 16 || hover.sealed) {
+          // marks large enough to carry their own label need no tooltip
+          if (hover.size < 5 || hover.sealed) {
             setTip({
               x: hover.x,
               y: hover.y,
@@ -310,6 +317,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
         lastDepthUpdate = nowMs;
         const fit = Math.log(Math.min(cam.w, cam.h) * 0.45);
         setDepthPos(Math.max(0, Math.min(1, (cam.logZ() - fit) / 19)));
+        setView((v) => (v.w === cam.w && v.h === cam.h ? v : { w: cam.w, h: cam.h }));
       }
       if (!rehearsal && nowMs - lastHash > 700) {
         lastHash = nowMs;
@@ -530,9 +538,8 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
   const top = path[1];
   const ownedHere = current ? localIds(current) : null;
   const isFollowed = top ? followed.has(top.id) : false;
-  const cam = camRef.current;
   const nearby = current ? (topologyOf(current), current.children) : [];
-  const p = top ? lensRef.current.closeness(top) : 1;
+  const p = top ? closenessFor(top, followed) : 1;
 
   return (
     <div className={styles.field}>
@@ -680,8 +687,8 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
         <form
           className={styles.composer}
           style={{
-            left: Math.max(16, Math.min((cam?.w ?? 800) - 300, composer.x - 8)),
-            top: Math.max(16, Math.min((cam?.h ?? 600) - 90, composer.y - 18)),
+            left: Math.max(16, Math.min(view.w - 300, composer.x - 8)),
+            top: Math.max(16, Math.min(view.h - 90, composer.y - 18)),
           }}
           onSubmit={(e) => {
             e.preventDefault();
