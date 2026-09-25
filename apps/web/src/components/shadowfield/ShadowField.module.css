@@ -265,13 +265,33 @@
 @media (max-width: 640px) {
   .trail {
     right: 20px;
-    bottom: 58px;
+    bottom: 64px;
     font-size: 0.9rem;
   }
+  /* one swipeable row under the trail, so actions never cover it */
   .actions {
     max-width: none;
-    left: 20px;
+    left: 0;
+    right: 0;
+    bottom: 14px;
+    padding: 0 20px;
     justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+    gap: 16px;
+  }
+  .actions::-webkit-scrollbar {
+    display: none;
+  }
+  .privacy {
+    bottom: 92px;
+  }
+  .give {
+    right: 12px;
+    left: 12px;
+    bottom: 96px;
   }
   .depth {
     right: 10px;
