@@ -694,6 +694,23 @@ export function drawVideo(
     }
   }
   ctx.globalCompositeOperation = 'source-over';
+  if (!m.round) {
+    // its edges soak into the paper, so no frame is ever drawn around it
+    ctx.globalAlpha = a;
+    const f = Math.min(W, H) * 0.12;
+    for (const [gx0, gy0, gx1, gy1, rx0, ry0, rw, rh] of [
+      [x0, 0, x0 + f, 0, x0, y0, f, H],
+      [x0 + W, 0, x0 + W - f, 0, x0 + W - f, y0, f, H],
+      [0, y0, 0, y0 + f, x0, y0, W, f],
+      [0, y0 + H, 0, y0 + H - f, x0, y0 + H - f, W, f],
+    ]) {
+      const g = ctx.createLinearGradient(gx0, gy0, gx1, gy1);
+      g.addColorStop(0, 'rgba(251,250,247,1)');
+      g.addColorStop(1, 'rgba(251,250,247,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(rx0, ry0, rw, rh);
+    }
+  }
   if (m.round) {
     // seen through an ink drop: the edge dissolves into the paper, the corners are page
     ctx.globalAlpha = a;
