@@ -46,8 +46,13 @@ Everything on the public Canvas is real:
 - Server timestamps plus a hash chain turn "continuity" from a claim into evidence.
 - Visual cryptography is prior art for the Lens reveal, and a better mechanism than near-white obfuscation (see the protocol doc).
 
+## Deployment status (read this)
+- `shadow-field-z` has been fast-forwarded into **`master`**. Every push built successfully on both Vercel projects (per GitHub's deployment statuses); open the latest *Preview* deployment for `master` / `shadow-field-z` from the Vercel dashboard.
+- **Production (twinth.ink) was NOT changed.** Vercel's production deploys come from **`main`**, which has diverged from `master` since Sep 21 (idea stream, bounties hub, blind catalog, …). Merging the Shadow Field into `main` is a product decision about the live site, so it is left to you. The Canvas is self-contained (`src/lib/shadowfield`, `src/components/shadowfield`, `src/app/canvas/page.tsx`, one line in `Navbar.tsx`), so porting it to `main` should be mostly mechanical.
+- `feature/xyz-semantic-depth` (last night, earlier session) is **superseded**. It is built on seeded, authored demo ideas, which is what you pointed out defeats the purpose. It was left untouched for you to archive.
+
 ## 8. Where to go first
-`/canvas` on the deployment. Don't click anything at first: look for the faint mark just right of centre.
+`/canvas` on the latest `master` preview. Don't click anything at first: look for the faint mark just right of centre.
 
 ## 9. The best interaction to try
 Put the cursor on the mark and scroll slowly and continuously all the way into TwinThink, then into "what to show, what to keep". Stop halfway and reverse. Then press **watch it grow**.
