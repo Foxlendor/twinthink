@@ -137,7 +137,7 @@ export class Camera {
     }
     // content inside the idea counts too: you can zoom right into an image
     for (const m of frame.media ?? []) {
-      if (m.kind === 'image' && Math.abs(m.x - cx) < m.w / 2 + reach && Math.abs(m.y - cy) < (m.w * m.aspect) / 2 + reach) return true;
+      if ((m.kind === 'image' || m.kind === 'video') && Math.abs(m.x - cx) < m.w / 2 + reach && Math.abs(m.y - cy) < (m.w * m.aspect) / 2 + reach) return true;
     }
     return false;
   }

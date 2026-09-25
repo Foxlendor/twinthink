@@ -49,7 +49,24 @@ export type Media =
   /** A 3D object you can turn once you are inside the idea (rendered as an overlay). */
   | { kind: 'model'; src: string; x: number; y: number; w: number; aspect: number }
   /** A song or sound: drawn as a ring waveform; plays when the viewer taps inside. */
-  | { kind: 'audio'; src: string };
+  | { kind: 'audio'; src: string }
+  /**
+   * A short film: plays silently while near, a tap gives it sound. Far away its
+   * poster stands in. from/to (seconds) trim lead-ins that would flash black.
+   */
+  | {
+      kind: 'video';
+      src: string;
+      poster: string;
+      x: number;
+      y: number;
+      w: number;
+      aspect: number;
+      from?: number;
+      to?: number;
+      /** Seen through a round window with a feathered paper edge, like an ink drop. */
+      round?: boolean;
+    };
 
 export interface IdeaNode {
   id: string;

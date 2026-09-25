@@ -10,6 +10,7 @@ import { buildTwinThinkTwin } from './sources/twinthink';
 import { buildArchiveShadows } from './sources/archive';
 import { buildStarters } from './sources/starters';
 import { buildMusic } from './sources/music';
+import { buildDance } from './sources/dance';
 import { LocalShadow, localShadowNode } from './sources/local';
 
 export const CANVAS_EXTENT = 1;
@@ -18,6 +19,7 @@ let twinthink: IdeaNode | null = null;
 let archive: IdeaNode[] | null = null;
 let starters: IdeaNode[] | null = null;
 let music: IdeaNode | null = null;
+let dance: IdeaNode | null = null;
 let current: IdeaNode | null = null;
 
 export function buildWorld(local: LocalShadow[]): IdeaNode {
@@ -25,7 +27,8 @@ export function buildWorld(local: LocalShadow[]): IdeaNode {
   archive ??= buildArchiveShadows();
   starters ??= buildStarters();
   music ??= buildMusic();
-  const children = [twinthink, ...starters, music, ...archive, ...local.map(localShadowNode)];
+  dance ??= buildDance();
+  const children = [twinthink, ...starters, music, dance, ...archive, ...local.map(localShadowNode)];
   const world = rootNode('canvas', children);
   current = world;
   for (const c of children) attachPortals(c);

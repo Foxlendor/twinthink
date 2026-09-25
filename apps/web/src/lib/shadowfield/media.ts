@@ -48,3 +48,43 @@ export function getImage(src: string): Loaded | null {
   img.src = src;
   return null;
 }
+
+// Films: one silent, inline element per source, playing only while in view.
+
+const videos = new Map<string, HTMLVideoElement>();
+
+export function getVideo(src: string): HTMLVideoElement | null {
+  if (typeof document === 'undefined') return null;
+  let v = videos.get(src);
+  if (!v) {
+    v = document.createElement('video');
+    v.muted = true;
+    v.playsInline = true;
+    v.setAttribute('playsinline', '');
+    v.preload = 'auto';
+    v.src = src;
+    videos.set(src, v);
+  }
+  return v;
+}
+
+/** After a frame: films drawn this frame play, all others rest. */
+export function settleVideos(active: Set<string>) {
+  for (const [src, v] of videos) {
+    if (active.has(src)) {
+      if (v.paused) void v.play().catch(() => undefined);
+    } else if (!v.paused) {
+      v.pause();
+      v.muted = true;
+    }
+  }
+}
+
+/** Sound for a film, from a tap (browsers allow sound only after one). */
+export function toggleVideoSound(src: string): boolean {
+  const v = videos.get(src);
+  if (!v) return false;
+  v.muted = !v.muted;
+  if (!v.muted) void v.play().catch(() => undefined);
+  return !v.muted;
+}

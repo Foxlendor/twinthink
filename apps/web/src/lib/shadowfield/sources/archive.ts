@@ -2,14 +2,15 @@
 // to appear on the public Canvas.
 //
 // Disclosure rule chosen by the inventor: on the Canvas each idea shows only
-// its name and that it is alive. The one-line summaries below are kept for
+// its name and that it is alive, plus anything the inventor explicitly chose
+// to show (SHOWN, below). The one-line summaries below are kept for
 // reference but are not displayed. Never add mechanisms, materials or
 // construction details here without new, explicit permission.
 //
 // History rule: nothing is invented. Each record begins on the day it was
 // added to the Canvas; earlier history exists but has not been recorded yet.
 
-import { IdeaNode } from '../model';
+import { IdeaNode, Media } from '../model';
 import { hashString } from '../rng';
 
 const ADDED = Date.parse('2026-09-25T15:00:00Z');
@@ -110,6 +111,30 @@ const CLEARED: Cleared[] = [
   },
 ];
 
+/**
+ * Things the inventor chose to show, by idea. BubbleBlock: a short hand-drawn
+ * film of one version of it, shared by the inventor for the Canvas on
+ * 2026-09-25 (shown as it is; nothing added).
+ */
+const SHOWN: Record<string, { media: Media[]; t: number }> = {
+  bubbleblock: {
+    t: Date.parse('2026-09-25T20:21:00Z'),
+    media: [
+      {
+        kind: 'video',
+        src: '/films/bubbleblock.mp4',
+        poster: '/films/bubbleblock.jpg',
+        x: 0,
+        y: 0,
+        w: 1.7,
+        aspect: 576 / 1028,
+        from: 0.2,
+        to: 14.5,
+      },
+    ],
+  },
+};
+
 export function buildArchiveShadows(): IdeaNode[] {
   return CLEARED.map((c) => ({
     id: `archive/${c.id}`,
@@ -117,7 +142,11 @@ export function buildArchiveShadows(): IdeaNode[] {
     kind: c.kind,
     origin: 'real',
     began: ADDED,
-    events: [{ t: ADDED, kind: 'begin', note: 'added to the Canvas; earlier history not recorded yet' }],
+    events: [
+      { t: ADDED, kind: 'begin', note: 'added to the Canvas; earlier history not recorded yet' },
+      ...(SHOWN[c.id] ? [{ t: SHOWN[c.id].t, kind: 'evidence' as const, note: 'a version of it, shown' }] : []),
+    ],
+    media: SHOWN[c.id]?.media,
     state: 'alive',
     disclosure: 0,
     children: [],

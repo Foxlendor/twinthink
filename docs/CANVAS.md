@@ -1,14 +1,34 @@
 # The Canvas (twinth.ink/canvas)
 
-The Canvas is TwinThink's spatial medium: X/Y to wander, scroll/pinch to go
-deeper. Engine: `apps/web/src/lib/shadowfield`, UI: `apps/web/src/components/shadowfield`.
-Tests: `cd apps/web && npm test`.
+The Canvas is TwinThink's spatial medium. Engine: `apps/web/src/lib/shadowfield`,
+UI: `apps/web/src/components/shadowfield`. Tests: `cd apps/web && npm test`.
+
+## The flight (default)
+Scrolling moves *you*, not a page. The whole Canvas is one endless stream in
+depth (`flight.ts`, drawn by `flightRender.ts`): things wait small near the
+vanishing point, grow as you move toward them, resolve into what they are
+(a song's waveform, a film, a 3D object, a session's constellation) and slide
+out past the edges, behind you.
+- Scroll down / swipe up / spread two fingers: forward. The other way: back.
+  A flick carries you through many things; coming to rest, one settles into focus.
+- Drag sideways to look around. Tap anything to go to it. Keys: arrows, Esc.
+- An idea that holds others is a ring you pass through; inside, its silk runs
+  along the walls. One dotted thread runs through everything, in order.
+- Order is content, not a feed: newest first, and the distance between two
+  things is the time between them (a long silence is a long empty stretch,
+  where the thread thins). After the oldest thing comes the Canvas again.
+- Songs play as you pass them (once a tap has allowed sound), loudest in front
+  of you. Films play silently while near; a tap gives them sound.
+- "see it whole" switches to the map: the same Canvas as nested frames
+  (X/Y to wander, scroll/pinch to go deeper). "fly through" returns.
 
 ## What is on it
 - **TwinThink** — its own Twin, from this repository's real history (dates and categories only).
 - **Free starters** — redr.ink (a 3D object you can turn once inside) and TwizzLock.
 - **johne.boi · music** — seven songs as free modules (`public/music/`). Tap to play; volume follows depth; "take it, free" downloads.
-- **Cleared archive ideas** — names only, no descriptions (`sources/archive.ts`).
+- **johne.boi · dance** — a film, shared by the inventor (`public/films/`).
+- **Cleared archive ideas** — names only, no descriptions (`sources/archive.ts`),
+  plus what the inventor chose to show: a hand-drawn film of one version of BubbleBlock.
 - **Your own Shadows** — never leave your device. Add thoughts, images, sketches; challenge and resolve thoughts; "prove it's mine" downloads a SHA-256 proof-of-existence certificate.
 
 ## Principles

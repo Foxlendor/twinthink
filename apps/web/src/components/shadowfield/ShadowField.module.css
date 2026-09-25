@@ -39,6 +39,28 @@
   color: rgba(30, 28, 36, 0.95);
 }
 
+.mode {
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: rgba(30, 28, 36, 0.45);
+  border-bottom: 1px solid transparent;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+
+.mode:hover,
+.mode:focus-visible {
+  color: rgba(30, 28, 36, 0.9);
+  border-bottom-color: rgba(30, 28, 36, 0.25);
+}
+
 .trail {
   position: absolute;
   left: 20px;
@@ -54,8 +76,14 @@
   color: rgba(30, 28, 36, 0.5);
 }
 
+/* the trail's empty space lets a swipe through to the Canvas */
+.trail {
+  pointer-events: none;
+}
+
 .crumb,
 .here {
+  pointer-events: auto;
   background: none;
   border: none;
   padding: 2px 0;

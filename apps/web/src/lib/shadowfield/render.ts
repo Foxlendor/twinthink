@@ -5,18 +5,18 @@
 // constellation, and finally an environment, with every representation
 // cross-fading continuously as R changes. Nothing here scales a bitmap.
 
-import { IdeaNode, LifeEvent, SEAL_MARGIN, lastActivity, rippleReach } from './model';
+import { IdeaNode, LifeEvent, Media, SEAL_MARGIN, lastActivity, rippleReach } from './model';
 import { Strand, topologyOf, strandAt, strandU } from './layout';
 import { ScreenTransform } from './camera';
 import { spatialIndex } from './spatial';
-import { getImage } from './media';
+import { getImage, getVideo } from './media';
 import { getPeaks } from './audio';
 import { PLOT, Plot } from './plots';
 import { clamp, hash01, noise1, smoothstep } from './rng';
 
 export const PAPER = '#fbfaf7';
-const INK = '30,28,36';
-const ROSE = '176,118,146';
+export const INK = '30,28,36';
+export const ROSE = '176,118,146';
 
 export interface Lens {
   /** Viewer closeness p in [0, 1] for a top-level Twin. */
@@ -69,6 +69,8 @@ export interface RenderState {
   models?: { src: string; x: number; y: number; w: number; h: number; alpha: number }[];
   /** Batched sub-pixel marks, by alpha bucket. */
   dots?: (Path2D | undefined)[];
+  /** Films drawn this frame (they play; the rest rest). */
+  videos?: Set<string>;
 }
 
 const DOT_BUCKETS = 12;
@@ -154,7 +156,7 @@ function drawLattice(st: RenderState, T: ScreenTransform, alpha: number, extent:
 // ---------------------------------------------------------------------------
 // The mark: dot -> ink drop -> diffusing wash.
 
-function drawMark(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: number, sealed: boolean) {
+export function drawMark(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: number, sealed: boolean) {
   const { ctx, time } = st;
   const R = T.s;
   const x = T.ox;
@@ -486,7 +488,7 @@ function drawStrand(st: RenderState, s: Strand, T: ScreenTransform, alpha: numbe
 // ---------------------------------------------------------------------------
 // Text inside leaves (their native representation).
 
-function wrap(ctx: CanvasRenderingContext2D, text: string, width: number): string[] {
+export function wrap(ctx: CanvasRenderingContext2D, text: string, width: number): string[] {
   const out: string[] = [];
   for (const para of text.split('\n')) {
     const words = para.split(/\s+/).filter(Boolean);
@@ -503,7 +505,7 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, width: number): strin
   return out;
 }
 
-function drawArtifact(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: number) {
+export function drawArtifact(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: number) {
   const art = node.artifact;
   if (!art) return;
   const R = T.s;
@@ -610,6 +612,9 @@ function drawMedia(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: n
         ctx.fillStyle = `rgba(${INK},${a * 0.6 * smoothstep(0.6, 0.9, reveal)})`;
         ctx.fillText(m.caption, x0, y0 + H + fs * 1.4);
       }
+    } else if (m.kind === 'video') {
+      const W = m.w * R;
+      drawVideo(st, m, T, alpha, smoothstep(30, 520 * (1.35 - 0.6 * p), W));
     } else if (m.kind === 'audio') {
       drawAudioRing(st, m.src, T, alpha);
     } else if (m.kind === 'model') {
@@ -641,10 +646,75 @@ function drawMedia(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: n
 }
 
 /**
+ * A film inside an idea. Far away its poster stands in, pale as a shadow; near,
+ * the film itself plays (silently until tapped), looping within [from, to].
+ */
+export function drawVideo(
+  st: RenderState,
+  m: Extract<Media, { kind: 'video' }>,
+  T: ScreenTransform,
+  alpha: number,
+  reveal: number
+) {
+  const { ctx } = st;
+  const W = m.w * T.s;
+  const H = W * m.aspect;
+  if (W < 3 || alpha < 0.01) return;
+  const x0 = T.ox + m.x * T.s - W / 2;
+  const y0 = T.oy + m.y * T.s - H / 2;
+  if (x0 > st.w || y0 > st.h || x0 + W < 0 || y0 + H < 0) return;
+  const a = alpha * smoothstep(3, 30, W);
+  const live = reveal > 0.35 ? getVideo(m.src) : null;
+  ctx.save();
+  // far away it is a pale print of itself, darkening into the real thing as you near
+  ctx.globalAlpha = a * (0.1 + 0.9 * Math.pow(reveal, 1.1));
+  if (live) {
+    (st.videos ??= new Set()).add(m.src);
+    const from = m.from ?? 0;
+    if (live.readyState >= 1 && (live.currentTime < from || (m.to !== undefined && live.currentTime > m.to) || live.ended)) {
+      live.currentTime = from;
+    }
+  }
+  const cx = x0 + W / 2;
+  const cy = y0 + H / 2;
+  const rx = W / 2;
+  const ry = Math.min(H / 2, rx * 1.45);
+  // printed onto the paper: its whites become the page, its darks become ink
+  ctx.globalCompositeOperation = 'multiply';
+  if (live && live.readyState >= 2) ctx.drawImage(live, x0, y0, W, H);
+  else {
+    const poster = getImage(m.poster);
+    if (poster) {
+      const need = Math.max(0, Math.floor(Math.log2(poster.img.naturalWidth / Math.max(W, 1))));
+      const lvl = Math.min(poster.mips.length - 1, Math.max(Math.round((1 - reveal) * 4), need));
+      ctx.drawImage(poster.mips[lvl], x0, y0, W, H);
+    } else {
+      ctx.fillStyle = `rgba(${INK},0.05)`;
+      ctx.fillRect(x0, y0, W, H);
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  if (m.round) {
+    // seen through an ink drop: the edge dissolves into the paper, the corners are page
+    ctx.globalAlpha = a;
+    ctx.translate(cx, cy);
+    ctx.scale(1, ry / rx);
+    const g = ctx.createRadialGradient(0, 0, rx * 0.58, 0, 0, rx * 0.97);
+    g.addColorStop(0, 'rgba(251,250,247,0)');
+    g.addColorStop(1, 'rgba(251,250,247,1)');
+    ctx.fillStyle = g;
+    // (the gradient holds its last colour beyond the drop, covering the corners)
+    const hh = (H / 2 + 2) * (rx / ry);
+    ctx.fillRect(-rx - 2, -hh, rx * 2 + 4, hh * 2);
+  }
+  ctx.restore();
+}
+
+/**
  * An idea's real events as a small constellation, in the order they happened,
  * with a light sweeping through them: how much and how often, never what.
  */
-function drawRhythm(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: number) {
+export function drawRhythm(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: number) {
   const evs = node.events.filter((e) => e.kind !== 'dormant' && e.kind !== 'revival');
   if (!evs.length) return;
   const R = T.s;
@@ -678,7 +748,7 @@ function drawRhythm(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: 
  * record. While it plays, a playhead sweeps the ring and the ring breathes
  * with the music.
  */
-function drawAudioRing(st: RenderState, src: string, T: ScreenTransform, alpha: number) {
+export function drawAudioRing(st: RenderState, src: string, T: ScreenTransform, alpha: number) {
   const R = T.s;
   const a = alpha * smoothstep(30, 140, R);
   if (a < 0.01) return;
@@ -1077,6 +1147,7 @@ export function render(st: RenderState, start: IdeaNode, startPath: IdeaNode[], 
   st.labels = [];
   st.dots = [];
   st.models = [];
+  st.videos = new Set();
   drawNode(st, start, T, 1, p, startPath, isRoot);
   st.dots.forEach((path, b) => {
     if (!path) return;

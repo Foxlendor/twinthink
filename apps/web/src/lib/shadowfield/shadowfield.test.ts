@@ -1,4 +1,23 @@
 import { describe, expect, it } from 'vitest';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  aheadCopies,
+  buildStream,
+  focusOf,
+  focusZ,
+  leanAt,
+  mod,
+  nearestFocus,
+  newFlightCam,
+  project,
+  spacing,
+  stepFlightCam,
+  stepFocus,
+  travelled,
+  viewOf,
+  wrapDelta,
+} from './flight';
 import { Camera, ENTER } from './camera';
 import { topologyOf, strandAt } from './layout';
 import { IdeaNode, countEvents, findPath, reachedBy, rippleReach, webSize } from './model';
@@ -269,13 +288,146 @@ describe('cleared archive ideas', () => {
     expect(archived).toHaveLength(9);
     for (const a of archived) {
       expect(a.origin).toBe('real');
-      expect(a.events).toHaveLength(1);
       expect(a.events[0].kind).toBe('begin');
+      // anything after the beginning is only something the inventor chose to show
+      for (const e of a.events.slice(1)) expect(e.kind).toBe('evidence');
+      expect(a.events.length > 1).toBe(!!a.media?.length);
       // names only: no descriptions, no text inside
       expect(a.note).toBeUndefined();
       expect(a.artifact).toBeUndefined();
       expect(Math.hypot(a.x, a.y)).toBeLessThan(1);
     }
+    // the one film the inventor shared: BubbleBlock
+    const shown = archived.filter((a) => a.media?.length);
+    expect(shown.map((a) => a.id)).toEqual(['archive/bubbleblock']);
+    expect(shown[0].media?.[0].kind).toBe('video');
+  });
+});
+
+describe('media files', () => {
+  it('every file the Canvas refers to is published', () => {
+    const world = buildWorld([]);
+    const srcs: string[] = [];
+    const walk = (n: IdeaNode) => {
+      for (const m of n.media ?? []) {
+        if ('src' in m) srcs.push(m.src);
+        if (m.kind === 'video') srcs.push(m.poster);
+      }
+      for (const c of n.children) if (!c.portal) walk(c);
+    };
+    walk(world);
+    expect(srcs.length).toBeGreaterThan(9);
+    for (const src of srcs) expect(existsSync(join(__dirname, '../../../public', src)), src).toBe(true);
+  });
+
+  it('the dance is its own Shadow, a film seen through a round window', () => {
+    const world = buildWorld([]);
+    const dance = world.children.find((c) => c.id === 'dance')!;
+    expect(dance.title).toBe('johne.boi · dance');
+    const film = dance.media?.[0];
+    expect(film?.kind === 'video' && film.round).toBe(true);
+  });
+});
+
+describe('the flight', () => {
+  const world = buildWorld([]);
+  const stream = buildStream(world);
+  const st = stream.stations;
+
+  it('walks every idea once, in order, never into a portal', () => {
+    // expand leaves so portals exist; they must not change the stream
+    for (const c of world.children) topologyOf(c);
+    expect(st[0].node).toBe(world);
+    expect(st[0].depth).toBe(0);
+    const ids = st.map((s) => s.node.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(st.some((s) => s.node.portal || s.node.void)).toBe(false);
+    let count = 0;
+    const walk = (n: IdeaNode) => {
+      for (const c of travelled(n)) {
+        count++;
+        walk(c);
+      }
+    };
+    walk(world);
+    expect(st.length).toBe(count + 1);
+    for (let i = 1; i < st.length; i++) expect(st[i].z).toBeGreaterThan(st[i - 1].z);
+    expect(stream.length).toBeGreaterThan(st[st.length - 1].z);
+  });
+
+  it('an idea that holds others is a ring around everything it holds', () => {
+    for (const g of st.filter((s) => s.gate && s.depth > 0)) {
+      expect(g.x).toBe(0);
+      const inside = st.filter((s) => s.path.includes(g.node) && s !== g);
+      expect(inside.length).toBe(travelled(g.node).length + inside.filter((s) => s.path.length > g.path.length + 1).length);
+      for (const s of inside) {
+        expect(s.z).toBeGreaterThan(g.z);
+        expect(s.z).toBeLessThan(g.end);
+      }
+    }
+  });
+
+  it('newest comes first, and the distance between things is the time between them', () => {
+    const tops = st.filter((s) => s.depth === 1);
+    for (let i = 1; i < tops.length; i++) expect(tops[i].t).toBeLessThanOrEqual(tops[i - 1].t);
+    expect(spacing(0)).toBeCloseTo(1.1);
+    expect(spacing(86400000)).toBeGreaterThan(spacing(3600000));
+    expect(spacing(365 * 86400000)).toBeGreaterThan(spacing(30 * 86400000));
+    expect(spacing(1e14)).toBe(3);
+  });
+
+  it('never ends: repeats ahead, and wraps both ways', () => {
+    const L = stream.length;
+    expect(aheadCopies(0, -0.5, L, 0.06, L * 2.5)).toHaveLength(3);
+    for (const z of [0, 1.7, L - 0.1, L * 3 + 0.2, -L * 2]) {
+      const d = wrapDelta(z, 0.4, L);
+      expect(d).toBeGreaterThan(-L / 2 - 1e-9);
+      expect(d).toBeLessThanOrEqual(L / 2 + 1e-9);
+    }
+    expect(mod(-0.5, L)).toBeCloseTo(L - 0.5);
+  });
+
+  it('arrives at the Canvas ring; a flick carries through many things and settles on one', () => {
+    const cam = newFlightCam();
+    expect(focusOf(stream, cam.z).depth).toBe(0);
+    cam.v = 30;
+    let t = 0;
+    for (; t < 20; t += 1 / 60) stepFlightCam(cam, stream, 1 / 60);
+    expect(cam.z).toBeGreaterThan(8);
+    expect(cam.v).toBe(0);
+    const f = nearestFocus(stream, cam.z)!;
+    expect(Math.abs(f - cam.z)).toBeLessThan(0.01);
+    const here = focusOf(stream, cam.z);
+    expect(here.depth).toBeGreaterThan(0);
+  });
+
+  it('flies to a thing and puts it in focus, forwards or backwards, across the seam', () => {
+    const cam = newFlightCam();
+    const song = st.find((s) => s.node.id.startsWith('music/'))!;
+    cam.z = stream.length * 5 - 0.3; // many laps on, just before the seam
+    cam.target = focusZ(stream, song, cam.z);
+    expect(Math.abs(cam.target - cam.z)).toBeLessThanOrEqual(stream.length / 2);
+    for (let i = 0; i < 600 && cam.target !== null; i++) stepFlightCam(cam, stream, 1 / 60);
+    expect(cam.target).toBeNull();
+    expect(focusOf(stream, cam.z).node.id).toBe(song.node.id);
+    // and the camera leans toward it, so it arrives near the middle
+    const [lx, ly] = leanAt(stream, cam.z);
+    expect(Math.hypot(lx - song.x, ly - song.y)).toBeLessThan(Math.hypot(song.x, song.y));
+  });
+
+  it('stepping goes to the very next thing, and back', () => {
+    const cam = newFlightCam();
+    const a = stepFocus(stream, cam.z, 1)!;
+    const b = stepFocus(stream, a, 1)!;
+    expect(b).toBeGreaterThan(a);
+    expect(stepFocus(stream, b, -1)!).toBeCloseTo(a);
+  });
+
+  it('things are drawn only ahead: behind the camera nothing projects', () => {
+    const v = viewOf(stream, newFlightCam(), 800, 600);
+    const [, , k] = project(v, 0, 0, 1);
+    expect(k).toBeCloseTo(v.F);
+    for (const s of st) for (const dz of aheadCopies(s.z, v.z, stream.length, 0.06, 14)) expect(dz).toBeGreaterThan(0);
   });
 });
 

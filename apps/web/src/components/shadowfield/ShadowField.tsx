@@ -2,12 +2,29 @@
 
 import Link from 'next/link';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Camera } from '@/lib/shadowfield/camera';
+import { Camera, ScreenTransform } from '@/lib/shadowfield/camera';
 import { IdeaNode, LifeEvent, SEAL_MARGIN, findPath, lastActivity } from '@/lib/shadowfield/model';
 import { topologyOf } from '@/lib/shadowfield/layout';
 import { Access, Flight, pan as panCam, stepFlight, transformOfPath, zoomAt } from '@/lib/shadowfield/navigate';
 import { Hit, Lens, RenderState, drawSketch, lifeWord, drawVoidLattice, pulseChain, relTime, render, shortDate } from '@/lib/shadowfield/render';
-import { setMediaReadyCallback } from '@/lib/shadowfield/media';
+import { setMediaReadyCallback, settleVideos, toggleVideoSound } from '@/lib/shadowfield/media';
+import {
+  ARRIVE,
+  FOCUS,
+  FlightCam,
+  Station,
+  Stream,
+  buildStream,
+  focusOf,
+  focusZ,
+  mod,
+  newFlightCam,
+  stepFlightCam,
+  stepFocus,
+  wrapDelta,
+} from '@/lib/shadowfield/flight';
+import { renderFlight } from '@/lib/shadowfield/flightRender';
+import { clamp, smoothstep } from '@/lib/shadowfield/rng';
 import Donate from '@/components/support/Donate';
 import { founderPlots } from '@/lib/shadowfield/plots';
 import { buildWorld, resolvePath } from '@/lib/shadowfield/world';
@@ -141,6 +158,34 @@ function openSpot(cam: Camera, node: IdeaNode): [number, number] {
   return best;
 }
 
+/** The most open spot inside an idea's own frame, for a new thought (no screen needed). */
+function openSpotIn(node: IdeaNode): [number, number] {
+  let best: [number, number] = [0.4, 0];
+  let bestScore = -Infinity;
+  for (let i = 0; i < 64; i++) {
+    const ang = (i / 64) * Math.PI * 2 + 0.37;
+    for (const rho of [0.3, 0.45, 0.6, 0.72]) {
+      const x = Math.cos(ang) * rho;
+      const y = Math.sin(ang) * rho;
+      let d = 1;
+      for (const c of node.children) d = Math.min(d, Math.hypot(c.x - x, c.y - y) - c.r);
+      const score = d - Math.abs(rho - 0.5) * 0.3 + Math.sin(i * 12.9898) * 0.01;
+      if (score > bestScore) {
+        bestScore = score;
+        best = [x, y];
+      }
+    }
+  }
+  return best;
+}
+
+/** One screen height of swipe moves this far along the flight. */
+const SWIPE = 2.4;
+
+function hasMedia(node: IdeaNode | undefined, kind: 'audio' | 'video') {
+  return !!node?.media?.some((m) => m.kind === kind);
+}
+
 function eventLabel(ev: LifeEvent) {
   const d = new Date(ev.t);
   const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
@@ -155,7 +200,7 @@ export default function ShadowField({ serif }: Props) {
   const lensRef = useRef<Lens>({ closeness: () => 0.5, visited: new Set(), followed: new Set() });
   const hitsRef = useRef<Hit[]>([]);
   const flightRef = useRef<Flight | null>(null);
-  const pointerRef = useRef({ x: -1, y: -1, inside: false });
+  const pointerRef = useRef({ x: -1, y: -1, inside: false, t: 0 });
   const velRef = useRef({ x: 0, y: 0 });
   const zoomVelRef = useRef({ v: 0, x: 0, y: 0 });
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
@@ -177,11 +222,22 @@ export default function ShadowField({ serif }: Props) {
     el: HTMLAudioElement;
     gain: GainNode | null;
     analyser: AnalyserNode | null;
+    ac: AudioContext | null;
     buf: Uint8Array<ArrayBuffer> | null;
   } | null>(null);
   const playingRef = useRef<{ src: string; path: IdeaNode[]; silentFor: number } | null>(null);
   // replay: progress 0..1 through [from, to]; playing advances it over time
   const replayRef = useRef<{ from: number; to: number; progress: number; playing: boolean; hold: number } | null>(null);
+  // the flight: the Canvas as one endless stream you move through (default);
+  // the map: the Canvas seen whole, zooming into nested frames
+  const modeRef = useRef<'flight' | 'map'>('flight');
+  const streamRef = useRef<Stream | null>(null);
+  const flightCamRef = useRef<FlightCam>(newFlightCam());
+  const hereRef = useRef<Station | null>(null);
+  const framesRef = useRef(new Map<string, ScreenTransform>());
+  // songs play as you pass them, once a tap has allowed sound; pausing stops that
+  const autoplayRef = useRef(true);
+  const hereSinceRef = useRef({ id: '', t: 0, tried: false });
 
   const [path, setPath] = useState<IdeaNode[]>([]);
   const [depthPos, setDepthPos] = useState(0);
@@ -199,6 +255,7 @@ export default function ShadowField({ serif }: Props) {
   const [givingTo, setGivingTo] = useState<string | null>(null);
   const [news, setNews] = useState<{ ids: string[]; title: string; when: string } | null>(null);
   const [replayView, setReplayView] = useState<{ progress: number; t: number; playing: boolean } | null>(null);
+  const [mode, setMode] = useState<'flight' | 'map'>('flight');
 
   const access: Access = useMemo(
     () => ({
@@ -214,12 +271,37 @@ export default function ShadowField({ serif }: Props) {
     []
   );
 
+  /** The path in focus: in the flight, what is in front of you; on the map, where the camera is. */
+  const focusPath = useCallback((): IdeaNode[] => {
+    if (modeRef.current === 'flight') return hereRef.current?.path ?? (worldRef.current ? [worldRef.current] : []);
+    return camRef.current?.path ?? [];
+  }, []);
+
+  /** Stations this viewer cannot perceive at all (see model.ts, disclosure). */
+  const hiddenStation = useCallback((s: Station) => {
+    if (s.depth < 2) return false;
+    return s.node.disclosure > lensRef.current.closeness(s.path[1]) + SEAL_MARGIN;
+  }, []);
+
   const rebuild = useCallback(() => {
     const store = storeRef.current!;
     const list = store.list();
     setLocalList(list);
     const world = buildWorld(list);
     worldRef.current = world;
+    // the flight keeps what is in front of you in front of you
+    const oldStream = streamRef.current;
+    const oldHere = hereRef.current;
+    const stream = buildStream(world);
+    streamRef.current = stream;
+    const fc = flightCamRef.current;
+    const idx = oldHere ? stream.byId.get(oldHere.node.id) : undefined;
+    if (oldStream && oldHere && idx !== undefined) {
+      const offset = wrapDelta(fc.z, oldHere.z - FOCUS, oldStream.length);
+      fc.z = stream.stations[idx].z - FOCUS + offset;
+      fc.target = null;
+      hereRef.current = stream.stations[idx];
+    }
     const cam = camRef.current;
     if (cam) {
       const ids = cam.path.slice(1).map((n) => n.id);
@@ -241,19 +323,23 @@ export default function ShadowField({ serif }: Props) {
   }, []);
 
   /** Start (or stop) a song; must run inside a tap so browsers allow sound. */
-  const toggleSong = useCallback((path: IdeaNode[]) => {
+  const toggleSong = useCallback((path: IdeaNode[], auto = false) => {
     const node = path[path.length - 1];
     const media = node.media?.find((m) => m.kind === 'audio');
     if (!media || media.kind !== 'audio') return;
     let a = audioRef.current;
     if (!a) {
+      // passing a song only plays it once the visitor has touched the page
+      const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+      if (auto && ua && !ua.hasBeenActive) return;
       const el = new Audio();
       el.preload = 'auto';
       let gain: GainNode | null = null;
       let analyser: AnalyserNode | null = null;
+      let ac: AudioContext | null = null;
       try {
         const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        const ac = new AC();
+        ac = new AC();
         const srcNode = ac.createMediaElementSource(el);
         gain = ac.createGain();
         analyser = ac.createAnalyser();
@@ -264,15 +350,17 @@ export default function ShadowField({ serif }: Props) {
         gain = null;
         analyser = null;
       }
-      a = { el, gain, analyser, buf: analyser ? new Uint8Array(new ArrayBuffer(analyser.fftSize)) : null };
+      a = { el, gain, analyser, ac, buf: analyser ? new Uint8Array(new ArrayBuffer(analyser.fftSize)) : null };
       el.addEventListener('ended', () => {
         playingRef.current = null;
         setPlayingId(null);
       });
       audioRef.current = a;
     }
+    if (a.ac && a.ac.state === 'suspended') void a.ac.resume().catch(() => undefined);
     const cur = playingRef.current;
     if (cur && cur.src === media.src) {
+      if (auto) return;
       if (a.el.paused) void a.el.play();
       else {
         a.el.pause();
@@ -285,17 +373,41 @@ export default function ShadowField({ serif }: Props) {
     void a.el.play().catch(() => {
       playingRef.current = null;
       setPlayingId(null);
-      setNotice('tap play to hear it');
+      if (!auto) setNotice('tap play to hear it');
     });
     playingRef.current = { src: media.src, path, silentFor: 0 };
     setPlayingId(node.id);
   }, []);
 
-  const flyToIds = useCallback((ids: string[]) => {
-    const world = worldRef.current;
-    if (!world) return;
-    flightRef.current = { target: resolvePath(world, ids), radius: 0.53 };
+  const flyTo = useCallback((target: IdeaNode[], radius = 0.53) => {
+    if (modeRef.current === 'flight') {
+      // along the stream to the deepest thing on the path that is on it
+      const stream = streamRef.current;
+      const fc = flightCamRef.current;
+      if (!stream) return;
+      for (let i = target.length - 1; i >= 0; i--) {
+        const idx = stream.byId.get(target[i].id);
+        if (idx === undefined) continue;
+        const s = stream.stations[idx];
+        fc.target = s.depth === 0 ? fc.z + wrapDelta(-ARRIVE, fc.z, stream.length) : focusZ(stream, s, fc.z);
+        fc.v = 0;
+        return;
+      }
+      return;
+    }
+    flightRef.current = { target, radius };
+    velRef.current = { x: 0, y: 0 };
+    zoomVelRef.current.v = 0;
   }, []);
+
+  const flyToIds = useCallback(
+    (ids: string[]) => {
+      const world = worldRef.current;
+      if (!world) return;
+      flyTo(resolvePath(world, ids));
+    },
+    [flyTo]
+  );
 
   // ---------------------------------------------------------------- setup
   useEffect(() => {
@@ -330,10 +442,18 @@ export default function ShadowField({ serif }: Props) {
     worldRef.current = world;
     const cam = new Camera(world);
     camRef.current = cam;
+    const stream = buildStream(world);
+    streamRef.current = stream;
     setMediaReadyCallback(() => undefined); // the frame loop repaints continuously
     import('@google/model-viewer').catch(() => undefined);
     // exposed for scripted visual checks (e2e); read-only by convention
-    (window as unknown as { __shadowField?: unknown }).__shadowField = { cam, flyTo: (ids: string[]) => flyToIds(ids) };
+    (window as unknown as { __shadowField?: unknown }).__shadowField = {
+      cam,
+      flight: flightCamRef.current,
+      stream: () => streamRef.current,
+      here: () => hereRef.current?.node.id ?? null,
+      flyTo: (ids: string[]) => flyToIds(ids),
+    };
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
     cam.resize(rect.width, rect.height);
@@ -343,8 +463,19 @@ export default function ShadowField({ serif }: Props) {
     try {
       const params = new URLSearchParams(window.location.hash.slice(1));
       const ids = (params.get('path') ?? '').split('~').filter(Boolean);
+      if (params.get('view') === 'map') {
+        modeRef.current = 'map';
+        setMode('map');
+      }
       if (ids.length) {
         const p = resolvePath(world, ids);
+        // the flight arrives with the deepest thing on the path in front of you
+        for (let i = p.length - 1; i >= 1; i--) {
+          const idx = stream.byId.get(p[i].id);
+          if (idx === undefined) continue;
+          flightCamRef.current.z = stream.stations[idx].z - FOCUS;
+          break;
+        }
         const z = Number(params.get('z') ?? '0.5');
         const [x, y] = (params.get('c') ?? '0,0').split(',').map(Number);
         cam.path = p;
@@ -426,9 +557,12 @@ export default function ShadowField({ serif }: Props) {
       raf = requestAnimationFrame(frame);
       const canvas = canvasRef.current;
       const cam = camRef.current;
-      if (!canvas || !cam) return;
+      const stream = streamRef.current;
+      if (!canvas || !cam || !stream) return;
       const dt = Math.min(0.05, (nowMs - last) / 1000);
       last = nowMs;
+      const flying = modeRef.current === 'flight';
+      const fc = flightCamRef.current;
 
       const rect = canvas.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -438,25 +572,7 @@ export default function ShadowField({ serif }: Props) {
       }
       cam.resize(rect.width, rect.height);
 
-      // motion
-      if (flightRef.current) {
-        if (stepFlight(cam, flightRef.current, access, dt)) flightRef.current = null;
-      } else if (!dragRef.current.active) {
-        const v = velRef.current;
-        if (Math.abs(v.x) + Math.abs(v.y) > 0.05) {
-          panCam(cam, v.x * dt * 60, v.y * dt * 60, access);
-          const decay = Math.pow(0.9, dt * 60);
-          v.x *= decay;
-          v.y *= decay;
-        }
-      }
-      const zv = zoomVelRef.current;
-      if (Math.abs(zv.v) > 0.0004) {
-        const step = zv.v * Math.min(1, dt * 14);
-        zoomAt(cam, zv.x, zv.y, Math.exp(step), access);
-        zv.v -= step;
-      }
-
+      // replay: the moment being shown
       const rp = replayRef.current;
       let cut: number | null = null;
       if (rp) {
@@ -476,19 +592,57 @@ export default function ShadowField({ serif }: Props) {
           cut = rp.from + (rp.to - rp.from) * e;
         }
       }
+      const skip = (s: Station) => hiddenStation(s) || (cut !== null && s.depth > 0 && s.node.began > cut);
 
-      // music: loudness follows depth, and a song left far behind stops itself
+      // motion
+      if (flying) {
+        stepFlightCam(fc, stream, dt, skip);
+      } else {
+        if (flightRef.current) {
+          if (stepFlight(cam, flightRef.current, access, dt)) flightRef.current = null;
+        } else if (!dragRef.current.active) {
+          const v = velRef.current;
+          if (Math.abs(v.x) + Math.abs(v.y) > 0.05) {
+            panCam(cam, v.x * dt * 60, v.y * dt * 60, access);
+            const decay = Math.pow(0.9, dt * 60);
+            v.x *= decay;
+            v.y *= decay;
+          }
+        }
+        const zv = zoomVelRef.current;
+        if (Math.abs(zv.v) > 0.0004) {
+          const step = zv.v * Math.min(1, dt * 14);
+          zoomAt(cam, zv.x, zv.y, Math.exp(step), access);
+          zv.v -= step;
+        }
+      }
+
+      // what is in front of you
+      const here = flying ? focusOf(stream, fc.z, skip) : null;
+      hereRef.current = here;
+
+      // music: loudness follows nearness, and a song left far behind stops itself
       let audioState: RenderState['audio'] = null;
       const pl = playingRef.current;
       const au = audioRef.current;
       if (pl && au) {
-        const T = transformOfPath(cam, pl.path);
-        const near = T ? Math.max(0, Math.min(1, (T.s - cam.M * 0.03) / (cam.M * 0.4))) : 0;
+        let near = 0;
+        if (flying) {
+          const idx = stream.byId.get(pl.path[pl.path.length - 1].id);
+          if (idx !== undefined) {
+            // heard as it approaches, full while in front of you, gone soon after it passes
+            const dz = wrapDelta(stream.stations[idx].z, fc.z, stream.length);
+            near = dz >= FOCUS ? 1 - smoothstep(1.4, 5, dz) : smoothstep(-0.7, 0.35, dz);
+          }
+        } else {
+          const T = transformOfPath(cam, pl.path);
+          near = T ? Math.max(0, Math.min(1, (T.s - cam.M * 0.03) / (cam.M * 0.4))) : 0;
+        }
         const vol = near * near;
         if (au.gain) au.gain.gain.value = vol;
         else au.el.volume = vol;
         pl.silentFor = vol < 0.01 ? pl.silentFor + dt : 0;
-        if (pl.silentFor > 4) {
+        if (pl.silentFor > (flying ? 1.5 : 4)) {
           au.el.pause();
           playingRef.current = null;
           setPlayingId(null);
@@ -507,15 +661,27 @@ export default function ShadowField({ serif }: Props) {
           audioState = { src: pl.src, progress: d > 0 ? au.el.currentTime / d : 0, level };
         }
       }
+      // passing a song plays it (after a tap has allowed sound; once per arrival)
+      if (here) {
+        const since = hereSinceRef.current;
+        if (since.id !== here.node.id) hereSinceRef.current = { id: here.node.id, t: nowMs, tried: false };
+        else if (
+          autoplayRef.current &&
+          !since.tried &&
+          nowMs - since.t > 350 &&
+          Math.abs(fc.v) < 5 &&
+          hasMedia(here.node, 'audio') &&
+          playingRef.current?.path[playingRef.current.path.length - 1]?.id !== here.node.id
+        ) {
+          since.tried = true;
+          toggleSong(here.path, true);
+        }
+      }
 
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const k = Math.max(0, cam.depth - 2);
-      const T = cam.transformAt(k);
-      const startPath = cam.path.slice(0, k + 1);
-      const p = k === 0 ? 1 : lensRef.current.closeness(cam.path[1]);
       const st: RenderState = {
         ctx,
         w: rect.width,
@@ -536,7 +702,24 @@ export default function ShadowField({ serif }: Props) {
         audio: audioState,
         plots: plotsFor(worldRef.current),
       };
-      render(st, cam.path[k], startPath, T, p, k === 0);
+      if (flying) {
+        renderFlight(st, stream, fc, {
+          frames: framesRef.current,
+          closeness: (s) => (s.depth === 0 ? 1 : lensRef.current.closeness(s.path[1])),
+          hidden: skip,
+        });
+      } else {
+        const k = Math.max(0, cam.depth - 2);
+        const T = cam.transformAt(k);
+        const p = k === 0 ? 1 : lensRef.current.closeness(cam.path[1]);
+        render(st, cam.path[k], cam.path.slice(0, k + 1), T, p, k === 0);
+        if (cam.node.void) {
+          let real = cam.depth;
+          while (real > 0 && cam.path[real].void) real--;
+          drawVoidLattice(st, cam.transformAt(cam.depth), cam.transformAt(real).s);
+        }
+      }
+      settleVideos(st.videos ?? new Set());
       // 3D objects: one live viewer, placed over the largest object in view
       const mv = modelRef.current;
       if (mv) {
@@ -559,19 +742,20 @@ export default function ShadowField({ serif }: Props) {
 
       const sk = sketchRef.current;
       if (sk?.stroke && sk.stroke.length >= 4) {
-        const idx = cam.path.findIndex((n) => n.id === sk.nodeId);
-        if (idx >= 0) drawSketch(st, [sk.stroke], cam.transformAt(idx), 1);
-      }
-      if (cam.node.void) {
-        let real = cam.depth;
-        while (real > 0 && cam.path[real].void) real--;
-        drawVoidLattice(st, cam.transformAt(cam.depth), cam.transformAt(real).s);
+        if (flying) {
+          const T = framesRef.current.get(sk.nodeId);
+          if (T) drawSketch(st, [sk.stroke], T, 1);
+        } else {
+          const idx = cam.path.findIndex((n) => n.id === sk.nodeId);
+          if (idx >= 0) drawSketch(st, [sk.stroke], cam.transformAt(idx), 1);
+        }
       }
 
       // hover
       const ptr = pointerRef.current;
       let hover: Hit | null = null;
-      if (ptr.inside && !dragRef.current.active) {
+      // in the flight things pass under a resting pointer; only a moving hand is pointing
+      if (ptr.inside && !dragRef.current.active && (!flying || nowMs - ptr.t < 1500)) {
         let best = Infinity;
         for (const h of hitsRef.current) {
           const d = Math.hypot(h.x - ptr.x, h.y - ptr.y);
@@ -584,16 +768,16 @@ export default function ShadowField({ serif }: Props) {
       }
       const prev = hoverRef.current;
       hoverRef.current = hover;
-      // a mark that has grown large enough to carry its own label needs no tooltip
-      if (hover && hover.node === prev?.node && hover.kind === 'node' && !hover.sealed && hover.size >= 5) setTip(null);
+      // a mark that has grown large enough to carry its own name needs no tooltip
+      const named = flying ? cam.M * 0.05 : 5;
+      if (hover && hover.node === prev?.node && hover.kind === 'node' && !hover.sealed && hover.size >= named) setTip(null);
       if (hover !== prev && (hover?.node !== prev?.node || hover?.ev !== prev?.ev)) {
         if (!hover) setTip(null);
         else if (hover.kind === 'event' && hover.ev) {
           // a moment, not a message: when, never what
           setTip({ x: hover.x, y: hover.y, title: eventLabel(hover.ev) });
         } else if (hover.node) {
-          // marks large enough to carry their own label need no tooltip
-          if (hover.size < 5 || hover.sealed) {
+          if (hover.size < named || hover.sealed) {
             setTip({
               x: hover.x,
               y: hover.y,
@@ -605,17 +789,18 @@ export default function ShadowField({ serif }: Props) {
       }
       canvas.style.cursor = sketchRef.current ? 'crosshair' : dragRef.current.active ? 'grabbing' : hover ? 'pointer' : 'default';
 
-      // state that the chrome needs
-      const key = cam.path.map((n) => n.id).join('~');
-      if (key !== lastPathKey.current) {
+      // state that the chrome needs (in flight, at most a few times a second)
+      const curPath = here ? here.path : cam.path;
+      const key = curPath.map((n) => n.id).join('~');
+      if (key !== lastPathKey.current && (!flying || nowMs - lastDepthUpdate > 100)) {
         lastPathKey.current = key;
-        if (sketchRef.current && !cam.path.some((n) => n.id === sketchRef.current?.nodeId)) {
+        if (sketchRef.current && !curPath.some((n) => n.id === sketchRef.current?.nodeId)) {
           sketchRef.current = null;
           setSketching(false);
         }
-        setPath([...cam.path]);
-        if (cam.depth >= 1) {
-          const top = cam.path[1];
+        setPath([...curPath]);
+        if (curPath.length > 1) {
+          const top = curPath[1];
           if (!lensRef.current.visited.has(top.id)) {
             lensRef.current.visited.add(top.id);
             writeSet(VISITED_KEY, lensRef.current.visited);
@@ -626,20 +811,27 @@ export default function ShadowField({ serif }: Props) {
       }
       if (nowMs - lastDepthUpdate > 120) {
         lastDepthUpdate = nowMs;
-        const fit = Math.log(Math.min(cam.w, cam.h) * 0.45);
-        // depth is unbounded: the gauge laps once per ~19 e-folds of zoom
-        const lap = Math.max(0, (cam.logZ() - fit) / 19);
-        setDepthPos(lap - Math.floor(lap));
+        if (flying) {
+          // where you are in the lap: the gauge comes round once per journey
+          setDepthPos(mod(fc.z + ARRIVE, stream.length) / stream.length);
+        } else {
+          const fit = Math.log(Math.min(cam.w, cam.h) * 0.45);
+          // depth is unbounded: the gauge laps once per ~19 e-folds of zoom
+          const lap = Math.max(0, (cam.logZ() - fit) / 19);
+          setDepthPos(lap - Math.floor(lap));
+        }
         setView((v) => (v.w === cam.w && v.h === cam.h ? v : { w: cam.w, h: cam.h }));
         const r = replayRef.current;
         if (r && cut !== null) setReplayView({ progress: r.progress, t: cut, playing: r.playing });
       }
-      if (nowMs - lastHash > 700 && !cam.node.void) {
+      if (nowMs - lastHash > 700 && (flying ? Math.abs(fc.v) < 1 : !cam.node.void)) {
         lastHash = nowMs;
-        const ids = cam.path.slice(1).filter((n) => !n.void).map((n) => n.id);
-        const hash = ids.length
-          ? `path=${ids.map(encodeURIComponent).join('~')}&z=${(cam.s / cam.M).toPrecision(4)}&c=${cam.cx.toFixed(5)},${cam.cy.toFixed(5)}`
-          : '';
+        const ids = curPath.slice(1).filter((n) => !n.void).map((n) => n.id);
+        const hash = !ids.length
+          ? ''
+          : flying
+            ? `path=${ids.map(encodeURIComponent).join('~')}`
+            : `path=${ids.map(encodeURIComponent).join('~')}&z=${(cam.s / cam.M).toPrecision(4)}&c=${cam.cx.toFixed(5)},${cam.cy.toFixed(5)}&view=map`;
         if (hash !== window.location.hash.slice(1)) {
           history.replaceState(null, '', hash ? `#${hash}` : window.location.pathname);
         }
@@ -647,7 +839,7 @@ export default function ShadowField({ serif }: Props) {
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [access, serif]);
+  }, [access, serif, hiddenStation, toggleSong]);
 
   // ---------------------------------------------------------------- input
   const dismissHint = useCallback(() => {
@@ -672,6 +864,16 @@ export default function ShadowField({ serif }: Props) {
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       const unit = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? rect.height : 1;
+      if (modeRef.current === 'flight') {
+        // scrolling is moving: down (or a pinch outward) carries you forward
+        const fc = flightCamRef.current;
+        fc.target = null;
+        fc.idle = 0;
+        const d = (Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX) * unit;
+        fc.v += e.ctrlKey ? -d * 0.06 : d * 0.018;
+        dismissHint();
+        return;
+      }
       const dy = e.deltaY * unit;
       const dx = e.deltaX * unit;
       if (!e.ctrlKey && Math.abs(dx) > Math.abs(dy) * 1.2) {
@@ -692,16 +894,24 @@ export default function ShadowField({ serif }: Props) {
     return () => root.removeEventListener('wheel', onWheel);
   }, [access, dismissHint]);
 
-  const flyTo = useCallback((target: IdeaNode[], radius = 0.53) => {
-    flightRef.current = { target, radius };
-    velRef.current = { x: 0, y: 0 };
-    zoomVelRef.current.v = 0;
-  }, []);
-
   const openComposerAt = useCallback(
     (sx: number, sy: number) => {
       const cam = camRef.current;
       if (!cam) return;
+      if (modeRef.current === 'flight') {
+        // in the flight, a new Shadow joins the Canvas; a thought joins the idea in front of you
+        const p = focusPath();
+        const node = p[p.length - 1];
+        if (!node) return;
+        const [lx, ly] = openSpotIn(node);
+        if (p.length <= 1) {
+          setComposer({ mode: 'cast', x: sx, y: sy, lx, ly });
+          return;
+        }
+        const ids = localIds(node);
+        if (ids) setComposer({ mode: 'thought', x: sx, y: sy, lx, ly, shadowId: ids.shadowId, parentId: ids.thoughtId });
+        return;
+      }
       const [lx, ly] = cam.toLocal(sx, sy);
       if (cam.depth === 0) {
         setComposer({ mode: 'cast', x: sx, y: sy, lx, ly });
@@ -711,7 +921,7 @@ export default function ShadowField({ serif }: Props) {
       if (!ids || Math.hypot(lx, ly) > 0.9) return;
       setComposer({ mode: 'thought', x: sx, y: sy, lx, ly, shadowId: ids.shadowId, parentId: ids.thoughtId });
     },
-    []
+    [focusPath]
   );
 
   /** Screen point -> coordinates in the frame of the owned idea being sketched in. */
@@ -719,10 +929,55 @@ export default function ShadowField({ serif }: Props) {
     const cam = camRef.current;
     const sk = sketchRef.current;
     if (!cam || !sk) return null;
+    if (modeRef.current === 'flight') {
+      const T = framesRef.current.get(sk.nodeId);
+      return T ? [(sx - T.ox) / T.s, (sy - T.oy) / T.s] : null;
+    }
     const idx = cam.path.findIndex((n) => n.id === sk.nodeId);
     if (idx < 0) return null;
     const T = cam.transformAt(idx);
     return [(sx - T.ox) / T.s, (sy - T.oy) / T.s];
+  };
+
+  /** Sound for a film (from a tap); a song that is playing gives way to it. */
+  const filmSound = (src: string) => {
+    if (!toggleVideoSound(src)) return;
+    const a = audioRef.current;
+    if (a && playingRef.current) {
+      a.el.pause();
+      playingRef.current = null;
+      setPlayingId(null);
+    }
+  };
+
+  /** Between the flight (moving through) and the map (seeing it whole), keeping your place. */
+  const switchMode = () => {
+    const cam = camRef.current;
+    const stream = streamRef.current;
+    const world = worldRef.current;
+    if (!cam || !stream || !world) return;
+    sketchRef.current = null;
+    setSketching(false);
+    if (modeRef.current === 'flight') {
+      const target = hereRef.current?.path ?? [world];
+      modeRef.current = 'map';
+      setMode('map');
+      cam.path = [world];
+      cam.cx = 0;
+      cam.cy = 0;
+      cam.s = cam.M * 0.45;
+      if (target.length > 1) flightRef.current = { target, radius: 0.53 };
+      return;
+    }
+    const fc = flightCamRef.current;
+    const deepest = [...cam.path].reverse().find((n) => stream.byId.has(n.id));
+    const s = deepest ? stream.stations[stream.byId.get(deepest.id)!] : null;
+    fc.z = !s || s.depth === 0 ? -ARRIVE : s.z - FOCUS;
+    fc.v = 0;
+    fc.target = null;
+    flightRef.current = null;
+    modeRef.current = 'flight';
+    setMode('flight');
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -740,6 +995,14 @@ export default function ShadowField({ serif }: Props) {
     e.currentTarget.setPointerCapture(e.pointerId);
     flightRef.current = null;
     velRef.current = { x: 0, y: 0 };
+    if (modeRef.current === 'flight') {
+      // a touch catches the flight, the way a finger stops a spinning wheel
+      const fc = flightCamRef.current;
+      fc.held = true;
+      fc.target = null;
+      fc.v = 0;
+      fc.idle = 0;
+    }
     dragRef.current = { active: true, moved: 0, lastT: performance.now() };
     if (pointersRef.current.size === 2) {
       const [a, b] = [...pointersRef.current.values()];
@@ -758,12 +1021,38 @@ export default function ShadowField({ serif }: Props) {
       if (pt) sk.stroke.push(pt[0], pt[1]);
       return;
     }
-    pointerRef.current = { x, y, inside: true };
+    pointerRef.current = { x, y, inside: true, t: performance.now() };
     const prev = pointersRef.current.get(e.pointerId);
     if (!prev) return;
     pointersRef.current.set(e.pointerId, { x, y });
     const cam = camRef.current;
     if (!cam) return;
+    if (modeRef.current === 'flight') {
+      const fc = flightCamRef.current;
+      const M = Math.min(cam.w, cam.h);
+      fc.idle = 0;
+      if (pointersRef.current.size >= 2 && pinchRef.current) {
+        // spreading two fingers carries you in, pinching carries you back
+        const [a, b] = [...pointersRef.current.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (pinchRef.current.d > 10 && d > 10) fc.z += Math.log(d / pinchRef.current.d) * 1.8;
+        pinchRef.current = { d, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        dragRef.current.moved += 20;
+        return;
+      }
+      // up is forward, like scrolling; across is looking around
+      const dx = x - prev.x;
+      const dy = y - prev.y;
+      dragRef.current.moved += Math.abs(dx) + Math.abs(dy);
+      const step = (-dy / M) * SWIPE;
+      fc.z += step;
+      fc.wx = clamp(fc.wx - (dx / M) * 0.6, -0.5, 0.5);
+      const now = performance.now();
+      const dtm = Math.max(1, now - dragRef.current.lastT);
+      dragRef.current.lastT = now;
+      fc.v = fc.v * 0.5 + (step / (dtm / 1000)) * 0.5;
+      return;
+    }
     if (pointersRef.current.size >= 2 && pinchRef.current) {
       const [a, b] = [...pointersRef.current.values()];
       const d = Math.hypot(a.x - b.x, a.y - b.y);
@@ -806,9 +1095,19 @@ export default function ShadowField({ serif }: Props) {
     if (pointersRef.current.size > 0) return;
     const moved = dragRef.current.moved;
     dragRef.current.active = false;
+    const flying = modeRef.current === 'flight';
+    const fc = flightCamRef.current;
+    if (flying) {
+      // let go: the flight carries on with the swipe's speed, unless the finger had stopped
+      fc.held = false;
+      fc.idle = 0;
+      if (performance.now() - dragRef.current.lastT > 90) fc.v = 0;
+      fc.v = clamp(fc.v, -40, 40);
+    }
     if (performance.now() - dragRef.current.lastT > 80) velRef.current = { x: 0, y: 0 };
     if (moved > 6) return;
     velRef.current = { x: 0, y: 0 };
+    if (flying) fc.v = 0;
 
     const now = performance.now();
     const lastTap = lastTapRef.current;
@@ -816,15 +1115,29 @@ export default function ShadowField({ serif }: Props) {
     lastTapRef.current = { t: now, x, y };
 
     const hit = hoverRef.current ?? hitsRef.current.find((h) => Math.hypot(h.x - x, h.y - y) < h.r) ?? null;
-    if (hit && hit.kind === 'node' && hit.node.media?.some((m) => m.kind === 'audio')) {
+    if (hit && hit.kind === 'node' && hasMedia(hit.node, 'audio')) {
       // a song: go to it and let it play (the tap is what allows sound)
       flyTo(hit.path, 0.53);
+      autoplayRef.current = true;
       toggleSong(hit.path);
       return;
     }
-    const camNow = camRef.current;
-    if (!hit && camNow && camNow.node.media?.some((m) => m.kind === 'audio')) {
-      toggleSong([...camNow.path]);
+    const focused = focusPath();
+    const focusedNode = focused[focused.length - 1];
+    const film = (n: IdeaNode | undefined) => n?.media?.find((m) => m.kind === 'video');
+    if (hit && hit.kind === 'node' && film(hit.node)) {
+      // a film: go to it; a tap on it once there gives it sound
+      if (focusedNode?.id === hit.node.id) filmSound(film(hit.node)!.src);
+      else flyTo(hit.path);
+      return;
+    }
+    if (!hit && hasMedia(focusedNode, 'audio')) {
+      autoplayRef.current = true;
+      toggleSong([...focused]);
+      return;
+    }
+    if (!hit && flying && film(focusedNode)) {
+      filmSound(film(focusedNode)!.src);
       return;
     }
     if (hit && hit.kind === 'node') {
@@ -842,6 +1155,27 @@ export default function ShadowField({ serif }: Props) {
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
       const cam = camRef.current;
       if (!cam) return;
+      if (modeRef.current === 'flight') {
+        const fc = flightCamRef.current;
+        const stream = streamRef.current;
+        if (!stream) return;
+        const go = (dir: 1 | -1) => {
+          const z = stepFocus(stream, fc.target ?? fc.z, dir, hiddenStation);
+          if (z !== null) {
+            fc.target = z;
+            fc.v = 0;
+          }
+        };
+        if (['ArrowDown', 'ArrowRight', 'PageDown', '+', '=', 'j'].includes(e.key)) go(1);
+        else if (['ArrowUp', 'ArrowLeft', 'PageUp', '-', '_', 'k'].includes(e.key)) go(-1);
+        else if (e.key === 'Escape' || e.key === 'Backspace') {
+          const p = focusPath();
+          if (p.length > 1) flyTo(p.slice(0, -1));
+        } else return;
+        e.preventDefault();
+        dismissHint();
+        return;
+      }
       const cx = cam.w / 2;
       const cy = cam.h / 2;
       if (e.key === '+' || e.key === '=') zoomVelRef.current = { v: 0.5, x: cx, y: cy };
@@ -858,21 +1192,21 @@ export default function ShadowField({ serif }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [composer, dismissHint, flyTo]);
+  }, [composer, dismissHint, flyTo, focusPath, hiddenStation]);
 
   // ---------------------------------------------------------------- actions
   const wander = () => {
     const world = worldRef.current;
     if (!world) return;
-    const options = world.children.filter((c) => c.id !== camRef.current?.path[1]?.id);
+    const options = world.children.filter((c) => c.id !== focusPath()[1]?.id);
     const pick = options.length ? options[Math.floor(Math.random() * options.length)] : world.children[0];
     if (pick) flyTo([world, pick]);
   };
 
   const startReplay = () => {
-    const cam = camRef.current;
-    if (!cam || cam.depth < 1) return;
-    const top = cam.path[1];
+    const fp = focusPath();
+    if (fp.length < 2) return;
+    const top = fp[1];
     const to = Date.now();
     replayRef.current = { from: top.began - 3600000, to, progress: 0, playing: true, hold: 0 };
     setReplayView({ progress: 0, t: top.began, playing: true });
@@ -939,24 +1273,34 @@ export default function ShadowField({ serif }: Props) {
   };
 
   const toggleSketch = () => {
-    const cam = camRef.current;
-    if (!cam) return;
+    const fp = focusPath();
+    const node = fp[fp.length - 1];
     if (sketchRef.current) {
+      const id = sketchRef.current.nodeId;
       sketchRef.current = null;
       setSketching(false);
-      const id = cam.node.id;
       ripple(id);
       return;
     }
-    if (!localIds(cam.node)) return;
-    sketchRef.current = { nodeId: cam.node.id, stroke: null };
+    if (!node || !localIds(node)) return;
+    if (modeRef.current === 'flight') {
+      // hold still in front of it while drawing
+      const stream = streamRef.current;
+      const here = hereRef.current;
+      const fc = flightCamRef.current;
+      if (stream && here) fc.target = focusZ(stream, here, fc.z);
+      fc.v = 0;
+    }
+    sketchRef.current = { nodeId: node.id, stroke: null };
     setSketching(true);
   };
 
   const addImage = async (file: File) => {
     const cam = camRef.current;
-    const ids = cam ? localIds(cam.node) : null;
-    if (!cam || !ids) return;
+    const fp = focusPath();
+    const node = fp[fp.length - 1];
+    const ids = node ? localIds(node) : null;
+    if (!cam || !node || !ids) return;
     try {
       const url = URL.createObjectURL(file);
       const img = new Image();
@@ -972,7 +1316,7 @@ export default function ShadowField({ serif }: Props) {
       c.getContext('2d')?.drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(url);
       const src = c.toDataURL('image/jpeg', 0.8);
-      const [x, y] = openSpot(cam, cam.node);
+      const [x, y] = modeRef.current === 'flight' ? openSpotIn(node) : openSpot(cam, node);
       const aspect = c.height / c.width;
       const w = Math.min(0.6, 0.6 / Math.max(1, aspect));
       const ok = storeRef.current?.addMedia(ids.shadowId, ids.thoughtId, { kind: 'image', src, x: x * 0.6, y: y * 0.6, w, aspect });
@@ -981,7 +1325,7 @@ export default function ShadowField({ serif }: Props) {
         return;
       }
       rebuild();
-      ripple(cam.node.id);
+      ripple(node.id);
     } catch {
       setNotice('that image could not be read');
     }
@@ -993,7 +1337,8 @@ export default function ShadowField({ serif }: Props) {
     else {
       next.add(node.id);
       // encouragement is felt: it ripples through the idea
-      ripple(camRef.current?.node.id ?? node.id);
+      const fp = focusPath();
+      ripple(fp[fp.length - 1]?.id ?? node.id);
     }
     lensRef.current.followed = next;
     writeSet(FOLLOW_KEY, next);
@@ -1001,7 +1346,8 @@ export default function ShadowField({ serif }: Props) {
   };
 
   const startDialectic = (mode: 'challenge' | 'synthesis') => {
-    const d = dialecticFor(storeRef.current?.list() ?? [], camRef.current?.node);
+    const fp = focusPath();
+    const d = dialecticFor(storeRef.current?.list() ?? [], fp[fp.length - 1]);
     const cam = camRef.current;
     if (!d || !cam) return;
     setComposer({
@@ -1055,8 +1401,7 @@ export default function ShadowField({ serif }: Props) {
       const cam = camRef.current;
       if (cam && made) {
         // step back into the frame that holds both, so the lines can be seen meeting
-        const parentPath = cam.path.slice(0, cam.path.length - 1);
-        flyTo(parentPath);
+        flyTo(focusPath().slice(0, -1));
         ripple(`local/${c.shadowId}/${made.id}`);
       }
     } else if (c.mode === 'rewrite' && c.shadowId) {
@@ -1087,7 +1432,11 @@ export default function ShadowField({ serif }: Props) {
       <canvas
         ref={canvasRef}
         className={styles.canvas}
-        aria-label="TwinThink Canvas. Scroll to move closer to an idea, drag to wander."
+        aria-label={
+          mode === 'flight'
+            ? 'TwinThink Canvas. Scroll, or swipe up, to move through ideas; tap one to go to it.'
+            : 'TwinThink Canvas. Scroll to move closer to an idea, drag to wander.'
+        }
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -1105,6 +1454,10 @@ export default function ShadowField({ serif }: Props) {
       <Link href="/" className={styles.mark} aria-label="TwinThink home">
         twinthink
       </Link>
+
+      <button type="button" className={styles.mode} onClick={switchMode}>
+        {mode === 'flight' ? 'see it whole' : 'fly through'}
+      </button>
 
       {ownedHere && <div className={styles.privacy}>private · only on this device</div>}
 
@@ -1204,8 +1557,9 @@ export default function ShadowField({ serif }: Props) {
                 const c = camRef.current;
                 if (!c) return;
                 // place a new thought in the most open visible space
-                const [lx, ly] = openSpot(c, c.node);
-                const [sx, sy] = c.toScreen(lx, ly);
+                const flying = modeRef.current === 'flight';
+                const [lx, ly] = flying ? openSpotIn(current) : openSpot(c, c.node);
+                const [sx, sy] = flying ? [c.w / 2 - 130, c.h - 150] : c.toScreen(lx, ly);
                 setComposer({
                   mode: 'thought',
                   x: Math.max(40, Math.min(c.w - 260, sx)),
@@ -1432,7 +1786,9 @@ export default function ShadowField({ serif }: Props) {
         </form>
       )}
 
-      {!hinted && path.length <= 1 && <div className={styles.hint}>scroll toward anything</div>}
+      {!hinted && path.length <= 1 && (
+        <div className={styles.hint}>{mode === 'flight' ? 'scroll, or swipe up' : 'scroll toward anything'}</div>
+      )}
 
       <nav className={styles.srNav} aria-label="Ideas here">
         <p aria-live="polite">
