@@ -428,7 +428,7 @@ export default function BomTab({ twin }: TabProps) {
             }}
           >
             <ShieldCheck size={16} style={{ color: 'var(--accent-primary)' }} />
-            DPP Projection Preview
+            Product passport preview
           </button>
         </div>
       </div>
@@ -965,6 +965,25 @@ export default function BomTab({ twin }: TabProps) {
               >
                 <X size={20} />
               </button>
+            </div>
+
+            {/* Plain-language context: what this is and why it matters */}
+            <div style={{
+              background: 'var(--bg-tertiary)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '0.9rem 1rem',
+              fontSize: '0.875rem',
+              color: 'var(--text-secondary)',
+              lineHeight: 1.6
+            }}>
+              <strong style={{ color: 'var(--text-primary)' }}>What am I looking at?</strong>{' '}
+              A <em>Digital Product Passport</em> is like a nutrition label for a physical product: what it is made of,
+              where its parts come from, and how to repair or recycle it. The EU is starting to require one for many
+              products sold there. This preview shows what this invention&apos;s passport <em>would</em> contain, built
+              automatically from its Twin, so the inventor can see what is still missing long before manufacturing.
+              <div style={{ marginTop: '0.5rem' }}>
+                The tabs below show the same passport as different people would see it: the public, a recycler, or a regulator.
+              </div>
             </div>
 
             {/* Mandatory Safeguard Disclaimer */}

@@ -43,7 +43,6 @@ export default function BrandVideoBanner({
         src="/brand_ink_reveal.mp4"
         poster="/brand_ink_reveal_poster.jpg"
         autoPlay
-        loop
         muted
         playsInline
         style={{
