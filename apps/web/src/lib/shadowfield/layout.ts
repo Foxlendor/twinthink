@@ -36,6 +36,14 @@ export interface Strand {
   twigs: Twig[];
   weight: number;
   seed: number;
+  /** Time span the strand represents (epoch ms): birth of the child to its latest activity. */
+  t0: number;
+  t1: number;
+}
+
+/** Arc fraction reached by a strand at time t. */
+export function strandU(s: Strand, t: number) {
+  return clamp((t - s.t0) / Math.max(s.t1 - s.t0, 1), 0, 1);
 }
 
 export interface Topology {
@@ -262,6 +270,8 @@ function buildTopology(node: IdeaNode): Topology {
       twigs,
       weight: countEvents(c) + c.children.length * 3 + (c.state === 'abandoned' ? -2 : 0),
       seed,
+      t0,
+      t1,
     });
   }
 

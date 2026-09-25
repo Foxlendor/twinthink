@@ -117,6 +117,8 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
   const monoRef = useRef('monospace');
   const lastPathKey = useRef('');
   const lastTapRef = useRef({ t: 0, x: 0, y: 0 });
+  // replay: progress 0..1 through [from, to]; playing advances it over time
+  const replayRef = useRef<{ from: number; to: number; progress: number; playing: boolean; hold: number } | null>(null);
 
   const [path, setPath] = useState<IdeaNode[]>([]);
   const [depthPos, setDepthPos] = useState(0);
@@ -126,6 +128,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
   const [hinted, setHinted] = useState(true);
   const [followed, setFollowed] = useState<Set<string>>(new Set());
   const [, setVersion] = useState(0);
+  const [replayView, setReplayView] = useState<{ progress: number; t: number; playing: boolean } | null>(null);
 
   const access: Access = useMemo(
     () => ({
@@ -159,7 +162,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
   const flyToIds = useCallback((ids: string[]) => {
     const world = worldRef.current;
     if (!world) return;
-    flightRef.current = { target: resolvePath(world, ids), radius: 0.56 };
+    flightRef.current = { target: resolvePath(world, ids), radius: 0.53 };
   }, []);
 
   // ---------------------------------------------------------------- setup
@@ -263,6 +266,26 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
         zv.v -= step;
       }
 
+      const rp = replayRef.current;
+      let cut: number | null = null;
+      if (rp) {
+        if (rp.playing) {
+          rp.progress = Math.min(1, rp.progress + dt / 14);
+          if (rp.progress >= 1) {
+            rp.hold += dt;
+            if (rp.hold > 1.6) {
+              replayRef.current = null;
+              setReplayView(null);
+            }
+          }
+        }
+        if (replayRef.current) {
+          // ease so the first moments of an idea are not rushed
+          const e = rp.progress < 1 ? Math.pow(rp.progress, 1.35) : 1;
+          cut = rp.from + (rp.to - rp.from) * e;
+        }
+      }
+
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -283,7 +306,8 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
         mono: monoRef.current,
         hoverId: hoverRef.current?.kind === 'node' ? hoverRef.current.node.id : null,
         hoverEv: hoverRef.current?.ev ?? null,
-        now: Date.now(),
+        now: cut ?? Date.now(),
+        cut,
       };
       render(st, cam.path[k], startPath, T, p, k === 0);
 
@@ -341,6 +365,8 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
         const fit = Math.log(Math.min(cam.w, cam.h) * 0.45);
         setDepthPos(Math.max(0, Math.min(1, (cam.logZ() - fit) / 19)));
         setView((v) => (v.w === cam.w && v.h === cam.h ? v : { w: cam.w, h: cam.h }));
+        const r = replayRef.current;
+        if (r && cut !== null) setReplayView({ progress: r.progress, t: cut, playing: r.playing });
       }
       if (!rehearsal && nowMs - lastHash > 700) {
         lastHash = nowMs;
@@ -398,7 +424,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
     return () => canvas.removeEventListener('wheel', onWheel);
   }, [access, dismissHint]);
 
-  const flyTo = useCallback((target: IdeaNode[], radius = 0.56) => {
+  const flyTo = useCallback((target: IdeaNode[], radius = 0.53) => {
     flightRef.current = { target, radius };
     velRef.current = { x: 0, y: 0 };
     zoomVelRef.current.v = 0;
@@ -485,7 +511,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
 
     const hit = hoverRef.current ?? hitsRef.current.find((h) => Math.hypot(h.x - x, h.y - y) < h.r) ?? null;
     if (hit && hit.kind === 'node') {
-      flyTo(hit.path, hit.sealed ? 0.12 : 0.56);
+      flyTo(hit.path, hit.sealed ? 0.12 : 0.53);
       return;
     }
     if (isDouble) openComposerAt(x, y);
@@ -524,6 +550,29 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
     const options = world.children.filter((c) => c.id !== camRef.current?.path[1]?.id);
     const pick = options.length ? options[Math.floor(Math.random() * options.length)] : world.children[0];
     if (pick) flyTo([world, pick]);
+  };
+
+  const startReplay = () => {
+    const cam = camRef.current;
+    if (!cam || cam.depth < 1) return;
+    const top = cam.path[1];
+    const to = Date.now();
+    replayRef.current = { from: top.began - 3600000, to, progress: 0, playing: true, hold: 0 };
+    setReplayView({ progress: 0, t: top.began, playing: true });
+  };
+
+  const stopReplay = () => {
+    replayRef.current = null;
+    setReplayView(null);
+  };
+
+  const scrubReplay = (e: React.PointerEvent<HTMLDivElement>) => {
+    const r = replayRef.current;
+    if (!r) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    r.progress = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    r.playing = false;
+    r.hold = 0;
   };
 
   const toggleFollow = (node: IdeaNode) => {
@@ -628,6 +677,11 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
             </button>
           </>
         )}
+        {top && (
+          <button type="button" className={styles.quiet} onClick={replayView ? stopReplay : startReplay}>
+            {replayView ? 'return to now' : 'watch it grow'}
+          </button>
+        )}
         {top && top.ownedBy !== 'viewer' && (
           <button
             type="button"
@@ -698,6 +752,46 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
         )}
       </div>
 
+      {replayView && (
+        <div className={styles.replay}>
+          <div
+            className={styles.replayTrack}
+            role="slider"
+            aria-label="Moment in this idea's life"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(replayView.progress * 100)}
+            tabIndex={0}
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId);
+              scrubReplay(e);
+            }}
+            onPointerMove={(e) => {
+              if (e.buttons) scrubReplay(e);
+            }}
+            onKeyDown={(e) => {
+              const r = replayRef.current;
+              if (!r) return;
+              if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                r.playing = false;
+                r.progress = Math.max(0, Math.min(1, r.progress + (e.key === 'ArrowLeft' ? -0.02 : 0.02)));
+                e.stopPropagation();
+              } else if (e.key === ' ') {
+                r.playing = !r.playing;
+                e.preventDefault();
+              }
+            }}
+          >
+            <div className={styles.replayFill} style={{ width: `${replayView.progress * 100}%` }} />
+          </div>
+          <div className={styles.replayDate}>
+            {new Date(replayView.t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase()}
+            {' · '}
+            {new Date(replayView.t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}
+          </div>
+        </div>
+      )}
+
       {tip && (
         <div className={styles.tip} style={{ left: tip.x + 14, top: tip.y - 8 }}>
           <div className={styles.tipTitle}>{tip.title}</div>
@@ -737,7 +831,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
         </form>
       )}
 
-      {!hinted && <div className={styles.hint}>scroll toward anything</div>}
+      {!hinted && path.length <= 1 && <div className={styles.hint}>scroll toward anything</div>}
 
       <nav className={styles.srNav} aria-label="Ideas here">
         <p aria-live="polite">

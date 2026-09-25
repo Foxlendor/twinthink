@@ -41,7 +41,7 @@ export function maxScale(cam: Camera, access: Access, fx = cam.cx, fy = cam.cy):
 }
 
 export function minScale(cam: Camera): number {
-  return cam.depth === 0 ? Math.min(cam.w, cam.h) * 0.2 : 0;
+  return cam.depth === 0 ? cam.M * 0.2 : 0;
 }
 
 /**
@@ -130,7 +130,7 @@ export function stepFlight(cam: Camera, f: Flight, access: Access, dt: number): 
   }
   const T = transformOfPath(cam, f.target);
   if (!T) return true;
-  const wantR = f.target.length === 1 ? Math.min(cam.w, cam.h) * 0.45 : f.radius * M;
+  const wantR = f.target.length === 1 ? M * 0.45 : f.radius * M;
   const dx = cam.w / 2 - T.ox;
   const dy = cam.h / 2 - T.oy;
   const lz = Math.log(wantR / T.s);

@@ -8,7 +8,7 @@
 import { IdeaNode } from './model';
 import { topologyOf } from './layout';
 
-/** Enter a child once its radius covers this fraction of the larger screen side. */
+/** Enter a child once its radius covers this fraction of the shorter screen side. */
 export const ENTER = 0.5;
 /** Leave a frame when its own radius shrinks below this fraction. */
 export const EXIT = 0.28;
@@ -41,8 +41,9 @@ export class Camera {
     return this.path.length - 1;
   }
 
+  /** Reference size for semantic thresholds: the shorter screen side. */
   get M() {
-    return Math.max(this.w, this.h);
+    return Math.min(this.w, this.h);
   }
 
   resize(w: number, h: number) {

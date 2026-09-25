@@ -6,7 +6,7 @@
 // cross-fading continuously as R changes. Nothing here scales a bitmap.
 
 import { IdeaNode, LifeEvent, SEAL_MARGIN, lastActivity, countEvents } from './model';
-import { Strand, topologyOf, strandAt } from './layout';
+import { Strand, topologyOf, strandAt, strandU } from './layout';
 import { ScreenTransform } from './camera';
 import { clamp, hash01, noise1, smoothstep } from './rng';
 
@@ -47,6 +47,19 @@ export interface RenderState {
   hoverId: string | null;
   hoverEv: LifeEvent | null;
   now: number;
+  /** When replaying, the moment being shown (epoch ms); null = the present. */
+  cut: number | null;
+  /** Labels are queued during the pass and placed afterwards by priority. */
+  labels?: QueuedLabel[];
+}
+
+interface QueuedLabel {
+  node: IdeaNode;
+  x: number;
+  y: number;
+  cs: number;
+  alpha: number;
+  sealed: boolean;
 }
 
 function onScreen(st: RenderState, x: number, y: number, r: number) {
@@ -117,7 +130,7 @@ function drawMark(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: nu
     ctx.fillRect(x - size / 2, y - size / 2, size, size);
   }
 
-  const dropA = alpha * smoothstep(1.0, 5, R) * (sealed ? 1 : 1 - smoothstep(70, 520, R));
+  const dropA = alpha * smoothstep(1.0, 5, R) * (sealed ? 1 : 1 - smoothstep(40, 190, R));
   if (dropA > 0.004) {
     const breathe = node.state === 'alive' ? 1 + 0.035 * Math.sin(time * 0.8 + (seed % 97)) : 1;
     const rb = Math.min(R * (sealed ? 0.3 : 0.42), sealed ? 60 : 1e9) * breathe;
@@ -253,8 +266,10 @@ function drawStrand(st: RenderState, s: Strand, T: ScreenTransform, alpha: numbe
   const breatheAmp = 0.0028 * R * (0.4 + 0.6 * (1 - s.coherence));
   const jitterPx = (1 - s.coherence) * gap * 0.45;
 
+  const uCut = st.cut === null ? 1 : strandU(s, st.cut);
+  if (st.cut !== null && st.cut < s.t0) return;
   const i0 = Math.max(0, Math.floor(uLo * N) - 1);
-  const i1 = Math.min(N, Math.ceil(uHi * N) + 1);
+  const i1 = Math.min(Math.floor(uCut * N), Math.ceil(uHi * N) + 1);
   const budget = 5000;
   const step = Math.max(1, Math.ceil((i1 - i0) / budget));
 
@@ -289,6 +304,7 @@ function drawStrand(st: RenderState, s: Strand, T: ScreenTransform, alpha: numbe
   if (twigA > 0.01) {
     ctx.fillStyle = `rgba(${INK},${twigA * 0.6})`;
     for (const tw of s.twigs) {
+      if (st.cut !== null && tw.ev.t > st.cut) continue;
       const [bx, by, tx, ty] = strandAt(s, tw.u);
       const ang = Math.atan2(ty, tx) + tw.side * 0.95;
       const segs = 18;
@@ -314,6 +330,7 @@ function drawStrand(st: RenderState, s: Strand, T: ScreenTransform, alpha: numbe
   const markA = alpha * smoothstep(260, 700, R);
   if (markA > 0.01) {
     for (const m of s.marks) {
+      if (st.cut !== null && m.ev.t > st.cut) continue;
       const [px, py, tx, ty] = strandAt(s, m.u);
       const sx = T.ox + px * R;
       const sy = T.oy + py * R;
@@ -443,13 +460,23 @@ export function continuityLine(node: IdeaNode, now: number): string {
   return parts.join(' · ');
 }
 
-function drawLabel(st: RenderState, node: IdeaNode, x: number, y: number, cs: number, alpha: number, sealed: boolean) {
+type Rect = [number, number, number, number];
+
+function overlaps(a: Rect, list: Rect[]) {
+  for (const b of list) if (a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1]) return true;
+  return false;
+}
+
+function drawLabel(st: RenderState, node: IdeaNode, x: number, y: number, cs: number, alpha: number, sealed: boolean, placed: Rect[]) {
   const { ctx, M } = st;
   const a = alpha * smoothstep(5, 22, cs) * (1 - smoothstep(0.1 * M, 0.26 * M, cs));
   if (a < 0.01) return;
   let off = Math.max(cs * 0.48, 4) + 8;
   const hovered = st.hoverId === node.id;
   if (sealed) {
+    const r: Rect = [x + off, y - 8, x + off + 80, y + 6];
+    if (overlaps(r, placed)) return;
+    placed.push(r);
     ctx.font = `10px ${st.mono}`;
     ctx.fillStyle = `rgba(${INK},${a * 0.45})`;
     ctx.fillText('not open yet', x + off, y + 3);
@@ -462,6 +489,13 @@ function drawLabel(st: RenderState, node: IdeaNode, x: number, y: number, cs: nu
     ctx.textAlign = 'right';
     off = -off;
   }
+  const lx0 = off > 0 ? x + off : x + off - tw;
+  const rect: Rect = [lx0 - 2, y - size * 0.8, lx0 + tw + 2, y + size * 0.45];
+  if (!hovered && overlaps(rect, placed)) {
+    ctx.textAlign = 'left';
+    return;
+  }
+  placed.push(rect);
   ctx.fillStyle = `rgba(${INK},${a * (hovered ? 0.95 : 0.72)})`;
   ctx.textBaseline = 'alphabetic';
   ctx.fillText(node.title ?? 'untitled', x + off, y + size * 0.3);
@@ -507,6 +541,7 @@ export function drawNode(
   // how revealed each child is (by rank), independent of how far past the
   // parent the viewer has travelled
   const reveal = new Map<IdeaNode, number>();
+  const tipOf = new Map<IdeaNode, [number, number]>();
   if (!isRoot) {
     topo.order.forEach((si, rank) => {
       const s = topo.strands[si];
@@ -515,6 +550,10 @@ export function drawNode(
       const threshold = 18 * Math.pow(1.55, rank);
       const r = alpha * inner * smoothstep(threshold, threshold * 2.6, R);
       if (child) reveal.set(child, r);
+      if (child && st.cut !== null && st.cut < s.t1) {
+        const [tx, ty] = strandAt(s, strandU(s, st.cut));
+        tipOf.set(child, [tx, ty]);
+      }
       if (ia > 0.004) drawStrand(st, s, T, r * outerFade * (child && child.state === 'abandoned' ? 0.7 : 1), path);
     });
   }
@@ -524,10 +563,12 @@ export function drawNode(
   for (const c of node.children) {
     const cp = isRoot ? st.lens.closeness(c) : p;
     if (!isRoot && c.disclosure > p + SEAL_MARGIN) continue;
+    if (st.cut !== null && c.began > st.cut) continue;
     const sealed = !isRoot && c.disclosure > p;
     const cs = c.r * R;
-    const cx = T.ox + c.x * R;
-    const cy = T.oy + c.y * R;
+    const tip = tipOf.get(c);
+    const cx = T.ox + (tip ? tip[0] : c.x) * R;
+    const cy = T.oy + (tip ? tip[1] : c.y) * R;
     if (!onScreen(st, cx, cy, Math.max(cs * 1.3, 3))) continue;
     const ca = isRoot ? alpha : reveal.get(c) ?? 0;
     if (ca < 0.004) continue;
@@ -536,7 +577,7 @@ export function drawNode(
     if (sealed) drawMark(st, c, CT, ca, true);
     else if (cs < 0.12) drawMark(st, c, CT, ca, false);
     else drawNode(st, c, CT, ca, cp, cpath, false);
-    drawLabel(st, c, cx, cy, cs, ca, sealed);
+    (st.labels ??= []).push({ node: c, x: cx, y: cy, cs, alpha: ca, sealed });
     if (cs < 0.5 * M) st.hits.push({ kind: 'node', node: c, path: cpath, sealed, x: cx, y: cy, r: Math.max(cs * 0.55, 12), size: cs });
   }
 }
@@ -546,5 +587,14 @@ export function render(st: RenderState, start: IdeaNode, startPath: IdeaNode[], 
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, st.w, st.h);
   st.hits.length = 0;
+  st.labels = [];
   drawNode(st, start, T, 1, p, startPath, isRoot);
+  // place labels: hovered first, then the most present
+  const placed: Rect[] = [];
+  const queue = st.labels.sort((a, b) => {
+    const ha = st.hoverId === a.node.id ? 1 : 0;
+    const hb = st.hoverId === b.node.id ? 1 : 0;
+    return hb - ha || b.cs * b.alpha - a.cs * a.alpha;
+  });
+  for (const l of queue) drawLabel(st, l.node, l.x, l.y, l.cs, l.alpha, l.sealed, placed);
 }
