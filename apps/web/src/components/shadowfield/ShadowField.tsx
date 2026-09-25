@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { Camera } from '@/lib/shadowfield/camera';
 import { IdeaNode, LifeEvent, SEAL_MARGIN, findPath, lastActivity } from '@/lib/shadowfield/model';
 import { topologyOf } from '@/lib/shadowfield/layout';
@@ -785,9 +784,17 @@ export default function ShadowField({ serif }: Props) {
         }}
       />
 
-      <Link href="/" className={styles.mark} aria-label="TwinThink home">
+      <button
+        type="button"
+        className={styles.mark}
+        aria-label="Back out to the whole Canvas"
+        onClick={() => {
+          const world = worldRef.current;
+          if (world) flyTo([world]);
+        }}
+      >
         twinthink
-      </Link>
+      </button>
 
       <nav className={styles.trail} aria-label="Where you are">
         {crumbs.map(({ n, i }, j) => (

@@ -53,7 +53,7 @@ export default function Navbar() {
   }, [logoClickCount]);
 
   // The Canvas is an immersive medium with its own quiet chrome.
-  if (pathname?.startsWith('/canvas')) return null;
+  if (pathname === '/' || pathname?.startsWith('/canvas')) return null;
 
   return (
     <>

@@ -19,6 +19,10 @@
 }
 
 .mark {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   position: absolute;
   top: 18px;
   left: 20px;

@@ -1,11 +1,6 @@
 import React from 'react';
-import TransitionScreen from '@/components/TransitionScreen';
 
+// The home page is the Canvas; page-to-page transitions are no longer needed.
 export default function RootTemplate({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <TransitionScreen />
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }
