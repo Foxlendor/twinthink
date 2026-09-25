@@ -356,3 +356,22 @@
   color: rgba(30, 28, 36, 0.35);
   cursor: pointer;
 }
+
+.model {
+  position: absolute;
+  background: transparent;
+  --poster-color: transparent;
+  touch-action: pan-y;
+  transition: opacity 120ms linear;
+}
+
+.privacy {
+  position: absolute;
+  left: 20px;
+  bottom: 44px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  color: rgba(150, 92, 122, 0.8);
+  pointer-events: none;
+}

@@ -270,7 +270,9 @@ describe('cleared archive ideas', () => {
       expect(a.origin).toBe('real');
       expect(a.events).toHaveLength(1);
       expect(a.events[0].kind).toBe('begin');
-      expect(a.note && a.note.length).toBeGreaterThan(10);
+      // names only: no descriptions, no text inside
+      expect(a.note).toBeUndefined();
+      expect(a.artifact).toBeUndefined();
       expect(Math.hypot(a.x, a.y)).toBeLessThan(1);
     }
   });
@@ -302,5 +304,19 @@ describe('ripples', () => {
     const d = reached.map((c) => Math.hypot(c.x - tw.x, c.y - tw.y));
     expect([...d].sort((a, b) => a - b)).toEqual(d);
     for (const x of d) expect(x).toBeLessThanOrEqual(rippleReach(tw));
+  });
+});
+
+describe('free starters', () => {
+  it('are on the Canvas, marked free, with no descriptive text', () => {
+    const world = buildWorld([]);
+    const starters = world.children.filter((c) => c.id.startsWith('starter/'));
+    expect(starters.map((c) => c.title)).toEqual(['redr.ink', 'TwizzLock']);
+    for (const s of starters) {
+      expect(s.free).toBe(true);
+      expect(s.artifact).toBeUndefined();
+      expect(s.note).toBeUndefined();
+    }
+    expect(starters[0].media?.[0].kind).toBe('model');
   });
 });

@@ -59,6 +59,8 @@ export interface RenderState {
   pulses?: Map<string, number>;
   /** prefers-reduced-motion: no ripples (time is also frozen by the caller). */
   reduced?: boolean;
+  /** 3D objects in view this frame, for the DOM overlay. */
+  models?: { src: string; x: number; y: number; w: number; h: number; alpha: number }[];
   /** Batched sub-pixel marks, by alpha bucket. */
   dots?: (Path2D | undefined)[];
 }
@@ -343,6 +345,33 @@ function drawStrand(st: RenderState, s: Strand, T: ScreenTransform, alpha: numbe
   ctx.fillStyle = `rgba(${INK},${alpha * 0.78 * frac})`;
   ctx.fill(faint);
 
+  // heartbeat: light moves outward along a thread in proportion to how alive it
+  // is. It proves activity without saying anything about the content.
+  if (s.child && st.clock !== undefined && !st.reduced && s.child.state !== 'abandoned') {
+    const quietDays = Math.max(0, (st.now - lastActivity(s.child)) / 86400000);
+    const life = Math.exp(-quietDays / 21);
+    if (life > 0.05) {
+      const period = 3.5 + (s.seed % 7) * 0.6 + quietDays * 0.15;
+      const ph = ((st.clock + (s.seed % 97) * 0.37) % period) / period;
+      const head = ph * 1.25;
+      if (head <= 1.1) {
+        const g = new Path2D();
+        for (let k = 0; k < 7; k++) {
+          const u = head - k * 0.018;
+          if (u < 0 || u > 1) continue;
+          const [px, py] = strandAt(s, u);
+          const sx = T.ox + px * R;
+          const sy = T.oy + py * R;
+          const r0 = dotR * (1.9 - k * 0.18);
+          g.moveTo(sx + r0, sy);
+          g.arc(sx, sy, r0, 0, Math.PI * 2);
+        }
+        ctx.fillStyle = `rgba(${INK},${alpha * 0.55 * life})`;
+        ctx.fill(g);
+      }
+    }
+  }
+
   // a change travelling inward along this strand, from the thought to its parent
   const pStart = s.child ? st.pulses?.get(s.child.id) : undefined;
   if (pStart !== undefined && st.clock !== undefined) {
@@ -575,9 +604,64 @@ function drawMedia(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: n
         ctx.fillStyle = `rgba(${INK},${a * 0.6 * smoothstep(0.6, 0.9, reveal)})`;
         ctx.fillText(m.caption, x0, y0 + H + fs * 1.4);
       }
+    } else if (m.kind === 'model') {
+      const W = m.w * R;
+      const H = W * m.aspect;
+      const cx = T.ox + m.x * R;
+      const cy = T.oy + m.y * R;
+      const reveal = smoothstep(160, 420, W);
+      // far away: a turning ring of ink hints that there is an object here
+      const ringA = alpha * smoothstep(20, 80, W) * (1 - reveal);
+      if (ringA > 0.01) {
+        const t = st.reduced ? 0 : st.clock ?? 0;
+        ctx.fillStyle = `rgba(${INK},${ringA * 0.5})`;
+        const n = 36;
+        for (let i = 0; i < n; i++) {
+          const ang = (i / n) * Math.PI * 2 + t * 0.4;
+          const rx = W * 0.32;
+          const ry = H * 0.32 * (0.35 + 0.25 * Math.sin(t * 0.3));
+          ctx.beginPath();
+          ctx.arc(cx + Math.cos(ang) * rx, cy + Math.sin(ang) * ry, 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      if (reveal > 0.01) (st.models ??= []).push({ src: m.src, x: cx - W / 2, y: cy - H / 2, w: W, h: H, alpha: alpha * reveal });
     } else {
       drawSketch(st, m.strokes, T, alpha * smoothstep(25, 110, R));
     }
+  }
+}
+
+/**
+ * An idea's real events as a small constellation, in the order they happened,
+ * with a light sweeping through them: how much and how often, never what.
+ */
+function drawRhythm(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: number) {
+  const evs = node.events.filter((e) => e.kind !== 'dormant' && e.kind !== 'revival');
+  if (!evs.length) return;
+  const R = T.s;
+  const a = alpha * smoothstep(60, 220, R);
+  if (a < 0.01) return;
+  const { ctx } = st;
+  const n = evs.length;
+  const clock = st.reduced ? 0 : st.clock ?? 0;
+  const sweep = (clock * (1.2 + 6 / (n + 2))) % (n + 3);
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  const size = clamp(R / 260, 0.9, 3.2);
+  for (let i = 0; i < n; i++) {
+    const rho = 0.08 + 0.46 * Math.sqrt((i + 1) / n);
+    const ang = i * golden + (node.seed % 360) * (Math.PI / 180);
+    const x = T.ox + Math.cos(ang) * rho * R;
+    const y = T.oy - 0.12 * R + Math.sin(ang) * rho * R;
+    if (x < -10 || y < -10 || x > st.w + 10 || y > st.h + 10) continue;
+    const d = Math.abs(sweep - i);
+    const lit = Math.exp(-d * d * 0.8);
+    const k = evs[i].kind;
+    const big = k === 'begin' || k === 'evidence' || k === 'experiment' ? 1.5 : 1;
+    ctx.fillStyle = `rgba(${INK},${a * (0.28 + 0.62 * lit)})`;
+    ctx.beginPath();
+    ctx.arc(x, y, size * big * (1 + 0.5 * lit), 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
@@ -635,6 +719,15 @@ export function shortDate(t: number) {
   return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
 
+/** One word about an idea's life. No facts, nothing that enables. */
+export function lifeWord(node: IdeaNode, now: number): string {
+  if (node.state === 'abandoned') return 'let go';
+  const quiet = (now - lastActivity(node)) / 86400000;
+  if (quiet < 7) return 'moving';
+  if (quiet < 60) return 'resting';
+  return 'sleeping';
+}
+
 export function continuityLine(node: IdeaNode, now: number): string {
   const last = lastActivity(node);
   const quiet = (now - last) / 86400000;
@@ -685,11 +778,12 @@ function drawLabel(st: RenderState, node: IdeaNode, x: number, y: number, cs: nu
   ctx.fillStyle = `rgba(${INK},${a * (hovered ? 0.95 : 0.72)})`;
   ctx.textBaseline = 'alphabetic';
   ctx.fillText(node.title ?? 'untitled', x + off, y + size * 0.3);
-  const a2 = a * Math.max(smoothstep(90, 180, cs), hovered ? 1 : 0) * 0.5;
+  // very little context: one word about its life, and only when you ask (hover)
+  const a2 = a * (hovered ? 1 : 0) * 0.5;
   if (a2 > 0.01) {
     ctx.font = `9.5px ${st.mono}`;
     ctx.fillStyle = `rgba(${INK},${a2})`;
-    const second = node.portal ? 'every idea, again' : node.note && node.note !== node.title ? node.note : continuityLine(node, st.now);
+    const second = node.portal ? 'every idea, again' : node.free ? 'free to build on' : lifeWord(node, st.now);
     ctx.fillText(second, x + off, y + size * 0.3 + 14);
   }
   ctx.textAlign = 'left';
@@ -760,6 +854,9 @@ export function drawNode(
 
   if (node.artifact && !isRoot) drawArtifact(st, node, T, alpha * outerFade);
   if (!isRoot) drawMedia(st, node, T, alpha * outerFade, p);
+  if (!isRoot && !node.artifact && !node.media?.length && node.children.every((c) => c.portal)) {
+    drawRhythm(st, node, T, alpha * outerFade);
+  }
 
   // large fields: only visit children near the viewport
   let kids = node.children;
@@ -880,6 +977,7 @@ export function render(st: RenderState, start: IdeaNode, startPath: IdeaNode[], 
   st.hits.length = 0;
   st.labels = [];
   st.dots = [];
+  st.models = [];
   drawNode(st, start, T, 1, p, startPath, isRoot);
   st.dots.forEach((path, b) => {
     if (!path) return;

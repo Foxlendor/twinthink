@@ -8,18 +8,21 @@ import { IdeaNode } from './model';
 import { topologyOf } from './layout';
 import { buildTwinThinkTwin } from './sources/twinthink';
 import { buildArchiveShadows } from './sources/archive';
+import { buildStarters } from './sources/starters';
 import { LocalShadow, localShadowNode } from './sources/local';
 
 export const CANVAS_EXTENT = 1;
 
 let twinthink: IdeaNode | null = null;
 let archive: IdeaNode[] | null = null;
+let starters: IdeaNode[] | null = null;
 let current: IdeaNode | null = null;
 
 export function buildWorld(local: LocalShadow[]): IdeaNode {
   twinthink ??= buildTwinThinkTwin();
   archive ??= buildArchiveShadows();
-  const children = [twinthink, ...archive, ...local.map(localShadowNode)];
+  starters ??= buildStarters();
+  const children = [twinthink, ...starters, ...archive, ...local.map(localShadowNode)];
   const world = rootNode('canvas', children);
   current = world;
   for (const c of children) attachPortals(c);
@@ -51,7 +54,7 @@ function attachPortals(node: IdeaNode) {
       disclosure: 0,
       children: [],
       x: 0,
-      y: node.media?.length ? 0.72 : node.artifact ? 0.62 : 0.35,
+      y: node.media?.length ? 0.78 : node.artifact ? 0.62 : 0.35,
       r: 0.045,
       fixed: true,
       seed: node.seed ^ 0x2545f491,

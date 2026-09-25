@@ -1,11 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera } from '@/lib/shadowfield/camera';
 import { IdeaNode, LifeEvent, SEAL_MARGIN, findPath, lastActivity } from '@/lib/shadowfield/model';
 import { topologyOf } from '@/lib/shadowfield/layout';
 import { Access, Flight, pan as panCam, stepFlight, zoomAt } from '@/lib/shadowfield/navigate';
-import { Hit, Lens, RenderState, continuityLine, drawSketch, drawVoidLattice, pulseChain, relTime, render, shortDate } from '@/lib/shadowfield/render';
+import { Hit, Lens, RenderState, drawSketch, lifeWord, drawVoidLattice, pulseChain, relTime, render, shortDate } from '@/lib/shadowfield/render';
 import { setMediaReadyCallback } from '@/lib/shadowfield/media';
 import { buildWorld, resolvePath } from '@/lib/shadowfield/world';
 import { createLocalStore, LocalShadow, ShadowStore } from '@/lib/shadowfield/sources/local';
@@ -155,6 +156,9 @@ export default function ShadowField({ serif }: Props) {
   // sketching: strokes are drawn in the frame of the owned idea being sketched in
   const sketchRef = useRef<{ nodeId: string; stroke: number[] | null } | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const modelRef = useRef<HTMLElement | null>(null);
+  const modelSrcRef = useRef('');
   // replay: progress 0..1 through [from, to]; playing advances it over time
   const replayRef = useRef<{ from: number; to: number; progress: number; playing: boolean; hold: number } | null>(null);
 
@@ -252,6 +256,7 @@ export default function ShadowField({ serif }: Props) {
     const cam = new Camera(world);
     camRef.current = cam;
     setMediaReadyCallback(() => undefined); // the frame loop repaints continuously
+    import('@google/model-viewer').catch(() => undefined);
     // exposed for scripted visual checks (e2e); read-only by convention
     (window as unknown as { __shadowField?: unknown }).__shadowField = { cam, flyTo: (ids: string[]) => flyToIds(ids) };
     const canvas = canvasRef.current!;
@@ -398,6 +403,26 @@ export default function ShadowField({ serif }: Props) {
         pulses: pulsesRef.current,
       };
       render(st, cam.path[k], startPath, T, p, k === 0);
+      // 3D objects: one live viewer, placed over the largest object in view
+      const mv = modelRef.current;
+      if (mv) {
+        const m = (st.models ?? []).sort((a, b) => b.w - a.w)[0];
+        if (m && m.alpha > 0.02) {
+          if (modelSrcRef.current !== m.src) {
+            modelSrcRef.current = m.src;
+            mv.setAttribute('src', m.src);
+          }
+          mv.style.display = 'block';
+          mv.style.left = `${m.x}px`;
+          mv.style.top = `${m.y}px`;
+          mv.style.width = `${m.w}px`;
+          mv.style.height = `${m.h}px`;
+          mv.style.opacity = String(Math.min(1, m.alpha));
+        } else if (mv.style.display !== 'none') {
+          mv.style.display = 'none';
+        }
+      }
+
       const sk = sketchRef.current;
       if (sk?.stroke && sk.stroke.length >= 4) {
         const idx = cam.path.findIndex((n) => n.id === sk.nodeId);
@@ -430,7 +455,8 @@ export default function ShadowField({ serif }: Props) {
       if (hover !== prev && (hover?.node !== prev?.node || hover?.ev !== prev?.ev)) {
         if (!hover) setTip(null);
         else if (hover.kind === 'event' && hover.ev) {
-          setTip({ x: hover.x, y: hover.y, title: hover.ev.note ?? hover.ev.kind, line: eventLabel(hover.ev) });
+          // a moment, not a message: when, never what
+          setTip({ x: hover.x, y: hover.y, title: eventLabel(hover.ev) });
         } else if (hover.node) {
           // marks large enough to carry their own label need no tooltip
           if (hover.size < 5 || hover.sealed) {
@@ -438,7 +464,7 @@ export default function ShadowField({ serif }: Props) {
               x: hover.x,
               y: hover.y,
               title: hover.sealed ? 'something is here' : hover.node.title ?? 'untitled',
-              line: hover.sealed ? 'not open to you yet' : continuityLine(hover.node, Date.now()),
+              line: hover.sealed ? 'not open to you yet' : lifeWord(hover.node, Date.now()),
             });
           } else setTip(null);
         }
@@ -526,8 +552,10 @@ export default function ShadowField({ serif }: Props) {
       zv.y = y;
       dismissHint();
     };
-    canvas.addEventListener('wheel', onWheel, { passive: false });
-    return () => canvas.removeEventListener('wheel', onWheel);
+    // listen on the whole field so overlays (3D objects) never swallow depth
+    const root: HTMLElement = rootRef.current ?? canvas;
+    root.addEventListener('wheel', onWheel, { passive: false });
+    return () => root.removeEventListener('wheel', onWheel);
   }, [access, dismissHint]);
 
   const flyTo = useCallback((target: IdeaNode[], radius = 0.53) => {
@@ -733,6 +761,38 @@ export default function ShadowField({ serif }: Props) {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
 
+  /**
+   * Proof of existence without disclosure: a SHA-256 fingerprint of the whole
+   * Shadow, with the time. Revealing the original later proves it matches; the
+   * fingerprint alone reveals nothing about the idea.
+   */
+  const proveMine = async (shadowId: string) => {
+    const record = storeRef.current?.list().find((v) => v.id === shadowId);
+    if (!record || !crypto?.subtle) return;
+    const canonical = JSON.stringify(record, Object.keys(record).sort());
+    const full = JSON.stringify(record);
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(full));
+    const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    const cert = {
+      format: 'twinthink.proof',
+      version: 1,
+      algorithm: 'SHA-256',
+      fingerprint: hex,
+      fingerprintedAt: new Date().toISOString(),
+      createdAt: new Date(record.created).toISOString(),
+      howToUse:
+        'Keep this certificate and a copy of your Shadow ("keep a copy"). To show you had this idea at this time, reveal the copy: its SHA-256 fingerprint will match this one. The fingerprint alone reveals nothing about the idea. For an independent timestamp, send this fingerprint to yourself by email or to a public timestamping service.',
+      canonicalLength: canonical.length,
+    };
+    const blob = new Blob([JSON.stringify(cert, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `proof-${shadowId}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    setNotice(`fingerprint ${hex.slice(0, 12)}… saved`);
+  };
+
   const toggleSketch = () => {
     const cam = camRef.current;
     if (!cam) return;
@@ -868,7 +928,7 @@ export default function ShadowField({ serif }: Props) {
   const p = top ? closenessFor(top, followed) : 1;
 
   return (
-    <div className={styles.field}>
+    <div className={styles.field} ref={rootRef}>
       <canvas
         ref={canvasRef}
         className={styles.canvas}
@@ -887,17 +947,11 @@ export default function ShadowField({ serif }: Props) {
         }}
       />
 
-      <button
-        type="button"
-        className={styles.mark}
-        aria-label="Back out to the whole Canvas"
-        onClick={() => {
-          const world = worldRef.current;
-          if (world) flyTo([world]);
-        }}
-      >
+      <Link href="/" className={styles.mark} aria-label="TwinThink home">
         twinthink
-      </button>
+      </Link>
+
+      {ownedHere && <div className={styles.privacy}>private · only on this device</div>}
 
       <nav className={styles.trail} aria-label="Where you are">
         {crumbs.map(({ n, i }, j) => (
@@ -1013,6 +1067,11 @@ export default function ShadowField({ serif }: Props) {
                 keep a copy
               </button>
             )}
+            {!ownedHere.thoughtId && (
+              <button type="button" className={styles.quiet} onClick={() => proveMine(ownedHere.shadowId)}>
+                prove it’s mine
+              </button>
+            )}
             {ownedHere.thoughtId && (
               <button type="button" className={styles.quiet} onClick={() => startDialectic('challenge')}>
                 challenge it
@@ -1090,6 +1149,21 @@ export default function ShadowField({ serif }: Props) {
           </button>
         </div>
       )}
+
+      {React.createElement('model-viewer', {
+        ref: modelRef,
+        className: styles.model,
+        'camera-controls': true,
+        'disable-zoom': true,
+        'disable-pan': true,
+        'auto-rotate': true,
+        'rotation-per-second': '12deg',
+        'interaction-prompt': 'none',
+        'shadow-intensity': '0.4',
+        exposure: '1.05',
+        'environment-image': 'neutral',
+        style: { display: 'none' },
+      })}
 
       <input
         ref={fileRef}

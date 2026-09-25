@@ -45,7 +45,9 @@ export type Artifact =
  */
 export type Media =
   | { kind: 'image'; src: string; x: number; y: number; w: number; aspect: number; caption?: string }
-  | { kind: 'sketch'; strokes: number[][]; t: number };
+  | { kind: 'sketch'; strokes: number[][]; t: number }
+  /** A 3D object you can turn once you are inside the idea (rendered as an overlay). */
+  | { kind: 'model'; src: string; x: number; y: number; w: number; aspect: number };
 
 export interface IdeaNode {
   id: string;
@@ -81,6 +83,8 @@ export interface IdeaNode {
   links?: { to: string; kind: 'challenges' | 'resolves' }[];
   /** A way back into the Canvas from the end of a path: its children are the Canvas's. */
   portal?: boolean;
+  /** Given away by its inventor as a free starter to build on. */
+  free?: boolean;
   /** Builds children on first approach (large synthetic fields). Called once by layout. */
   expand?: () => void;
   /** Aggregate continuity signals (for Shadows seen from far away). */

@@ -1,8 +1,9 @@
 // Ideas from the inventor's own archive, cleared by the inventor on 2026-09-25
 // to appear on the public Canvas.
 //
-// Disclosure rule chosen by the inventor: say what each idea does and the
-// problem it answers, never how it works. Do not add mechanisms, materials or
+// Disclosure rule chosen by the inventor: on the Canvas each idea shows only
+// its name and that it is alive. The one-line summaries below are kept for
+// reference but are not displayed. Never add mechanisms, materials or
 // construction details here without new, explicit permission.
 //
 // History rule: nothing is invented. Each record begins on the day it was
@@ -113,7 +114,6 @@ export function buildArchiveShadows(): IdeaNode[] {
   return CLEARED.map((c) => ({
     id: `archive/${c.id}`,
     title: c.title,
-    note: c.does,
     kind: c.kind,
     origin: 'real',
     began: ADDED,
@@ -121,7 +121,6 @@ export function buildArchiveShadows(): IdeaNode[] {
     state: 'alive',
     disclosure: 0,
     children: [],
-    artifact: { type: 'text', body: `${c.does}\n\n${c.why}\n\nIts earlier history has not been recorded here yet.` },
     x: c.x,
     y: c.y,
     r: 0.0025,
