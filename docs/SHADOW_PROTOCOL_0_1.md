@@ -88,23 +88,22 @@ Target interaction:
 
 The sensitive Twin does not need to be encoded in near-white pixels. The Canvas may expose only public Shadow data while protected disclosure layers remain access-controlled.
 
-## Current prototype
+## Current prototype (Shadow Field)
 
-The /canvas route demonstrates:
+The /canvas route is the Shadow Field (`apps/web/src/lib/shadowfield`):
 
-- near-blank spatial Canvas
-- 1,400 deterministic Shadow cells
-- pan and zoom
-- Lens on/off
-- random discovery
-- visible continuity trails
-- creator notes
-- backing semantics
-- per-device persistent backs
-- slightly closer rendering after backing
-- explicit distinction between prototype records and real Twin records
-
-Next engineering step: replace seeded demo records with live Twin continuity events and add paired-screen Lens sessions.
+- near-blank coordinate field; every mark on it is a real record
+- continuous XYZ navigation: drag = X/Y, scroll/pinch = Z (semantic depth)
+- nested-frame camera: entering an idea is a change of coordinates, so depth is
+  unbounded, precise and exactly reversible
+- semantic level of detail: dot -> ink drop -> filaments -> inner world
+- filaments are history: distance is time, density is real activity, silence
+  is sparse, pruned directions taper away, later thoughts fork
+- replay ("watch it grow") and scrubbable timeline
+- following ("I want to see what happens next") raises viewer closeness p
+- viewers can cast their own Shadow and grow thoughts inside it (on-device)
+- server-side continuity log at /api/shadows (append-only, server-timestamped,
+  hash-chained, private by default) — not yet wired to the web client
 
 ## Related work: visual cryptography (Naor & Shamir, 1994)
 

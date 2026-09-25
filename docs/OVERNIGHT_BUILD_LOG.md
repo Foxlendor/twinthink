@@ -25,3 +25,17 @@ Branch: `shadow-field-z`
 - Leaf ledgers were invisible inside the leaf: rescaled text LOD.
 - Verified the full loop in Chromium: canvas → TwinThink → the Twin page → aug 29, night → back to canvas at the same coordinate.
 - Tests: 11 passing (`npm test` in apps/web).
+- Enter threshold lowered (idea enters when it covers half the shorter screen side) so arriving inside shows the whole interior; flights land just past it.
+- Cast / thought / rewrite / let go / keep a copy verified in Chromium; reload restores position from the URL hash.
+- Thought placement read a stale node and stacked new thoughts on one spot; now reads the live frame and picks the most open visible space.
+- Replay: "watch it grow" + scrubbable timeline; thoughts ride their strand tips through real dates.
+- Phone pass (iPhone 13 viewport): the ink drop hid the interior; the drop now dissolves earlier. Labels are queued and placed without collisions.
+- Scale: spatial grid index, batched sub-pixel marks, lazy interiors. A synthetic "rehearsal field" route was built to test this, then **removed**: no fabricated content is served. The generator survives only as a test fixture (`specimens.fixture.ts`).
+- Visual cryptography (Naor & Shamir) noted in the protocol doc as prior art for the Lens and as the rigorous alternative to near-white obfuscation. Also noted: sealed nodes are visual only in this build.
+- API: `/api/shadows` continuity log — append-only, server timestamps, hash chain, verify endpoint, private by default. 76 API tests pass.
+- TwinThink continuity regenerated: tonight's commits now appear inside "the Canvas" branch of TwinThink's own Twin.
+- Final Chromium run on a production build: canvas → TwinThink → the Twin page → aug 29, night → back to (0.2103, −0.1404).
+
+## Environment notes
+- The cloud container restarted several times (background servers lost; git work intact because commits were frequent).
+- Could not open twinth.ink or Vercel previews from the sandbox (egress policy). Deployment status was read from GitHub's deployment API.
