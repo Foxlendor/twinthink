@@ -320,3 +320,19 @@ describe('free starters', () => {
     expect(starters[0].media?.[0].kind).toBe('model');
   });
 });
+
+describe('free music modules', () => {
+  it('holds all seven songs, dated by when they were made, playable and free', () => {
+    const world = buildWorld([]);
+    const music = world.children.find((c) => c.id === 'music')!;
+    expect(music.free).toBe(true);
+    expect(music.children).toHaveLength(7);
+    for (const s of music.children) {
+      expect(s.free).toBe(true);
+      const a = s.media?.find((m) => m.kind === 'audio');
+      expect(a && a.kind === 'audio' && a.src).toMatch(/^\/music\/[a-z0-9-]+\.m4a$/);
+    }
+    const times = music.children.map((s) => s.began);
+    expect([...times].sort((a, b) => a - b)).toEqual(times);
+  });
+});

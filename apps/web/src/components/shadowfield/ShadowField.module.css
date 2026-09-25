@@ -375,3 +375,10 @@
   color: rgba(150, 92, 122, 0.8);
   pointer-events: none;
 }
+
+.give {
+  position: absolute;
+  right: 20px;
+  bottom: 56px;
+  animation: tipIn 250ms ease-out;
+}

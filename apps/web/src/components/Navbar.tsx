@@ -142,6 +142,23 @@ export default function Navbar() {
               Canvas
             </Link>
 
+            <Link
+              href="/support"
+              style={{
+                fontSize: '0.8125rem',
+                fontWeight: 700,
+                color: '#4B5563',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '0.35rem 0.65rem',
+                borderRadius: '8px',
+                fontStyle: 'italic',
+              }}
+            >
+              Support
+            </Link>
+
             <Link 
               href="/roundup" 
               style={{ 
@@ -366,6 +383,27 @@ export default function Navbar() {
                   <div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Canvas</div>
                     <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Move through ideas by zooming into them</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/support"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '12px',
+                    background: '#F9FAFB',
+                    border: '1px solid #F3F4F6',
+                    textDecoration: 'none',
+                    color: '#111827'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Support</div>
+                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Help keep TwinThink running</div>
                   </div>
                 </Link>
 

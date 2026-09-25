@@ -47,7 +47,9 @@ export type Media =
   | { kind: 'image'; src: string; x: number; y: number; w: number; aspect: number; caption?: string }
   | { kind: 'sketch'; strokes: number[][]; t: number }
   /** A 3D object you can turn once you are inside the idea (rendered as an overlay). */
-  | { kind: 'model'; src: string; x: number; y: number; w: number; aspect: number };
+  | { kind: 'model'; src: string; x: number; y: number; w: number; aspect: number }
+  /** A song or sound: drawn as a ring waveform; plays when the viewer taps inside. */
+  | { kind: 'audio'; src: string };
 
 export interface IdeaNode {
   id: string;

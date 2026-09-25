@@ -5,9 +5,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Camera } from '@/lib/shadowfield/camera';
 import { IdeaNode, LifeEvent, SEAL_MARGIN, findPath, lastActivity } from '@/lib/shadowfield/model';
 import { topologyOf } from '@/lib/shadowfield/layout';
-import { Access, Flight, pan as panCam, stepFlight, zoomAt } from '@/lib/shadowfield/navigate';
+import { Access, Flight, pan as panCam, stepFlight, transformOfPath, zoomAt } from '@/lib/shadowfield/navigate';
 import { Hit, Lens, RenderState, drawSketch, lifeWord, drawVoidLattice, pulseChain, relTime, render, shortDate } from '@/lib/shadowfield/render';
 import { setMediaReadyCallback } from '@/lib/shadowfield/media';
+import Donate from '@/components/support/Donate';
 import { buildWorld, resolvePath } from '@/lib/shadowfield/world';
 import { createLocalStore, LocalShadow, ShadowStore } from '@/lib/shadowfield/sources/local';
 import styles from './ShadowField.module.css';
@@ -159,6 +160,14 @@ export default function ShadowField({ serif }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const modelRef = useRef<HTMLElement | null>(null);
   const modelSrcRef = useRef('');
+  // music: one element, routed through Web Audio for depth-based volume and loudness
+  const audioRef = useRef<{
+    el: HTMLAudioElement;
+    gain: GainNode | null;
+    analyser: AnalyserNode | null;
+    buf: Uint8Array<ArrayBuffer> | null;
+  } | null>(null);
+  const playingRef = useRef<{ src: string; path: IdeaNode[]; silentFor: number } | null>(null);
   // replay: progress 0..1 through [from, to]; playing advances it over time
   const replayRef = useRef<{ from: number; to: number; progress: number; playing: boolean; hold: number } | null>(null);
 
@@ -173,6 +182,8 @@ export default function ShadowField({ serif }: Props) {
   const [localList, setLocalList] = useState<LocalShadow[]>([]);
   const [sketching, setSketching] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [giving, setGiving] = useState(false);
   const [news, setNews] = useState<{ ids: string[]; title: string; when: string } | null>(null);
   const [replayView, setReplayView] = useState<{ progress: number; t: number; playing: boolean } | null>(null);
 
@@ -214,6 +225,57 @@ export default function ShadowField({ serif }: Props) {
     const p = findPath(world, nodeId);
     if (!p) return 0;
     return pulseChain(pulsesRef.current, p, performance.now() / 1000);
+  }, []);
+
+  /** Start (or stop) a song; must run inside a tap so browsers allow sound. */
+  const toggleSong = useCallback((path: IdeaNode[]) => {
+    const node = path[path.length - 1];
+    const media = node.media?.find((m) => m.kind === 'audio');
+    if (!media || media.kind !== 'audio') return;
+    let a = audioRef.current;
+    if (!a) {
+      const el = new Audio();
+      el.preload = 'auto';
+      let gain: GainNode | null = null;
+      let analyser: AnalyserNode | null = null;
+      try {
+        const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const ac = new AC();
+        const srcNode = ac.createMediaElementSource(el);
+        gain = ac.createGain();
+        analyser = ac.createAnalyser();
+        analyser.fftSize = 256;
+        srcNode.connect(gain).connect(analyser).connect(ac.destination);
+        void ac.resume();
+      } catch {
+        gain = null;
+        analyser = null;
+      }
+      a = { el, gain, analyser, buf: analyser ? new Uint8Array(new ArrayBuffer(analyser.fftSize)) : null };
+      el.addEventListener('ended', () => {
+        playingRef.current = null;
+        setPlayingId(null);
+      });
+      audioRef.current = a;
+    }
+    const cur = playingRef.current;
+    if (cur && cur.src === media.src) {
+      if (a.el.paused) void a.el.play();
+      else {
+        a.el.pause();
+        playingRef.current = null;
+        setPlayingId(null);
+      }
+      return;
+    }
+    a.el.src = media.src;
+    void a.el.play().catch(() => {
+      playingRef.current = null;
+      setPlayingId(null);
+      setNotice('tap play to hear it');
+    });
+    playingRef.current = { src: media.src, path, silentFor: 0 };
+    setPlayingId(node.id);
   }, []);
 
   const flyToIds = useCallback((ids: string[]) => {
@@ -376,6 +438,37 @@ export default function ShadowField({ serif }: Props) {
         }
       }
 
+      // music: loudness follows depth, and a song left far behind stops itself
+      let audioState: RenderState['audio'] = null;
+      const pl = playingRef.current;
+      const au = audioRef.current;
+      if (pl && au) {
+        const T = transformOfPath(cam, pl.path);
+        const near = T ? Math.max(0, Math.min(1, (T.s - cam.M * 0.03) / (cam.M * 0.4))) : 0;
+        const vol = near * near;
+        if (au.gain) au.gain.gain.value = vol;
+        else au.el.volume = vol;
+        pl.silentFor = vol < 0.01 ? pl.silentFor + dt : 0;
+        if (pl.silentFor > 4) {
+          au.el.pause();
+          playingRef.current = null;
+          setPlayingId(null);
+        } else {
+          let level = 0;
+          if (au.analyser && au.buf) {
+            au.analyser.getByteTimeDomainData(au.buf);
+            let sum = 0;
+            for (let i = 0; i < au.buf.length; i++) {
+              const v = (au.buf[i] - 128) / 128;
+              sum += v * v;
+            }
+            level = Math.min(1, Math.sqrt(sum / au.buf.length) * 3);
+          }
+          const d = au.el.duration;
+          audioState = { src: pl.src, progress: d > 0 ? au.el.currentTime / d : 0, level };
+        }
+      }
+
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -401,6 +494,7 @@ export default function ShadowField({ serif }: Props) {
         cut,
         clock: nowMs / 1000,
         pulses: pulsesRef.current,
+        audio: audioState,
       };
       render(st, cam.path[k], startPath, T, p, k === 0);
       // 3D objects: one live viewer, placed over the largest object in view
@@ -682,6 +776,17 @@ export default function ShadowField({ serif }: Props) {
     lastTapRef.current = { t: now, x, y };
 
     const hit = hoverRef.current ?? hitsRef.current.find((h) => Math.hypot(h.x - x, h.y - y) < h.r) ?? null;
+    if (hit && hit.kind === 'node' && hit.node.media?.some((m) => m.kind === 'audio')) {
+      // a song: go to it and let it play (the tap is what allows sound)
+      flyTo(hit.path, 0.53);
+      toggleSong(hit.path);
+      return;
+    }
+    const camNow = camRef.current;
+    if (!hit && camNow && camNow.node.media?.some((m) => m.kind === 'audio')) {
+      toggleSong([...camNow.path]);
+      return;
+    }
     if (hit && hit.kind === 'node') {
       flyTo(hit.path, hit.sealed ? 0.12 : 0.53);
       return;
@@ -995,12 +1100,31 @@ export default function ShadowField({ serif }: Props) {
             <button type="button" className={styles.quiet} onClick={wander}>
               wander
             </button>
+            <button type="button" className={styles.quiet} onClick={() => setGiving((g) => !g)}>
+              support twinthink
+            </button>
           </>
         )}
         {top && (
           <button type="button" className={styles.quiet} onClick={replayView ? stopReplay : startReplay}>
             {replayView ? 'return to now' : 'watch it grow'}
           </button>
+        )}
+        {current?.media?.some((m) => m.kind === 'audio') && (
+          <>
+            <button type="button" className={playingId === current.id ? styles.following : styles.quiet} onClick={() => toggleSong([...path])}>
+              {playingId === current.id ? 'pause' : 'play'}
+            </button>
+            {current.free && (
+              <a
+                className={styles.quiet}
+                href={(current.media.find((m) => m.kind === 'audio') as { src: string }).src}
+                download
+              >
+                take it, free
+              </a>
+            )}
+          </>
         )}
         {top && top.ownedBy !== 'viewer' && (
           <button
@@ -1184,6 +1308,12 @@ export default function ShadowField({ serif }: Props) {
           <button type="button" className={styles.newsClose} aria-label="Dismiss" onClick={() => setNotice(null)}>
             ×
           </button>
+        </div>
+      )}
+
+      {giving && path.length <= 1 && (
+        <div className={styles.give}>
+          <Donate compact onDone={() => setGiving(false)} />
         </div>
       )}
 

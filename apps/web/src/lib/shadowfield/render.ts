@@ -10,6 +10,7 @@ import { Strand, topologyOf, strandAt, strandU } from './layout';
 import { ScreenTransform } from './camera';
 import { spatialIndex } from './spatial';
 import { getImage } from './media';
+import { getPeaks } from './audio';
 import { clamp, hash01, noise1, smoothstep } from './rng';
 
 export const PAPER = '#fbfaf7';
@@ -59,6 +60,8 @@ export interface RenderState {
   pulses?: Map<string, number>;
   /** prefers-reduced-motion: no ripples (time is also frozen by the caller). */
   reduced?: boolean;
+  /** The song currently playing, if any: progress 0..1 and live loudness 0..1. */
+  audio?: { src: string; progress: number; level: number } | null;
   /** 3D objects in view this frame, for the DOM overlay. */
   models?: { src: string; x: number; y: number; w: number; h: number; alpha: number }[];
   /** Batched sub-pixel marks, by alpha bucket. */
@@ -604,6 +607,8 @@ function drawMedia(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: n
         ctx.fillStyle = `rgba(${INK},${a * 0.6 * smoothstep(0.6, 0.9, reveal)})`;
         ctx.fillText(m.caption, x0, y0 + H + fs * 1.4);
       }
+    } else if (m.kind === 'audio') {
+      drawAudioRing(st, m.src, T, alpha);
     } else if (m.kind === 'model') {
       const W = m.w * R;
       const H = W * m.aspect;
@@ -661,6 +666,60 @@ function drawRhythm(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: 
     ctx.fillStyle = `rgba(${INK},${a * (0.28 + 0.62 * lit)})`;
     ctx.beginPath();
     ctx.arc(x, y, size * big * (1 + 0.5 * lit), 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+/**
+ * A song as a ring of dotted ink: its waveform wrapped around the idea like a
+ * record. While it plays, a playhead sweeps the ring and the ring breathes
+ * with the music.
+ */
+function drawAudioRing(st: RenderState, src: string, T: ScreenTransform, alpha: number) {
+  const R = T.s;
+  const a = alpha * smoothstep(30, 140, R);
+  if (a < 0.01) return;
+  const { ctx } = st;
+  const playing = st.audio && st.audio.src === src ? st.audio : null;
+  const pk = R > 60 ? getPeaks(src) : null;
+  const n = pk ? pk.length : 90;
+  const clock = st.reduced ? 0 : st.clock ?? 0;
+  const breathe = playing ? 1 + 0.06 * playing.level : 1 + 0.01 * Math.sin(clock * 0.8);
+  const base = 0.42 * R * breathe;
+  const dot = clamp(R / 420, 0.7, 2.4);
+  const head = playing ? playing.progress : -1;
+  for (let i = 0; i < n; i++) {
+    const f = i / n;
+    const ang = -Math.PI / 2 + f * Math.PI * 2;
+    const amp = pk ? pk[i] : 0.15;
+    const passed = playing && f <= head;
+    const steps = Math.max(1, Math.round(1 + amp * 6));
+    for (let k = 0; k < steps; k++) {
+      const rr = base + (k - (steps - 1) / 2) * dot * 2.6;
+      const x = T.ox + Math.cos(ang) * rr;
+      const y = T.oy + Math.sin(ang) * rr;
+      if (x < -8 || y < -8 || x > st.w + 8 || y > st.h + 8) continue;
+      ctx.fillStyle = passed ? `rgba(${ROSE},${a * 0.75})` : `rgba(${INK},${a * (pk ? 0.55 : 0.22)})`;
+      ctx.beginPath();
+      ctx.arc(x, y, dot, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  if (playing) {
+    const ang = -Math.PI / 2 + head * Math.PI * 2;
+    ctx.fillStyle = `rgba(${ROSE},${a})`;
+    ctx.beginPath();
+    ctx.arc(T.ox + Math.cos(ang) * base, T.oy + Math.sin(ang) * base, dot * 2.6, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (R > 160) {
+    // a quiet play mark at the centre: tap to hear it
+    const s2 = clamp(R * 0.035, 6, 16);
+    ctx.fillStyle = `rgba(${INK},${a * 0.45})`;
+    ctx.beginPath();
+    ctx.moveTo(T.ox - s2 * 0.45, T.oy - 0.12 * R - s2 * 0.6);
+    ctx.lineTo(T.ox + s2 * 0.65, T.oy - 0.12 * R);
+    ctx.lineTo(T.ox - s2 * 0.45, T.oy - 0.12 * R + s2 * 0.6);
+    ctx.closePath();
     ctx.fill();
   }
 }
