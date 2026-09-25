@@ -5,7 +5,7 @@
 // constellation, and finally an environment, with every representation
 // cross-fading continuously as R changes. Nothing here scales a bitmap.
 
-import { IdeaNode, LifeEvent, SEAL_MARGIN, lastActivity, countEvents } from './model';
+import { IdeaNode, LifeEvent, SEAL_MARGIN, lastActivity } from './model';
 import { Strand, topologyOf, strandAt, strandU } from './layout';
 import { ScreenTransform } from './camera';
 import { spatialIndex } from './spatial';
@@ -86,8 +86,10 @@ function lifeOf(node: IdeaNode) {
 function drawLattice(st: RenderState, T: ScreenTransform, alpha: number, extent: number, clipToDisk: boolean) {
   if (alpha < 0.004) return;
   const { ctx } = st;
-  const levels = [1 / 8, 1 / 64, 1 / 512];
-  for (const g of levels) {
+  // log-periodic: whichever powers of 1/8 are near a comfortable spacing
+  const kTop = Math.floor(Math.log(T.s / 1600) / Math.log(8));
+  for (let k = Math.max(1, kTop); k <= kTop + 3; k++) {
+    const g = Math.pow(8, -k);
     const gs = g * T.s;
     if (gs < 18) continue;
     const la = alpha * smoothstep(18, 60, gs) * (1 - smoothstep(420, 1600, gs));
@@ -414,26 +416,48 @@ function drawArtifact(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha
   if (!art) return;
   const R = T.s;
   const { ctx } = st;
-  const isLedger = art.type === 'ledger';
-  const fpx = R * (isLedger ? 0.0105 : 0.032);
-  const a = alpha * smoothstep(isLedger ? 5 : 8, isLedger ? 9 : 14, fpx) * (1 - smoothstep(isLedger ? 48 : 70, isLedger ? 110 : 150, fpx));
+  const fpx = R * (art.type === 'story' ? 0.03 : 0.032);
+  const a = alpha * smoothstep(8, 14, fpx) * (1 - smoothstep(70, 150, fpx));
   if (a < 0.01) return;
-  ctx.font = isLedger ? `${fpx}px ${st.mono}` : `italic ${fpx}px ${st.serif}`;
-  ctx.fillStyle = `rgba(${INK},${a * (isLedger ? 0.58 : 0.82)})`;
   ctx.textBaseline = 'alphabetic';
-  const width = isLedger ? fpx * 30 : R * 1.05;
-  const lines = art.type === 'ledger' ? art.lines : wrap(ctx, art.body, width);
-  const lh = fpx * (isLedger ? 1.55 : 1.35);
-  const total = lines.length * lh;
-  let y = T.oy - total / 2 + fpx * 0.8;
-  if (y < T.oy - R * 0.85) y = T.oy - R * 0.85;
-  ctx.textAlign = isLedger ? 'left' : 'center';
-  const x = isLedger ? T.ox - width / 2 : T.ox;
-  for (const line of lines) {
-    if (y > -lh && y < st.h + lh) ctx.fillText(line, x, y);
-    y += lh;
+  if (art.type === 'text') {
+    ctx.font = `italic ${fpx}px ${st.serif}`;
+    ctx.fillStyle = `rgba(${INK},${a * 0.82})`;
+    const lines = wrap(ctx, art.body, R * 1.05);
+    const lh = fpx * 1.35;
+    let y = T.oy - R * 0.2 - (lines.length * lh) / 2 + fpx * 0.8;
+    ctx.textAlign = 'center';
+    for (const line of lines) {
+      if (y > -lh && y < st.h + lh) ctx.fillText(line, T.ox, y);
+      y += lh;
+    }
+    ctx.textAlign = 'left';
+    return;
   }
-  ctx.textAlign = 'left';
+  // a session told as what happened, in order; the time is a quiet margin
+  const width = R * 1.05;
+  const x = T.ox - width / 2;
+  const indent = fpx * 4.2;
+  const lh = fpx * 1.3;
+  ctx.font = `italic ${fpx}px ${st.serif}`;
+  const blocks = art.lines.map((l) => wrap(ctx, l.text, width - indent));
+  const total = blocks.reduce((n, b) => n + b.length * lh + fpx * 0.55, 0);
+  let y = T.oy - R * 0.34 - total / 2 + fpx;
+  art.lines.forEach((l, i) => {
+    const time = new Date(l.t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+    if (y > -lh && y < st.h + lh) {
+      ctx.font = `${fpx * 0.52}px ${st.mono}`;
+      ctx.fillStyle = `rgba(${INK},${a * 0.38})`;
+      ctx.fillText(time, x, y - fpx * 0.05);
+    }
+    ctx.font = `italic ${fpx}px ${st.serif}`;
+    ctx.fillStyle = `rgba(${INK},${a * 0.8})`;
+    for (const line of blocks[i]) {
+      if (y > -lh && y < st.h + lh) ctx.fillText(line, x + indent, y);
+      y += lh;
+    }
+    y += fpx * 0.55;
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -457,10 +481,8 @@ export function shortDate(t: number) {
 
 export function continuityLine(node: IdeaNode, now: number): string {
   const last = lastActivity(node);
-  const changes = countEvents(node);
   const quiet = (now - last) / 86400000;
   const parts = [`since ${shortDate(node.began)}`];
-  if (changes > 1) parts.push(`${changes} changes`);
   if (node.state === 'abandoned') parts.push('let go');
   else if (quiet > 21) parts.push(`quiet since ${shortDate(last)}`);
   else parts.push(`last touched ${relTime(now, last)}`);
@@ -511,7 +533,8 @@ function drawLabel(st: RenderState, node: IdeaNode, x: number, y: number, cs: nu
   if (a2 > 0.01) {
     ctx.font = `9.5px ${st.mono}`;
     ctx.fillStyle = `rgba(${INK},${a2})`;
-    ctx.fillText(continuityLine(node, st.now), x + off, y + size * 0.3 + 14);
+    const second = node.portal ? 'every idea, again' : node.note && node.note !== node.title ? node.note : continuityLine(node, st.now);
+    ctx.fillText(second, x + off, y + size * 0.3 + 14);
   }
   ctx.textAlign = 'left';
 }
@@ -530,6 +553,11 @@ export function drawNode(
 ) {
   const R = T.s;
   const M = st.M;
+  if (node.void) return; // its lattice is drawn by drawVoidLattice
+  if (node.portal && !isRoot) {
+    drawPortal(st, node, T, alpha, path);
+    return;
+  }
   const outerFade = isRoot ? 1 - smoothstep(30 * M, 400 * M, R) : 1 - smoothstep(9 * M, 45 * M, R);
 
   if (!isRoot) drawMark(st, node, T, alpha * (1 - smoothstep(6 * M, 20 * M, R)), false);
@@ -538,7 +566,9 @@ export function drawNode(
   const ia = alpha * inner * outerFade;
 
   if (ia > 0.004) {
-    if (isRoot) drawLattice(st, T, ia * 0.2, 400, false);
+    if (isRoot) {
+      if (!node.portal) drawLattice(st, T, ia * 0.2, 400, false);
+    }
     else {
       drawWash(st, node, T, alpha * (1 - smoothstep(12 * M, 60 * M, R)));
       drawLattice(st, T, ia * (node.artifact ? 0.08 : 0.2) * smoothstep(0.6 * M, 2.6 * M, R), 1.2, true);
@@ -603,6 +633,24 @@ export function drawNode(
     if (cs >= 4) (st.labels ??= []).push({ node: c, x: cx, y: cy, cs, alpha: ca, sealed });
     if (cs < 0.5 * M) st.hits.push({ kind: 'node', node: c, path: cpath, sealed, x: cx, y: cy, r: Math.max(cs * 0.55, 12), size: cs });
   }
+}
+
+/** The endless grid inside empty frames, fading in as the last real frame's grid fades out. */
+export function drawVoidLattice(st: RenderState, T: ScreenTransform, realR: number) {
+  const M = st.M;
+  const handover = smoothstep(9 * M, 45 * M, realR);
+  drawLattice(st, T, 0.2 * handover, 1e6, false);
+}
+
+/** The Canvas again, reached from the end of a path. */
+function drawPortal(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: number, path: IdeaNode[]) {
+  const R = T.s;
+  const M = st.M;
+  drawMark(st, node, T, alpha * (1 - smoothstep(0.3 * M, 1.2 * M, R)), false);
+  const inner = alpha * smoothstep(40, 300, R);
+  if (inner < 0.004) return;
+  drawLattice(st, T, inner * 0.2 * (1 - smoothstep(30 * M, 400 * M, R)), 1.2, R < 3 * M);
+  drawNode(st, node, T, inner, 1, path, true);
 }
 
 export function render(st: RenderState, start: IdeaNode, startPath: IdeaNode[], T: ScreenTransform, p: number, isRoot: boolean) {

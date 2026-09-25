@@ -6,7 +6,7 @@ import { Camera } from '@/lib/shadowfield/camera';
 import { IdeaNode, LifeEvent, SEAL_MARGIN } from '@/lib/shadowfield/model';
 import { topologyOf } from '@/lib/shadowfield/layout';
 import { Access, Flight, pan as panCam, stepFlight, zoomAt } from '@/lib/shadowfield/navigate';
-import { Hit, Lens, RenderState, continuityLine, render, shortDate } from '@/lib/shadowfield/render';
+import { Hit, Lens, RenderState, continuityLine, drawVoidLattice, render, shortDate } from '@/lib/shadowfield/render';
 import { buildWorld, resolvePath } from '@/lib/shadowfield/world';
 import { createLocalStore, ShadowStore } from '@/lib/shadowfield/sources/local';
 import styles from './ShadowField.module.css';
@@ -310,6 +310,11 @@ export default function ShadowField({ serif }: Props) {
         cut,
       };
       render(st, cam.path[k], startPath, T, p, k === 0);
+      if (cam.node.void) {
+        let real = cam.depth;
+        while (real > 0 && cam.path[real].void) real--;
+        drawVoidLattice(st, cam.transformAt(cam.depth), cam.transformAt(real).s);
+      }
 
       // hover
       const ptr = pointerRef.current;
@@ -365,14 +370,16 @@ export default function ShadowField({ serif }: Props) {
       if (nowMs - lastDepthUpdate > 120) {
         lastDepthUpdate = nowMs;
         const fit = Math.log(Math.min(cam.w, cam.h) * 0.45);
-        setDepthPos(Math.max(0, Math.min(1, (cam.logZ() - fit) / 19)));
+        // depth is unbounded: the gauge laps once per ~19 e-folds of zoom
+        const lap = Math.max(0, (cam.logZ() - fit) / 19);
+        setDepthPos(lap - Math.floor(lap));
         setView((v) => (v.w === cam.w && v.h === cam.h ? v : { w: cam.w, h: cam.h }));
         const r = replayRef.current;
         if (r && cut !== null) setReplayView({ progress: r.progress, t: cut, playing: r.playing });
       }
-      if (nowMs - lastHash > 700) {
+      if (nowMs - lastHash > 700 && !cam.node.void) {
         lastHash = nowMs;
-        const ids = cam.path.slice(1).map((n) => n.id);
+        const ids = cam.path.slice(1).filter((n) => !n.void).map((n) => n.id);
         const hash = ids.length
           ? `path=${ids.map(encodeURIComponent).join('~')}&z=${(cam.s / cam.M).toPrecision(4)}&c=${cam.cx.toFixed(5)},${cam.cy.toFixed(5)}`
           : '';
@@ -622,6 +629,9 @@ export default function ShadowField({ serif }: Props) {
     }
   };
 
+  // the trail skips empty frames and folds long, looping journeys
+  const real = path.map((n, i) => ({ n, i })).filter(({ n }) => !n.void);
+  const crumbs = real.length > 6 ? [real[0], { n: real[0].n, i: -1 }, ...real.slice(-4)] : real;
   const current = path[path.length - 1];
   const top = path[1];
   const ownedHere = current ? localIds(current) : null;
@@ -654,16 +664,20 @@ export default function ShadowField({ serif }: Props) {
       </Link>
 
       <nav className={styles.trail} aria-label="Where you are">
-        {path.map((n, i) => (
-          <React.Fragment key={n.id}>
-            {i > 0 && <span className={styles.sep}>·</span>}
-            <button
-              type="button"
-              className={i === path.length - 1 ? styles.here : styles.crumb}
-              onClick={() => flyTo(path.slice(0, i + 1))}
-            >
-              {i === 0 ? 'canvas' : n.title ?? 'untitled'}
-            </button>
+        {crumbs.map(({ n, i }, j) => (
+          <React.Fragment key={`${n.id}:${i}`}>
+            {j > 0 && <span className={styles.sep}>·</span>}
+            {i < 0 ? (
+              <span className={styles.sep}>…</span>
+            ) : (
+              <button
+                type="button"
+                className={i === path.length - 1 ? styles.here : styles.crumb}
+                onClick={() => flyTo(path.slice(0, i + 1))}
+              >
+                {i === 0 ? 'canvas' : n.portal ? 'the canvas, again' : n.title ?? 'untitled'}
+              </button>
+            )}
           </React.Fragment>
         ))}
       </nav>

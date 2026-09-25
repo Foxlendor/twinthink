@@ -11,7 +11,11 @@ interface Commit {
   t: string;
   b: string;
   k: 'change' | 'repair' | 'experiment' | 'prune';
+  /** Hand-written plain-language note (scripts/twinthink_notes.json). */
+  d?: string;
 }
+
+const BRANCH_NOTES = (data as { branches?: Record<string, string> }).branches ?? {};
 
 const BRANCH_TITLES: Record<string, { title: string; kind: IdeaNode['kind'] }> = {
   surface: { title: 'the Twin page', kind: 'visual' },
@@ -41,11 +45,6 @@ function sessionTitle(t: number) {
   return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase()}, ${part}`;
 }
 
-function hhmm(t: number) {
-  const d = new Date(t);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
 export function buildTwinThinkTwin(): IdeaNode {
   const commits = (data.commits as Commit[]).map((c) => ({ ...c, ms: Date.parse(c.t) }));
   const began = commits[0].ms;
@@ -63,7 +62,7 @@ export function buildTwinThinkTwin(): IdeaNode {
     const events: LifeEvent[] = list.map((c, i) => ({
       t: c.ms,
       kind: i === 0 ? 'begin' : KIND_MAP[c.k].kind,
-      note: i === 0 ? 'first appeared' : KIND_MAP[c.k].note,
+      note: c.d ?? (i === 0 ? 'first appeared' : KIND_MAP[c.k].note),
     }));
     // dormancy and return, where the history shows it
     for (let i = 1; i < list.length; i++) {
@@ -92,14 +91,14 @@ export function buildTwinThinkTwin(): IdeaNode {
         events: sess.map((c, i) => ({
           t: c.ms,
           kind: i === 0 ? 'begin' : KIND_MAP[c.k].kind,
-          note: KIND_MAP[c.k].note,
+          note: c.d ?? KIND_MAP[c.k].note,
         })),
         state: 'alive',
         disclosure: 0,
         children: [],
         artifact: {
-          type: 'ledger',
-          lines: sess.map((c) => `${hhmm(c.ms)}  ${KIND_MAP[c.k].note.padEnd(20)} ${c.h}`),
+          type: 'story',
+          lines: sess.map((c) => ({ t: c.ms, text: c.d ?? KIND_MAP[c.k].note })),
         },
         x: 0,
         y: 0,
@@ -112,6 +111,7 @@ export function buildTwinThinkTwin(): IdeaNode {
     branches.push({
       id: `twinthink/${b}`,
       title: meta.title,
+      note: BRANCH_NOTES[b],
       kind: meta.kind,
       origin: 'real',
       began: list[0].ms,

@@ -12,6 +12,8 @@ import { topologyOf } from './layout';
 export const ENTER = 0.5;
 /** Leave a frame when its own radius shrinks below this fraction. */
 export const EXIT = 0.28;
+/** In blank space, open an empty frame once zoomed this far, so depth stays precise forever. */
+export const VOID_AT = 24;
 
 export interface ScreenTransform {
   ox: number;
@@ -28,6 +30,8 @@ export class Camera {
   s = 1;
   w = 1;
   h = 1;
+  /** Flights know their destination and must not open empty frames on the way. */
+  voidsEnabled = true;
 
   constructor(root: IdeaNode) {
     this.path = [root];
@@ -109,12 +113,41 @@ export class Camera {
     this.s /= child.r;
   }
 
+  /**
+   * Is any real idea near the view? Checked in the nearest non-void frame, so
+   * empty frames give way as soon as something to enter comes into view.
+   */
+  contentInView(): boolean {
+    let i = this.path.length - 1;
+    let cx = this.cx;
+    let cy = this.cy;
+    let s = this.s;
+    while (i > 0 && this.path[i].void) {
+      const n = this.path[i];
+      cx = cx * n.r + n.x;
+      cy = cy * n.r + n.y;
+      s /= n.r;
+      i--;
+    }
+    const frame = this.path[i];
+    topologyOf(frame);
+    const reach = (0.75 * Math.max(this.w, this.h)) / s;
+    for (const c of frame.children) {
+      if (Math.hypot(c.x - cx, c.y - cy) - c.r < reach) return true;
+    }
+    return false;
+  }
+
   /** Re-home the camera in the deepest frame that contains the view. */
   normalize(canEnter: EnterTest) {
     const M = this.M;
     for (let guard = 0; guard < 64; guard++) {
       if (this.path.length > 1 && (this.s < M * EXIT || Math.hypot(this.cx, this.cy) > 1.9)) {
         this.ascend();
+        continue;
+      }
+      if (this.node.void && this.contentInView()) {
+        while (this.node.void) this.ascend();
         continue;
       }
       const node = this.node;
@@ -128,7 +161,34 @@ export class Camera {
         entered = true;
         break;
       }
-      if (!entered) break;
+      if (!entered) {
+        // blank space has depth too: open an empty frame around the view
+        if (this.voidsEnabled && this.s > M * VOID_AT && !this.contentInView()) {
+          // a power of 1/8, snapped to the parent's lattice, so the endless
+          // grid continues without a visible jump as frames change
+          const n = Math.floor(Math.log(this.s / M) / Math.log(8));
+          const r = Math.pow(8, -n);
+          const step = Math.pow(8, -(n + 1));
+          const v: IdeaNode = {
+            id: `void:${this.path.length}`,
+            kind: 'unknown',
+            origin: 'real',
+            began: 0,
+            events: [],
+            state: 'alive',
+            disclosure: 0,
+            children: [],
+            x: Math.round(this.cx / step) * step,
+            y: Math.round(this.cy / step) * step,
+            r,
+            seed: 0,
+            void: true,
+          };
+          this.descend(v);
+          continue;
+        }
+        break;
+      }
     }
   }
 

@@ -36,7 +36,7 @@ export type LifeState = 'alive' | 'dormant' | 'abandoned' | 'realized';
 
 export type Artifact =
   | { type: 'text'; body: string }
-  | { type: 'ledger'; lines: string[] };
+  | { type: 'story'; lines: { t: number; text: string }[] };
 
 export interface IdeaNode {
   id: string;
@@ -62,6 +62,10 @@ export interface IdeaNode {
   ownedBy?: 'viewer';
   /** True when the children's events are a finer breakdown of this node's own events. */
   summarizes?: boolean;
+  /** An empty frame opened while zooming into blank space (keeps precision unbounded). */
+  void?: boolean;
+  /** A way back into the Canvas from the end of a path: its children are the Canvas's. */
+  portal?: boolean;
   /** Builds children on first approach (large synthetic fields). Called once by layout. */
   expand?: () => void;
   /** Aggregate continuity signals (for Shadows seen from far away). */
@@ -77,6 +81,7 @@ export function lastActivity(node: IdeaNode): number {
   let t = node.began;
   for (const e of node.events) if (e.t > t) t = e.t;
   for (const c of node.children) {
+    if (c.portal) continue;
     const ct = lastActivity(c);
     if (ct > t) t = ct;
   }
@@ -90,7 +95,7 @@ export function countEvents(node: IdeaNode): number {
   let n = 0;
   for (const e of node.events) if (!STRUCTURAL.has(e.kind)) n++;
   if (node.summarizes) return n;
-  for (const c of node.children) n += countEvents(c);
+  for (const c of node.children) if (!c.portal) n += countEvents(c);
   return n;
 }
 

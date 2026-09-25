@@ -22,24 +22,6 @@ function perceivable(cam: Camera, access: Access) {
   return node.children.filter((c) => cam.depth === 0 || c.disclosure <= p + SEAL_MARGIN);
 }
 
-/** Largest scale the camera may reach in its current frame, zooming toward focus (fx, fy). */
-export function maxScale(cam: Camera, access: Access, fx = cam.cx, fy = cam.cy): number {
-  const M = cam.M;
-  let best = M * (cam.node.children.length ? 3 : 3.5);
-  let nearest = Infinity;
-  for (const c of perceivable(cam, access)) {
-    const d = Math.hypot(fx - c.x, fy - c.y);
-    nearest = Math.min(nearest, Math.max(d - c.r, 1e-9));
-    if (d < c.r * 1.6) {
-      if (access.canEnter(c)) return Infinity;
-      best = Math.max(best, (0.34 * M) / c.r);
-    }
-  }
-  // in open space you may zoom until the nearest idea reaches the edge of view
-  if (nearest < Infinity) best = Math.max(best, (0.5 * M) / nearest);
-  return best;
-}
-
 export function minScale(cam: Camera): number {
   return cam.depth === 0 ? cam.M * 0.2 : 0;
 }
@@ -66,16 +48,10 @@ export function zoomAnchor(cam: Camera, sx: number, sy: number, access: Access):
   return [sx + (best[0] - sx) * w, sy + (best[1] - sy) * w];
 }
 
-/** Zoom with elastic limits, anchored on the idea under the cursor. */
+/** Zoom anchored on the idea under the cursor. Inward is unlimited; outward stops at the whole Canvas. */
 export function zoomAt(cam: Camera, sx: number, sy: number, factor: number, access: Access) {
   const [ax, ay] = factor > 1 ? zoomAnchor(cam, sx, sy, access) : [sx, sy];
-  if (factor > 1) {
-    const [fx, fy] = cam.toLocal(ax, ay);
-    const headroom = Math.log(maxScale(cam, access, fx, fy) / cam.s);
-    const want = Math.log(factor);
-    const allowed = headroom <= 0 ? want * 0.02 : Math.min(want, headroom * 0.4 + want * 0.02);
-    factor = Math.exp(Math.max(0, allowed));
-  } else {
+  if (factor < 1) {
     const floor = minScale(cam);
     if (floor > 0) {
       const room = Math.log(cam.s / floor);
@@ -116,6 +92,15 @@ export interface Flight {
 
 /** Advance a flight by one frame. Returns true when arrived. */
 export function stepFlight(cam: Camera, f: Flight, access: Access, dt: number): boolean {
+  cam.voidsEnabled = false;
+  try {
+    return flightStep(cam, f, access, dt);
+  } finally {
+    cam.voidsEnabled = true;
+  }
+}
+
+function flightStep(cam: Camera, f: Flight, access: Access, dt: number): boolean {
   const M = cam.M;
   const k = Math.min(1, dt * 4.2);
   // leave any branch that does not lead to the target

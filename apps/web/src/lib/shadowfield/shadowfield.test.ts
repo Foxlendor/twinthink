@@ -6,6 +6,7 @@ import { buildWorld, resolvePath } from './world';
 import { createLocalStore, localShadowNode } from './sources/local';
 import { Access, stepFlight, zoomAt } from './navigate';
 import continuity from './sources/twinthink-continuity.json';
+import notes from '../../../../../scripts/twinthink_notes.json';
 import { buildRehearsalField } from './specimens.fixture';
 import { spatialIndex } from './spatial';
 import { rootNode } from './world';
@@ -90,10 +91,11 @@ describe('camera', () => {
     const cam = freshCamera();
     let node = cam.node.children[0];
     const path = [cam.node, node];
-    while (true) {
+    for (let d = 0; d < 6; d++) {
       topologyOf(node);
-      if (!node.children.length) break;
-      node = node.children[0];
+      const next = node.children.find((c) => !c.portal);
+      if (!next) break;
+      node = next;
       path.push(node);
     }
     const target = path.slice(0, path.length);
@@ -141,9 +143,10 @@ describe('topology', () => {
 });
 
 describe('TwinThink continuity record', () => {
-  it('stores only timestamps, hashes, categories and kinds (no commit text)', () => {
-    for (const c of continuity.commits) {
-      expect(Object.keys(c).sort()).toEqual(['b', 'h', 'k', 't']);
+  it('stores only timestamps, hashes, categories, kinds and curated notes (no commit text)', () => {
+    for (const c of continuity.commits as { h: string; k: string; d?: string }[]) {
+      expect(Object.keys(c).filter((k) => k !== 'd').sort()).toEqual(['b', 'h', 'k', 't']);
+      if (c.d !== undefined) expect(c.d).toBe((notes.changes as Record<string, string>)[c.h]);
       expect(c.h).toMatch(/^[0-9a-f]{7}$/);
       expect(['change', 'repair', 'experiment', 'prune']).toContain(c.k);
     }
@@ -214,5 +217,46 @@ describe('scale (synthetic fixture, never served)', () => {
     for (let i = 0; i < 6000 && !arrived; i++) arrived = stepFlight(cam, { target, radius: 0.53 }, open, 1 / 60);
     expect(arrived).toBe(true);
     expect(cam.node).toBe(target[target.length - 1]);
+  });
+});
+
+describe('nothing ends', () => {
+  it('every leaf opens onto the Canvas again, and you can keep falling', () => {
+    const world = buildWorld([]);
+    const cam = new Camera(world);
+    cam.resize(1440, 900);
+    cam.s = 400;
+    // walk to a leaf, then into its portal, then into TwinThink again
+    let node = world.children[0];
+    const target = [world, node];
+    for (let d = 0; d < 6; d++) {
+      topologyOf(node);
+      const next = node.children.find((c) => !c.portal) ?? node.children.find((c) => c.portal);
+      if (!next) break;
+      node = next;
+      target.push(node);
+      if (node.portal) break;
+    }
+    expect(node.portal).toBe(true);
+    topologyOf(node);
+    target.push(node.children[0]);
+    let arrived = false;
+    for (let i = 0; i < 12000 && !arrived; i++) arrived = stepFlight(cam, { target, radius: 0.53 }, open, 1 / 60);
+    expect(arrived).toBe(true);
+    expect(cam.node.id).toBe('twinthink');
+    expect(cam.depth).toBeGreaterThan(4);
+  });
+
+  it('zooming into blank space never stops and stays precise', () => {
+    const cam = freshCamera();
+    // far from any idea
+    for (let i = 0; i < 400; i++) zoomAt(cam, 100, 100, 1.2, open);
+    expect(cam.path.some((n) => n.void)).toBe(true);
+    const z = cam.logZ();
+    expect(z).toBeGreaterThan(Math.log(400) + 60);
+    expect(Number.isFinite(cam.cx) && Math.abs(cam.cx) < 2).toBe(true);
+    // and all the way back out
+    for (let i = 0; i < 800 && cam.depth > 0; i++) zoomAt(cam, 100, 100, 1 / 1.2, open);
+    expect(cam.depth).toBe(0);
   });
 });

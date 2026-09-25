@@ -1,509 +1,618 @@
 {
- "generated": "2026-09-25T13:33:05.326Z",
+ "generated": "2026-09-25T14:29:50.519Z",
+ "branches": {
+  "surface": "how one idea is shown to people",
+  "deploy": "keeping the site up and reachable",
+  "engine": "predicting, testing and proving what an idea does",
+  "graph": "what an object is made of, part by part",
+  "rights": "who owns an idea, and who may see it",
+  "tooling": "working with Twins from the terminal and AI assistants",
+  "disclosure": "deciding what the public sees and what stays private",
+  "mark": "the name, the logo, the look",
+  "canvas": "a place where ideas can be found and entered"
+ },
  "commits": [
   {
    "h": "c69b2c9",
    "t": "2026-08-26T19:29:15-06:00",
    "b": "surface",
-   "k": "change"
+   "k": "change",
+   "d": "the first Twin page: one page for one idea"
   },
   {
    "h": "ee76979",
    "t": "2026-08-29T15:28:45-06:00",
    "b": "deploy",
-   "k": "change"
+   "k": "change",
+   "d": "prepared the project to go online"
   },
   {
    "h": "3c587f2",
    "t": "2026-08-29T15:33:53-06:00",
    "b": "deploy",
-   "k": "change"
+   "k": "change",
+   "d": "chose an open-source license"
   },
   {
    "h": "eceee53",
    "t": "2026-08-29T16:04:32-06:00",
    "b": "surface",
-   "k": "repair"
+   "k": "repair",
+   "d": "fixed the 3D viewer so the site would build"
   },
   {
    "h": "1f0866e",
    "t": "2026-08-29T16:07:57-06:00",
    "b": "surface",
-   "k": "repair"
+   "k": "repair",
+   "d": "worked around the 3D viewer's type checks"
   },
   {
    "h": "18f4a88",
    "t": "2026-08-29T16:10:57-06:00",
    "b": "surface",
-   "k": "repair"
+   "k": "repair",
+   "d": "pointed the site at its real server instead of a laptop"
   },
   {
    "h": "0e5f359",
    "t": "2026-08-29T16:18:48-06:00",
    "b": "surface",
-   "k": "change"
+   "k": "change",
+   "d": "made validation errors readable"
   },
   {
    "h": "0dd0afa",
    "t": "2026-08-29T16:31:52-06:00",
    "b": "surface",
-   "k": "repair"
+   "k": "repair",
+   "d": "made uploads behave the same on every computer"
   },
   {
    "h": "84a19e4",
    "t": "2026-08-29T16:32:42-06:00",
    "b": "surface",
-   "k": "repair"
+   "k": "repair",
+   "d": "sent visitors to the right example"
   },
   {
    "h": "0e845f6",
    "t": "2026-08-29T17:14:17-06:00",
    "b": "deploy",
-   "k": "repair"
+   "k": "repair",
+   "d": "kept the site working when the server moves"
   },
   {
    "h": "b945529",
    "t": "2026-08-29T17:18:42-06:00",
    "b": "surface",
-   "k": "repair"
+   "k": "repair",
+   "d": "repaired the page header"
   },
   {
    "h": "dc03224",
    "t": "2026-08-29T17:19:51-06:00",
    "b": "deploy",
-   "k": "experiment"
+   "k": "experiment",
+   "d": "added an upload test and deployment settings"
   },
   {
    "h": "78d2d68",
    "t": "2026-08-29T17:40:26-06:00",
    "b": "engine",
-   "k": "change"
+   "k": "change",
+   "d": "a simulation tab: a Twin can predict how its object behaves"
   },
   {
    "h": "a7fee59",
    "t": "2026-08-29T17:47:05-06:00",
    "b": "engine",
-   "k": "change"
+   "k": "change",
+   "d": "every simulated number now says where it came from, and is compared with real measurements"
   },
   {
    "h": "91604ce",
    "t": "2026-08-29T17:54:10-06:00",
    "b": "engine",
-   "k": "change"
+   "k": "change",
+   "d": "Twins became modular: experiments, scenarios, and forks that show what changed"
   },
   {
    "h": "46a2838",
    "t": "2026-08-29T18:02:26-06:00",
    "b": "surface",
-   "k": "repair"
+   "k": "repair",
+   "d": "replaced a placeholder 3D model with the real object's model"
   },
   {
    "h": "713ae04",
    "t": "2026-08-29T18:52:08-06:00",
    "b": "engine",
-   "k": "experiment"
+   "k": "experiment",
+   "d": "real test data can be uploaded, archived, and used to calibrate the simulation"
   },
   {
    "h": "29f276f",
    "t": "2026-08-29T18:55:38-06:00",
    "b": "engine",
-   "k": "change"
+   "k": "change",
+   "d": "a control-room view of live test readings"
   },
   {
    "h": "974a431",
    "t": "2026-08-29T19:00:12-06:00",
    "b": "graph",
-   "k": "change"
+   "k": "change",
+   "d": "brought the parts list and specification up to date with the design"
   },
   {
    "h": "c9218db",
    "t": "2026-08-29T19:03:38-06:00",
    "b": "engine",
-   "k": "change"
+   "k": "change",
+   "d": "added photos from the real workbench as evidence"
   },
   {
    "h": "e8b12ae",
    "t": "2026-08-29T19:15:13-06:00",
    "b": "surface",
-   "k": "change"
+   "k": "change",
+   "d": "made everything work on phones"
   },
   {
    "h": "bdf2659",
    "t": "2026-08-29T19:57:04-06:00",
    "b": "surface",
-   "k": "repair"
+   "k": "repair",
+   "d": "a small layout repair"
   },
   {
    "h": "b104477",
    "t": "2026-08-30T07:02:18-06:00",
    "b": "engine",
-   "k": "change"
+   "k": "change",
+   "d": "the first Twin presented as a living specimen"
   },
   {
    "h": "6a81dc8",
    "t": "2026-08-30T07:10:50-06:00",
    "b": "engine",
-   "k": "change"
+   "k": "change",
+   "d": "a reality engine: six stages from claim to proof, and a way to ask why for any claim"
   },
   {
    "h": "4c4b400",
    "t": "2026-08-30T07:16:21-06:00",
    "b": "surface",
-   "k": "change"
+   "k": "change",
+   "d": "a quieter, museum-like redesign"
   },
   {
    "h": "9f6121d",
    "t": "2026-08-30T08:26:38-06:00",
    "b": "engine",
-   "k": "change"
+   "k": "change",
+   "d": "connected an archive of earlier notebooks, recording how each page is known"
   },
   {
    "h": "3a0c0f2",
    "t": "2026-08-30T08:30:36-06:00",
    "b": "engine",
-   "k": "change"
+   "k": "change",
+   "d": "a factory that turns uploaded files into Twins"
   },
   {
    "h": "dad83f4",
    "t": "2026-08-30T08:31:36-06:00",
    "b": "engine",
-   "k": "change"
+   "k": "change",
+   "d": "wrote down the first formal shape of a Twin"
   },
   {
    "h": "14c952b",
    "t": "2026-08-30T08:32:22-06:00",
    "b": "engine",
-   "k": "change"
+   "k": "change",
+   "d": "how real an idea is became something computed, not claimed"
   },
   {
    "h": "3858d31",
    "t": "2026-09-15T19:48:08-06:00",
    "b": "graph",
-   "k": "change"
+   "k": "change",
+   "d": "parts lists became a real hierarchy of assemblies, components, materials and costs"
   },
   {
    "h": "c1c1b7b",
    "t": "2026-09-15T20:28:12-06:00",
    "b": "rights",
-   "k": "change"
+   "k": "change",
+   "d": "cryptographic identities, private access, and signed revisions"
   },
   {
    "h": "b572d73",
    "t": "2026-09-15T20:29:20-06:00",
    "b": "rights",
-   "k": "experiment"
+   "k": "experiment",
+   "d": "tests proving private keys never leak and records verify offline"
   },
   {
    "h": "6742f27",
    "t": "2026-09-15T20:41:30-06:00",
    "b": "tooling",
-   "k": "change"
+   "k": "change",
+   "d": "a command-line tool and an AI-assistant server that speak the same protocol"
   },
   {
    "h": "761bcda",
    "t": "2026-09-15T20:59:42-06:00",
    "b": "mark",
-   "k": "repair"
+   "k": "repair",
+   "d": "repaired Twin pages and added a guided tour"
   },
   {
    "h": "91d34c2",
    "t": "2026-09-15T21:13:25-06:00",
    "b": "surface",
-   "k": "repair"
+   "k": "repair",
+   "d": "one colour palette everywhere"
   },
   {
    "h": "1a8d6a9",
    "t": "2026-09-18T21:29:06-06:00",
    "b": "engine",
-   "k": "change"
+   "k": "change",
+   "d": "creator pages, backing, and a new brand"
   },
   {
    "h": "9d72812",
    "t": "2026-09-18T21:37:36-06:00",
    "b": "mark",
-   "k": "change"
+   "k": "change",
+   "d": "the homepage became a place to discover ideas"
   },
   {
    "h": "5616392",
    "t": "2026-09-18T21:41:11-06:00",
    "b": "surface",
-   "k": "change"
+   "k": "change",
+   "d": "kept the original hero image"
   },
   {
    "h": "6f2774c",
    "t": "2026-09-18T21:46:33-06:00",
    "b": "deploy",
-   "k": "change"
+   "k": "change",
+   "d": "replaced an AI-generated image with an authentic original drawing"
   },
   {
    "h": "6d37b48",
    "t": "2026-09-18T21:58:38-06:00",
    "b": "mark",
-   "k": "prune"
+   "k": "prune",
+   "d": "removed AI branding and fake backer numbers; added real reviews and thought logs"
   },
   {
    "h": "7400a82",
    "t": "2026-09-18T22:08:52-06:00",
    "b": "engine",
-   "k": "change"
+   "k": "change",
+   "d": "brought back the original line: give an idea a reality"
   },
   {
    "h": "d0d03f4",
    "t": "2026-09-18T22:16:47-06:00",
    "b": "disclosure",
-   "k": "prune"
+   "k": "prune",
+   "d": "took personal inventions and unapproved claims off the homepage"
   },
   {
    "h": "b9cb071",
    "t": "2026-09-18T22:16:59-06:00",
    "b": "disclosure",
-   "k": "prune"
+   "k": "prune",
+   "d": "an archive stays hidden until the inventor approves it"
   },
   {
    "h": "0f0c2f3",
    "t": "2026-09-18T22:17:01-06:00",
    "b": "disclosure",
-   "k": "prune"
+   "k": "prune",
+   "d": "removed unapproved details from the public archive"
   },
   {
    "h": "247b55d",
    "t": "2026-09-18T22:17:07-06:00",
    "b": "rights",
-   "k": "prune"
+   "k": "prune",
+   "d": "profile pages stopped exposing private identity"
   },
   {
    "h": "6940a3b",
    "t": "2026-09-18T22:17:19-06:00",
    "b": "disclosure",
-   "k": "change"
+   "k": "change",
+   "d": "nothing becomes public without explicit approval"
   },
   {
    "h": "47badf6",
    "t": "2026-09-18T22:17:26-06:00",
    "b": "disclosure",
-   "k": "change"
+   "k": "change",
+   "d": "new Twins start private"
   },
   {
    "h": "532b63c",
    "t": "2026-09-18T22:17:30-06:00",
    "b": "disclosure",
-   "k": "prune"
+   "k": "prune",
+   "d": "removed a leftover public link"
   },
   {
    "h": "67e67ec",
    "t": "2026-09-18T22:23:20-06:00",
    "b": "disclosure",
-   "k": "change"
+   "k": "change",
+   "d": "inventors choose exactly what a public preview shows"
   },
   {
    "h": "7988e84",
    "t": "2026-09-18T22:23:29-06:00",
    "b": "rights",
-   "k": "change"
+   "k": "change",
+   "d": "the inventor's identity is hidden by default"
   },
   {
    "h": "f2e8b06",
    "t": "2026-09-18T22:23:34-06:00",
    "b": "disclosure",
-   "k": "repair"
+   "k": "repair",
+   "d": "fixed the public list after the privacy changes"
   },
   {
    "h": "8bd2e94",
    "t": "2026-09-18T22:23:38-06:00",
    "b": "disclosure",
-   "k": "change"
+   "k": "change",
+   "d": "a Twin can describe its own disclosure rules"
   },
   {
    "h": "2ffcfc7",
    "t": "2026-09-18T22:23:53-06:00",
    "b": "surface",
-   "k": "change"
+   "k": "change",
+   "d": "each file remembers whether it is approved for the public"
   },
   {
    "h": "38a284d",
    "t": "2026-09-18T22:24:02-06:00",
    "b": "surface",
-   "k": "change"
+   "k": "change",
+   "d": "a public preview that shows only approved parts"
   },
   {
    "h": "4149690",
    "t": "2026-09-18T22:24:07-06:00",
    "b": "disclosure",
-   "k": "change"
+   "k": "change",
+   "d": "3D previews render only approved shapes"
   },
   {
    "h": "d3e2cfa",
    "t": "2026-09-18T22:24:21-06:00",
    "b": "disclosure",
-   "k": "change"
+   "k": "change",
+   "d": "public Twin pages became controlled-disclosure pages"
   },
   {
    "h": "b1330b9",
    "t": "2026-09-18T22:24:25-06:00",
    "b": "rights",
-   "k": "change"
+   "k": "change",
+   "d": "a public identity became optional"
   },
   {
    "h": "d70f0fb",
    "t": "2026-09-18T22:24:46-06:00",
    "b": "disclosure",
-   "k": "change"
+   "k": "change",
+   "d": "one last check before anything is published"
   },
   {
    "h": "70cc239",
    "t": "2026-09-18T22:24:50-06:00",
    "b": "disclosure",
-   "k": "change"
+   "k": "change",
+   "d": "finished wiring that last check"
   },
   {
    "h": "f2bbe22",
    "t": "2026-09-18T22:24:56-06:00",
    "b": "disclosure",
-   "k": "change"
+   "k": "change",
+   "d": "the server decides what is public, not the page"
   },
   {
    "h": "5b99e5f",
    "t": "2026-09-18T22:25:11-06:00",
    "b": "disclosure",
-   "k": "change"
+   "k": "change",
+   "d": "closed a gap in the creation flow"
   },
   {
    "h": "8d67abd",
    "t": "2026-09-18T22:40:10-06:00",
    "b": "mark",
-   "k": "change"
+   "k": "change",
+   "d": "restored the original logo and type"
   },
   {
    "h": "b00bc2a",
    "t": "2026-09-18T22:51:02-06:00",
    "b": "rights",
-   "k": "experiment"
+   "k": "experiment",
+   "d": "enforced the inventor's permission on every published file"
   },
   {
    "h": "5dff14c",
    "t": "2026-09-18T23:12:03-06:00",
    "b": "surface",
-   "k": "repair"
+   "k": "repair",
+   "d": "fixed a doubled navigation bar; added a phone menu"
   },
   {
    "h": "ee3a171",
    "t": "2026-09-19T15:37:50-06:00",
    "b": "mark",
-   "k": "change"
+   "k": "change",
+   "d": "new icons for the new mark"
   },
   {
    "h": "32f0f32",
    "t": "2026-09-20T23:52:01-06:00",
    "b": "mark",
-   "k": "change"
+   "k": "change",
+   "d": "a rebrand, a second 3D Twin, pitch access codes, and a waitlist"
   },
   {
    "h": "b8d98e3",
    "t": "2026-09-21T00:08:05-06:00",
    "b": "rights",
-   "k": "prune"
+   "k": "prune",
+   "d": "private access enforced by the server"
   },
   {
    "h": "9ae6890",
    "t": "2026-09-21T00:19:01-06:00",
    "b": "rights",
-   "k": "repair"
+   "k": "repair",
+   "d": "fixed a server that would not start"
   },
   {
    "h": "3c4d839",
    "t": "2026-09-21T00:27:59-06:00",
    "b": "mark",
-   "k": "change"
+   "k": "change",
+   "d": "replaced every icon with the new mark"
   },
   {
    "h": "fe11a54",
    "t": "2026-09-21T00:29:52-06:00",
    "b": "disclosure",
-   "k": "prune"
+   "k": "prune",
+   "d": "changed how the creator is named in public"
   },
   {
    "h": "7e483e9",
    "t": "2026-09-21T00:33:56-06:00",
    "b": "surface",
-   "k": "change"
+   "k": "change",
+   "d": "settled the creator's public name"
   },
   {
    "h": "88592d7",
    "t": "2026-09-21T00:42:26-06:00",
    "b": "deploy",
-   "k": "repair"
+   "k": "repair",
+   "d": "fixed a build conflict"
   },
   {
    "h": "39f45bf",
    "t": "2026-09-24T21:45:45-06:00",
    "b": "canvas",
-   "k": "change"
+   "k": "change",
+   "d": "the first Shadow Canvas: a near-blank field of ideas"
   },
   {
    "h": "e80acfc",
    "t": "2026-09-25T09:20:01+00:00",
    "b": "canvas",
-   "k": "change"
+   "k": "change",
+   "d": "the Shadow Field: move through ideas by zooming into them"
   },
   {
    "h": "173a0fb",
    "t": "2026-09-25T09:33:14+00:00",
    "b": "canvas",
-   "k": "experiment"
+   "k": "experiment",
+   "d": "scrolling into an idea and back out works end to end"
   },
   {
    "h": "76b698f",
    "t": "2026-09-25T09:36:50+00:00",
    "b": "canvas",
-   "k": "change"
+   "k": "change",
+   "d": "arriving means being inside; your own Shadows became readable"
   },
   {
    "h": "3a019c3",
    "t": "2026-09-25T09:55:23+00:00",
    "b": "canvas",
-   "k": "change"
+   "k": "change",
+   "d": "you can watch an idea grow from its first moment"
   },
   {
    "h": "c8099e8",
    "t": "2026-09-25T13:06:24+00:00",
    "b": "canvas",
-   "k": "change"
+   "k": "change",
+   "d": "made very large fields fast"
   },
   {
    "h": "1d73068",
    "t": "2026-09-25T13:08:20+00:00",
    "b": "canvas",
-   "k": "experiment"
+   "k": "experiment",
+   "d": "removed every made-up idea from the site"
   },
   {
    "h": "1d21188",
    "t": "2026-09-25T13:26:21+00:00",
    "b": "canvas",
-   "k": "change"
+   "k": "change",
+   "d": "a calmer motion setting; keep a copy of your Shadow"
   },
   {
    "h": "5e789f2",
    "t": "2026-09-25T13:28:07+00:00",
    "b": "canvas",
-   "k": "change"
+   "k": "change",
+   "d": "noted related research on hidden images"
   },
   {
    "h": "1e28663",
    "t": "2026-09-25T13:29:08+00:00",
    "b": "canvas",
-   "k": "change"
+   "k": "change",
+   "d": "a tamper-evident history for Shadows"
   },
   {
    "h": "fedd7cd",
    "t": "2026-09-25T13:32:14+00:00",
    "b": "canvas",
-   "k": "repair"
+   "k": "repair",
+   "d": "small repairs"
   },
   {
    "h": "cf694fb",
    "t": "2026-09-25T13:32:53+00:00",
    "b": "canvas",
-   "k": "change"
+   "k": "change",
+   "d": "wrote down the night's work"
+  },
+  {
+   "h": "2b934ad",
+   "t": "2026-09-25T13:33:07+00:00",
+   "b": "canvas",
+   "k": "change",
+   "d": "refreshed this very record"
+  },
+  {
+   "h": "4f6d97f",
+   "t": "2026-09-25T13:35:26+00:00",
+   "b": "deploy",
+   "k": "change",
+   "d": "noted where the site is deployed"
   }
  ]
 }

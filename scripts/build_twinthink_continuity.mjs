@@ -4,18 +4,22 @@
 //
 // Privacy rule: commit messages are only used locally to *classify* a change.
 // They are never written to the output. The output contains timestamps, short
-// hashes, a category, and an event kind — nothing else.
+// hashes, a category, an event kind, and (when one exists) a hand-written
+// plain-language note from scripts/twinthink_notes.json.
 //
 // Usage: node scripts/build_twinthink_continuity.mjs
 // (needs full history: git fetch --depth=2000 origin master)
 
 import { execSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out = path.join(root, 'apps/web/src/lib/shadowfield/sources/twinthink-continuity.json');
+
+// Hand-written, visitor-facing notes (neutral; no private project names).
+const notes = JSON.parse(readFileSync(path.join(root, 'scripts/twinthink_notes.json'), 'utf8'));
 
 const raw = execSync('git log --no-merges --reverse --format=%H%x09%aI%x09%s', { cwd: root, encoding: 'utf8' });
 
@@ -47,9 +51,11 @@ const commits = raw
     const [hash, date, subject] = line.split('\t');
     if (/^chore: merge|^merge/i.test(subject)) return null;
     const branch = BRANCHES.find(([, re]) => re.test(subject))[0];
-    return { h: hash.slice(0, 7), t: date, b: branch, k: kindOf(subject) };
+    const h = hash.slice(0, 7);
+    const note = notes.changes[h];
+    return note ? { h, t: date, b: branch, k: kindOf(subject), d: note } : { h, t: date, b: branch, k: kindOf(subject) };
   })
   .filter(Boolean);
 
-writeFileSync(out, JSON.stringify({ generated: new Date().toISOString(), commits }, null, 1) + '\n');
+writeFileSync(out, JSON.stringify({ generated: new Date().toISOString(), branches: notes.branches, commits }, null, 1) + '\n');
 console.log(`wrote ${commits.length} commits to ${path.relative(root, out)}`);
