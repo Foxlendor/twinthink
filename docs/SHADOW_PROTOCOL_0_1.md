@@ -105,3 +105,30 @@ The /canvas route demonstrates:
 - explicit distinction between prototype records and real Twin records
 
 Next engineering step: replace seeded demo records with live Twin continuity events and add paired-screen Lens sessions.
+
+## Related work: visual cryptography (Naor & Shamir, 1994)
+
+Visual cryptography splits an image into shares; each share alone is uniformly
+random and reveals nothing, and stacking k shares reveals the image to the eye
+with no computation. It matters to TwinThink in three ways:
+
+- **Prior art.** "A near-blank surface that reveals an image only through a
+  second layer or device" is established. TwinThink's novelty lies in
+  continuity, semantic depth and disclosure tied to backing, not in the reveal
+  trick itself.
+- **Obfuscation is not hiding.** Pushing an image toward white can be undone
+  with a levels/histogram stretch. If a Shadow must protect information, use a
+  scheme where one share alone carries zero information.
+- **A real mechanism for the paired Lens.** Desktop shows share A (reads as
+  paper texture), the phone holds share B. k-of-n schemes suggest a Shadow that
+  appears only when k backers look together. Practical limits: pixel-accurate
+  alignment through a camera is hard and contrast halves; a digital variant
+  (shares combined on the phone) is feasible but is ordinary secret sharing.
+
+## Enforcement note (current build)
+
+In the Shadow Field, sealed nodes are *visually* sealed only; their data still
+reaches the client. The public Canvas currently holds only public records, so
+nothing leaks. Before any private Twin is placed on the Canvas, the server must
+withhold every element x with d(x) > p for that viewer rather than sending it
+to be rendered sealed.
