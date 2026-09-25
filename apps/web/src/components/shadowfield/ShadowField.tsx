@@ -228,6 +228,8 @@ export default function ShadowField({ serif }: Props) {
     let lastHash = 0;
     let lastDepthUpdate = 0;
 
+    const reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
     const frame = (nowMs: number) => {
       raf = requestAnimationFrame(frame);
       const canvas = canvasRef.current;
@@ -296,7 +298,8 @@ export default function ShadowField({ serif }: Props) {
         w: rect.width,
         h: rect.height,
         M: cam.M,
-        time: nowMs / 1000,
+        time: reducedQuery.matches ? 0 : nowMs / 1000,
+        reduced: reducedQuery.matches,
         lens: lensRef.current,
         hits: hitsRef.current,
         serif,
@@ -572,6 +575,20 @@ export default function ShadowField({ serif }: Props) {
     r.hold = 0;
   };
 
+  const keepCopy = (shadowId: string) => {
+    const record = storeRef.current?.list().find((s) => s.id === shadowId);
+    if (!record) return;
+    const blob = new Blob(
+      [JSON.stringify({ format: 'twinthink.shadow', version: 1, exported: new Date().toISOString(), shadow: record }, null, 2)],
+      { type: 'application/json' }
+    );
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `shadow-${shadowId}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+
   const toggleFollow = (node: IdeaNode) => {
     const next = new Set(lensRef.current.followed);
     if (next.has(node.id)) next.delete(node.id);
@@ -733,6 +750,11 @@ export default function ShadowField({ serif }: Props) {
             >
               rewrite
             </button>
+            {!ownedHere.thoughtId && (
+              <button type="button" className={styles.quiet} onClick={() => keepCopy(ownedHere.shadowId)}>
+                keep a copy
+              </button>
+            )}
             {ownedHere.thoughtId && (
               <button
                 type="button"

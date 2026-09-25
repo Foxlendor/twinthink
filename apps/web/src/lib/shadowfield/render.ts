@@ -52,6 +52,8 @@ export interface RenderState {
   cut: number | null;
   /** Labels are queued during the pass and placed afterwards by priority. */
   labels?: QueuedLabel[];
+  /** prefers-reduced-motion: no ripples (time is also frozen by the caller). */
+  reduced?: boolean;
   /** Batched sub-pixel marks, by alpha bucket. */
   dots?: (Path2D | undefined)[];
 }
@@ -181,7 +183,7 @@ function drawMark(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: nu
 
   // recent activity leaves a slow ripple: evidence that something is alive here
   const quietDays = (st.now - lastActivity(node)) / 86400000;
-  if (!sealed && R > 0.5 && R < 40 && quietDays < 21) {
+  if (!st.reduced && !sealed && R > 0.5 && R < 40 && quietDays < 21) {
     const period = 7;
     const phase = ((time + (seed % 13) * 0.53) % period) / period;
     const liveness = 1 - quietDays / 21;
