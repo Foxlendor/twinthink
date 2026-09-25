@@ -1,12 +1,12 @@
-// Synthetic specimens for the rehearsal field (/canvas/rehearsal).
+// Synthetic specimens: a TEST FIXTURE ONLY.
 //
-// These are NOT human ideas and never appear on the public Canvas. They exist
+// These are NOT human ideas and are never served by the site. They exist
 // to exercise scale (tens of thousands of Shadows), deep procedural recursion,
 // sealed disclosure, dormancy and abandonment. They carry no titles or text so
 // they cannot be mistaken for real records.
 
-import { IdeaNode, LifeEvent, EventKind, LifeState } from '../model';
-import { mulberry32, hashString } from '../rng';
+import { IdeaNode, LifeEvent, EventKind, LifeState } from './model';
+import { mulberry32, hashString } from './rng';
 
 const DAY = 86400000;
 

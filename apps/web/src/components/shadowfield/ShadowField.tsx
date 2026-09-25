@@ -13,9 +13,6 @@ import styles from './ShadowField.module.css';
 
 interface Props {
   serif: string;
-  /** Optional world override (the rehearsal field). */
-  worldFactory?: () => IdeaNode;
-  rehearsal?: boolean;
 }
 
 interface Composer {
@@ -99,7 +96,7 @@ function eventLabel(ev: LifeEvent) {
   return `${shortDate(ev.t)}, ${time}`;
 }
 
-export default function ShadowField({ serif, worldFactory, rehearsal = false }: Props) {
+export default function ShadowField({ serif }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const storeRef = useRef<ShadowStore | null>(null);
   const worldRef = useRef<IdeaNode | null>(null);
@@ -146,7 +143,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
 
   const rebuild = useCallback(() => {
     const store = storeRef.current!;
-    const world = worldFactory ? worldFactory() : buildWorld(store.list());
+    const world = buildWorld(store.list());
     worldRef.current = world;
     const cam = camRef.current;
     if (cam) {
@@ -157,7 +154,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
       if (lost) cam.normalize(access.canEnter);
     }
     setVersion((v) => v + 1);
-  }, [access, worldFactory]);
+  }, [access]);
 
   const flyToIds = useCallback((ids: string[]) => {
     const world = worldRef.current;
@@ -173,7 +170,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
     } catch {
       storage = null;
     }
-    storeRef.current = createLocalStore(rehearsal ? null : storage);
+    storeRef.current = createLocalStore(storage);
     const followedSet = readSet(FOLLOW_KEY);
     lensRef.current = {
       closeness: (top: IdeaNode) => closenessFor(top, lensRef.current.followed),
@@ -193,7 +190,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
     const mono = getComputedStyle(document.documentElement).getPropertyValue('--font-jetbrains-mono').trim();
     monoRef.current = mono ? `${mono}, monospace` : 'monospace';
 
-    const world = worldFactory ? worldFactory() : buildWorld(storeRef.current.list());
+    const world = buildWorld(storeRef.current.list());
     worldRef.current = world;
     const cam = new Camera(world);
     camRef.current = cam;
@@ -222,7 +219,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
       // ignore malformed hashes
     }
     setVersion((v) => v + 1);
-  }, [access, flyToIds, rehearsal, worldFactory]);
+  }, [access, flyToIds]);
 
   // ---------------------------------------------------------------- frame loop
   useEffect(() => {
@@ -368,7 +365,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
         const r = replayRef.current;
         if (r && cut !== null) setReplayView({ progress: r.progress, t: cut, playing: r.playing });
       }
-      if (!rehearsal && nowMs - lastHash > 700) {
+      if (nowMs - lastHash > 700) {
         lastHash = nowMs;
         const ids = cam.path.slice(1).map((n) => n.id);
         const hash = ids.length
@@ -381,7 +378,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [access, rehearsal, serif]);
+  }, [access, serif]);
 
   // ---------------------------------------------------------------- input
   const dismissHint = useCallback(() => {
@@ -433,7 +430,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
   const openComposerAt = useCallback(
     (sx: number, sy: number) => {
       const cam = camRef.current;
-      if (!cam || rehearsal) return;
+      if (!cam) return;
       const [lx, ly] = cam.toLocal(sx, sy);
       if (cam.depth === 0) {
         setComposer({ mode: 'cast', x: sx, y: sy, lx, ly });
@@ -443,7 +440,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
       if (!ids || Math.hypot(lx, ly) > 0.9) return;
       setComposer({ mode: 'thought', x: sx, y: sy, lx, ly, shadowId: ids.shadowId, parentId: ids.thoughtId });
     },
-    [rehearsal]
+    []
   );
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -646,7 +643,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
               className={i === path.length - 1 ? styles.here : styles.crumb}
               onClick={() => flyTo(path.slice(0, i + 1))}
             >
-              {i === 0 ? (rehearsal ? 'rehearsal field' : 'canvas') : n.title ?? 'untitled'}
+              {i === 0 ? 'canvas' : n.title ?? 'untitled'}
             </button>
           </React.Fragment>
         ))}
@@ -660,7 +657,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
       <div className={styles.actions}>
         {path.length <= 1 && (
           <>
-            {!rehearsal && (
+            {(
               <button
                 type="button"
                 className={styles.quiet}
@@ -830,8 +827,6 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
           </span>
         </form>
       )}
-
-      {rehearsal && <div className={styles.note}>synthetic specimens for testing scale · not human ideas</div>}
 
       {!hinted && path.length <= 1 && <div className={styles.hint}>scroll toward anything</div>}
 

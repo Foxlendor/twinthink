@@ -6,6 +6,9 @@ import { buildWorld, resolvePath } from './world';
 import { createLocalStore, localShadowNode } from './sources/local';
 import { Access, stepFlight, zoomAt } from './navigate';
 import continuity from './sources/twinthink-continuity.json';
+import { buildRehearsalField } from './specimens.fixture';
+import { spatialIndex } from './spatial';
+import { rootNode } from './world';
 
 const open: Access = { canEnter: () => true, closenessAt: () => 1 };
 
@@ -168,5 +171,48 @@ describe('local shadows', () => {
     expect(node.children[0].events.map((e) => e.kind)).toEqual(['begin', 'revision', 'prune']);
     const world = buildWorld(store.list());
     expect(resolvePath(world, [node.id, node.children[0].id]).length).toBe(3);
+  });
+});
+
+describe('scale (synthetic fixture, never served)', () => {
+  it('spatial index returns exactly the children in a region', () => {
+    const field = rootNode('fixture', buildRehearsalField(20000));
+    const idx = spatialIndex(field);
+    const hits = idx.query(-0.1, -0.1, 0.1, 0.1, []).filter((c) => Math.abs(c.x) <= 0.1 && Math.abs(c.y) <= 0.1);
+    const brute = field.children.filter((c) => Math.abs(c.x) <= 0.1 && Math.abs(c.y) <= 0.1);
+    expect(new Set(hits)).toEqual(new Set(brute));
+  });
+
+  it('builds interiors lazily and supports deep recursion', () => {
+    const field = rootNode('fixture', buildRehearsalField(100));
+    let node = field.children[7];
+    expect(node.children.length).toBe(0);
+    let depth = 0;
+    while (depth < 6) {
+      topologyOf(node);
+      if (!node.children.length) break;
+      node = node.children[0];
+      depth++;
+    }
+    expect(depth).toBeGreaterThanOrEqual(1);
+  });
+
+  it('flies to a deep synthetic node without losing precision', () => {
+    const field = rootNode('fixture', buildRehearsalField(2000));
+    const cam = new Camera(field);
+    cam.resize(1440, 900);
+    cam.s = 400;
+    let node = field.children[3];
+    const target = [field, node];
+    for (let d = 0; d < 5; d++) {
+      topologyOf(node);
+      if (!node.children.length) break;
+      node = node.children[0];
+      target.push(node);
+    }
+    let arrived = false;
+    for (let i = 0; i < 6000 && !arrived; i++) arrived = stepFlight(cam, { target, radius: 0.53 }, open, 1 / 60);
+    expect(arrived).toBe(true);
+    expect(cam.node).toBe(target[target.length - 1]);
   });
 });
