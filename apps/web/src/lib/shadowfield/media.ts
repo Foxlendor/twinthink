@@ -52,6 +52,13 @@ export function getImage(src: string): Loaded | null {
 // Films: one silent, inline element per source, playing only while in view.
 
 const videos = new Map<string, HTMLVideoElement>();
+let filmRate = 1;
+
+/** For recordings made frame by frame: films keep time with the frames, not the wall clock. */
+export function setFilmRate(rate: number) {
+  filmRate = rate;
+  for (const v of videos.values()) v.playbackRate = rate;
+}
 
 export function getVideo(src: string, webm?: string): HTMLVideoElement | null {
   if (typeof document === 'undefined') return null;
@@ -64,6 +71,7 @@ export function getVideo(src: string, webm?: string): HTMLVideoElement | null {
     v.preload = 'auto';
     const mp4 = v.canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
     v.src = !mp4 && webm && v.canPlayType('video/webm; codecs="vp9, opus"') ? webm : src;
+    v.playbackRate = filmRate;
     videos.set(src, v);
   }
   return v;

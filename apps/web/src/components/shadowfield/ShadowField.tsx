@@ -7,7 +7,7 @@ import { IdeaNode, LifeEvent, SEAL_MARGIN, findPath, lastActivity } from '@/lib/
 import { topologyOf } from '@/lib/shadowfield/layout';
 import { Access, Flight, pan as panCam, stepFlight, transformOfPath, zoomAt } from '@/lib/shadowfield/navigate';
 import { Hit, Lens, RenderState, drawSketch, lifeWord, drawVoidLattice, pulseChain, render, shortDate } from '@/lib/shadowfield/render';
-import { restVideos, setMediaReadyCallback, settleVideos, toggleVideoSound } from '@/lib/shadowfield/media';
+import { restVideos, setFilmRate, setMediaReadyCallback, settleVideos, toggleVideoSound } from '@/lib/shadowfield/media';
 import {
   ARRIVE,
   FOCUS,
@@ -489,6 +489,12 @@ export default function ShadowField({ serif }: Props) {
       stream: () => streamRef.current,
       here: () => hereRef.current?.node.id ?? null,
       flyTo: (ids: string[]) => flyToIds(ids),
+      // recordings made frame by frame keep films and songs in time with the frames
+      mediaRate: (r: number) => {
+        setFilmRate(r);
+        const a = audioRef.current;
+        if (a) a.el.playbackRate = r;
+      },
     };
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
