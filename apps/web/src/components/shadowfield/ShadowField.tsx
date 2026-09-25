@@ -70,6 +70,29 @@ function localIds(node: IdeaNode): { shadowId: string; thoughtId: string | null 
   return { shadowId, thoughtId: thoughtId ?? null };
 }
 
+/** The most open visible spot inside the current frame, for a new thought. */
+function openSpot(cam: Camera, node: IdeaNode): [number, number] {
+  let best: [number, number] = [0.4, 0];
+  let bestScore = -Infinity;
+  for (let i = 0; i < 64; i++) {
+    const ang = (i / 64) * Math.PI * 2 + 0.37;
+    for (const rho of [0.3, 0.45, 0.6, 0.72]) {
+      const x = Math.cos(ang) * rho;
+      const y = Math.sin(ang) * rho;
+      const [sx, sy] = cam.toScreen(x, y);
+      if (sx < 60 || sy < 60 || sx > cam.w - 280 || sy > cam.h - 100) continue;
+      let d = 1;
+      for (const c of node.children) d = Math.min(d, Math.hypot(c.x - x, c.y - y) - c.r);
+      const score = d - Math.abs(rho - 0.5) * 0.3 + Math.sin(i * 12.9898) * 0.01;
+      if (score > bestScore) {
+        bestScore = score;
+        best = [x, y];
+      }
+    }
+  }
+  return best;
+}
+
 function eventLabel(ev: LifeEvent) {
   const d = new Date(ev.t);
   const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
@@ -136,7 +159,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
   const flyToIds = useCallback((ids: string[]) => {
     const world = worldRef.current;
     if (!world) return;
-    flightRef.current = { target: resolvePath(world, ids), radius: 0.4 };
+    flightRef.current = { target: resolvePath(world, ids), radius: 0.56 };
   }, []);
 
   // ---------------------------------------------------------------- setup
@@ -375,7 +398,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
     return () => canvas.removeEventListener('wheel', onWheel);
   }, [access, dismissHint]);
 
-  const flyTo = useCallback((target: IdeaNode[], radius = 0.4) => {
+  const flyTo = useCallback((target: IdeaNode[], radius = 0.56) => {
     flightRef.current = { target, radius };
     velRef.current = { x: 0, y: 0 };
     zoomVelRef.current.v = 0;
@@ -462,7 +485,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
 
     const hit = hoverRef.current ?? hitsRef.current.find((h) => Math.hypot(h.x - x, h.y - y) < h.r) ?? null;
     if (hit && hit.kind === 'node') {
-      flyTo(hit.path, hit.sealed ? 0.12 : 0.4);
+      flyTo(hit.path, hit.sealed ? 0.12 : 0.56);
       return;
     }
     if (isDouble) openComposerAt(x, y);
@@ -485,7 +508,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
       else if (e.key === 'ArrowUp') velRef.current.y += 6;
       else if (e.key === 'ArrowDown') velRef.current.y -= 6;
       else if (e.key === 'Escape' || e.key === 'Backspace') {
-        if (cam.depth > 0) flyTo(cam.path.slice(0, cam.depth), 0.4);
+        if (cam.depth > 0) flyTo(cam.path.slice(0, cam.depth));
       } else return;
       e.preventDefault();
       dismissHint();
@@ -500,7 +523,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
     if (!world) return;
     const options = world.children.filter((c) => c.id !== camRef.current?.path[1]?.id);
     const pick = options.length ? options[Math.floor(Math.random() * options.length)] : world.children[0];
-    if (pick) flyTo([world, pick], 0.4);
+    if (pick) flyTo([world, pick]);
   };
 
   const toggleFollow = (node: IdeaNode) => {
@@ -524,7 +547,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
       rebuild();
       const world = worldRef.current!;
       const node = world.children.find((n) => n.id === `local/${s.id}`);
-      if (node) flyTo([world, node], 0.4);
+      if (node) flyTo([world, node]);
     } else if (c.mode === 'thought' && c.shadowId) {
       store.addThought(c.shadowId, c.parentId ?? null, value, c.lx, c.ly);
       rebuild();
@@ -572,7 +595,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
             <button
               type="button"
               className={i === path.length - 1 ? styles.here : styles.crumb}
-              onClick={() => flyTo(path.slice(0, i + 1), 0.4)}
+              onClick={() => flyTo(path.slice(0, i + 1))}
             >
               {i === 0 ? (rehearsal ? 'rehearsal field' : 'canvas') : n.title ?? 'untitled'}
             </button>
@@ -623,16 +646,15 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
               onClick={() => {
                 const c = camRef.current;
                 if (!c) return;
-                // place a new thought in open space near the centre
-                const ang = Math.random() * Math.PI * 2;
-                const rho = 0.35 + Math.random() * 0.4;
-                const [sx, sy] = c.toScreen(Math.cos(ang) * rho, Math.sin(ang) * rho);
+                // place a new thought in the most open visible space
+                const [lx, ly] = openSpot(c, c.node);
+                const [sx, sy] = c.toScreen(lx, ly);
                 setComposer({
                   mode: 'thought',
                   x: Math.max(40, Math.min(c.w - 260, sx)),
                   y: Math.max(60, Math.min(c.h - 80, sy)),
-                  lx: Math.cos(ang) * rho,
-                  ly: Math.sin(ang) * rho,
+                  lx,
+                  ly,
                   shadowId: ownedHere.shadowId,
                   parentId: ownedHere.thoughtId,
                 });
@@ -726,7 +748,7 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
             .filter((c) => path.length <= 1 || c.disclosure <= p + SEAL_MARGIN)
             .map((c) => (
               <li key={c.id}>
-                <button type="button" onClick={() => flyTo([...path, c], 0.4)}>
+                <button type="button" onClick={() => flyTo([...path, c])}>
                   {c.disclosure > p && path.length > 1 ? 'something not open yet' : c.title ?? 'untitled'}
                 </button>
               </li>

@@ -391,23 +391,25 @@ function drawArtifact(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha
   const R = T.s;
   const { ctx } = st;
   const isLedger = art.type === 'ledger';
-  const fpx = R * (isLedger ? 0.0105 : 0.016);
-  const a = alpha * smoothstep(5, 9, fpx) * (1 - smoothstep(48, 110, fpx));
+  const fpx = R * (isLedger ? 0.0105 : 0.032);
+  const a = alpha * smoothstep(isLedger ? 5 : 8, isLedger ? 9 : 14, fpx) * (1 - smoothstep(isLedger ? 48 : 70, isLedger ? 110 : 150, fpx));
   if (a < 0.01) return;
   ctx.font = isLedger ? `${fpx}px ${st.mono}` : `italic ${fpx}px ${st.serif}`;
   ctx.fillStyle = `rgba(${INK},${a * 0.82})`;
   ctx.textBaseline = 'alphabetic';
-  const width = isLedger ? fpx * 30 : R * 0.9;
+  const width = isLedger ? fpx * 30 : R * 1.05;
   const lines = art.type === 'ledger' ? art.lines : wrap(ctx, art.body, width);
-  const lh = fpx * (isLedger ? 1.55 : 1.45);
+  const lh = fpx * (isLedger ? 1.55 : 1.35);
   const total = lines.length * lh;
-  let y = T.oy + R * 0.18 - total / 2 + fpx;
+  let y = T.oy + (isLedger ? R * 0.18 : 0) - total / 2 + fpx * 0.8;
   if (y < T.oy - R * 0.85) y = T.oy - R * 0.85;
-  const x = T.ox - width / 2;
+  ctx.textAlign = isLedger ? 'left' : 'center';
+  const x = isLedger ? T.ox - width / 2 : T.ox;
   for (const line of lines) {
     if (y > -lh && y < st.h + lh) ctx.fillText(line, x, y);
     y += lh;
   }
+  ctx.textAlign = 'left';
 }
 
 // ---------------------------------------------------------------------------
@@ -443,9 +445,9 @@ export function continuityLine(node: IdeaNode, now: number): string {
 
 function drawLabel(st: RenderState, node: IdeaNode, x: number, y: number, cs: number, alpha: number, sealed: boolean) {
   const { ctx, M } = st;
-  const a = alpha * smoothstep(5, 22, cs) * (1 - smoothstep(0.22 * M, 0.6 * M, cs));
+  const a = alpha * smoothstep(5, 22, cs) * (1 - smoothstep(0.1 * M, 0.26 * M, cs));
   if (a < 0.01) return;
-  const off = Math.max(cs * 0.48, 4) + 8;
+  let off = Math.max(cs * 0.48, 4) + 8;
   const hovered = st.hoverId === node.id;
   if (sealed) {
     ctx.font = `10px ${st.mono}`;
@@ -455,6 +457,11 @@ function drawLabel(st: RenderState, node: IdeaNode, x: number, y: number, cs: nu
   }
   const size = clamp(12 + cs / 26, 12, 19);
   ctx.font = `italic ${size}px ${st.serif}`;
+  const tw = ctx.measureText(node.title ?? 'untitled').width;
+  if (x + off + tw > st.w - 16) {
+    ctx.textAlign = 'right';
+    off = -off;
+  }
   ctx.fillStyle = `rgba(${INK},${a * (hovered ? 0.95 : 0.72)})`;
   ctx.textBaseline = 'alphabetic';
   ctx.fillText(node.title ?? 'untitled', x + off, y + size * 0.3);
@@ -464,6 +471,7 @@ function drawLabel(st: RenderState, node: IdeaNode, x: number, y: number, cs: nu
     ctx.fillStyle = `rgba(${INK},${a2})`;
     ctx.fillText(continuityLine(node, st.now), x + off, y + size * 0.3 + 14);
   }
+  ctx.textAlign = 'left';
 }
 
 // ---------------------------------------------------------------------------
