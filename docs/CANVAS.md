@@ -51,7 +51,19 @@ out past the edges, behind you.
 | `STRIPE_SECRET_KEY` | Enables donations and "help it continue" via Stripe Checkout (`/api/donate`). |
 | `NEXT_PUBLIC_DONATE_URL` | Optional hosted donation link (Stripe Payment Link, Ko-fi) for general support. |
 
+| `GOOGLE_CLIENT_ID` | Sign in with Google (from Google Cloud → APIs & Services → Credentials → OAuth client ID, type "Web application"). |
+| `GOOGLE_CLIENT_SECRET` | The same client's secret. |
+| `SESSION_SECRET` | 32+ random characters; signs the login cookie. |
+| `OWNER_EMAILS` | Comma-separated Google emails that own the Canvas (they see everything on it). |
+
 Without `STRIPE_SECRET_KEY`, donation buttons say "Donations are not switched on yet".
+
+### Sign in with Google
+In the Google OAuth client, add these **Authorized redirect URIs**:
+`https://twinth.ink/api/auth/callback/google` (and `http://localhost:3000/api/auth/callback/google`
+for local work). Sign-in is stateless: a signed httpOnly cookie holds the name,
+picture and owner flag; nothing else is stored, and the email never reaches the page.
+Until all three Google/session variables are set, "sign in" does not appear.
 Support given toward a specific idea is recorded in Checkout metadata (`shadowId`);
 paying creators directly needs Stripe Connect (not built).
 

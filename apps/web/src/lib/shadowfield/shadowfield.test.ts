@@ -28,6 +28,7 @@ import { buildWorld, resolvePath } from './world';
 import { CLEARED_LINES } from './sources/archive';
 import { CLEARED_TEXT } from './sources/archive.cleared';
 import { AUTHOR } from './sources/author';
+import { isOwner, safeNext } from '../auth/rules';
 import { createLocalStore, localShadowNode } from './sources/local';
 import { Access, stepFlight, zoomAt } from './navigate';
 import continuity from './sources/twinthink-continuity.json';
@@ -617,5 +618,22 @@ describe('plots', () => {
       expect(p.holder).toBe('johne.boi');
     }
     expect(plots.some((p) => 0.9 >= p.x && 0.9 < p.x + PLOT && 0.9 >= p.y && 0.9 < p.y + PLOT)).toBe(false);
+  });
+});
+
+describe('signing in', () => {
+  it('only a verified email on the owner list owns the Canvas', () => {
+    expect(isOwner('Maker@Example.com', true, 'maker@example.com, other@x.org')).toBe(true);
+    expect(isOwner('maker@example.com', false, 'maker@example.com')).toBe(false);
+    expect(isOwner('someone@else.com', true, 'maker@example.com')).toBe(false);
+    expect(isOwner('maker@example.com', true, undefined)).toBe(false);
+  });
+
+  it('after signing in, only ever returns to a page on this site', () => {
+    expect(safeNext('/canvas#path=dance')).toBe('/canvas#path=dance');
+    expect(safeNext('https://evil.example')).toBe('/canvas');
+    expect(safeNext('//evil.example')).toBe('/canvas');
+    expect(safeNext('/\\evil.example')).toBe('/canvas');
+    expect(safeNext(null)).toBe('/canvas');
   });
 });

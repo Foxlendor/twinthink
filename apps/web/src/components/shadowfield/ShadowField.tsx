@@ -78,8 +78,11 @@ function writeSet(key: string, set: Set<string>) {
 }
 
 /** Viewer closeness p for a top-level Twin (see model.ts, disclosure). */
+/** The Canvas's owner, signed in with Google, sees everything on it. */
+let ownerSignedIn = false;
+
 function closenessFor(top: IdeaNode, followedSet: Set<string>) {
-  if (top.ownedBy === 'viewer') return 1;
+  if (top.ownedBy === 'viewer' || ownerSignedIn) return 1;
   return followedSet.has(top.id) ? 0.72 : 0.45;
 }
 
@@ -269,6 +272,8 @@ export default function ShadowField({ serif }: Props) {
   const [news, setNews] = useState<{ ids: string[]; title: string; when: string } | null>(null);
   const [replayView, setReplayView] = useState<{ progress: number; t: number; playing: boolean } | null>(null);
   const [mode, setMode] = useState<'flight' | 'map'>('flight');
+  // who is looking (Google sign-in, when switched on)
+  const [me, setMe] = useState<{ enabled: boolean; user: { name: string; owner: boolean } | null } | null>(null);
 
   const access: Access = useMemo(
     () => ({
@@ -541,6 +546,12 @@ export default function ShadowField({ serif }: Props) {
     let thanksTimer = 0;
     try {
       const url = new URL(window.location.href);
+      const signin = url.searchParams.get('signin');
+      if (signin) {
+        url.searchParams.delete('signin');
+        history.replaceState(null, '', url.pathname + url.search + url.hash);
+        setNotice(signin === 'off' ? 'signing in is not switched on yet' : 'that sign-in did not go through; try again');
+      }
       const supported = url.searchParams.get('supported');
       if (supported) {
         url.searchParams.delete('supported');
@@ -591,6 +602,29 @@ export default function ShadowField({ serif }: Props) {
       window.clearTimeout(thanksTimer);
     };
   }, [access, flyToIds, ripple]);
+
+  // who is looking: signed in with Google, or nobody
+  useEffect(() => {
+    let live = true;
+    fetch('/api/auth/me', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!live || !d) return;
+        ownerSignedIn = !!d.user?.owner;
+        setMe(d);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const signOut = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
+    ownerSignedIn = false;
+    setMe((m) => (m ? { ...m, user: null } : m));
+    setNotice('signed out');
+  };
 
   // leaving the Canvas silences everything; a hidden tab rests the films
   useEffect(() => {
@@ -1623,6 +1657,17 @@ export default function ShadowField({ serif }: Props) {
       <button type="button" className={styles.mode} onClick={switchMode}>
         {mode === 'flight' ? 'see it whole' : 'fly through'}
       </button>
+
+      {me?.user ? (
+        <button type="button" className={styles.me} onClick={signOut} title="sign out">
+          {me.user.name.split(' ')[0]}
+        </button>
+      ) : me?.enabled ? (
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a route handler that redirects to Google needs a full page load
+        <button type="button" className={styles.me} onClick={() => window.location.assign('/api/auth/google?next=/canvas')}>
+          sign in
+        </button>
+      ) : null}
 
       {ownedHere && <div className={styles.privacy}>private · only on this device</div>}
 

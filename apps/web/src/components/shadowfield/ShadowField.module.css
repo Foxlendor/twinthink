@@ -55,6 +55,23 @@
   transition: color 160ms ease, border-color 160ms ease;
 }
 
+.me {
+  position: absolute;
+  top: 46px;
+  right: 22px;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: rgba(150, 92, 122, 0.8);
+}
+
+.me:hover,
+.me:focus-visible,
 .mode:hover,
 .mode:focus-visible {
   color: rgba(30, 28, 36, 0.9);
@@ -413,22 +430,23 @@
 /* the buttons and names step back while you move, and while you linger */
 .mark,
 .mode,
+.me,
 .trail,
 .actions,
 .privacy {
   transition: opacity 400ms ease;
 }
 
-.field[data-flow='moving'] :is(.mark, .mode, .trail, .actions, .privacy) {
+.field[data-flow='moving'] :is(.mark, .mode, .me, .trail, .actions, .privacy) {
   opacity: 0.12;
 }
 
-.field[data-flow='rest'] :is(.mark, .mode, .trail, .actions, .privacy) {
+.field[data-flow='rest'] :is(.mark, .mode, .me, .trail, .actions, .privacy) {
   opacity: 0.35;
 }
 
 /* a control reached with the keyboard is always fully there */
-.field[data-flow] :is(.mark, .mode, .trail, .actions, .privacy):focus-within {
+.field[data-flow] :is(.mark, .mode, .me, .trail, .actions, .privacy):focus-within {
   opacity: 1;
 }
 
