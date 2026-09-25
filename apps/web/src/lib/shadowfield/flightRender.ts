@@ -350,11 +350,11 @@ function drawCarried(st: RenderState, node: IdeaNode, x: number, y: number, R: n
         // signed under its corner, like a pencil signature under a print
         const W = m.w * R;
         const H = W * m.aspect;
-        const size = Math.round(clamp(W * 0.03, 11, 15));
+        const size = Math.round(clamp(W * 0.04, 13, 17));
         const { ctx } = st;
         ctx.textAlign = 'right';
         ctx.font = `italic ${size}px ${st.serif}`;
-        ctx.fillStyle = `rgba(${INK},${alpha * 0.55 * smoothstep(0.4, 0.8, reveal)})`;
+        ctx.fillStyle = `rgba(${INK},${alpha * 0.75 * smoothstep(0.4, 0.8, reveal)})`;
         ctx.fillText(m.by, Math.min(st.w - 12, x + m.x * R + W / 2), y + m.y * R + H / 2 + size * 1.3);
         ctx.textAlign = 'left';
       }

@@ -375,9 +375,12 @@ export function stepFlightCam(cam: FlightCam, stream: Stream, dt: number, skip?:
       const from = cam.from;
       if (from !== null && cam.dir !== 0 && !cam.held) {
         cam.from = null;
-        const springsBack = f === null || Math.abs(f - from) < 1e-3;
+        const next = stepFocus(stream, from, cam.dir > 0 ? 1 : -1, skip);
+        // it springs back if it would rest where it began, or stalls short of the next thing;
+        // a push that already went further is left where it went
+        const short = next !== null && (cam.dir > 0 ? cam.z < next : cam.z > next);
+        const springsBack = (f !== null && Math.abs(f - from) < 1e-3) || (f === null && short);
         if (springsBack && Math.abs(cam.z - from) > 0.15) {
-          const next = stepFocus(stream, from, cam.dir > 0 ? 1 : -1, skip);
           if (next !== null) {
             cam.target = next;
             cam.shown = cam.v;

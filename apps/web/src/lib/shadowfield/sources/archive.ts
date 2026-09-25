@@ -1,11 +1,12 @@
 // Throwaways: ideas from the inventor's own archive, cleared by the inventor
 // on 2026-09-25 and given away free, in his own word, as throwaways.
 //
-// Shown: the name and one line cut from `why` (the problem it answers), with
-// words only removed, never added (a test checks this). Plus anything the
-// inventor explicitly chose to show (SHOWN, below). `does` is kept for
-// reference and is never displayed. Never: how it works, mechanisms,
-// materials or construction.
+// Shown: the name and one line cut from the cleared `why` (the problem it
+// answers), with words only removed, never added (a test checks this). Plus
+// anything the inventor explicitly chose to show (SHOWN, below). The full
+// cleared text lives in archive.cleared.ts, which only tests import, so it
+// never ships to visitors. Never: how it works, mechanisms, materials or
+// construction.
 //
 // History rule: nothing is invented. Each record begins on the day it was
 // added to the Canvas; earlier history exists but has not been recorded yet.
@@ -19,11 +20,7 @@ interface Cleared {
   id: string;
   title: string;
   kind: IdeaNode['kind'];
-  /** What it does, in one line. */
-  does: string;
-  /** The problem it answers. */
-  why: string;
-  /** Shown when still in front of it: cut from `why`, words only removed. */
+  /** Shown when still in front of it: cut from the cleared `why` (archive.cleared.ts), words only removed. */
   line?: string;
   x: number;
   y: number;
@@ -34,8 +31,6 @@ const CLEARED: Cleared[] = [
     id: 'coinceit',
     title: 'CoinCeit',
     kind: 'software',
-    does: 'A place to share ideas while keeping credit for them.',
-    why: 'Ideas are easy to take and hard to attribute. An earlier attempt at the problem TwinThink now works on.',
     line: 'ideas are easy to take and hard to attribute.',
     x: -0.46,
     y: -0.31,
@@ -44,8 +39,6 @@ const CLEARED: Cleared[] = [
     id: 'bubbleblock',
     title: 'BUBBLEYEBLOCK',
     kind: 'physical',
-    does: 'Glasses that keep advertisements in the real world out of the wearer’s view.',
-    why: 'You can block ads on a screen, but not on a street.',
     x: 0.52,
     y: 0.27,
   },
@@ -53,8 +46,6 @@ const CLEARED: Cleared[] = [
     id: 'wear-os',
     title: 'Wear O’s',
     kind: 'physical',
-    does: 'A ring that is also a discreet personal vaporizer.',
-    why: 'An everyday object that is both jewellery and a working device, so there is nothing extra to carry.',
     line: 'jewellery and a working device, nothing extra to carry.',
     x: -0.18,
     y: 0.49,
@@ -63,8 +54,6 @@ const CLEARED: Cleared[] = [
     id: 'sipsmolder',
     title: 'SipSmolder',
     kind: 'physical',
-    does: 'A reusable straw that warms a drink as you sip it, with no cord and no battery.',
-    why: 'A drink goes cold long before you finish it.',
     line: 'a drink goes cold long before you finish it.',
     x: 0.08,
     y: -0.57,
@@ -73,8 +62,6 @@ const CLEARED: Cleared[] = [
     id: 'smholder',
     title: 'Smholder',
     kind: 'physical',
-    does: 'A food and drink container that warms what is inside on demand, without a microwave.',
-    why: 'Warm food wherever you are, with nothing to plug in.',
     line: 'warm food wherever you are, with nothing to plug in.',
     x: 0.63,
     y: -0.38,
@@ -83,8 +70,6 @@ const CLEARED: Cleared[] = [
     id: 'u3dpen',
     title: 'U3dPEN',
     kind: 'physical',
-    does: 'A handheld pen that builds three-dimensional things from recovered material.',
-    why: 'Making something by hand usually means buying new material; this starts from what would be thrown away.',
     line: 'making by hand, from what would be thrown away.',
     x: -0.69,
     y: 0.18,
@@ -93,8 +78,6 @@ const CLEARED: Cleared[] = [
     id: 'ferropen',
     title: 'FerroPen',
     kind: 'physical',
-    does: 'A drawing tool whose marks can be moved, reshaped, and taken back up after they are made.',
-    why: 'Ink is final. This lets a drawing stay changeable and its material reusable.',
     line: 'ink is final. this lets a drawing stay changeable.',
     x: -0.38,
     y: -0.66,
@@ -103,8 +86,6 @@ const CLEARED: Cleared[] = [
     id: 'ferro-display',
     title: 'Ferro / crystalline display',
     kind: 'physical',
-    does: 'A display whose pixels physically move and can hold their shape, so you can feel an image as well as see it.',
-    why: 'Screens are flat and untouchable; information could have shape.',
     line: 'screens are flat and untouchable; information could have shape.',
     x: 0.34,
     y: 0.63,
@@ -113,8 +94,6 @@ const CLEARED: Cleared[] = [
     id: 'xylem-camouflage',
     title: 'Xylem thread camouflage',
     kind: 'physical',
-    does: 'A fabric that changes its own appearance to match its surroundings.',
-    why: 'Printed camouflage only works in the place it was designed for.',
     line: 'printed camouflage only works in the place it was designed for.',
     x: 0.71,
     y: 0.05,
@@ -192,5 +171,5 @@ export function buildThrowaways(): IdeaNode {
   };
 }
 
-/** The cleared text, for tests that guard the lines against invention. */
-export const CLEARED_TEXT = CLEARED.map((c) => ({ id: `archive/${c.id}`, why: c.why, line: c.line }));
+/** The lines shown, for tests that guard them against invention. */
+export const CLEARED_LINES = CLEARED.map((c) => ({ id: `archive/${c.id}`, line: c.line }));

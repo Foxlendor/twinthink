@@ -179,6 +179,12 @@ function openSpotIn(node: IdeaNode): [number, number] {
   return best;
 }
 
+/** The throwaway a visitor's own Shadow was taken from, if any. */
+function ownedHereFrom(list: LocalShadow[], node: IdeaNode | undefined) {
+  const ids = node ? localIds(node) : null;
+  return ids ? list.find((l) => l.id === ids.shadowId)?.from ?? null : null;
+}
+
 /** One screen height of swipe moves this far along the flight. */
 const SWIPE = 2.4;
 
@@ -1056,8 +1062,8 @@ export default function ShadowField({ serif }: Props) {
   };
 
   /** Sound for a film (from a tap); a song that is playing gives way to it. */
-  const filmSound = (src: string) => {
-    if (!toggleVideoSound(src)) return;
+  const filmSound = (src: string, webm?: string) => {
+    if (!toggleVideoSound(src, webm)) return;
     const a = audioRef.current;
     if (a && playingRef.current) {
       a.el.pause();
@@ -1255,7 +1261,7 @@ export default function ShadowField({ serif }: Props) {
     const film = (n: IdeaNode | undefined) => n?.media?.find((m) => m.kind === 'video');
     if (hit && hit.kind === 'node' && film(hit.node)) {
       // a film: go to it; a tap on it once there gives it sound
-      if (focusedNode?.id === hit.node.id) filmSound(film(hit.node)!.src);
+      if (focusedNode?.id === hit.node.id) filmSound(film(hit.node)!.src, film(hit.node)!.webm);
       else flyTo(hit.path);
       return;
     }
@@ -1265,7 +1271,7 @@ export default function ShadowField({ serif }: Props) {
       return;
     }
     if (!hit && film(focusedNode)) {
-      filmSound(film(focusedNode)!.src);
+      filmSound(film(focusedNode)!.src, film(focusedNode)!.webm);
       return;
     }
     if (hit && hit.kind === 'node') {
@@ -1281,6 +1287,7 @@ export default function ShadowField({ serif }: Props) {
       if (composer) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      handRef.current = performance.now();
       const cam = camRef.current;
       if (!cam) return;
       if (modeRef.current === 'flight') {
@@ -1565,9 +1572,12 @@ export default function ShadowField({ serif }: Props) {
       .reverse()
       .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/')) ?? null;
   // an idea given away is never followed by an ask for money, nor is a song while it plays
-  const asking = supportTarget && playingId !== current?.id ? supportTarget : null;
+  // nothing given away (songs, starters, throwaways) is ever followed by an ask
+  const asking = supportTarget && !path.some((n) => n.free) && playingId !== current?.id ? supportTarget : null;
   const throwaway = current?.id.startsWith('archive/') ? current : null;
   const taken = throwaway ? localList.some((l) => l.from === throwaway.id) : false;
+  // a copy taken from his throwaways is the visitor's to keep, but not theirs to prove
+  const takenCopy = ownedHereFrom(localList, current);
   const top = path[1];
   const ownedHere = current ? localIds(current) : null;
   const isFollowed = top ? followed.has(top.id) : false;
@@ -1761,7 +1771,7 @@ export default function ShadowField({ serif }: Props) {
                 keep a copy
               </button>
             )}
-            {!ownedHere.thoughtId && (
+            {!ownedHere.thoughtId && !takenCopy && (
               <button type="button" className={styles.quiet} onClick={() => proveMine(ownedHere.shadowId)}>
                 prove it’s mine
               </button>

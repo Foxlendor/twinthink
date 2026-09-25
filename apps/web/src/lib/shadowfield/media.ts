@@ -93,9 +93,9 @@ export function settleVideos(active: Set<string>) {
 export const startedByHand = new Set<string>();
 
 /** Sound for a film, from a tap (browsers allow sound only after one). */
-export function toggleVideoSound(src: string): boolean {
+export function toggleVideoSound(src: string, webm?: string): boolean {
   startedByHand.add(src);
-  const v = videos.get(src);
+  const v = getVideo(src, webm);
   if (!v) return false;
   v.muted = !v.muted;
   if (!v.muted) void v.play().catch(() => undefined);

@@ -25,7 +25,8 @@ import { Camera, ENTER } from './camera';
 import { topologyOf, strandAt } from './layout';
 import { IdeaNode, countEvents, findPath, reachedBy, rippleReach, webSize } from './model';
 import { buildWorld, resolvePath } from './world';
-import { CLEARED_TEXT } from './sources/archive';
+import { CLEARED_LINES } from './sources/archive';
+import { CLEARED_TEXT } from './sources/archive.cleared';
 import { AUTHOR } from './sources/author';
 import { createLocalStore, localShadowNode } from './sources/local';
 import { Access, stepFlight, zoomAt } from './navigate';
@@ -317,9 +318,9 @@ describe('throwaways', () => {
 
   it('each line is cut from what he cleared: words only removed, never added', () => {
     const words = (t: string) => t.toLowerCase().replace(/[^a-z' ]+/g, ' ').split(/\s+/).filter(Boolean);
-    for (const c of CLEARED_TEXT) {
+    for (const c of CLEARED_LINES) {
       if (!c.line) continue;
-      const allowed = new Set(words(c.why));
+      const allowed = new Set(words(CLEARED_TEXT[c.id].why));
       const used = words(c.line);
       expect(used.length).toBeLessThanOrEqual(11);
       for (const w of used) expect(allowed.has(w), `${c.id}: "${w}"`).toBe(true);
@@ -507,6 +508,23 @@ describe('the flight', () => {
       for (let i = 0; i < 600; i++) stepFlightCam(cam, stream, 1 / 60);
       expect(cam.z).toBeCloseTo(next, 2);
     }
+  });
+
+  it('a long flick that ends in a silence is never pulled back to where it began', () => {
+    const cam = newFlightCam();
+    let z = stepFocus(stream, cam.z, 1)!;
+    for (let i = 0; i < 5; i++) z = stepFocus(stream, z, 1)!;
+    cam.z = z;
+    beginPush(cam, stream);
+    cam.v = 20;
+    cam.dir = 1;
+    let prev = cam.z;
+    for (let i = 0; i < 900; i++) {
+      stepFlightCam(cam, stream, 1 / 60);
+      expect(cam.z).toBeGreaterThanOrEqual(prev - 0.6);
+      prev = Math.max(prev, cam.z);
+    }
+    expect(cam.z).toBeGreaterThan(z + 3);
   });
 
   it('stepping goes to the very next thing, and back', () => {

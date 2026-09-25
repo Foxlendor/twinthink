@@ -427,6 +427,11 @@
   opacity: 0.35;
 }
 
+/* a control reached with the keyboard is always fully there */
+.field[data-flow] :is(.mark, .mode, .trail, .actions, .privacy):focus-within {
+  opacity: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mark,
   .mode,

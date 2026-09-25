@@ -682,6 +682,21 @@ export function drawVideo(
   const cy = y0 + H / 2;
   const rx = W / 2;
   const ry = Math.min(H / 2, rx * 1.45);
+  if (m.round) {
+    // seen through an ink drop: nothing outside the oval is touched
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.clip();
+  } else {
+    // a clean sheet under a drawing near you, so what is behind it does not show through
+    const ground = a * smoothstep(0.4, 0.9, reveal);
+    if (ground > 0.01) {
+      ctx.globalAlpha = ground;
+      ctx.fillStyle = PAPER;
+      ctx.fillRect(x0, y0, W, H);
+      ctx.globalAlpha = a * (0.1 + 0.9 * Math.pow(reveal, 1.1));
+    }
+  }
   // printed onto the paper: its whites become the page, its darks become ink
   ctx.globalCompositeOperation = 'multiply';
   if (live && live.readyState >= 2) ctx.drawImage(live, x0, y0, W, H);
@@ -723,9 +738,7 @@ export function drawVideo(
     g.addColorStop(0, 'rgba(251,250,247,0)');
     g.addColorStop(1, 'rgba(251,250,247,1)');
     ctx.fillStyle = g;
-    // (the gradient holds its last colour beyond the drop, covering the corners)
-    const hh = (H / 2 + 2) * (rx / ry);
-    ctx.fillRect(-rx - 2, -hh, rx * 2 + 4, hh * 2);
+    ctx.fillRect(-rx - 2, -rx - 2, rx * 2 + 4, rx * 2 + 4);
   }
   ctx.restore();
 }
@@ -834,18 +847,20 @@ export function drawAudioRing(st: RenderState, src: string, T: ScreenTransform, 
  */
 const wordCache = new Map<string, { pts: Float32Array; w: number }>();
 export function inkWords(text: string, family: string): { pts: Float32Array; w: number } | null {
-  const key = `${family}|${text}`;
+  const key = `v2|${family}|${text}`;
   const hit = wordCache.get(key);
   if (hit) return hit;
   if (typeof document === 'undefined') return null;
   const px = 96;
   const font = `italic 400 ${px}px ${family}`;
-  const ready = !document.fonts || document.fonts.check(font);
+  // (only the first family: next/font's local fallback face never loads, and would fail the check)
+  const ready = !document.fonts || document.fonts.check(`italic 400 ${px}px ${family.split(',')[0].trim()}`, text);
   const c = document.createElement('canvas');
   const g = c.getContext('2d', { willReadFrequently: true });
   if (!g) return null;
   g.font = font;
-  const w = Math.ceil(g.measureText(text).width) + 8;
+  const pad = 7;
+  const w = Math.ceil(g.measureText(text).width) + pad * 2;
   const h = Math.ceil(px * 1.4);
   c.width = w;
   c.height = h;
@@ -853,7 +868,12 @@ export function inkWords(text: string, family: string): { pts: Float32Array; w: 
   g.textBaseline = 'alphabetic';
   g.fillStyle = '#000';
   const baseline = Math.round(px * 1.05);
-  g.fillText(text, 4, baseline);
+  g.fillText(text, pad, baseline);
+  // a little weight, so hairline strokes are not lost between the dots
+  g.lineWidth = 5;
+  g.lineJoin = 'round';
+  g.strokeStyle = '#000';
+  g.strokeText(text, pad, baseline);
   const data = g.getImageData(0, 0, w, h).data;
   const out: number[] = [];
   const step = 5;
@@ -861,10 +881,10 @@ export function inkWords(text: string, family: string): { pts: Float32Array; w: 
     const yy = Math.round(y);
     for (let x = row % 2 ? step / 2 : 0; x < w; x += step) {
       const xx = Math.round(x);
-      if (data[(yy * w + xx) * 4 + 3] > 110) out.push((xx - 4) / px, (yy - baseline) / px);
+      if (data[(yy * w + xx) * 4 + 3] > 110) out.push((xx - pad) / px, (yy - baseline) / px);
     }
   }
-  const res = { pts: new Float32Array(out), w: (w - 8) / px };
+  const res = { pts: new Float32Array(out), w: (w - pad * 2) / px };
   if (ready) wordCache.set(key, res);
   return res;
 }
