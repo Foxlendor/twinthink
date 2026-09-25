@@ -52,6 +52,9 @@ export default function Navbar() {
     }
   }, [logoClickCount]);
 
+  // The Canvas is an immersive medium with its own quiet chrome.
+  if (pathname?.startsWith('/canvas')) return null;
+
   return (
     <>
       <header style={{
@@ -120,6 +123,23 @@ export default function Navbar() {
             >
               <Briefcase size={14} color="#2563EB" />
               <span>R&amp;D Bounties</span>
+            </Link>
+
+            <Link
+              href="/canvas"
+              style={{
+                fontSize: '0.8125rem',
+                fontWeight: 700,
+                color: '#4B5563',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '0.35rem 0.65rem',
+                borderRadius: '8px',
+                fontStyle: 'italic',
+              }}
+            >
+              Canvas
             </Link>
 
             <Link 
@@ -325,6 +345,27 @@ export default function Navbar() {
                   <div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>R&amp;D Bounties</div>
                     <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Corporate challenges &amp; think tanks</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/canvas"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '12px',
+                    background: '#F9FAFB',
+                    border: '1px solid #F3F4F6',
+                    textDecoration: 'none',
+                    color: '#111827'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Canvas</div>
+                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Move through ideas by zooming into them</div>
                   </div>
                 </Link>
 
