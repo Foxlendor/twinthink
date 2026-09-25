@@ -8,6 +8,7 @@
 import { IdeaNode, LifeEvent, SEAL_MARGIN, lastActivity, countEvents } from './model';
 import { Strand, topologyOf, strandAt, strandU } from './layout';
 import { ScreenTransform } from './camera';
+import { spatialIndex } from './spatial';
 import { clamp, hash01, noise1, smoothstep } from './rng';
 
 export const PAPER = '#fbfaf7';
@@ -51,7 +52,11 @@ export interface RenderState {
   cut: number | null;
   /** Labels are queued during the pass and placed afterwards by priority. */
   labels?: QueuedLabel[];
+  /** Batched sub-pixel marks, by alpha bucket. */
+  dots?: (Path2D | undefined)[];
 }
+
+const DOT_BUCKETS = 12;
 
 interface QueuedLabel {
   node: IdeaNode;
@@ -176,7 +181,7 @@ function drawMark(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: nu
 
   // recent activity leaves a slow ripple: evidence that something is alive here
   const quietDays = (st.now - lastActivity(node)) / 86400000;
-  if (!sealed && R < 40 && quietDays < 21) {
+  if (!sealed && R > 0.5 && R < 40 && quietDays < 21) {
     const period = 7;
     const phase = ((time + (seed % 13) * 0.53) % period) / period;
     const liveness = 1 - quietDays / 21;
@@ -473,6 +478,7 @@ function drawLabel(st: RenderState, node: IdeaNode, x: number, y: number, cs: nu
   if (a < 0.01) return;
   let off = Math.max(cs * 0.48, 4) + 8;
   const hovered = st.hoverId === node.id;
+  if (node.title === '') return;
   if (sealed) {
     const r: Rect = [x + off, y - 8, x + off + 80, y + 6];
     if (overlaps(r, placed)) return;
@@ -560,7 +566,13 @@ export function drawNode(
 
   if (node.artifact && !isRoot) drawArtifact(st, node, T, alpha * outerFade);
 
-  for (const c of node.children) {
+  // large fields: only visit children near the viewport
+  let kids = node.children;
+  if (kids.length > 400) {
+    kids = spatialIndex(node).query((0 - T.ox) / R, (0 - T.oy) / R, (st.w - T.ox) / R, (st.h - T.oy) / R, []);
+  }
+  const crowded = kids.length > 400;
+  for (const c of kids) {
     const cp = isRoot ? st.lens.closeness(c) : p;
     if (!isRoot && c.disclosure > p + SEAL_MARGIN) continue;
     if (st.cut !== null && c.began > st.cut) continue;
@@ -572,12 +584,21 @@ export function drawNode(
     if (!onScreen(st, cx, cy, Math.max(cs * 1.3, 3))) continue;
     const ca = isRoot ? alpha : reveal.get(c) ?? 0;
     if (ca < 0.004) continue;
+    if (crowded && cs < 1.2 && !sealed) {
+      // fast path: sub-pixel marks are batched by ink density
+      const life = lifeOf(c);
+      const a = ca * (0.35 + 0.45 * life) * smoothstep(0.02, 0.6, cs + 0.3);
+      const b = Math.min(DOT_BUCKETS - 1, Math.floor(a * DOT_BUCKETS));
+      const size = Math.max(0.7, cs * 0.9);
+      (st.dots![b] ??= new Path2D()).rect(cx - size / 2, cy - size / 2, size, size);
+      continue;
+    }
     const CT = { ox: cx, oy: cy, s: cs };
     const cpath = [...path, c];
     if (sealed) drawMark(st, c, CT, ca, true);
     else if (cs < 0.12) drawMark(st, c, CT, ca, false);
     else drawNode(st, c, CT, ca, cp, cpath, false);
-    (st.labels ??= []).push({ node: c, x: cx, y: cy, cs, alpha: ca, sealed });
+    if (cs >= 4) (st.labels ??= []).push({ node: c, x: cx, y: cy, cs, alpha: ca, sealed });
     if (cs < 0.5 * M) st.hits.push({ kind: 'node', node: c, path: cpath, sealed, x: cx, y: cy, r: Math.max(cs * 0.55, 12), size: cs });
   }
 }
@@ -588,7 +609,13 @@ export function render(st: RenderState, start: IdeaNode, startPath: IdeaNode[], 
   ctx.fillRect(0, 0, st.w, st.h);
   st.hits.length = 0;
   st.labels = [];
+  st.dots = [];
   drawNode(st, start, T, 1, p, startPath, isRoot);
+  st.dots.forEach((path, b) => {
+    if (!path) return;
+    ctx.fillStyle = `rgba(${INK},${(b + 0.5) / DOT_BUCKETS})`;
+    ctx.fill(path);
+  });
   // place labels: hovered first, then the most present
   const placed: Rect[] = [];
   const queue = st.labels.sort((a, b) => {

@@ -62,6 +62,8 @@ export interface IdeaNode {
   ownedBy?: 'viewer';
   /** True when the children's events are a finer breakdown of this node's own events. */
   summarizes?: boolean;
+  /** Builds children on first approach (large synthetic fields). Called once by layout. */
+  expand?: () => void;
   /** Aggregate continuity signals (for Shadows seen from far away). */
   signals?: {
     returns?: number;

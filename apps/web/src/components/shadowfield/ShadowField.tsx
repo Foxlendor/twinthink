@@ -831,6 +831,8 @@ export default function ShadowField({ serif, worldFactory, rehearsal = false }: 
         </form>
       )}
 
+      {rehearsal && <div className={styles.note}>synthetic specimens for testing scale · not human ideas</div>}
+
       {!hinted && path.length <= 1 && <div className={styles.hint}>scroll toward anything</div>}
 
       <nav className={styles.srNav} aria-label="Ideas here">

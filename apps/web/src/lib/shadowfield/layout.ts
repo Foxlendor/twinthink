@@ -60,6 +60,11 @@ const cache = new WeakMap<IdeaNode, Topology>();
 export function topologyOf(node: IdeaNode): Topology {
   let topo = cache.get(node);
   if (!topo) {
+    if (node.expand) {
+      const expand = node.expand;
+      node.expand = undefined;
+      expand();
+    }
     topo = buildTopology(node);
     cache.set(node, topo);
   }
@@ -70,6 +75,8 @@ export function topologyOf(node: IdeaNode): Topology {
 export function placeChildren(node: IdeaNode) {
   const kids = node.children;
   if (!kids.length) return;
+  // fields of pinned Shadows (the Canvas) keep their coordinates as given
+  if (kids.every((c) => c.fixed)) return;
   const seed = node.seed;
   const t0 = node.began;
   const t1 = Math.max(lastActivity(node), t0 + DAY);
