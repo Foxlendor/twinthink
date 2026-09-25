@@ -38,6 +38,15 @@ export type Artifact =
   | { type: 'text'; body: string }
   | { type: 'story'; lines: { t: number; text: string }[] };
 
+/**
+ * Content that lives inside an idea, placed in its frame (units of the idea's
+ * radius). It is what zooming is *for*: far away it is a near-white shadow of
+ * itself; approaching, it resolves into the real thing.
+ */
+export type Media =
+  | { kind: 'image'; src: string; x: number; y: number; w: number; aspect: number; caption?: string }
+  | { kind: 'sketch'; strokes: number[][]; t: number };
+
 export interface IdeaNode {
   id: string;
   title?: string;
@@ -52,6 +61,7 @@ export interface IdeaNode {
   disclosure: number;
   children: IdeaNode[];
   artifact?: Artifact;
+  media?: Media[];
   /** Placement in the parent frame. If fixed, layout keeps it. */
   x: number;
   y: number;

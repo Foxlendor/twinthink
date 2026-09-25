@@ -51,7 +51,7 @@ function attachPortals(node: IdeaNode) {
       disclosure: 0,
       children: [],
       x: 0,
-      y: node.artifact ? 0.62 : 0.35,
+      y: node.media?.length ? 0.72 : node.artifact ? 0.62 : 0.35,
       r: 0.045,
       fixed: true,
       seed: node.seed ^ 0x2545f491,

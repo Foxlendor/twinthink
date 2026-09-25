@@ -9,6 +9,7 @@ import { IdeaNode, LifeEvent, SEAL_MARGIN, lastActivity, rippleReach } from './m
 import { Strand, topologyOf, strandAt, strandU } from './layout';
 import { ScreenTransform } from './camera';
 import { spatialIndex } from './spatial';
+import { getImage } from './media';
 import { clamp, hash01, noise1, smoothstep } from './rng';
 
 export const PAPER = '#fbfaf7';
@@ -517,6 +518,105 @@ function drawArtifact(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha
 }
 
 // ---------------------------------------------------------------------------
+// Content inside an idea: it resolves from a near-white shadow of itself into
+// the real thing as the viewer approaches. Closeness (following, owning) lets
+// it resolve sooner.
+
+function drawMedia(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: number, p: number) {
+  if (!node.media?.length || alpha < 0.01) return;
+  const { ctx } = st;
+  const R = T.s;
+  for (const m of node.media) {
+    if (m.kind === 'image') {
+      const W = m.w * R;
+      const H = W * m.aspect;
+      if (W < 3) continue;
+      const cx = T.ox + m.x * R;
+      const cy = T.oy + m.y * R;
+      const x0 = cx - W / 2;
+      const y0 = cy - H / 2;
+      if (x0 > st.w || y0 > st.h || x0 + W < 0 || y0 + H < 0) continue;
+      const a = alpha * smoothstep(3, 30, W);
+      // how resolved: size on screen, eased by the viewer's closeness
+      const reveal = smoothstep(30, 520 * (1.35 - 0.6 * p), W);
+      const loaded = getImage(m.src);
+      if (!loaded) {
+        ctx.fillStyle = `rgba(${INK},${a * 0.05})`;
+        ctx.fillRect(x0, y0, W, H);
+        continue;
+      }
+      const maxLevel = loaded.mips.length - 1;
+      const blur = (1 - reveal) * Math.min(5, maxLevel);
+      // never sharper than the screen needs
+      const need = Math.max(0, Math.floor(Math.log2(loaded.img.naturalWidth / Math.max(W, 1))));
+      const lf = Math.min(maxLevel, Math.max(blur, need));
+      const l0 = Math.floor(lf);
+      const l1 = Math.min(maxLevel, l0 + 1);
+      const frac = lf - l0;
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.globalAlpha = a;
+      ctx.drawImage(loaded.mips[l0], x0, y0, W, H);
+      if (frac > 0.01 && l1 !== l0) {
+        ctx.globalAlpha = a * frac;
+        ctx.drawImage(loaded.mips[l1], x0, y0, W, H);
+      }
+      // the shadow: far away, nearly white paper with only the structure left
+      const veil = 0.93 * Math.pow(1 - reveal, 1.1);
+      if (veil > 0.01) {
+        ctx.globalAlpha = a * veil;
+        ctx.fillStyle = PAPER;
+        ctx.fillRect(x0 - 1, y0 - 1, W + 2, H + 2);
+      }
+      ctx.restore();
+      if (m.caption && reveal > 0.6) {
+        const fs = clamp(W * 0.028, 10, 18);
+        ctx.font = `italic ${fs}px ${st.serif}`;
+        ctx.fillStyle = `rgba(${INK},${a * 0.6 * smoothstep(0.6, 0.9, reveal)})`;
+        ctx.fillText(m.caption, x0, y0 + H + fs * 1.4);
+      }
+    } else {
+      drawSketch(st, m.strokes, T, alpha * smoothstep(25, 110, R));
+    }
+  }
+}
+
+/** A hand drawing, in the same dotted ink as the filaments. */
+export function drawSketch(st: RenderState, strokes: number[][], T: ScreenTransform, alpha: number) {
+  if (alpha < 0.01) return;
+  const { ctx } = st;
+  const R = T.s;
+  // dot spacing in frame units: a power of two, so dots persist while zooming
+  const spacing = Math.pow(2, Math.round(Math.log2(2.4 / R)));
+  const size = clamp(0.45 + R / 1600, 0.5, 1.5);
+  const path = new Path2D();
+  for (const s of strokes) {
+    let acc = 0;
+    let next = 0;
+    for (let i = 2; i < s.length; i += 2) {
+      const x0 = s[i - 2];
+      const y0 = s[i - 1];
+      const x1 = s[i];
+      const y1 = s[i + 1];
+      const seg = Math.hypot(x1 - x0, y1 - y0);
+      while (next <= acc + seg) {
+        const f = seg > 0 ? (next - acc) / seg : 0;
+        const px = T.ox + (x0 + (x1 - x0) * f) * R;
+        const py = T.oy + (y0 + (y1 - y0) * f) * R;
+        if (px > -4 && py > -4 && px < st.w + 4 && py < st.h + 4) {
+          path.moveTo(px + size, py);
+          path.arc(px, py, size, 0, Math.PI * 2);
+        }
+        next += spacing;
+      }
+      acc += seg;
+    }
+  }
+  ctx.fillStyle = `rgba(${INK},${alpha * 0.8})`;
+  ctx.fill(path);
+}
+
+// ---------------------------------------------------------------------------
 // Labels.
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
@@ -659,6 +759,7 @@ export function drawNode(
   }
 
   if (node.artifact && !isRoot) drawArtifact(st, node, T, alpha * outerFade);
+  if (!isRoot) drawMedia(st, node, T, alpha * outerFade, p);
 
   // large fields: only visit children near the viewport
   let kids = node.children;

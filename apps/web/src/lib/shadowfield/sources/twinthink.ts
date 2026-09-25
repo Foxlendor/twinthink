@@ -107,6 +107,42 @@ export function buildTwinThinkTwin(): IdeaNode {
       } satisfies IdeaNode;
     });
 
+    // real content: what the Canvas actually looks like, captured from the build
+    if (b === 'canvas') {
+      const shot = (file: string, x: number, y: number, caption: string) => ({
+        kind: 'image' as const,
+        src: `/twinthink/${file}`,
+        x,
+        y,
+        w: 0.46,
+        aspect: 250 / 400,
+        caption,
+      });
+      const captured = Date.parse('2026-09-25T17:02:00Z');
+      children.push({
+        id: 'twinthink/canvas/looks',
+        title: 'what it looks like',
+        note: 'the Canvas, captured from itself',
+        kind: 'visual',
+        origin: 'real',
+        began: captured,
+        events: [{ t: captured, kind: 'evidence', note: 'screenshots of the Canvas' }],
+        state: 'alive',
+        disclosure: 0,
+        children: [],
+        media: [
+          shot('approach.jpg', -0.25, -0.34, 'approaching: an ink drop'),
+          shot('inside.jpg', 0.26, -0.3, 'inside: the branches'),
+          shot('branch.jpg', -0.27, 0.08, 'a branch and its sessions'),
+          shot('session.jpg', 0.25, 0.12, 'a session, in words'),
+        ],
+        x: 0,
+        y: 0,
+        r: 0.05,
+        seed: hashString('twinthink/canvas/looks'),
+      });
+    }
+
     const last = list[list.length - 1].ms;
     branches.push({
       id: `twinthink/${b}`,

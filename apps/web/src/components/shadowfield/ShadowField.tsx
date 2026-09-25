@@ -5,7 +5,8 @@ import { Camera } from '@/lib/shadowfield/camera';
 import { IdeaNode, LifeEvent, SEAL_MARGIN, findPath, lastActivity } from '@/lib/shadowfield/model';
 import { topologyOf } from '@/lib/shadowfield/layout';
 import { Access, Flight, pan as panCam, stepFlight, zoomAt } from '@/lib/shadowfield/navigate';
-import { Hit, Lens, RenderState, continuityLine, drawVoidLattice, pulseChain, relTime, render, shortDate } from '@/lib/shadowfield/render';
+import { Hit, Lens, RenderState, continuityLine, drawSketch, drawVoidLattice, pulseChain, relTime, render, shortDate } from '@/lib/shadowfield/render';
+import { setMediaReadyCallback } from '@/lib/shadowfield/media';
 import { buildWorld, resolvePath } from '@/lib/shadowfield/world';
 import { createLocalStore, LocalShadow, ShadowStore } from '@/lib/shadowfield/sources/local';
 import styles from './ShadowField.module.css';
@@ -151,6 +152,9 @@ export default function ShadowField({ serif }: Props) {
   const lastPathKey = useRef('');
   const lastTapRef = useRef({ t: 0, x: 0, y: 0 });
   const pulsesRef = useRef(new Map<string, number>());
+  // sketching: strokes are drawn in the frame of the owned idea being sketched in
+  const sketchRef = useRef<{ nodeId: string; stroke: number[] | null } | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
   // replay: progress 0..1 through [from, to]; playing advances it over time
   const replayRef = useRef<{ from: number; to: number; progress: number; playing: boolean; hold: number } | null>(null);
 
@@ -163,6 +167,8 @@ export default function ShadowField({ serif }: Props) {
   const [followed, setFollowed] = useState<Set<string>>(new Set());
   const [, setVersion] = useState(0);
   const [localList, setLocalList] = useState<LocalShadow[]>([]);
+  const [sketching, setSketching] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [news, setNews] = useState<{ ids: string[]; title: string; when: string } | null>(null);
   const [replayView, setReplayView] = useState<{ progress: number; t: number; playing: boolean } | null>(null);
 
@@ -245,6 +251,7 @@ export default function ShadowField({ serif }: Props) {
     worldRef.current = world;
     const cam = new Camera(world);
     camRef.current = cam;
+    setMediaReadyCallback(() => undefined); // the frame loop repaints continuously
     // exposed for scripted visual checks (e2e); read-only by convention
     (window as unknown as { __shadowField?: unknown }).__shadowField = { cam, flyTo: (ids: string[]) => flyToIds(ids) };
     const canvas = canvasRef.current!;
@@ -391,6 +398,11 @@ export default function ShadowField({ serif }: Props) {
         pulses: pulsesRef.current,
       };
       render(st, cam.path[k], startPath, T, p, k === 0);
+      const sk = sketchRef.current;
+      if (sk?.stroke && sk.stroke.length >= 4) {
+        const idx = cam.path.findIndex((n) => n.id === sk.nodeId);
+        if (idx >= 0) drawSketch(st, [sk.stroke], cam.transformAt(idx), 1);
+      }
       if (cam.node.void) {
         let real = cam.depth;
         while (real > 0 && cam.path[real].void) real--;
@@ -431,12 +443,16 @@ export default function ShadowField({ serif }: Props) {
           } else setTip(null);
         }
       }
-      canvas.style.cursor = dragRef.current.active ? 'grabbing' : hover ? 'pointer' : 'default';
+      canvas.style.cursor = sketchRef.current ? 'crosshair' : dragRef.current.active ? 'grabbing' : hover ? 'pointer' : 'default';
 
       // state that the chrome needs
       const key = cam.path.map((n) => n.id).join('~');
       if (key !== lastPathKey.current) {
         lastPathKey.current = key;
+        if (sketchRef.current && !cam.path.some((n) => n.id === sketchRef.current?.nodeId)) {
+          sketchRef.current = null;
+          setSketching(false);
+        }
         setPath([...cam.path]);
         if (cam.depth >= 1) {
           const top = cam.path[1];
@@ -536,7 +552,27 @@ export default function ShadowField({ serif }: Props) {
     []
   );
 
+  /** Screen point -> coordinates in the frame of the owned idea being sketched in. */
+  const sketchPoint = (sx: number, sy: number): [number, number] | null => {
+    const cam = camRef.current;
+    const sk = sketchRef.current;
+    if (!cam || !sk) return null;
+    const idx = cam.path.findIndex((n) => n.id === sk.nodeId);
+    if (idx < 0) return null;
+    const T = cam.transformAt(idx);
+    return [(sx - T.ox) / T.s, (sy - T.oy) / T.s];
+  };
+
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (sketchRef.current && e.isPrimary) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const pt = sketchPoint(e.clientX - rect.left, e.clientY - rect.top);
+      if (pt) {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        sketchRef.current.stroke = [pt[0], pt[1]];
+        return;
+      }
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     pointersRef.current.set(e.pointerId, { x: e.clientX - rect.left, y: e.clientY - rect.top });
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -554,6 +590,12 @@ export default function ShadowField({ serif }: Props) {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    const sk = sketchRef.current;
+    if (sk?.stroke) {
+      const pt = sketchPoint(x, y);
+      if (pt) sk.stroke.push(pt[0], pt[1]);
+      return;
+    }
     pointerRef.current = { x, y, inside: true };
     const prev = pointersRef.current.get(e.pointerId);
     if (!prev) return;
@@ -582,6 +624,18 @@ export default function ShadowField({ serif }: Props) {
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const sk = sketchRef.current;
+    if (sk?.stroke) {
+      const stroke = sk.stroke;
+      sk.stroke = null;
+      if (stroke.length >= 4) {
+        const [, shadowId, thoughtId] = sk.nodeId.split('/');
+        const ok = storeRef.current?.addMedia(shadowId, thoughtId ?? null, { kind: 'sketch', strokes: [stroke], t: Date.now() });
+        if (ok === false) setNotice('this device is out of room for more drawings');
+        rebuild();
+      }
+      return;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -677,6 +731,55 @@ export default function ShadowField({ serif }: Props) {
     a.download = `shadow-${shadowId}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+
+  const toggleSketch = () => {
+    const cam = camRef.current;
+    if (!cam) return;
+    if (sketchRef.current) {
+      sketchRef.current = null;
+      setSketching(false);
+      const id = cam.node.id;
+      ripple(id);
+      return;
+    }
+    if (!localIds(cam.node)) return;
+    sketchRef.current = { nodeId: cam.node.id, stroke: null };
+    setSketching(true);
+  };
+
+  const addImage = async (file: File) => {
+    const cam = camRef.current;
+    const ids = cam ? localIds(cam.node) : null;
+    if (!cam || !ids) return;
+    try {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      await new Promise<void>((res, rej) => {
+        img.onload = () => res();
+        img.onerror = () => rej(new Error('unreadable image'));
+        img.src = url;
+      });
+      const scale = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * scale);
+      c.height = Math.round(img.naturalHeight * scale);
+      c.getContext('2d')?.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      const src = c.toDataURL('image/jpeg', 0.8);
+      const [x, y] = openSpot(cam, cam.node);
+      const aspect = c.height / c.width;
+      const w = Math.min(0.6, 0.6 / Math.max(1, aspect));
+      const ok = storeRef.current?.addMedia(ids.shadowId, ids.thoughtId, { kind: 'image', src, x: x * 0.6, y: y * 0.6, w, aspect });
+      if (ok === false) {
+        setNotice('this device is out of room for more images (they will live on the server soon)');
+        return;
+      }
+      rebuild();
+      ripple(cam.node.id);
+    } catch {
+      setNotice('that image could not be read');
+    }
   };
 
   const toggleFollow = (node: IdeaNode) => {
@@ -879,6 +982,12 @@ export default function ShadowField({ serif }: Props) {
             >
               add a thought
             </button>
+            <button type="button" className={styles.quiet} onClick={() => fileRef.current?.click()}>
+              add an image
+            </button>
+            <button type="button" className={sketching ? styles.following : styles.quiet} onClick={toggleSketch} aria-pressed={sketching}>
+              {sketching ? 'done sketching' : 'sketch'}
+            </button>
             <button
               type="button"
               className={styles.quiet}
@@ -977,6 +1086,28 @@ export default function ShadowField({ serif }: Props) {
             {news.when ? ` · in ${news.when}` : ''} — go there
           </button>
           <button type="button" className={styles.newsClose} aria-label="Dismiss" onClick={() => setNews(null)}>
+            ×
+          </button>
+        </div>
+      )}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          const f = e.currentTarget.files?.[0];
+          if (f) addImage(f);
+          e.currentTarget.value = '';
+        }}
+      />
+
+      {sketching && <div className={styles.hint}>draw with your finger or mouse · scroll still moves you in and out</div>}
+      {notice && (
+        <div className={styles.news} role="status">
+          <span className={styles.quiet}>{notice}</span>
+          <button type="button" className={styles.newsClose} aria-label="Dismiss" onClick={() => setNotice(null)}>
             ×
           </button>
         </div>

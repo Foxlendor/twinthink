@@ -4,7 +4,7 @@
 // it actually happens. They live in localStorage until the Shadow API exists;
 // the ShadowStore shape is what a server-backed store will implement.
 
-import { IdeaNode, LifeEvent } from '../model';
+import { IdeaNode, LifeEvent, Media } from '../model';
 import { hashString } from '../rng';
 
 export interface LocalThought {
@@ -19,6 +19,7 @@ export interface LocalThought {
   /** Dialectic role: an antithesis challenges one thought; a synthesis resolves two. */
   role?: 'antithesis' | 'synthesis';
   of?: string[];
+  media?: Media[];
 }
 
 export interface LocalShadow {
@@ -30,6 +31,7 @@ export interface LocalShadow {
   visits: number[];
   revisions: number[];
   thoughts: LocalThought[];
+  media?: Media[];
 }
 
 export interface ShadowStore {
@@ -46,6 +48,8 @@ export interface ShadowStore {
   revise(shadowId: string, thoughtId: string | null, text: string): void;
   letGo(shadowId: string, thoughtId: string): void;
   visit(shadowId: string): void;
+  /** Add content inside a Shadow (thoughtId null) or one of its thoughts. Returns false if storage is full. */
+  addMedia(shadowId: string, thoughtId: string | null, media: Media): boolean;
   remove(shadowId: string): void;
 }
 
@@ -67,13 +71,16 @@ export function createLocalStore(storage: Pick<Storage, 'getItem' | 'setItem'> |
       return memory;
     }
   };
+  let lastWriteOk = true;
   const write = (list: LocalShadow[]) => {
     memory = list;
+    lastWriteOk = true;
     if (!storage) return;
     try {
       storage.setItem(KEY, JSON.stringify(list));
     } catch {
       // storage full or blocked: keep working in memory
+      lastWriteOk = false;
     }
   };
   const mutate = (fn: (list: LocalShadow[]) => void) => {
@@ -123,6 +130,26 @@ export function createLocalStore(storage: Pick<Storage, 'getItem' | 'setItem'> |
         const th = l.find((v) => v.id === shadowId)?.thoughts.find((v) => v.id === thoughtId);
         if (th) th.letGo = th.letGo ? undefined : Date.now();
       });
+    },
+    addMedia(shadowId, thoughtId, media) {
+      mutate((l) => {
+        const s = l.find((v) => v.id === shadowId);
+        if (!s) return;
+        const holder = thoughtId === null ? s : s.thoughts.find((t) => t.id === thoughtId);
+        if (!holder) return;
+        (holder.media ??= []).push(media);
+        (thoughtId === null ? s.revisions : (holder as LocalThought).revisions).push(Date.now());
+      });
+      if (!lastWriteOk) {
+        // roll back so the stored record stays consistent
+        mutate((l) => {
+          const s = l.find((v) => v.id === shadowId);
+          const holder = s && (thoughtId === null ? s : s.thoughts.find((t) => t.id === thoughtId));
+          holder?.media?.pop();
+        });
+        return false;
+      }
+      return true;
     },
     visit(shadowId) {
       mutate((l) => {
@@ -174,6 +201,7 @@ function thoughtNode(shadow: LocalShadow, th: LocalThought): IdeaNode {
     disclosure: 0,
     children: kids,
     artifact: { type: 'text', body: th.text },
+    media: th.media,
     x: th.x,
     y: th.y,
     r: 0.055,
@@ -200,7 +228,8 @@ export function localShadowNode(s: LocalShadow): IdeaNode {
     state: 'alive',
     disclosure: 0,
     children: s.thoughts.filter((t) => t.parent === null).map((t) => thoughtNode(s, t)),
-    artifact: s.thoughts.length === 0 ? { type: 'text', body: s.text } : undefined,
+    artifact: s.thoughts.length === 0 && !s.media?.length ? { type: 'text', body: s.text } : undefined,
+    media: s.media,
     x: s.x,
     y: s.y,
     r: 0.0025,

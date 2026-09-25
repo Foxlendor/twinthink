@@ -135,6 +135,10 @@ export class Camera {
     for (const c of frame.children) {
       if (Math.hypot(c.x - cx, c.y - cy) - c.r < reach) return true;
     }
+    // content inside the idea counts too: you can zoom right into an image
+    for (const m of frame.media ?? []) {
+      if (m.kind === 'image' && Math.abs(m.x - cx) < m.w / 2 + reach && Math.abs(m.y - cy) < (m.w * m.aspect) / 2 + reach) return true;
+    }
     return false;
   }
 
