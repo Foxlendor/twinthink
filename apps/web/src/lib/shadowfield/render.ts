@@ -11,6 +11,7 @@ import { ScreenTransform } from './camera';
 import { spatialIndex } from './spatial';
 import { getImage } from './media';
 import { getPeaks } from './audio';
+import { PLOT, Plot } from './plots';
 import { clamp, hash01, noise1, smoothstep } from './rng';
 
 export const PAPER = '#fbfaf7';
@@ -62,6 +63,8 @@ export interface RenderState {
   reduced?: boolean;
   /** The song currently playing, if any: progress 0..1 and live loudness 0..1. */
   audio?: { src: string; progress: number; level: number } | null;
+  /** Held plots on the Canvas (3 x 3 blocks of grid cells). */
+  plots?: Plot[];
   /** 3D objects in view this frame, for the DOM overlay. */
   models?: { src: string; x: number; y: number; w: number; h: number; alpha: number }[];
   /** Batched sub-pixel marks, by alpha bucket. */
@@ -922,6 +925,7 @@ export function drawNode(
   if (kids.length > 400) {
     kids = spatialIndex(node).query((0 - T.ox) / R, (0 - T.oy) / R, (st.w - T.ox) / R, (st.h - T.oy) / R, []);
   }
+  if (isRoot && !node.portal) drawPlots(st, T);
   if (isRoot) drawWater(st, node, T);
   const crowded = kids.length > 400;
   for (const c of kids) {
@@ -971,6 +975,42 @@ function drawPortal(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: 
   if (inner < 0.004) return;
   drawLattice(st, T, inner * 0.2 * (1 - smoothstep(30 * M, 400 * M, R)), 1.2, R < 3 * M);
   drawNode(st, node, T, inner, 1, path, true);
+}
+
+/** Held plots: a soft tint and corner marks, visible once the grid is legible. */
+function drawPlots(st: RenderState, T: ScreenTransform) {
+  if (!st.plots?.length) return;
+  const { ctx, M } = st;
+  const side = PLOT * T.s;
+  const a = smoothstep(90, 260, side) * (1 - smoothstep(2.5 * M, 6 * M, side));
+  if (a < 0.01) return;
+  for (const p of st.plots) {
+    const x = T.ox + p.x * T.s;
+    const y = T.oy + p.y * T.s;
+    if (x > st.w || y > st.h || x + side < 0 || y + side < 0) continue;
+    ctx.fillStyle = `hsla(${p.hue}, 30%, 74%, ${0.06 * a})`;
+    ctx.fillRect(x, y, side, side);
+    ctx.strokeStyle = `hsla(${p.hue}, 25%, 35%, ${0.28 * a})`;
+    ctx.lineWidth = 1;
+    const c = Math.min(12, side * 0.08);
+    ctx.beginPath();
+    for (const [cx, cy, dx, dy] of [
+      [x, y, 1, 1],
+      [x + side, y, -1, 1],
+      [x, y + side, 1, -1],
+      [x + side, y + side, -1, -1],
+    ]) {
+      ctx.moveTo(cx + dx * c, cy);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx, cy + dy * c);
+    }
+    ctx.stroke();
+    if (side > 320) {
+      ctx.font = `9px ${st.mono}`;
+      ctx.fillStyle = `hsla(${p.hue}, 25%, 30%, ${0.45 * a})`;
+      ctx.fillText(p.holder, x + 6, y + side - 7);
+    }
+  }
 }
 
 /** Seconds a ripple takes to spread across the Canvas to its reach. */

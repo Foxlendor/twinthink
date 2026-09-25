@@ -9,6 +9,7 @@ import continuity from './sources/twinthink-continuity.json';
 import notes from '../../../../../scripts/twinthink_notes.json';
 import { buildRehearsalField } from './specimens.fixture';
 import { spatialIndex } from './spatial';
+import { founderPlots, CELL, PLOT } from './plots';
 import { rootNode } from './world';
 
 const open: Access = { canEnter: () => true, closenessAt: () => 1 };
@@ -334,5 +335,23 @@ describe('free music modules', () => {
     }
     const times = music.children.map((s) => s.began);
     expect([...times].sort((a, b) => a - b)).toEqual(times);
+  });
+});
+
+describe('plots', () => {
+  it('each public idea sits inside a 3x3 plot aligned to the grid; private ones get none', () => {
+    const mem = new Map<string, string>();
+    const store = createLocalStore({ getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => void mem.set(k, v) });
+    store.cast('mine', 0.9, 0.9);
+    const world = buildWorld(store.list());
+    const plots = founderPlots(world.children);
+    for (const n of world.children.filter((c) => !c.id.startsWith('local/'))) {
+      expect(plots.some((p) => n.x >= p.x && n.x < p.x + PLOT && n.y >= p.y && n.y < p.y + PLOT)).toBe(true);
+    }
+    for (const p of plots) {
+      expect(Math.abs(p.x / CELL - Math.round(p.x / CELL))).toBeLessThan(1e-9);
+      expect(p.holder).toBe('johne.boi');
+    }
+    expect(plots.some((p) => 0.9 >= p.x && 0.9 < p.x + PLOT && 0.9 >= p.y && 0.9 < p.y + PLOT)).toBe(false);
   });
 });

@@ -9,6 +9,7 @@ import { Access, Flight, pan as panCam, stepFlight, transformOfPath, zoomAt } fr
 import { Hit, Lens, RenderState, drawSketch, lifeWord, drawVoidLattice, pulseChain, relTime, render, shortDate } from '@/lib/shadowfield/render';
 import { setMediaReadyCallback } from '@/lib/shadowfield/media';
 import Donate from '@/components/support/Donate';
+import { founderPlots } from '@/lib/shadowfield/plots';
 import { buildWorld, resolvePath } from '@/lib/shadowfield/world';
 import { createLocalStore, LocalShadow, ShadowStore } from '@/lib/shadowfield/sources/local';
 import styles from './ShadowField.module.css';
@@ -63,6 +64,17 @@ function writeSet(key: string, set: Set<string>) {
 function closenessFor(top: IdeaNode, followedSet: Set<string>) {
   if (top.ownedBy === 'viewer') return 1;
   return followedSet.has(top.id) ? 0.72 : 0.45;
+}
+
+const plotCache = new WeakMap<IdeaNode, ReturnType<typeof founderPlots>>();
+function plotsFor(world: IdeaNode | null) {
+  if (!world) return [];
+  let p = plotCache.get(world);
+  if (!p) {
+    p = founderPlots(world.children);
+    plotCache.set(world, p);
+  }
+  return p;
 }
 
 function localIds(node: IdeaNode): { shadowId: string; thoughtId: string | null } | null {
@@ -522,6 +534,7 @@ export default function ShadowField({ serif }: Props) {
         clock: nowMs / 1000,
         pulses: pulsesRef.current,
         audio: audioState,
+        plots: plotsFor(worldRef.current),
       };
       render(st, cam.path[k], startPath, T, p, k === 0);
       // 3D objects: one live viewer, placed over the largest object in view
