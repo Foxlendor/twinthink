@@ -224,6 +224,11 @@ def require_owner(twin_id: str, token: Optional[str]):
         raise HTTPException(status_code=403, detail="Unauthorized: Invalid owner token")
     return True
 
+# Shadow continuity log (append-only, server-timestamped, hash-chained).
+if not USE_CLOUD:
+    from shadows import make_router as make_shadow_router
+    app.include_router(make_shadow_router(get_db_local))
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "mode": "cloud" if USE_CLOUD else "local", "storage_dir": str(STORAGE_DIR)}
