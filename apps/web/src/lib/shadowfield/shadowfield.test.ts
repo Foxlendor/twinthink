@@ -260,3 +260,18 @@ describe('nothing ends', () => {
     expect(cam.depth).toBe(0);
   });
 });
+
+describe('cleared archive ideas', () => {
+  it('appear on the Canvas with no invented history', () => {
+    const world = buildWorld([]);
+    const archived = world.children.filter((c) => c.id.startsWith('archive/'));
+    expect(archived).toHaveLength(9);
+    for (const a of archived) {
+      expect(a.origin).toBe('real');
+      expect(a.events).toHaveLength(1);
+      expect(a.events[0].kind).toBe('begin');
+      expect(a.note && a.note.length).toBeGreaterThan(10);
+      expect(Math.hypot(a.x, a.y)).toBeLessThan(1);
+    }
+  });
+});

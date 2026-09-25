@@ -7,6 +7,11 @@ Everything on the public Canvas is real:
 - **TwinThink's Twin** is built from this repository's git history. Only timestamps, short hashes, categories and kinds are stored; commit messages never leave the build script, and a test enforces that.
 - **Your own Shadows.** "cast a shadow" (or double-click empty space) plants a sentence. Inside it you can add thoughts (click "add a thought", or double-click), rewrite them, let them go, and keep a JSON copy. Every action is a dated event. It is stored on your device for now.
 
+### Cleared archive ideas (added 2026-09-25, at the inventor's request)
+Items 1–10 of the inventor's archive were cleared for the public Canvas. TwinThink was already there; the other nine (CoinCeit, BUBBLEYEBLOCK, Wear O's, SipSmolder, Smholder, U3dPEN, FerroPen, Ferro / crystalline display, Xylem thread camouflage) now appear as Shadows (`sources/archive.ts`).
+- **Disclosure:** what each one does and the problem it answers, never how it works. No mechanisms, materials or construction details.
+- **History:** nothing invented. Each record begins on the day it was added, with a note that earlier history is not recorded yet. Real dates can be added later.
+
 ## 2. What changed visually
 - The old dot grid and side panel are replaced by an immersive field with no navbar. Chrome is one italic serif line at each edge: breadcrumb bottom-left, quiet actions bottom-right, and a depth hairline on the right.
 - Near-white paper, graphite ink, Cormorant italic labels, JetBrains Mono for dates.

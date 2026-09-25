@@ -1,22 +1,25 @@
 // Assembles the Canvas: the root frame whose children are top-level Shadows.
 //
-// The public Canvas contains only 'real' and 'local' records. Synthetic
-// specimens exist solely for the separate rehearsal field and are never mixed
-// into this world.
+// The public Canvas contains only 'real' and 'local' records: TwinThink's own
+// Twin, ideas the inventor cleared from their archive, and the viewer's own.
+// Synthetic specimens are a test fixture only and are never served.
 
 import { IdeaNode } from './model';
 import { topologyOf } from './layout';
 import { buildTwinThinkTwin } from './sources/twinthink';
+import { buildArchiveShadows } from './sources/archive';
 import { LocalShadow, localShadowNode } from './sources/local';
 
 export const CANVAS_EXTENT = 1;
 
 let twinthink: IdeaNode | null = null;
+let archive: IdeaNode[] | null = null;
 let current: IdeaNode | null = null;
 
 export function buildWorld(local: LocalShadow[]): IdeaNode {
   twinthink ??= buildTwinThinkTwin();
-  const children = [twinthink, ...local.map(localShadowNode)];
+  archive ??= buildArchiveShadows();
+  const children = [twinthink, ...archive, ...local.map(localShadowNode)];
   const world = rootNode('canvas', children);
   current = world;
   for (const c of children) attachPortals(c);
