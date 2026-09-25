@@ -419,13 +419,13 @@ function drawArtifact(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha
   const a = alpha * smoothstep(isLedger ? 5 : 8, isLedger ? 9 : 14, fpx) * (1 - smoothstep(isLedger ? 48 : 70, isLedger ? 110 : 150, fpx));
   if (a < 0.01) return;
   ctx.font = isLedger ? `${fpx}px ${st.mono}` : `italic ${fpx}px ${st.serif}`;
-  ctx.fillStyle = `rgba(${INK},${a * 0.82})`;
+  ctx.fillStyle = `rgba(${INK},${a * (isLedger ? 0.58 : 0.82)})`;
   ctx.textBaseline = 'alphabetic';
   const width = isLedger ? fpx * 30 : R * 1.05;
   const lines = art.type === 'ledger' ? art.lines : wrap(ctx, art.body, width);
   const lh = fpx * (isLedger ? 1.55 : 1.35);
   const total = lines.length * lh;
-  let y = T.oy + (isLedger ? R * 0.18 : 0) - total / 2 + fpx * 0.8;
+  let y = T.oy - total / 2 + fpx * 0.8;
   if (y < T.oy - R * 0.85) y = T.oy - R * 0.85;
   ctx.textAlign = isLedger ? 'left' : 'center';
   const x = isLedger ? T.ox - width / 2 : T.ox;

@@ -327,6 +327,8 @@ export default function ShadowField({ serif }: Props) {
       }
       const prev = hoverRef.current;
       hoverRef.current = hover;
+      // a mark that has grown large enough to carry its own label needs no tooltip
+      if (hover && hover.node === prev?.node && hover.kind === 'node' && !hover.sealed && hover.size >= 5) setTip(null);
       if (hover !== prev && (hover?.node !== prev?.node || hover?.ev !== prev?.ev)) {
         if (!hover) setTip(null);
         else if (hover.kind === 'event' && hover.ev) {
