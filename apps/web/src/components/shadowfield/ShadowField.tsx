@@ -184,6 +184,7 @@ export default function ShadowField({ serif }: Props) {
   const [notice, setNotice] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [giving, setGiving] = useState(false);
+  const [givingTo, setGivingTo] = useState<string | null>(null);
   const [news, setNews] = useState<{ ids: string[]; title: string; when: string } | null>(null);
   const [replayView, setReplayView] = useState<{ progress: number; t: number; playing: boolean } | null>(null);
 
@@ -345,6 +346,29 @@ export default function ShadowField({ serif }: Props) {
     }
     setVersion((v) => v + 1);
 
+    // back from giving toward an idea: it ripples, and remembers you are following
+    let thanksTimer = 0;
+    try {
+      const url = new URL(window.location.href);
+      const supported = url.searchParams.get('supported');
+      if (supported) {
+        url.searchParams.delete('supported');
+        history.replaceState(null, '', url.pathname + url.search + url.hash);
+        const p = findPath(world, supported);
+        if (p && p.length > 1) {
+          lensRef.current.followed.add(p[1].id);
+          writeSet(FOLLOW_KEY, lensRef.current.followed);
+          thanksTimer = window.setTimeout(() => {
+            setFollowed(new Set(lensRef.current.followed));
+            ripple(supported);
+            setNotice('thank you. it felt that.');
+          }, 1200);
+        }
+      }
+    } catch {
+      // ignore malformed URLs
+    }
+
     // news: a recent change inside TwinThink ripples out, and the viewer may go look
     const tw = world.children.find((c) => c.id === 'twinthink');
     const last = tw ? lastActivity(tw) : 0;
@@ -371,7 +395,10 @@ export default function ShadowField({ serif }: Props) {
         }, 1800);
       }
     }
-    return () => window.clearTimeout(newsTimer);
+    return () => {
+      window.clearTimeout(newsTimer);
+      window.clearTimeout(thanksTimer);
+    };
   }, [access, flyToIds, ripple]);
 
   // ---------------------------------------------------------------- frame loop
@@ -950,7 +977,11 @@ export default function ShadowField({ serif }: Props) {
   const toggleFollow = (node: IdeaNode) => {
     const next = new Set(lensRef.current.followed);
     if (next.has(node.id)) next.delete(node.id);
-    else next.add(node.id);
+    else {
+      next.add(node.id);
+      // encouragement is felt: it ripples through the idea
+      ripple(camRef.current?.node.id ?? node.id);
+    }
     lensRef.current.followed = next;
     writeSet(FOLLOW_KEY, next);
     setFollowed(new Set(next));
@@ -1026,6 +1057,12 @@ export default function ShadowField({ serif }: Props) {
   const real = path.map((n, i) => ({ n, i })).filter(({ n }) => !n.void);
   const crumbs = real.length > 6 ? [real[0], { n: real[0].n, i: -1 }, ...real.slice(-4)] : real;
   const current = path[path.length - 1];
+  // the idea you are inside, if someone else's and public: what support goes toward
+  const supportTarget =
+    [...path]
+      .slice(1)
+      .reverse()
+      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/')) ?? null;
   const top = path[1];
   const ownedHere = current ? localIds(current) : null;
   const isFollowed = top ? followed.has(top.id) : false;
@@ -1125,6 +1162,15 @@ export default function ShadowField({ serif }: Props) {
               </a>
             )}
           </>
+        )}
+        {supportTarget && (
+          <button
+            type="button"
+            className={givingTo ? styles.following : styles.quiet}
+            onClick={() => setGivingTo((g) => (g ? null : supportTarget.id))}
+          >
+            help it continue
+          </button>
         )}
         {top && top.ownedBy !== 'viewer' && (
           <button
@@ -1308,6 +1354,13 @@ export default function ShadowField({ serif }: Props) {
           <button type="button" className={styles.newsClose} aria-label="Dismiss" onClick={() => setNotice(null)}>
             ×
           </button>
+        </div>
+      )}
+
+      {givingTo && supportTarget && supportTarget.id === givingTo && (
+        <div className={styles.give}>
+          <div className={styles.giveFor}>toward {supportTarget.title ?? 'this idea'}</div>
+          <Donate compact shadowId={givingTo} onDone={() => setGivingTo(null)} />
         </div>
       )}
 

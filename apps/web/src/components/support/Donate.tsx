@@ -8,11 +8,21 @@ const AMOUNTS = [3, 5, 10, 25];
  * A quiet way to give. Uses a hosted donation link when one is configured
  * (NEXT_PUBLIC_DONATE_URL), otherwise Stripe Checkout via /api/donate.
  */
-export default function Donate({ compact = false, onDone }: { compact?: boolean; onDone?: () => void }) {
+export default function Donate({
+  compact = false,
+  onDone,
+  shadowId,
+}: {
+  compact?: boolean;
+  onDone?: () => void;
+  /** Give toward one public Shadow instead of TwinThink as a whole. */
+  shadowId?: string;
+}) {
   const [custom, setCustom] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const hosted = process.env.NEXT_PUBLIC_DONATE_URL;
+  // a hosted link can only receive general support; idea-specific gifts need Checkout
+  const hosted = shadowId ? undefined : process.env.NEXT_PUBLIC_DONATE_URL;
 
   const give = async (amount: number) => {
     setMessage(null);
@@ -25,7 +35,7 @@ export default function Donate({ compact = false, onDone }: { compact?: boolean;
       const res = await fetch('/api/donate', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify(shadowId ? { amount, shadow: shadowId } : { amount }),
       });
       const data = (await res.json()) as { url?: string; error?: string };
       if (data.url) window.location.assign(data.url);

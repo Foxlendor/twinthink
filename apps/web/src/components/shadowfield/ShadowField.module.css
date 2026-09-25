@@ -382,3 +382,11 @@
   bottom: 56px;
   animation: tipIn 250ms ease-out;
 }
+
+.giveFor {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  color: rgba(150, 92, 122, 0.85);
+  margin-bottom: 6px;
+}
