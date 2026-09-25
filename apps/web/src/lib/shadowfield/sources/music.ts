@@ -38,7 +38,7 @@ export function buildMusic(): IdeaNode {
   const first = Date.parse(SONGS[0].made);
   return {
     id: 'music',
-    title: 'johne.boi · music',
+    title: "johne.boi's songs",
     kind: 'music',
     origin: 'real',
     began: first,

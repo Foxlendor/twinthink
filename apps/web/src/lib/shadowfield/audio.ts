@@ -3,6 +3,7 @@
 
 const peaks = new Map<string, Float32Array | 'loading' | 'failed'>();
 let ctx: AudioContext | null = null;
+let busy = false;
 
 const BINS = 180;
 
@@ -11,6 +12,8 @@ export function getPeaks(src: string): Float32Array | null {
   if (hit instanceof Float32Array) return hit;
   if (hit) return null;
   if (typeof window === 'undefined') return null;
+  if (busy) return null; // one song at a time
+  busy = true;
   peaks.set(src, 'loading');
   (async () => {
     try {
@@ -33,6 +36,8 @@ export function getPeaks(src: string): Float32Array | null {
       peaks.set(src, out);
     } catch {
       peaks.set(src, 'failed');
+    } finally {
+      busy = false;
     }
   })();
   return null;

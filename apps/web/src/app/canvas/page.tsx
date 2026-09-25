@@ -12,7 +12,7 @@ const serif = Cormorant_Garamond({
 
 export const metadata: Metadata = {
   title: 'TwinThink Canvas',
-  description: 'A field of human ideas. Move closer to one and go inside it.',
+  description: 'Songs, dances, animation and inventions by johne.boi.',
 };
 
 export default function CanvasPage() {

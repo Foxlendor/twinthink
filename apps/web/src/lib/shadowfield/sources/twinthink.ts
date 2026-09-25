@@ -16,17 +16,21 @@ interface Commit {
 }
 
 
+// Each part is named for what it is for, cut from the project's own
+// description of it (continuity.branches), never for how it is built.
 const BRANCH_TITLES: Record<string, { title: string; kind: IdeaNode['kind'] }> = {
-  surface: { title: 'the Twin page', kind: 'visual' },
+  surface: { title: 'how one idea is shown', kind: 'visual' },
   deploy: { title: 'staying online', kind: 'software' },
-  engine: { title: 'the reality engine', kind: 'software' },
-  graph: { title: 'structure', kind: 'software' },
-  rights: { title: 'identity and rights', kind: 'software' },
+  engine: { title: 'proving what an idea does', kind: 'software' },
+  graph: { title: 'what an object is made of', kind: 'software' },
+  rights: { title: 'who owns an idea', kind: 'software' },
   tooling: { title: 'tools for makers', kind: 'software' },
   disclosure: { title: 'what to show, what to keep', kind: 'theory' },
-  mark: { title: 'the mark', kind: 'visual' },
-  canvas: { title: 'the Canvas', kind: 'visual' },
+  canvas: { title: 'this place', kind: 'visual' },
 };
+
+/** The name-and-logo work lives inside how one idea is shown: no ring is named after a logo. */
+const FOLD: Record<string, string> = { mark: 'surface' };
 
 const KIND_MAP: Record<Commit['k'], { kind: EventKind; note: string }> = {
   change: { kind: 'revision', note: 'changed' },
@@ -37,15 +41,45 @@ const KIND_MAP: Record<Commit['k'], { kind: EventKind; note: string }> = {
 
 const DAY = 86400000;
 
-function sessionTitle(t: number) {
-  const d = new Date(t);
-  const h = d.getHours();
-  const part = h < 5 ? 'late night' : h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 21 ? 'evening' : 'night';
-  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase()}, ${part}`;
+/** Minutes east of UTC written in a commit's own timestamp (e.g. -06:00 -> -360). */
+function offsetOf(t: string): number | null {
+  const m = /([+-])(\d\d):(\d\d)$/.exec(t);
+  if (!m) return null;
+  return (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3]));
+}
+
+/**
+ * A working session named by the hours it was lived, on his own clock, never
+ * by a date: "one morning", "all through the night", "back again, one evening".
+ * The hour comes from each commit's own offset; commits stamped +00:00 were
+ * made from a cloud machine, so they borrow his latest own-clock offset.
+ */
+function sessionTitle(first: { ms: number; off: number }, lastMs: number, back: boolean) {
+  const h = new Date(first.ms + first.off * 60000).getUTCHours();
+  const night = h >= 21 || h < 5;
+  const long = lastMs - first.ms > 3 * 3600000;
+  const base =
+    long && night
+      ? 'all through the night'
+      : h < 5
+        ? 'past midnight'
+        : h < 12
+          ? 'one morning'
+          : h < 17
+            ? 'one afternoon'
+            : h < 21
+              ? 'one evening'
+              : 'one night';
+  return back ? `back again, ${base}` : base;
 }
 
 export function buildTwinThinkTwin(): IdeaNode {
-  const commits = (data.commits as Commit[]).map((c) => ({ ...c, ms: Date.parse(c.t) }));
+  let own = -360;
+  const commits = (data.commits as Commit[]).map((c) => {
+    const o = offsetOf(c.t);
+    if (o !== null && o !== 0) own = o;
+    return { ...c, b: FOLD[c.b] ?? c.b, ms: Date.parse(c.t), off: o === null || o === 0 ? own : o };
+  });
   const began = commits[0].ms;
   const newest = commits[commits.length - 1].ms;
 
@@ -79,11 +113,12 @@ export function buildTwinThinkTwin(): IdeaNode {
       if (cur && c.ms - cur[cur.length - 1].ms < 6 * 3600000) cur.push(c);
       else sessions.push([c]);
     }
-    const children: IdeaNode[] = sessions.map((sess) => {
+    const children: IdeaNode[] = sessions.map((sess, k) => {
       const s0 = sess[0].ms;
+      const back = k > 0 && s0 - sessions[k - 1][sessions[k - 1].length - 1].ms > 10 * DAY;
       return {
         id: `twinthink/${b}/${sess[0].h}`,
-        title: sessionTitle(s0),
+        title: sessionTitle(sess[0], sess[sess.length - 1].ms, back),
         kind: meta.kind,
         origin: 'real',
         began: s0,

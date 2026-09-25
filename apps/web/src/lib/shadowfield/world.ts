@@ -4,10 +4,10 @@
 // Twin, ideas the inventor cleared from their archive, and the viewer's own.
 // Synthetic specimens are a test fixture only and are never served.
 
-import { IdeaNode } from './model';
+import { IdeaNode, findPath } from './model';
 import { topologyOf } from './layout';
 import { buildTwinThinkTwin } from './sources/twinthink';
-import { buildArchiveShadows } from './sources/archive';
+import { buildThrowaways } from './sources/archive';
 import { buildStarters } from './sources/starters';
 import { buildMusic } from './sources/music';
 import { buildDance } from './sources/dance';
@@ -16,7 +16,7 @@ import { LocalShadow, localShadowNode } from './sources/local';
 export const CANVAS_EXTENT = 1;
 
 let twinthink: IdeaNode | null = null;
-let archive: IdeaNode[] | null = null;
+let throwaways: IdeaNode | null = null;
 let starters: IdeaNode[] | null = null;
 let music: IdeaNode | null = null;
 let dance: IdeaNode | null = null;
@@ -24,11 +24,11 @@ let current: IdeaNode | null = null;
 
 export function buildWorld(local: LocalShadow[]): IdeaNode {
   twinthink ??= buildTwinThinkTwin();
-  archive ??= buildArchiveShadows();
+  throwaways ??= buildThrowaways();
   starters ??= buildStarters();
   music ??= buildMusic();
   dance ??= buildDance();
-  const children = [twinthink, ...starters, music, dance, ...archive, ...local.map(localShadowNode)];
+  const children = [twinthink, ...starters, music, dance, throwaways, ...local.map(localShadowNode)];
   const world = rootNode('canvas', children);
   current = world;
   for (const c of children) attachPortals(c);
@@ -95,7 +95,14 @@ export function resolvePath(root: IdeaNode, ids: string[]): IdeaNode[] {
   for (const id of ids) {
     topologyOf(cur);
     const next = cur.children.find((c) => c.id === id);
-    if (!next) break;
+    if (!next) {
+      // an idea that has moved (older links): find it wherever it now lives
+      const found = findPath(cur, id);
+      if (!found) break;
+      path.push(...found.slice(1));
+      cur = found[found.length - 1];
+      continue;
+    }
     path.push(next);
     cur = next;
   }

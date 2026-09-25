@@ -32,11 +32,13 @@ export interface LocalShadow {
   revisions: number[];
   thoughts: LocalThought[];
   media?: Media[];
+  /** Taken from a throwaway (its id): the giver stays credited. */
+  from?: string;
 }
 
 export interface ShadowStore {
   list(): LocalShadow[];
-  cast(text: string, x: number, y: number): LocalShadow;
+  cast(text: string, x: number, y: number, from?: string): LocalShadow;
   addThought(
     shadowId: string,
     parent: string | null,
@@ -91,9 +93,9 @@ export function createLocalStore(storage: Pick<Storage, 'getItem' | 'setItem'> |
 
   return {
     list: read,
-    cast(text, x, y) {
+    cast(text, x, y, from) {
       const now = Date.now();
-      const s: LocalShadow = { id: uid(), text, created: now, x, y, visits: [now], revisions: [], thoughts: [] };
+      const s: LocalShadow = { id: uid(), text, created: now, x, y, visits: [now], revisions: [], thoughts: [], ...(from ? { from } : {}) };
       mutate((l) => l.push(s));
       return s;
     },
@@ -230,6 +232,7 @@ export function localShadowNode(s: LocalShadow): IdeaNode {
     children: s.thoughts.filter((t) => t.parent === null).map((t) => thoughtNode(s, t)),
     artifact: s.thoughts.length === 0 && !s.media?.length ? { type: 'text', body: s.text } : undefined,
     media: s.media,
+    line: s.from ? 'taken from johne.boi’s throwaways.' : undefined,
     x: s.x,
     y: s.y,
     r: 0.0025,

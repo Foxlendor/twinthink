@@ -68,6 +68,8 @@ export type Media =
       to?: number;
       /** Seen through a round window with a feathered paper edge, like an ink drop. */
       round?: boolean;
+      /** Who made it, signed under it like a pencil signature under a print (only when true). */
+      by?: string;
     };
 
 export interface IdeaNode {
@@ -106,6 +108,11 @@ export interface IdeaNode {
   portal?: boolean;
   /** Given away by its inventor as a free starter to build on. */
   free?: boolean;
+  /**
+   * One short line, shown under the name only while the viewer is still in
+   * front of it: the feeling, never how it works.
+   */
+  line?: string;
   /** Builds children on first approach (large synthetic fields). Called once by layout. */
   expand?: () => void;
   /** Aggregate continuity signals (for Shadows seen from far away). */

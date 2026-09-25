@@ -9,7 +9,7 @@ import { IdeaNode, LifeEvent, Media, SEAL_MARGIN, lastActivity, rippleReach } fr
 import { Strand, topologyOf, strandAt, strandU } from './layout';
 import { ScreenTransform } from './camera';
 import { spatialIndex } from './spatial';
-import { getImage, getVideo } from './media';
+import { getImage, getVideo, startedByHand } from './media';
 import { getPeaks } from './audio';
 import { PLOT, Plot } from './plots';
 import { clamp, hash01, noise1, smoothstep } from './rng';
@@ -664,7 +664,10 @@ export function drawVideo(
   const y0 = T.oy + m.y * T.s - H / 2;
   if (x0 > st.w || y0 > st.h || x0 + W < 0 || y0 + H < 0) return;
   const a = alpha * smoothstep(3, 30, W);
-  const live = reveal > 0.35 ? getVideo(m.src, m.webm) : null;
+  // a person seen far ahead is already moving (a pale print); a drawing waits until near.
+  // With reduced motion, films rest until the viewer starts one.
+  const wants = reveal > (m.round ? 0.02 : 0.35) && (!st.reduced || startedByHand.has(m.src));
+  const live = wants ? getVideo(m.src, m.webm) : null;
   ctx.save();
   // far away it is a pale print of itself, darkening into the real thing as you near
   ctx.globalAlpha = a * (0.1 + 0.9 * Math.pow(reveal, 1.1));
@@ -771,31 +774,41 @@ export function drawAudioRing(st: RenderState, src: string, T: ScreenTransform, 
   if (a < 0.01) return;
   const { ctx } = st;
   const playing = st.audio && st.audio.src === src ? st.audio : null;
-  const pk = R > 60 ? getPeaks(src) : null;
+  // the waveform is read only for the song in front of you (or playing): passing
+  // the others never downloads them
+  const pk = R > 0.45 * st.M || playing ? getPeaks(src) : null;
   const n = pk ? pk.length : 90;
   const clock = st.reduced ? 0 : st.clock ?? 0;
   const breathe = playing ? 1 + 0.06 * playing.level : 1 + 0.01 * Math.sin(clock * 0.8);
   const base = 0.42 * R * breathe;
   const dot = clamp(R / 420, 0.7, 2.4);
   const head = playing ? playing.progress : -1;
+  // two fills in all: what has been heard (rose), and the rest (ink)
+  const heard = new Path2D();
+  const rest = new Path2D();
   for (let i = 0; i < n; i++) {
     const f = i / n;
     const ang = -Math.PI / 2 + f * Math.PI * 2;
     const amp = pk ? pk[i] : 0.15;
     const passed = playing && f <= head;
     const steps = Math.max(1, Math.round(1 + amp * 6));
+    const cos = Math.cos(ang);
+    const sin = Math.sin(ang);
+    const path = passed ? heard : rest;
     for (let k = 0; k < steps; k++) {
       const rr = base + (k - (steps - 1) / 2) * dot * 2.6;
-      const x = T.ox + Math.cos(ang) * rr;
-      const y = T.oy + Math.sin(ang) * rr;
+      const x = T.ox + cos * rr;
+      const y = T.oy + sin * rr;
       if (x < -8 || y < -8 || x > st.w + 8 || y > st.h + 8) continue;
-      ctx.fillStyle = passed ? `rgba(${ROSE},${a * 0.75})` : `rgba(${INK},${a * (pk ? 0.55 : 0.22)})`;
-      ctx.beginPath();
-      ctx.arc(x, y, dot, 0, Math.PI * 2);
-      ctx.fill();
+      path.moveTo(x + dot, y);
+      path.arc(x, y, dot, 0, Math.PI * 2);
     }
   }
+  ctx.fillStyle = `rgba(${INK},${a * (pk ? 0.55 : 0.22)})`;
+  ctx.fill(rest);
   if (playing) {
+    ctx.fillStyle = `rgba(${ROSE},${a * 0.75})`;
+    ctx.fill(heard);
     const ang = -Math.PI / 2 + head * Math.PI * 2;
     ctx.fillStyle = `rgba(${ROSE},${a})`;
     ctx.beginPath();
@@ -812,6 +825,48 @@ export function drawAudioRing(st: RenderState, src: string, T: ScreenTransform, 
     ctx.closePath();
     ctx.fill();
   }
+}
+
+/**
+ * Words set in dotted ink: the text is drawn once at 96px on a hidden canvas
+ * and sampled on a fine grid (odd rows offset), giving points in units of the
+ * font size, baseline at v = 0. Cached once the web font has loaded.
+ */
+const wordCache = new Map<string, { pts: Float32Array; w: number }>();
+export function inkWords(text: string, family: string): { pts: Float32Array; w: number } | null {
+  const key = `${family}|${text}`;
+  const hit = wordCache.get(key);
+  if (hit) return hit;
+  if (typeof document === 'undefined') return null;
+  const px = 96;
+  const font = `italic 400 ${px}px ${family}`;
+  const ready = !document.fonts || document.fonts.check(font);
+  const c = document.createElement('canvas');
+  const g = c.getContext('2d', { willReadFrequently: true });
+  if (!g) return null;
+  g.font = font;
+  const w = Math.ceil(g.measureText(text).width) + 8;
+  const h = Math.ceil(px * 1.4);
+  c.width = w;
+  c.height = h;
+  g.font = font;
+  g.textBaseline = 'alphabetic';
+  g.fillStyle = '#000';
+  const baseline = Math.round(px * 1.05);
+  g.fillText(text, 4, baseline);
+  const data = g.getImageData(0, 0, w, h).data;
+  const out: number[] = [];
+  const step = 5;
+  for (let y = 0, row = 0; y < h; y += step * 0.87, row++) {
+    const yy = Math.round(y);
+    for (let x = row % 2 ? step / 2 : 0; x < w; x += step) {
+      const xx = Math.round(x);
+      if (data[(yy * w + xx) * 4 + 3] > 110) out.push((xx - 4) / px, (yy - baseline) / px);
+    }
+  }
+  const res = { pts: new Float32Array(out), w: (w - 8) / px };
+  if (ready) wordCache.set(key, res);
+  return res;
 }
 
 /** A hand drawing, in the same dotted ink as the filaments. */

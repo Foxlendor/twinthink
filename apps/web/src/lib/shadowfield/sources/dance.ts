@@ -9,7 +9,7 @@ const ADDED = Date.parse('2026-09-25T20:23:00Z');
 export function buildDance(): IdeaNode {
   return {
     id: 'dance',
-    title: 'johne.boi · dance',
+    title: 'johne.boi, dancing',
     kind: 'visual',
     origin: 'real',
     began: ADDED,

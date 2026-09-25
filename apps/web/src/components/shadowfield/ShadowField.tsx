@@ -6,18 +6,18 @@ import { Camera, ScreenTransform } from '@/lib/shadowfield/camera';
 import { IdeaNode, LifeEvent, SEAL_MARGIN, findPath, lastActivity } from '@/lib/shadowfield/model';
 import { topologyOf } from '@/lib/shadowfield/layout';
 import { Access, Flight, pan as panCam, stepFlight, transformOfPath, zoomAt } from '@/lib/shadowfield/navigate';
-import { Hit, Lens, RenderState, drawSketch, lifeWord, drawVoidLattice, pulseChain, relTime, render, shortDate } from '@/lib/shadowfield/render';
-import { setMediaReadyCallback, settleVideos, toggleVideoSound } from '@/lib/shadowfield/media';
+import { Hit, Lens, RenderState, drawSketch, lifeWord, drawVoidLattice, pulseChain, render, shortDate } from '@/lib/shadowfield/render';
+import { restVideos, setMediaReadyCallback, settleVideos, toggleVideoSound } from '@/lib/shadowfield/media';
 import {
   ARRIVE,
   FOCUS,
   FlightCam,
+  beginPush,
   Station,
   Stream,
   buildStream,
   focusOf,
   focusZ,
-  mod,
   newFlightCam,
   stepFlightCam,
   stepFocus,
@@ -212,7 +212,7 @@ export default function ShadowField({ serif }: Props) {
   const lastTapRef = useRef({ t: 0, x: 0, y: 0 });
   const pulsesRef = useRef(new Map<string, number>());
   // sketching: strokes are drawn in the frame of the owned idea being sketched in
-  const sketchRef = useRef<{ nodeId: string; stroke: number[] | null } | null>(null);
+  const sketchRef = useRef<{ nodeId: string; stroke: number[] | null; pointerId?: number } | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const modelRef = useRef<HTMLElement | null>(null);
@@ -240,9 +240,14 @@ export default function ShadowField({ serif }: Props) {
   const hereSinceRef = useRef({ id: '', t: 0, tried: false, visited: false });
   // what the flight skips this frame (not perceivable, or not born yet in a replay)
   const skipRef = useRef<(s: Station) => boolean>(() => false);
+  // the browser will not play sound until the visitor taps once
+  const soundBlockedRef = useRef(true);
+  // the hand: when the pointer last moved (the chrome comes back for a reaching hand)
+  const handRef = useRef(0);
+  const flowRef = useRef({ value: '', movingUntil: 0 });
+  const uiBusyRef = useRef(false);
 
   const [path, setPath] = useState<IdeaNode[]>([]);
-  const [depthPos, setDepthPos] = useState(0);
   const [view, setView] = useState({ w: 800, h: 600 });
   const [tip, setTip] = useState<Tip | null>(null);
   const [composer, setComposer] = useState<Composer | null>(null);
@@ -282,7 +287,11 @@ export default function ShadowField({ serif }: Props) {
   /** Stations this viewer cannot perceive at all (see model.ts, disclosure). */
   const hiddenStation = useCallback((s: Station) => {
     if (s.depth < 2) return false;
-    return s.node.disclosure > lensRef.current.closeness(s.path[1]) + SEAL_MARGIN;
+    const p = lensRef.current.closeness(s.path[1]);
+    if (s.node.disclosure > p + SEAL_MARGIN) return true;
+    // beneath a sealed idea nothing is perceivable
+    for (let k = 2; k < s.path.length - 1; k++) if (s.path[k].disclosure > p) return true;
+    return false;
   }, []);
 
   const rebuild = useCallback(() => {
@@ -335,7 +344,10 @@ export default function ShadowField({ serif }: Props) {
     if (!a) {
       // passing a song only plays it once the visitor has touched the page
       const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
-      if (auto && ua && !ua.hasBeenActive) return;
+      if (auto && ua && !ua.hasBeenActive) {
+        soundBlockedRef.current = true;
+        return;
+      }
       const el = new Audio();
       el.preload = 'auto';
       let gain: GainNode | null = null;
@@ -367,7 +379,7 @@ export default function ShadowField({ serif }: Props) {
       if (auto) return;
       if (a.el.paused) {
         autoplayRef.current = true;
-        void a.el.play();
+        void a.el.play().catch(() => undefined);
       } else {
         // paused by hand: songs stop playing themselves as you pass, until you play one again
         autoplayRef.current = false;
@@ -379,13 +391,21 @@ export default function ShadowField({ serif }: Props) {
     }
     if (!auto) autoplayRef.current = true;
     a.el.src = media.src;
-    void a.el.play().catch(() => {
-      playingRef.current = null;
-      setPlayingId(null);
-      if (!auto) setNotice('tap play to hear it');
-    });
-    playingRef.current = { src: media.src, path, silentFor: 0 };
+    const rec = { src: media.src, path, silentFor: 0 };
+    playingRef.current = rec;
     setPlayingId(node.id);
+    void a.el.play().then(
+      () => {
+        soundBlockedRef.current = false;
+      },
+      () => {
+        if (playingRef.current !== rec) return; // a newer song has taken over
+        playingRef.current = null;
+        setPlayingId(null);
+        if (!auto) setNotice('tap play to hear it');
+        else soundBlockedRef.current = true;
+      }
+    );
   }, []);
 
   const flyTo = useCallback((target: IdeaNode[], radius = 0.53) => {
@@ -394,7 +414,14 @@ export default function ShadowField({ serif }: Props) {
       const stream = streamRef.current;
       const fc = flightCamRef.current;
       if (!stream) return;
-      for (let i = target.length - 1; i >= 0; i--) {
+      let open = target.length;
+      for (let i = 2; i < target.length; i++) {
+        if (target[i].disclosure > lensRef.current.closeness(target[1])) {
+          open = i;
+          break;
+        }
+      }
+      for (let i = open - 1; i >= 0; i--) {
         const idx = stream.byId.get(target[i].id);
         if (idx === undefined) continue;
         const s = stream.stations[idx];
@@ -541,7 +568,7 @@ export default function ShadowField({ serif }: Props) {
         newsTimer = window.setTimeout(() => {
           const arrives = ripple(target[1].id);
           window.setTimeout(
-            () => setNews({ ids: [tw.id, ...target.map((n) => n.id)], title: `TwinThink changed ${relTime(Date.now(), latestT)}`, when: target[0].title ?? '' }),
+            () => setNews({ ids: [tw.id, ...target.map((n) => n.id)], title: 'still being made', when: '' }),
             Math.max(0, (arrives - performance.now() / 1000) * 1000)
           );
         }, 1800);
@@ -552,6 +579,25 @@ export default function ShadowField({ serif }: Props) {
       window.clearTimeout(thanksTimer);
     };
   }, [access, flyToIds, ripple]);
+
+  // leaving the Canvas silences everything; a hidden tab rests the films
+  useEffect(() => {
+    const onHide = () => {
+      if (document.hidden) restVideos();
+    };
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      restVideos();
+      const a = audioRef.current;
+      if (a) {
+        a.el.pause();
+        void a.ac?.close().catch(() => undefined);
+        audioRef.current = null;
+      }
+      playingRef.current = null;
+    };
+  }, []);
 
   // ---------------------------------------------------------------- frame loop
   useEffect(() => {
@@ -602,11 +648,13 @@ export default function ShadowField({ serif }: Props) {
         }
       }
       const skip = (s: Station) => hiddenStation(s) || (cut !== null && s.depth > 0 && s.node.began > cut);
-      skipRef.current = skip;
+      // a sealed thing is seen (a closed mark) but can never be the thing in front of you
+      const closed = (s: Station) => skip(s) || (s.depth > 1 && s.node.disclosure > lensRef.current.closeness(s.path[1]));
+      skipRef.current = closed;
 
       // motion
       if (flying) {
-        stepFlightCam(fc, stream, dt, skip);
+        stepFlightCam(fc, stream, dt, closed);
       } else {
         if (flightRef.current) {
           if (stepFlight(cam, flightRef.current, access, dt)) flightRef.current = null;
@@ -628,7 +676,7 @@ export default function ShadowField({ serif }: Props) {
       }
 
       // what is in front of you
-      const here = flying ? focusOf(stream, fc.z, skip) : null;
+      const here = flying ? focusOf(stream, fc.z, closed) : null;
       hereRef.current = here;
 
       // music: loudness follows nearness, and a song left far behind stops itself
@@ -713,10 +761,21 @@ export default function ShadowField({ serif }: Props) {
         plots: plotsFor(worldRef.current),
       };
       if (flying) {
+        // stillness: the one line under a thing appears only once you have stopped
+        const still =
+          fc.target !== null || fc.held
+            ? 0
+            : reducedQuery.matches
+              ? Number(fc.idle > 1.6)
+              : smoothstep(1.6, 3, fc.idle) * (1 - smoothstep(0.15, 0.4, Math.abs(fc.shown)));
         renderFlight(st, stream, fc, {
           frames: framesRef.current,
           closeness: (s) => (s.depth === 0 ? 1 : lensRef.current.closeness(s.path[1])),
           hidden: skip,
+          here: here?.node.id,
+          still,
+          lineFor: (s) =>
+            hasMedia(s.node, 'audio') && soundBlockedRef.current && !playingRef.current ? 'tap to hear it' : s.node.line,
         });
       } else {
         const k = Math.max(0, cam.depth - 2);
@@ -798,7 +857,7 @@ export default function ShadowField({ serif }: Props) {
               x: hover.x,
               y: hover.y,
               title: hover.sealed ? 'something is here' : hover.node.title ?? 'untitled',
-              line: hover.sealed ? 'not open to you yet' : lifeWord(hover.node, Date.now()),
+              line: hover.sealed ? 'not open to you yet' : hover.node.free ? 'given away' : lifeWord(hover.node, Date.now()),
             });
           } else setTip(null);
         }
@@ -825,6 +884,25 @@ export default function ShadowField({ serif }: Props) {
           if (ids && storeRef.current) storeRef.current.visit(ids.shadowId);
         }
       }
+      // the buttons and names step back while you move, and while you linger;
+      // a reaching hand (or anything open) brings them back at once
+      const root = rootRef.current;
+      if (root) {
+        const f = flowRef.current;
+        let flow = '';
+        if (flying && !uiBusyRef.current) {
+          if (Math.abs(fc.shown) > 0.6) f.movingUntil = nowMs + 900;
+          if (nowMs - handRef.current > 700) {
+            if (nowMs < f.movingUntil) flow = 'moving';
+            else if (fc.idle > 12 && nowMs - handRef.current > 12000) flow = 'rest';
+          }
+        }
+        if (flow !== f.value) {
+          f.value = flow;
+          if (flow) root.dataset.flow = flow;
+          else delete root.dataset.flow;
+        }
+      }
       // in the flight, passing something is not visiting it: staying a moment is
       const since = hereSinceRef.current;
       if (flying && here && here.path.length > 1 && !since.visited && nowMs - since.t > 1500 && Math.abs(fc.shown) < 1) {
@@ -839,15 +917,6 @@ export default function ShadowField({ serif }: Props) {
       }
       if (nowMs - lastDepthUpdate > 120) {
         lastDepthUpdate = nowMs;
-        if (flying) {
-          // where you are in the lap: the gauge comes round once per journey
-          setDepthPos(mod(fc.z + ARRIVE, stream.length) / stream.length);
-        } else {
-          const fit = Math.log(Math.min(cam.w, cam.h) * 0.45);
-          // depth is unbounded: the gauge laps once per ~19 e-folds of zoom
-          const lap = Math.max(0, (cam.logZ() - fit) / 19);
-          setDepthPos(lap - Math.floor(lap));
-        }
         setView((v) => (v.w === cam.w && v.h === cam.h ? v : { w: cam.w, h: cam.h }));
         const r = replayRef.current;
         if (r && cut !== null) setReplayView({ progress: r.progress, t: cut, playing: r.playing });
@@ -869,6 +938,10 @@ export default function ShadowField({ serif }: Props) {
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
   }, [access, serif, hiddenStation, toggleSong]);
+
+  useEffect(() => {
+    uiBusyRef.current = !!(composer || giving || givingTo || sketching || replayView || notice);
+  }, [composer, giving, givingTo, sketching, replayView, notice]);
 
   // ---------------------------------------------------------------- input
   const dismissHint = useCallback(() => {
@@ -896,6 +969,8 @@ export default function ShadowField({ serif }: Props) {
       if (modeRef.current === 'flight') {
         // scrolling is moving: down (or a pinch outward) carries you forward
         const fc = flightCamRef.current;
+        const stream = streamRef.current;
+        if (stream) beginPush(fc, stream, skipRef.current);
         if (fc.target !== null) {
           // a scroll takes over from a flight already under way
           fc.target = null;
@@ -1022,6 +1097,7 @@ export default function ShadowField({ serif }: Props) {
       if (pt) {
         e.currentTarget.setPointerCapture(e.pointerId);
         sketchRef.current.stroke = [pt[0], pt[1]];
+        sketchRef.current.pointerId = e.pointerId;
         return;
       }
     }
@@ -1030,9 +1106,14 @@ export default function ShadowField({ serif }: Props) {
     e.currentTarget.setPointerCapture(e.pointerId);
     flightRef.current = null;
     velRef.current = { x: 0, y: 0 };
+    handRef.current = performance.now();
+    // a tap is what lets the browser play sound
+    soundBlockedRef.current = false;
     if (modeRef.current === 'flight') {
       // a touch catches the flight, the way a finger stops a spinning wheel
       const fc = flightCamRef.current;
+      const stream = streamRef.current;
+      if (stream) beginPush(fc, stream, skipRef.current);
       fc.held = true;
       fc.target = null;
       fc.v = 0;
@@ -1051,12 +1132,13 @@ export default function ShadowField({ serif }: Props) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     const sk = sketchRef.current;
-    if (sk?.stroke) {
+    if (sk?.stroke && e.pointerId === sk.pointerId) {
       const pt = sketchPoint(x, y);
       if (pt) sk.stroke.push(pt[0], pt[1]);
       return;
     }
     pointerRef.current = { x, y, inside: true, t: performance.now() };
+    handRef.current = performance.now();
     const prev = pointersRef.current.get(e.pointerId);
     if (!prev) return;
     pointersRef.current.set(e.pointerId, { x, y });
@@ -1116,7 +1198,7 @@ export default function ShadowField({ serif }: Props) {
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const sk = sketchRef.current;
-    if (sk?.stroke) {
+    if (sk?.stroke && e.pointerId === sk.pointerId) {
       const stroke = sk.stroke;
       sk.stroke = null;
       if (stroke.length >= 4) {
@@ -1309,7 +1391,7 @@ export default function ShadowField({ serif }: Props) {
     a.download = `proof-${shadowId}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    setNotice(`fingerprint ${hex.slice(0, 12)}… saved`);
+    setNotice('sealed — your proof is saved');
   };
 
   const toggleSketch = () => {
@@ -1369,6 +1451,21 @@ export default function ShadowField({ serif }: Props) {
     } catch {
       setNotice('that image could not be read');
     }
+  };
+
+  /**
+   * Taking a throwaway: the visitor gets their own private copy (its name only),
+   * which remembers who gave it. A gift ripples; nothing is counted.
+   */
+  const takeIdea = (node: IdeaNode) => {
+    const store = storeRef.current;
+    const world = worldRef.current;
+    if (!store || !world) return;
+    const ring = world.children.find((c) => c.id === 'throwaways');
+    store.cast(node.title ?? '', (ring?.x ?? 0.5) * 0.9, (ring?.y ?? 0.3) * 0.9, node.id);
+    rebuild();
+    ripple(node.id);
+    setNotice('yours now, only on this device');
   };
 
   const toggleFollow = (node: IdeaNode) => {
@@ -1460,7 +1557,11 @@ export default function ShadowField({ serif }: Props) {
     [...path]
       .slice(1)
       .reverse()
-      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/')) ?? null;
+      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/')) ?? null;
+  // an idea given away is never followed by an ask for money, nor is a song while it plays
+  const asking = supportTarget && playingId !== current?.id ? supportTarget : null;
+  const throwaway = current?.id.startsWith('archive/') ? current : null;
+  const taken = throwaway ? localList.some((l) => l.from === throwaway.id) : false;
   const top = path[1];
   const ownedHere = current ? localIds(current) : null;
   const isFollowed = top ? followed.has(top.id) : false;
@@ -1484,7 +1585,7 @@ export default function ShadowField({ serif }: Props) {
           pointersRef.current.delete(e.pointerId);
           pinchRef.current = null;
           dragRef.current.active = false;
-          if (sketchRef.current) sketchRef.current.stroke = null;
+          if (sketchRef.current?.pointerId === e.pointerId) sketchRef.current.stroke = null;
           if (pointersRef.current.size === 0) {
             // the system took the touch (a back swipe, a notification): let the flight go
             const fc = flightCamRef.current;
@@ -1499,8 +1600,8 @@ export default function ShadowField({ serif }: Props) {
         }}
       />
 
-      <Link href="/" className={styles.mark} aria-label="TwinThink home">
-        twinthink
+      <Link href="/" className={styles.mark} aria-label="home">
+        home
       </Link>
 
       <button type="button" className={styles.mode} onClick={switchMode}>
@@ -1528,10 +1629,6 @@ export default function ShadowField({ serif }: Props) {
         ))}
       </nav>
 
-      <div className={styles.depth} aria-hidden>
-        <div className={styles.depthLine} />
-        <div className={styles.depthDot} style={{ top: `${depthPos * 100}%` }} />
-      </div>
 
       <div className={styles.actions}>
         {path.length <= 1 && (
@@ -1552,11 +1649,11 @@ export default function ShadowField({ serif }: Props) {
               wander
             </button>
             <button type="button" className={styles.quiet} onClick={() => setGiving((g) => !g)}>
-              support twinthink
+              support his work
             </button>
           </>
         )}
-        {top && (
+        {top && top.id !== 'throwaways' && (
           <button type="button" className={styles.quiet} onClick={replayView ? stopReplay : startReplay}>
             {replayView ? 'return to now' : 'watch it grow'}
           </button>
@@ -1571,17 +1668,23 @@ export default function ShadowField({ serif }: Props) {
                 className={styles.quiet}
                 href={(current.media.find((m) => m.kind === 'audio') as { src: string }).src}
                 download
+                onClick={() => ripple(current.id)}
               >
                 take it, free
               </a>
             )}
           </>
         )}
-        {supportTarget && (
+        {throwaway && (
+          <button type="button" className={taken ? styles.following : styles.quiet} onClick={() => takeIdea(throwaway)} disabled={taken}>
+            {taken ? 'yours now' : 'take it, free'}
+          </button>
+        )}
+        {asking && (
           <button
             type="button"
             className={givingTo ? styles.following : styles.quiet}
-            onClick={() => setGivingTo((g) => (g ? null : supportTarget.id))}
+            onClick={() => setGivingTo((g) => (g ? null : asking.id))}
           >
             help it continue
           </button>
@@ -1715,19 +1818,13 @@ export default function ShadowField({ serif }: Props) {
           >
             <div className={styles.replayFill} style={{ width: `${replayView.progress * 100}%` }} />
           </div>
-          <div className={styles.replayDate}>
-            {new Date(replayView.t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase()}
-            {' · '}
-            {new Date(replayView.t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}
-          </div>
         </div>
       )}
 
       {news && path.length <= 1 && (
         <div className={styles.news} role="status">
           <button type="button" className={styles.quiet} onClick={() => { flyToIds(news.ids); setNews(null); }}>
-            {news.title}
-            {news.when ? ` · in ${news.when}` : ''} — go there
+            {news.title} — go see
           </button>
           <button type="button" className={styles.newsClose} aria-label="Dismiss" onClick={() => setNews(null)}>
             ×

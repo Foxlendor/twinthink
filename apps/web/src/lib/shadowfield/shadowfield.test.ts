@@ -8,6 +8,7 @@ import {
   focusZ,
   leanAt,
   mod,
+  beginPush,
   nearestFocus,
   newFlightCam,
   restingPlace,
@@ -24,6 +25,8 @@ import { Camera, ENTER } from './camera';
 import { topologyOf, strandAt } from './layout';
 import { IdeaNode, countEvents, findPath, reachedBy, rippleReach, webSize } from './model';
 import { buildWorld, resolvePath } from './world';
+import { CLEARED_TEXT } from './sources/archive';
+import { AUTHOR } from './sources/author';
 import { createLocalStore, localShadowNode } from './sources/local';
 import { Access, stepFlight, zoomAt } from './navigate';
 import continuity from './sources/twinthink-continuity.json';
@@ -283,11 +286,16 @@ describe('nothing ends', () => {
   });
 });
 
-describe('cleared archive ideas', () => {
-  it('appear on the Canvas with no invented history', () => {
+describe('throwaways', () => {
+  it('his cleared ideas, given away in one ring, with no invented history', () => {
     const world = buildWorld([]);
-    const archived = world.children.filter((c) => c.id.startsWith('archive/'));
+    const ring = world.children.find((c) => c.id === 'throwaways')!;
+    expect(ring.title).toBe('throwaways');
+    expect(ring.free).toBe(true);
+    const archived = ring.children.filter((c) => c.id.startsWith('archive/'));
     expect(archived).toHaveLength(9);
+    expect(archived[0].id).toBe('archive/bubbleblock');
+    for (const a of archived) expect(a.free).toBe(true);
     for (const a of archived) {
       expect(a.origin).toBe('real');
       expect(a.events[0].kind).toBe('begin');
@@ -299,10 +307,55 @@ describe('cleared archive ideas', () => {
       expect(a.artifact).toBeUndefined();
       expect(Math.hypot(a.x, a.y)).toBeLessThan(1);
     }
-    // the one film the inventor shared: BubbleBlock
+    // the one film the inventor shared: BubbleBlock, signed as his animation
     const shown = archived.filter((a) => a.media?.length);
     expect(shown.map((a) => a.id)).toEqual(['archive/bubbleblock']);
-    expect(shown[0].media?.[0].kind).toBe('video');
+    const film = shown[0].media?.[0];
+    expect(film?.kind).toBe('video');
+    expect(film?.kind === 'video' && film.by).toBe('animated by johne.boi');
+  });
+
+  it('each line is cut from what he cleared: words only removed, never added', () => {
+    const words = (t: string) => t.toLowerCase().replace(/[^a-z' ]+/g, ' ').split(/\s+/).filter(Boolean);
+    for (const c of CLEARED_TEXT) {
+      if (!c.line) continue;
+      const allowed = new Set(words(c.why));
+      const used = words(c.line);
+      expect(used.length).toBeLessThanOrEqual(11);
+      for (const w of used) expect(allowed.has(w), `${c.id}: "${w}"`).toBe(true);
+    }
+    // and the old links to them still land
+    const world = buildWorld([]);
+    expect(resolvePath(world, ['archive/bubbleblock']).map((n) => n.id)).toEqual(['canvas', 'throwaways', 'archive/bubbleblock']);
+  });
+
+  it('a taken throwaway is the visitor’s own, and still credits who gave it', () => {
+    const mem = new Map<string, string>();
+    const store = createLocalStore({ getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => void mem.set(k, v) });
+    const s = store.cast('SipSmolder', 0.4, 0.2, 'archive/sipsmolder');
+    const node = localShadowNode(store.list().find((v) => v.id === s.id)!);
+    expect(node.ownedBy).toBe('viewer');
+    expect(node.line).toContain('johne.boi');
+  });
+});
+
+describe('ethos, not logos', () => {
+  it('sessions are named by the hours he worked, never by dates; no ring is named after a logo', () => {
+    const tw = buildWorld([]).children.find((c) => c.id === 'twinthink')!;
+    expect(tw.children.some((b) => b.id === 'twinthink/mark')).toBe(false);
+    for (const b of tw.children) {
+      for (const sess of b.children) expect(sess.title).not.toMatch(/\d/);
+    }
+    const all = tw.children.flatMap((b) => b.children.map((c) => c.title));
+    expect(all).toContain('all through the night');
+  });
+
+  it('every verb under his name leads to its evidence', () => {
+    const stream = buildStream(buildWorld([]));
+    for (const [word, ids] of Object.entries(AUTHOR.go)) {
+      expect(AUTHOR.line).toContain(word);
+      expect(stream.byId.has(ids[ids.length - 1]), word).toBe(true);
+    }
   });
 });
 
@@ -325,7 +378,7 @@ describe('media files', () => {
   it('the dance is its own Shadow, a film seen through a round window', () => {
     const world = buildWorld([]);
     const dance = world.children.find((c) => c.id === 'dance')!;
-    expect(dance.title).toBe('johne.boi · dance');
+    expect(dance.title).toBe('johne.boi, dancing');
     const film = dance.media?.[0];
     expect(film?.kind === 'video' && film.round).toBe(true);
   });
@@ -440,6 +493,22 @@ describe('the flight', () => {
     expect(silence(songs[0], songs[1])).toBeLessThan(3600000);
   });
 
+  it('one small push from rest always arrives at the next thing, never springs back', () => {
+    for (const k of [1, 5, 12, 30]) {
+      const cam = newFlightCam();
+      const a = stepFocus(stream, cam.z, 1)!;
+      let z = a;
+      for (let i = 1; i < k; i++) z = stepFocus(stream, z, 1)!;
+      cam.z = z;
+      const next = stepFocus(stream, z, 1)!;
+      beginPush(cam, stream);
+      cam.v = 1.8; // one wheel notch
+      cam.dir = 1;
+      for (let i = 0; i < 600; i++) stepFlightCam(cam, stream, 1 / 60);
+      expect(cam.z).toBeCloseTo(next, 2);
+    }
+  });
+
   it('stepping goes to the very next thing, and back', () => {
     const cam = newFlightCam();
     const a = stepFocus(stream, cam.z, 1)!;
@@ -475,7 +544,7 @@ describe('ripples', () => {
   it('a bigger web reaches further, touching the nearest ideas first', () => {
     const world = buildWorld([]);
     const tw = world.children[0];
-    const lone = world.children.find((c) => c.id.startsWith('archive/'))!;
+    const lone = world.children.find((c) => c.id === 'dance')!;
     expect(webSize(tw)).toBeGreaterThan(webSize(lone));
     expect(rippleReach(tw)).toBeGreaterThan(rippleReach(lone));
     const reached = reachedBy(tw, world.children);

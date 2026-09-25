@@ -107,35 +107,6 @@
   color: rgba(30, 28, 36, 0.25);
 }
 
-.depth {
-  position: absolute;
-  right: 22px;
-  top: 22%;
-  height: 56%;
-  width: 7px;
-  pointer-events: none;
-}
-
-.depthLine {
-  position: absolute;
-  left: 3px;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: linear-gradient(to bottom, rgba(30, 28, 36, 0.05), rgba(30, 28, 36, 0.16), rgba(30, 28, 36, 0.05));
-}
-
-.depthDot {
-  position: absolute;
-  left: 0;
-  width: 7px;
-  height: 7px;
-  margin-top: -3.5px;
-  border-radius: 50%;
-  background: rgba(30, 28, 36, 0.55);
-  transition: top 120ms linear;
-}
-
 .actions {
   position: absolute;
   right: 20px;
@@ -189,9 +160,10 @@
 }
 
 .tipLine {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.02em;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  letter-spacing: 0;
   color: rgba(30, 28, 36, 0.5);
   text-shadow: 0 0 6px #fbfaf7;
 }
@@ -229,8 +201,9 @@
 }
 
 .composerHint {
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.85rem;
   color: rgba(30, 28, 36, 0.4);
 }
 
@@ -244,7 +217,13 @@
   font-size: 1rem;
   color: rgba(30, 28, 36, 0.4);
   pointer-events: none;
-  animation: breathe 5s ease-in-out infinite;
+  animation: hintIn 1.2s 2.5s both, breathe 5s 3.7s ease-in-out infinite;
+}
+
+@keyframes hintIn {
+  from {
+    opacity: 0;
+  }
 }
 
 @keyframes breathe {
@@ -321,9 +300,6 @@
     left: 12px;
     bottom: 96px;
   }
-  .depth {
-    right: 10px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -375,13 +351,6 @@
   background: rgba(30, 28, 36, 0.4);
 }
 
-.replayDate {
-  font-family: var(--font-mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.04em;
-  color: rgba(30, 28, 36, 0.55);
-}
-
 .news {
   position: absolute;
   top: 16px;
@@ -417,9 +386,10 @@
   position: absolute;
   left: 20px;
   bottom: 44px;
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.04em;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  letter-spacing: 0;
   color: rgba(150, 92, 122, 0.8);
   pointer-events: none;
 }
@@ -432,9 +402,37 @@
 }
 
 .giveFor {
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.04em;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  letter-spacing: 0;
   color: rgba(150, 92, 122, 0.85);
   margin-bottom: 6px;
+}
+
+/* the buttons and names step back while you move, and while you linger */
+.mark,
+.mode,
+.trail,
+.actions,
+.privacy {
+  transition: opacity 400ms ease;
+}
+
+.field[data-flow='moving'] :is(.mark, .mode, .trail, .actions, .privacy) {
+  opacity: 0.12;
+}
+
+.field[data-flow='rest'] :is(.mark, .mode, .trail, .actions, .privacy) {
+  opacity: 0.35;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mark,
+  .mode,
+  .trail,
+  .actions,
+  .privacy {
+    transition: none;
+  }
 }

@@ -11,7 +11,8 @@
 import { IdeaNode, LifeEvent, lastActivity, rippleReach } from './model';
 import { ScreenTransform } from './camera';
 import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, flightScale, project, travelled, viewOf } from './flight';
-import { Hit, INK, PAPER, ROSE, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo } from './render';
+import { Hit, INK, PAPER, ROSE, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
+import { AUTHOR } from './sources/author';
 import { getImage } from './media';
 import { clamp, hash01, noise1, smoothstep } from './rng';
 
@@ -35,7 +36,31 @@ class Ink {
       p.arc(x, y, size / 2, 0, Math.PI * 2);
     }
   }
+  private lines = new Map<number, Path2D>();
+  /** A short smear of ink (a streak), batched by darkness and width. */
+  line(x0: number, y0: number, x1: number, y1: number, width: number, a: number) {
+    if (a < 0.006) return;
+    const ab = Math.min(19, Math.floor(a * 20));
+    const wb = Math.min(6, Math.max(1, Math.round(width * 2)));
+    const key = ab * 8 + wb;
+    let p = this.lines.get(key);
+    if (!p) {
+      p = new Path2D();
+      this.lines.set(key, p);
+    }
+    p.moveTo(x0, y0);
+    p.lineTo(x1, y1);
+  }
   flush(ctx: CanvasRenderingContext2D) {
+    if (this.lines.size) {
+      ctx.lineCap = 'round';
+      for (const [key, p] of this.lines) {
+        ctx.strokeStyle = `rgba(${INK},${(Math.floor(key / 8) + 0.5) / 20})`;
+        ctx.lineWidth = (key % 8) / 2;
+        ctx.stroke(p);
+      }
+      this.lines.clear();
+    }
     for (const [list, rgb] of [
       [this.paths, INK],
       [this.rose, ROSE],
@@ -55,8 +80,13 @@ export interface FlightState {
   frames: Map<string, ScreenTransform>;
   /** Closeness p of the viewer to a station's top-level Shadow. */
   closeness: (s: Station) => number;
-  /** Not perceivable at all by this viewer. */
+  /** Not perceivable at all by this viewer (or not born yet in a replay). */
   hidden: (s: Station) => boolean;
+  /** The thing in front of you, and how still you are (0..1): its one line shows only then. */
+  here?: string;
+  still?: number;
+  /** The one line for a thing, when it has one right now. */
+  lineFor?: (s: Station) => string | undefined;
 }
 
 function fogOf(dz: number) {
@@ -73,13 +103,11 @@ function liveness(node: IdeaNode, now: number) {
 
 /** Ink specks suspended in the space you move through: they streak when you rush. */
 function drawSpecks(st: RenderState, v: View, cam: FlightCam, ink: Ink) {
-  const { ctx } = st;
   const P = 4;
   const N = 70;
   const streak = st.reduced ? 0 : clamp(cam.shown * 0.03, -0.9, 0.9);
   const j0 = Math.floor((v.z + NEAR) / P);
   const j1 = Math.floor((v.z + FAR) / P);
-  ctx.lineCap = 'round';
   for (let j = j0; j <= j1; j++) {
     const jj = ((j % 9973) + 9973) % 9973;
     for (let i = 0; i < N; i++) {
@@ -99,12 +127,7 @@ function drawSpecks(st: RenderState, v: View, cam: FlightCam, ink: Ink) {
           tx = sx + ((tx - sx) * cap) / len;
           ty = sy + ((ty - sy) * cap) / len;
         }
-        ctx.strokeStyle = `rgba(${INK},${a * 0.8})`;
-        ctx.lineWidth = size;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy);
-        ctx.lineTo(tx, ty);
-        ctx.stroke();
+        ink.line(sx, sy, tx, ty, size, a * 0.8);
       } else ink.dot(sx, sy, size, a);
     }
   }
@@ -127,23 +150,32 @@ function drawTube(st: RenderState, v: View, s: Station, L: number, ink: Ink) {
       const dz = base + m * STEP;
       if (dz > FAR) break;
       const fade = fogOf(dz) * smoothstep(0, 1.5, m * STEP) * smoothstep(0, 1.2, span - m * STEP);
-      if (fade < 0.02) continue;
+      // far rings thin out (every other one fades), and nothing too faint to see is drawn
+      const a = strength * fade * (m % 2 ? 1 - smoothstep(3, 5, dz) : 1);
+      if (a < 0.02) continue;
+      const k = v.F / dz;
+      const size = clamp(0.0045 * k, 0.45, 2.6);
+      const ox = v.cx - v.x * k;
+      const oy = v.cy - v.y * k;
+      const rk = s.r * k;
       for (let j = 0; j < strands; j++) {
         const ang = turn + (j / strands) * Math.PI * 2 + 0.35 * noise1(m * 0.4 + j, s.node.seed);
-        const [sx, sy, k] = project(v, Math.cos(ang) * s.r, Math.sin(ang) * s.r, dz);
+        const sx = ox + Math.cos(ang) * rk;
+        const sy = oy + Math.sin(ang) * rk;
         if (sx < -4 || sy < -4 || sx > st.w + 4 || sy > st.h + 4) continue;
-        ink.dot(sx, sy, clamp(0.0045 * k, 0.45, 2.6), strength * fade);
+        ink.dot(sx, sy, size, a);
       }
     }
   }
 }
 
 /** One dotted thread through everything, in order. It thins across long silences. */
-function drawThread(st: RenderState, v: View, stream: Stream, ink: Ink, cam: FlightCam) {
-  const { stations, length: L } = stream;
+function drawThread(st: RenderState, v: View, stream: Stream, ink: Ink, cam: FlightCam, skip: (s: Station) => boolean) {
+  const { length: L } = stream;
+  // only what exists for this viewer is joined: the thread never bends toward a hidden place
+  const stations = stream.stations.filter((s) => s.depth === 0 || !skip(s));
   const STEP = 0.055;
   const streak = st.reduced ? 0 : clamp(cam.shown * 0.02, -0.6, 0.6);
-  const { ctx } = st;
   for (let i = 0; i < stations.length; i++) {
     const a = stations[i];
     const b = stations[(i + 1) % stations.length];
@@ -177,12 +209,7 @@ function drawThread(st: RenderState, v: View, stream: Stream, ink: Ink, cam: Fli
             tx = sx + ((tx - sx) * cap) / len;
             ty = sy + ((ty - sy) * cap) / len;
           }
-          ctx.strokeStyle = `rgba(${INK},${alpha * 0.7})`;
-          ctx.lineWidth = size;
-          ctx.beginPath();
-          ctx.moveTo(sx, sy);
-          ctx.lineTo(tx, ty);
-          ctx.stroke();
+          ink.line(sx, sy, tx, ty, size, alpha * 0.7);
         } else ink.dot(sx, sy, size, alpha);
       }
     }
@@ -316,7 +343,22 @@ function drawCarried(st: RenderState, node: IdeaNode, x: number, y: number, R: n
   const T: ScreenTransform = { ox: x, oy: y, s: R };
   for (const m of node.media ?? []) {
     if (m.kind === 'image') drawImage(st, m, T, alpha, p);
-    else if (m.kind === 'video') drawVideo(st, m, T, alpha, smoothstep(0.08 * M, (0.4 - 0.16 * p) * M, m.w * R));
+    else if (m.kind === 'video') {
+      const reveal = smoothstep(0.08 * M, (0.4 - 0.16 * p) * M, m.w * R);
+      drawVideo(st, m, T, alpha, reveal);
+      if (m.by && reveal > 0.4) {
+        // signed under its corner, like a pencil signature under a print
+        const W = m.w * R;
+        const H = W * m.aspect;
+        const size = Math.round(clamp(W * 0.03, 11, 15));
+        const { ctx } = st;
+        ctx.textAlign = 'right';
+        ctx.font = `italic ${size}px ${st.serif}`;
+        ctx.fillStyle = `rgba(${INK},${alpha * 0.55 * smoothstep(0.4, 0.8, reveal)})`;
+        ctx.fillText(m.by, Math.min(st.w - 12, x + m.x * R + W / 2), y + m.y * R + H / 2 + size * 1.3);
+        ctx.textAlign = 'left';
+      }
+    }
     else if (m.kind === 'audio') drawAudioRing(st, m.src, { ox: x, oy: y, s: R * 2 }, alpha);
     else if (m.kind === 'sketch') drawSketch(st, m.strokes, T, alpha * smoothstep(0.05 * M, 0.16 * M, R));
     else if (m.kind === 'model') {
@@ -423,6 +465,69 @@ interface Title {
   size: number;
   a: number;
   near: number;
+  /** The one line under it, and how present it is. */
+  sub?: string;
+  subA?: number;
+}
+
+/** First time the arrival was seen (clock seconds): the name writes itself on once. */
+let authorSeen: number | null = null;
+
+/**
+ * At arrival, inside the Canvas's own ring: his name written into the paper in
+ * dotted ink, and one line of what he does. Each verb leads to its evidence.
+ * It passes behind you with the ring, and meets you again each lap.
+ */
+function drawAuthor(st: RenderState, stream: Stream, x: number, y: number, R: number, alpha: number, ink: Ink) {
+  const { ctx, M } = st;
+  const a = alpha * (1 - smoothstep(0.7 * M, 1.2 * M, R));
+  if (a < 0.02) return;
+  const words = inkWords(AUTHOR.name, st.serif);
+  if (!words) return;
+  const clock = st.clock ?? 0;
+  authorSeen ??= clock;
+  const prog = st.reduced ? 1 : clamp((clock - authorSeen) / 1.1, 0, 1);
+  const size = Math.max(30, R * 0.2);
+  const x0 = x - (words.w * size) / 2;
+  const y0 = y + R * 0.42;
+  const dot = Math.max(0.8, size / 34);
+  const edge = prog * words.w;
+  const pts = words.pts;
+  for (let i = 0; i < pts.length; i += 2) {
+    if (pts[i] > edge) continue;
+    ink.dot(x0 + pts[i] * size, y0 + pts[i + 1] * size, dot, a * 0.8);
+  }
+  const fsz = Math.round(Math.max(14, R * 0.042));
+  const la = a * 0.6 * smoothstep(0.55, 1, prog);
+  if (la < 0.01) return;
+  const y2 = y0 + fsz * 1.9;
+  ctx.font = `italic ${fsz}px ${st.serif}`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  const full = ctx.measureText(AUTHOR.line).width;
+  const lx = x - full / 2;
+  ctx.fillStyle = `rgba(${INK},${la})`;
+  ctx.fillText(AUTHOR.line, lx, y2);
+  for (const [word, ids] of Object.entries(AUTHOR.go)) {
+    const at = AUTHOR.line.indexOf(word);
+    const idx = stream.byId.get(ids[ids.length - 1]);
+    if (at < 0 || idx === undefined) continue;
+    const before = ctx.measureText(AUTHOR.line.slice(0, at)).width;
+    const ww = ctx.measureText(word).width;
+    const target = stream.stations[idx];
+    st.hits.push({ kind: 'node', node: target.node, path: target.path, x: lx + before + ww / 2, y: y2 - fsz * 0.35, r: ww / 2 + 6, size: 1e9 });
+  }
+}
+
+/** Words wrapped to a width, at most two lines. */
+function wrapTwo(ctx: CanvasRenderingContext2D, text: string, width: number): string[] {
+  if (ctx.measureText(text).width <= width) return [text];
+  const words = text.split(' ');
+  let best = 1;
+  for (let i = 1; i < words.length; i++) {
+    if (ctx.measureText(words.slice(0, i).join(' ')).width <= width) best = i;
+  }
+  return [words.slice(0, best).join(' '), words.slice(best).join(' ')];
 }
 
 export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs: FlightState) {
@@ -435,27 +540,30 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   st.models = [];
   st.videos = new Set();
   fs.frames.clear();
-  const v = viewOf(stream, cam, st.w, st.h);
+  const v = viewOf(stream, cam, st.w, st.h, fs.hidden);
   const L = stream.length;
   const speed = cam.shown;
   const ink = new Ink();
 
   const born = (s: Station) => st.cut === null || s.depth === 0 || s.node.began <= st.cut;
+  const gone = (s: Station) => !born(s) || fs.hidden(s);
 
   drawSpecks(st, v, cam, ink);
-  for (const s of stream.stations) if (s.gate && born(s) && !fs.hidden(s)) drawTube(st, v, s, L, ink);
-  drawThread(st, v, stream, ink, cam);
+  for (const s of stream.stations) if (s.gate && !gone(s)) drawTube(st, v, s, L, ink);
+  drawThread(st, v, stream, ink, cam, gone);
   ink.flush(ctx);
 
   // far to near, so nearer things are drawn over farther ones
   const list: { s: Station; dz: number }[] = [];
   for (const s of stream.stations) {
-    if (!born(s) || fs.hidden(s)) continue;
+    if (gone(s)) continue;
     for (const dz of aheadCopies(s.z, v.z, L, NEAR, FAR)) list.push({ s, dz });
   }
   list.sort((a, b) => b.dz - a.dz);
 
   const titles: Title[] = [];
+  // what a near film, picture or object covers: names of things behind it are not written over it
+  const covers: { r: [number, number, number, number]; near: number }[] = [];
   const quiet = 1 - smoothstep(2.5, 7, Math.abs(speed));
   for (const { s, dz } of list) {
     const [x, y, k] = project(v, s.x, s.y, dz);
@@ -468,24 +576,41 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     const sealed = s.depth > 1 && s.node.disclosure > p;
     if (s.gate) drawGate(st, s, x, y, R, alpha, ink, sealed);
     else drawThing(st, s, x, y, R, alpha, speed, ink, sealed, p);
+    if (s.depth === 0) drawAuthor(st, stream, x, y, R, alpha, ink);
     ink.flush(ctx);
     if (!fs.frames.has(s.node.id) || dz < FOCUS * 2) fs.frames.set(s.node.id, { ox: x, oy: y, s: R });
 
     if (s.depth > 0) {
       if (!s.gate && R < 0.9 * M) {
-        st.hits.push({ kind: 'node', node: s.node, path: s.path, sealed, x, y, r: Math.max(R * 0.6, 16), size: R });
+        // a film is touched anywhere on it, not only near its centre
+        let r = Math.max(R * 0.6, 16);
+        for (const m of s.node.media ?? []) {
+          if (m.kind === 'video' || m.kind === 'image' || m.kind === 'model') r = Math.max(r, 0.45 * Math.max(m.w * R, m.w * R * m.aspect));
+        }
+        st.hits.push({ kind: 'node', node: s.node, path: s.path, sealed, x, y, r, size: R });
+        for (const m of s.node.media ?? []) {
+          if (m.kind !== 'video' && m.kind !== 'image' && m.kind !== 'model') continue;
+          const W = m.w * R;
+          const H = W * m.aspect;
+          const cx = x + m.x * R;
+          const cy = y + m.y * R;
+          covers.push({ r: [cx - W / 2, cy - H / 2, cx + W / 2, cy + H / 2], near: 1 / dz });
+        }
       } else if (s.gate && R < 0.3 * M) {
         st.hits.push({ kind: 'node', node: s.node, path: s.path, sealed, x, y, r: Math.max(R * 0.9, 16), size: R * 1.5 });
       }
       // very little text: a name, only while it is near enough to read and you are not rushing
       const win = smoothstep(0.035 * M, 0.09 * M, R) * (1 - smoothstep(s.gate ? 0.55 * M : 0.42 * M, s.gate ? 0.95 * M : 0.75 * M, R));
       const ta = alpha * win * quiet;
-      if (ta > 0.02 && s.node.title) {
-        const size = clamp(11 + R / 22, 12, s.gate ? 22 : 19);
+      if (ta > 0.02 && s.node.title && !sealed) {
+        // sizes in half-pixel steps, so the font is not rebuilt every frame
+        const size = Math.round(clamp(11 + R / 22, 12, s.gate ? 22 : 19) * 2) / 2;
         const song = s.node.media?.some((m) => m.kind === 'audio');
         // a song's name sits inside its ring; anything else's beneath it
         const ty = s.gate ? Math.max(58, y - R - size * 0.6) : song ? y + R * 0.18 + size * 0.4 : y + R * 0.62 + size * 1.1;
-        titles.push({ text: sealed ? '' : s.node.title, x, y: ty, size, a: ta, near: 1 / dz });
+        // and the one line, only for the thing in front of you, only while you are still
+        const sub = fs.here === s.node.id ? fs.lineFor?.(s) : undefined;
+        titles.push({ text: s.node.title, x, y: ty, size, a: ta, near: 1 / dz, sub, subA: sub ? ta * (fs.still ?? 0) : 0 });
       }
     }
   }
@@ -498,15 +623,38 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   const placed: [number, number, number, number][] = [];
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
+  let font = '';
+  const setFont = (f: string) => {
+    if (f !== font) ctx.font = font = f;
+  };
   for (const t of titles) {
-    if (!t.text) continue;
-    ctx.font = `italic ${t.size}px ${st.serif}`;
+    setFont(`italic ${t.size}px ${st.serif}`);
     const w = ctx.measureText(t.text).width;
     const r: [number, number, number, number] = [t.x - w / 2 - 4, t.y - t.size, t.x + w / 2 + 4, t.y + t.size * 0.35];
     if (placed.some((q) => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1])) continue;
-    placed.push(r);
+    const q0 = r;
+    if (covers.some((c) => c.near > t.near * 1.02 && q0[0] < c.r[2] && q0[2] > c.r[0] && q0[1] < c.r[3] && q0[3] > c.r[1])) continue;
     ctx.fillStyle = `rgba(${INK},${t.a * 0.78})`;
     ctx.fillText(t.text, t.x, t.y);
+    if (t.sub && (t.subA ?? 0) > 0.01) {
+      const ss = Math.max(13, Math.round(t.size * 0.78));
+      setFont(`italic ${ss}px ${st.serif}`);
+      const lines = wrapTwo(ctx, t.sub, Math.min(360, st.w - 32));
+      let yy = t.y + t.size * 1.35;
+      ctx.fillStyle = `rgba(${INK},${(t.subA ?? 0) * 0.62})`;
+      let widest = w;
+      for (const line of lines) {
+        const lw = ctx.measureText(line).width;
+        widest = Math.max(widest, lw);
+        const lx = clamp(t.x, 16 + lw / 2, st.w - 16 - lw / 2);
+        ctx.fillText(line, lx, yy);
+        yy += ss * 1.3;
+      }
+      r[0] = Math.min(r[0], t.x - widest / 2 - 4);
+      r[2] = Math.max(r[2], t.x + widest / 2 + 4);
+      r[3] = yy;
+    }
+    placed.push(r);
   }
   ctx.textAlign = 'left';
 }

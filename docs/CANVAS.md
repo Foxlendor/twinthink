@@ -25,15 +25,24 @@ out past the edges, behind you.
 ## What is on it
 - **TwinThink** — its own Twin, from this repository's real history (dates and categories only).
 - **Free starters** — redr.ink (a 3D object you can turn once inside) and TwizzLock.
-- **johne.boi · music** — seven songs as free modules (`public/music/`). Tap to play; volume follows depth; "take it, free" downloads.
-- **johne.boi · dance** — a film, shared by the inventor (`public/films/`).
-- **Cleared archive ideas** — names only, no descriptions (`sources/archive.ts`),
-  plus what the inventor chose to show: a hand-drawn film of one version of BubbleBlock.
+- **johne.boi's songs** — seven songs as free modules (`public/music/`). Tap to play; volume follows depth; "take it, free" downloads.
+- **johne.boi, dancing** — a film, shared by the inventor (`public/films/`).
+- **throwaways** — his cleared ideas, given away: a name and one line of the
+  problem it answers (cut from what he cleared, words only removed; never how).
+  BubbleBlock carries his own hand-drawn film, signed "animated by johne.boi".
+  "take it, free" gives the visitor a private copy that credits him.
 - **Your own Shadows** — never leave your device. Add thoughts, images, sketches; challenge and resolve thoughts; "prove it's mine" downloads a SHA-256 proof-of-existence certificate.
 
 ## Principles
+- Ethos and pathos, not logos: the maker's hand, voice and generosity, and the
+  feeling behind each idea; no gauges, dates, counts or brand marks in the flight.
+  His name is written into the paper at arrival; each verb leads to its evidence.
 - No invented content or history on the public Canvas.
-- Very little text: names, one word of life on hover. Activity is shown (heartbeats, constellations, ripples), content is never described.
+- Very little text: names; one line for the thing in front of you, only while
+  you are still. Activity is shown (heartbeats, constellations, ripples).
+  TwinThink's own sessions are named by the hours they were lived, on his clock
+  ("all through the night"), never by dates.
+- Gifts never sit next to an ask for money; nothing is counted.
 - Private by default. Nothing a visitor makes is published.
 
 ## Settings (Vercel → Project → Settings → Environment Variables)

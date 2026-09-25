@@ -81,11 +81,23 @@ export function settleVideos(active: Set<string>) {
   }
 }
 
+/** Films the viewer started by hand (with reduced motion, only these ever play). */
+export const startedByHand = new Set<string>();
+
 /** Sound for a film, from a tap (browsers allow sound only after one). */
 export function toggleVideoSound(src: string): boolean {
+  startedByHand.add(src);
   const v = videos.get(src);
   if (!v) return false;
   v.muted = !v.muted;
   if (!v.muted) void v.play().catch(() => undefined);
   return !v.muted;
+}
+
+/** Leaving the Canvas (or hiding the tab): every film rests, silently. */
+export function restVideos() {
+  for (const v of videos.values()) {
+    v.pause();
+    v.muted = true;
+  }
 }

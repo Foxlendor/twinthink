@@ -1,11 +1,11 @@
-// Ideas from the inventor's own archive, cleared by the inventor on 2026-09-25
-// to appear on the public Canvas.
+// Throwaways: ideas from the inventor's own archive, cleared by the inventor
+// on 2026-09-25 and given away free, in his own word, as throwaways.
 //
-// Disclosure rule chosen by the inventor: on the Canvas each idea shows only
-// its name and that it is alive, plus anything the inventor explicitly chose
-// to show (SHOWN, below). The one-line summaries below are kept for
-// reference but are not displayed. Never add mechanisms, materials or
-// construction details here without new, explicit permission.
+// Shown: the name and one line cut from `why` (the problem it answers), with
+// words only removed, never added (a test checks this). Plus anything the
+// inventor explicitly chose to show (SHOWN, below). `does` is kept for
+// reference and is never displayed. Never: how it works, mechanisms,
+// materials or construction.
 //
 // History rule: nothing is invented. Each record begins on the day it was
 // added to the Canvas; earlier history exists but has not been recorded yet.
@@ -23,6 +23,8 @@ interface Cleared {
   does: string;
   /** The problem it answers. */
   why: string;
+  /** Shown when still in front of it: cut from `why`, words only removed. */
+  line?: string;
   x: number;
   y: number;
 }
@@ -34,6 +36,7 @@ const CLEARED: Cleared[] = [
     kind: 'software',
     does: 'A place to share ideas while keeping credit for them.',
     why: 'Ideas are easy to take and hard to attribute. An earlier attempt at the problem TwinThink now works on.',
+    line: 'ideas are easy to take and hard to attribute.',
     x: -0.46,
     y: -0.31,
   },
@@ -52,6 +55,7 @@ const CLEARED: Cleared[] = [
     kind: 'physical',
     does: 'A ring that is also a discreet personal vaporizer.',
     why: 'An everyday object that is both jewellery and a working device, so there is nothing extra to carry.',
+    line: 'jewellery and a working device, nothing extra to carry.',
     x: -0.18,
     y: 0.49,
   },
@@ -61,6 +65,7 @@ const CLEARED: Cleared[] = [
     kind: 'physical',
     does: 'A reusable straw that warms a drink as you sip it, with no cord and no battery.',
     why: 'A drink goes cold long before you finish it.',
+    line: 'a drink goes cold long before you finish it.',
     x: 0.08,
     y: -0.57,
   },
@@ -70,6 +75,7 @@ const CLEARED: Cleared[] = [
     kind: 'physical',
     does: 'A food and drink container that warms what is inside on demand, without a microwave.',
     why: 'Warm food wherever you are, with nothing to plug in.',
+    line: 'warm food wherever you are, with nothing to plug in.',
     x: 0.63,
     y: -0.38,
   },
@@ -79,6 +85,7 @@ const CLEARED: Cleared[] = [
     kind: 'physical',
     does: 'A handheld pen that builds three-dimensional things from recovered material.',
     why: 'Making something by hand usually means buying new material; this starts from what would be thrown away.',
+    line: 'making by hand, from what would be thrown away.',
     x: -0.69,
     y: 0.18,
   },
@@ -88,6 +95,7 @@ const CLEARED: Cleared[] = [
     kind: 'physical',
     does: 'A drawing tool whose marks can be moved, reshaped, and taken back up after they are made.',
     why: 'Ink is final. This lets a drawing stay changeable and its material reusable.',
+    line: 'ink is final. this lets a drawing stay changeable.',
     x: -0.38,
     y: -0.66,
   },
@@ -97,6 +105,7 @@ const CLEARED: Cleared[] = [
     kind: 'physical',
     does: 'A display whose pixels physically move and can hold their shape, so you can feel an image as well as see it.',
     why: 'Screens are flat and untouchable; information could have shape.',
+    line: 'screens are flat and untouchable; information could have shape.',
     x: 0.34,
     y: 0.63,
   },
@@ -106,6 +115,7 @@ const CLEARED: Cleared[] = [
     kind: 'physical',
     does: 'A fabric that changes its own appearance to match its surroundings.',
     why: 'Printed camouflage only works in the place it was designed for.',
+    line: 'printed camouflage only works in the place it was designed for.',
     x: 0.71,
     y: 0.05,
   },
@@ -131,13 +141,17 @@ const SHOWN: Record<string, { media: Media[]; t: number }> = {
         aspect: 576 / 1028,
         from: 0.2,
         to: 14.5,
+        by: 'animated by johne.boi',
       },
     ],
   },
 };
 
-export function buildArchiveShadows(): IdeaNode[] {
-  return CLEARED.map((c) => ({
+/** The throwaways: one ring you fly into, holding the ideas he gives away. */
+export function buildThrowaways(): IdeaNode {
+  // his own hand-drawn film first
+  const order = [...CLEARED].sort((a, b) => Number(!!SHOWN[b.id]) - Number(!!SHOWN[a.id]));
+  const children: IdeaNode[] = order.map((c) => ({
     id: `archive/${c.id}`,
     title: c.title,
     kind: c.kind,
@@ -148,13 +162,35 @@ export function buildArchiveShadows(): IdeaNode[] {
       ...(SHOWN[c.id] ? [{ t: SHOWN[c.id].t, kind: 'evidence' as const, note: 'a version of it, shown' }] : []),
     ],
     media: SHOWN[c.id]?.media,
+    line: c.line,
+    free: true,
     state: 'alive',
     disclosure: 0,
     children: [],
-    x: c.x,
-    y: c.y,
-    r: 0.0025,
-    fixed: true,
+    x: 0,
+    y: 0,
+    r: 0.05,
     seed: hashString(c.id),
   }));
+  return {
+    id: 'throwaways',
+    title: 'throwaways',
+    line: 'given away, free to build on.',
+    kind: 'physical',
+    origin: 'real',
+    began: ADDED,
+    events: [{ t: ADDED, kind: 'begin', note: 'added to the Canvas; earlier history not recorded yet' }],
+    state: 'alive',
+    disclosure: 0,
+    free: true,
+    children,
+    x: 0.52,
+    y: 0.27,
+    r: 0.0025,
+    fixed: true,
+    seed: hashString('throwaways'),
+  };
 }
+
+/** The cleared text, for tests that guard the lines against invention. */
+export const CLEARED_TEXT = CLEARED.map((c) => ({ id: `archive/${c.id}`, why: c.why, line: c.line }));

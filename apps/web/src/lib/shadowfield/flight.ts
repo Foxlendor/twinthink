@@ -207,23 +207,35 @@ function smooth(t: number) {
   return u * u * (3 - 2 * u);
 }
 
+/** How far the camera leans toward a thing: a film settles centred, a picture or object nearly so. */
+function leanOf(s: Station) {
+  const media = s.node.media ?? [];
+  if (media.some((m) => m.kind === 'video')) return 1;
+  if (media.some((m) => m.kind === 'image' || m.kind === 'model')) return 0.85;
+  return LEAN;
+}
+
 /**
  * Where the camera leans, sideways, at track position camZ: toward whatever is
  * coming into focus, so it arrives near the middle and then slides away.
  */
-export function leanAt(stream: Stream, camZ: number): [number, number] {
+export function leanAt(stream: Stream, camZ: number, skip?: (s: Station) => boolean): [number, number] {
   const st = stream.stations;
   const L = stream.length;
-  const i = indexAt(stream, camZ + FOCUS);
+  // neighbours that exist for this viewer (the Canvas itself is never skipped)
+  let i = indexAt(stream, camZ + FOCUS);
+  while (i > 0 && skip?.(st[i])) i--;
+  let j = i + 1;
+  while (j < st.length && skip?.(st[j])) j++;
   const a = st[i];
-  const b = st[(i + 1) % st.length];
+  const b = st[j % st.length];
   const za = a.z;
-  const zb = i + 1 < st.length ? b.z : b.z + L;
+  const zb = j < st.length ? b.z : b.z + L;
   const u = smooth((mod(camZ + FOCUS, L) - za) / Math.max(1e-6, zb - za));
-  const ax = a.gate ? 0 : a.x * LEAN;
-  const ay = a.gate ? 0 : a.y * LEAN;
-  const bx = b.gate ? 0 : b.x * LEAN;
-  const by = b.gate ? 0 : b.y * LEAN;
+  const ax = a.gate ? 0 : a.x * leanOf(a);
+  const ay = a.gate ? 0 : a.y * leanOf(a);
+  const bx = b.gate ? 0 : b.x * leanOf(b);
+  const by = b.gate ? 0 : b.y * leanOf(b);
   return [ax + (bx - ax) * u, ay + (by - ay) * u];
 }
 
@@ -248,10 +260,19 @@ export interface FlightCam {
   dir: number;
   /** How fast it is actually moving (flights included): what the ink streaks with. */
   shown: number;
+  /** Where a push began, if it began at rest in front of something. */
+  from: number | null;
 }
 
 export function newFlightCam(): FlightCam {
-  return { z: -ARRIVE, v: 0, wx: 0, wy: 0, target: null, idle: 0, held: false, dir: 0, shown: 0 };
+  return { z: -ARRIVE, v: 0, wx: 0, wy: 0, target: null, idle: 0, held: false, dir: 0, shown: 0, from: null };
+}
+
+/** Called as the viewer starts to push: remembers the thing they were resting on. */
+export function beginPush(cam: FlightCam, stream: Stream, skip?: (s: Station) => boolean) {
+  if (cam.target !== null || Math.abs(cam.v) > 0.02) return;
+  const f = nearestFocus(stream, cam.z, skip);
+  cam.from = f !== null && Math.abs(f - cam.z) < 0.02 ? f : cam.from;
 }
 
 /** Speed is let go of gradually: a flick carries you through many things. */
@@ -329,6 +350,7 @@ export function restingPlace(stream: Stream, camZ: number, dir: number, skip?: (
 export function stepFlightCam(cam: FlightCam, stream: Stream, dt: number, skip?: (s: Station) => boolean) {
   cam.idle += dt;
   if (cam.target !== null) {
+    cam.from = null;
     const d = cam.target - cam.z;
     const k = 1 - Math.exp(-dt * 4.5);
     cam.z += d * k;
@@ -349,7 +371,25 @@ export function stepFlightCam(cam: FlightCam, stream: Stream, dt: number, skip?:
     // coming to rest, something settles into focus (a soft pull, never a snap)
     if (Math.abs(cam.v) < 0.45 && cam.idle > 0.2) {
       const f = restingPlace(stream, cam.z, cam.dir, skip);
-      if (f !== null) cam.z += (f - cam.z) * (1 - Math.exp(-dt * 3));
+      // a real push that began at rest always arrives at the next thing, never springs back
+      const from = cam.from;
+      if (from !== null && cam.dir !== 0 && !cam.held) {
+        cam.from = null;
+        const springsBack = f === null || Math.abs(f - from) < 1e-3;
+        if (springsBack && Math.abs(cam.z - from) > 0.15) {
+          const next = stepFocus(stream, from, cam.dir > 0 ? 1 : -1, skip);
+          if (next !== null) {
+            cam.target = next;
+            cam.shown = cam.v;
+            return;
+          }
+        }
+      }
+      if (f !== null) {
+        cam.z += (f - cam.z) * (1 - Math.exp(-dt * 3));
+        // arrive exactly, so the page can be still
+        if (Math.abs(f - cam.z) < 1e-4) cam.z = f;
+      }
     }
     const k = Math.exp(-dt * 2.4);
     cam.wx *= k;
@@ -381,9 +421,9 @@ export function flightScale(w: number, h: number) {
   return Math.max(Math.min(w, h), 0.6 * Math.max(w, h));
 }
 
-export function viewOf(stream: Stream, cam: FlightCam, w: number, h: number): View {
+export function viewOf(stream: Stream, cam: FlightCam, w: number, h: number, skip?: (s: Station) => boolean): View {
   const M = flightScale(w, h);
-  const [lx, ly] = leanAt(stream, cam.z);
+  const [lx, ly] = leanAt(stream, cam.z, skip);
   // at speed the field of view widens a little, as if pulled forward
   const rush = smooth((Math.abs(cam.shown) - 3) / 20);
   return { z: cam.z, x: lx + cam.wx, y: ly + cam.wy, F: M * (1 - 0.16 * rush), cx: w / 2, cy: h * 0.47 };
