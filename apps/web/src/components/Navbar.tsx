@@ -30,6 +30,9 @@ export default function Navbar() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // The Canvas is an immersive medium with its own quiet chrome.
+  if (pathname?.startsWith('/canvas')) return null;
+
   return (
     <>
       <header style={{
