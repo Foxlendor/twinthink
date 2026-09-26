@@ -3,7 +3,7 @@
 // categories and event kinds are stored; commit messages are never included.
 
 import data from './twinthink-continuity.json';
-import { IdeaNode, LifeEvent, EventKind } from '../model';
+import { IdeaNode, LifeEvent, EventKind, Media } from '../model';
 import { hashString } from '../rng';
 
 interface Commit {
@@ -27,10 +27,19 @@ const BRANCH_TITLES: Record<string, { title: string; kind: IdeaNode['kind'] }> =
   tooling: { title: 'tools for makers', kind: 'software' },
   disclosure: { title: 'what to show, what to keep', kind: 'theory' },
   canvas: { title: 'this place', kind: 'visual' },
+  mark: { title: 'the name, the logo, the look', kind: 'visual' },
 };
 
-/** The name-and-logo work lives inside how one idea is shown: no ring is named after a logo. */
-const FOLD: Record<string, string> = { mark: 'surface' };
+/** Branches folded into another (none now: his name-and-logo work has its own ring again). */
+const FOLD: Record<string, string> = {};
+
+/** His art for the name and the logo, shown on its ring, signed by him. */
+const ART: Record<string, Media[]> = {
+  mark: [
+    { kind: 'video', src: '/art/twinthink.mp4', poster: '/art/twinthink.jpg', x: 0, y: -0.14, w: 1.25, aspect: 540 / 960, by: 'made by johne.boi' },
+    { kind: 'image', src: '/art/twinthink-logo.png', x: 0, y: 0.6, w: 0.42, aspect: 1 },
+  ],
+};
 
 const KIND_MAP: Record<Commit['k'], { kind: EventKind; note: string }> = {
   change: { kind: 'revision', note: 'changed' },
@@ -149,6 +158,7 @@ export function buildTwinThinkTwin(): IdeaNode {
       disclosure: 0,
       summarizes: true,
       children,
+      media: ART[b],
       x: 0,
       y: 0,
       r: 0.05,

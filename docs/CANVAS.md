@@ -47,7 +47,8 @@ out past the edges, behind you.
 
 ## Principles
 - Ethos and pathos, not logos: the maker's hand, voice and generosity, and the
-  feeling behind each idea; no gauges, dates, counts or brand marks in the flight.
+  feeling behind each idea; no gauges, counts, or numbers dressed as fact. (Logos
+  as in reasoning by numbers. His art, his name and his marks are welcome.)
   His name is written into the paper at arrival; each verb leads to its evidence.
 - No invented content or history on the public Canvas.
 - Very little text: names; one line for the thing in front of you, only while

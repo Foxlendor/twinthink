@@ -409,9 +409,12 @@ describe('traces: what he shared elsewhere', () => {
 });
 
 describe('ethos, not logos', () => {
-  it('sessions are named by the hours he worked, never by dates; no ring is named after a logo', () => {
+  it('sessions are named by the hours he worked, never by dates; his name-and-logo work carries his art', () => {
     const tw = buildWorld([]).children.find((c) => c.id === 'twinthink')!;
-    expect(tw.children.some((b) => b.id === 'twinthink/mark')).toBe(false);
+    // logos meaning his marks are welcome: the ring for them shows his film and his logo
+    const mark = tw.children.find((b) => b.id === 'twinthink/mark')!;
+    expect(mark.title).toBe('the name, the logo, the look');
+    expect(mark.media?.map((m) => ('src' in m ? m.src : ''))).toEqual(['/art/twinthink.mp4', '/art/twinthink-logo.png']);
     for (const b of tw.children) {
       for (const sess of b.children) expect(sess.title).not.toMatch(/\d/);
     }

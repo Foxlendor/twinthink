@@ -36,8 +36,8 @@ function lineFor(p: Posted) {
   if (p.mine && p.hidden) return 'yours, taken down; only you can see it now.';
   if (p.kind === 'story') {
     if (p.mine) return 'yours, told without your name.';
-    const n = p.sparks ?? 0;
-    return n ? `told without a name. it has sparked ${n === 1 ? 'an idea' : `${n} ideas`}.` : 'told without a name.';
+    // what grew from it is told, never counted
+    return (p.sparks ?? 0) > 0 ? 'told without a name. others have built on it.' : 'told without a name.';
   }
   const who = p.mine ? (p.public ? 'yours, shared with everyone.' : 'yours, only you can see it.') : `by ${p.by}.`;
   // credit runs back along the chain: what it was built on, and who made that
