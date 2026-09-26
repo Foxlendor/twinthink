@@ -11,7 +11,7 @@ vanishing point, grow as you move toward them, resolve into what they are
 out past the edges, behind you.
 - Scroll down / swipe up / spread two fingers: forward. The other way: back.
   A flick carries you through many things; coming to rest, one settles into focus.
-- Drag sideways to look around. Tap anything to go to it. Keys: arrows, Esc.
+- Slide: a drag that begins sideways (or two fingers moving together) slides the view any way, and it stays where you leave it until you travel on. Tap anything to go to it. Keys: arrows, Esc.
 - An idea that holds others is a ring you pass through; inside, its silk runs
   along the walls. One dotted thread runs through everything, in order.
 - Order is content, not a feed: newest first, and the distance between two
