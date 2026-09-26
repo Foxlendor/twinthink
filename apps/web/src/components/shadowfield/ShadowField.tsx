@@ -24,6 +24,7 @@ import {
   stepFocus,
   travelled,
   wrapDelta,
+  panAt,
   panBy,
 } from '@/lib/shadowfield/flight';
 import { renderFlight } from '@/lib/shadowfield/flightRender';
@@ -296,6 +297,10 @@ export default function ShadowField({ serif }: Props) {
   const needleRef = useRef<SVGGElement | null>(null);
   const nextDotRef = useRef<SVGCircleElement | null>(null);
   const lapDotRef = useRef<SVGCircleElement | null>(null);
+  // the compass is also a stick: held and pushed, it slides the view any way; the ring shows how far
+  const youRef = useRef<SVGCircleElement | null>(null);
+  const joyRef = useRef<{ id: number; x0: number; y0: number; dx: number; dy: number; moved: boolean } | null>(null);
+  const centreRef = useRef(false);
   const compassRef = useRef<{ roll: number; next: number | null } | undefined>(undefined);
   const [notesView, setNotesView] = useState<{ title: string; notes: { t: number; text: string }[] } | null>(null);
   const [me, setMe] = useState<{ enabled: boolean; user: { name: string; owner: boolean } | null } | null>(null);
@@ -646,6 +651,19 @@ export default function ShadowField({ serif }: Props) {
     setNightState(want);
   }, []);
 
+  /** A tap on the compass: back to the middle if the view was slid; otherwise the clock stops or turns. */
+  const tapCompass = () => {
+    const stream = streamRef.current;
+    const fc = flightCamRef.current;
+    const [px, py] = stream ? panAt(fc, stream.length) : [0, 0];
+    if (Math.hypot(px, py) > 0.02) {
+      centreRef.current = true;
+      return;
+    }
+    spinRef.current = !spinRef.current;
+    setNotice(spinRef.current ? 'the clock turns again' : 'the clock holds still');
+  };
+
   const toggleNight = () => {
     const on = !NIGHT;
     setNight(on);
@@ -844,6 +862,29 @@ export default function ShadowField({ serif }: Props) {
       // motion
       if (flying) {
         stepFlightCam(fc, stream, dt, closed);
+        // the compass held and pushed: the view slides that way, faster the further it is pushed
+        const joy = joyRef.current;
+        if (joy?.moved) {
+          const c = camRef.current;
+          const m = Math.hypot(joy.dx, joy.dy);
+          if (c && m > 3) {
+            const rate = (600 * Math.min(1, m / 30)) / m;
+            panBy(fc, stream, -joy.dx * rate * dt, -joy.dy * rate * dt, c.w, c.h);
+            centreRef.current = false;
+          }
+        }
+        // back to the middle, gently
+        if (centreRef.current) {
+          const [px, py] = panAt(fc, stream.length);
+          const k = Math.exp(-dt * 6);
+          fc.wx = px * k;
+          fc.wy = py * k;
+          fc.panZ = fc.z;
+          if (Math.hypot(fc.wx, fc.wy) < 1e-3) {
+            fc.wx = fc.wy = 0;
+            centreRef.current = false;
+          }
+        }
         // the clock turns by itself: once every three minutes
         if (spinRef.current && !reducedQuery.matches) fc.spin += (dt * Math.PI * 2) / 180;
         // at night, a thin place in the web gives way as you pass through it
@@ -1030,6 +1071,21 @@ export default function ShadowField({ serif }: Props) {
             nd.setAttribute('cx', String(23 + Math.cos(comp.next) * 13));
             nd.setAttribute('cy', String(23 + Math.sin(comp.next) * 13));
           }
+        }
+        // where the view has been slid to, on screen: the hollow ring leaves the middle
+        const yd = youRef.current;
+        const cm = camRef.current;
+        if (yd && cm) {
+          const [px, py] = panAt(fc, stream.length);
+          const rc = Math.cos(comp.roll);
+          const rs = Math.sin(comp.roll);
+          const sx = px * rc - py * rs;
+          const sy = px * rs + py * rc;
+          const d = Math.hypot(sx, sy);
+          const r = d < 1e-4 ? 0 : Math.min(1, d / 1.2) * 14;
+          yd.setAttribute('cx', String(23 + (d ? (sx / d) * r : 0)));
+          yd.setAttribute('cy', String(23 + (d ? (sy / d) * r : 0)));
+          yd.style.opacity = r > 0.5 ? '1' : '0';
         }
         const ld = lapDotRef.current;
         if (ld) {
@@ -1471,6 +1527,7 @@ export default function ShadowField({ serif }: Props) {
       if (dr.axis === 'slide') {
         const stream = streamRef.current;
         if (stream) panBy(fc, stream, dx, dy, cam.w, cam.h);
+        centreRef.current = false;
         fc.v = 0;
         dr.lastT = performance.now();
         return;
@@ -2018,11 +2075,42 @@ export default function ShadowField({ serif }: Props) {
         <button
           type="button"
           className={styles.compass}
-          onClick={() => {
-            spinRef.current = !spinRef.current;
-            setNotice(spinRef.current ? 'the clock turns again' : 'the clock holds still');
+          onPointerDown={(e) => {
+            e.currentTarget.setPointerCapture(e.pointerId);
+            joyRef.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moved: false };
           }}
-          aria-label="Compass: which way is up, where you are, where the next thing is. Tap to stop or start the turning."
+          onPointerMove={(e) => {
+            const j = joyRef.current;
+            if (!j || j.id !== e.pointerId) return;
+            j.dx = e.clientX - j.x0;
+            j.dy = e.clientY - j.y0;
+            if (Math.hypot(j.dx, j.dy) > 5) j.moved = true;
+          }}
+          onPointerUp={(e) => {
+            const j = joyRef.current;
+            joyRef.current = null;
+            if (!j || j.id !== e.pointerId || j.moved) return;
+            tapCompass();
+          }}
+          onPointerCancel={() => {
+            joyRef.current = null;
+          }}
+          onClick={(e) => {
+            // taps are handled on release; this is the keyboard's Enter or Space
+            if (e.detail === 0) tapCompass();
+          }}
+          onKeyDown={(e) => {
+            const d: Record<string, [number, number]> = { ArrowLeft: [1, 0], ArrowRight: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
+            const v = d[e.key];
+            const c = camRef.current;
+            const stream = streamRef.current;
+            if (!v || !c || !stream) return;
+            e.preventDefault();
+            e.stopPropagation();
+            panBy(flightCamRef.current, stream, v[0] * 60, v[1] * 60, c.w, c.h);
+            centreRef.current = false;
+          }}
+          aria-label="Compass: which way is up, where the next thing is, and where you have slid the view. Hold and push it, or use the arrow keys, to slide any way; tap it to come back to the middle, or, in the middle, to stop or start the turning."
         >
           <svg viewBox="0 0 46 46" width="46" height="46" aria-hidden>
             <circle cx="23" cy="23" r="20" fill="none" stroke="currentColor" strokeOpacity="0.25" strokeWidth="1" strokeDasharray="1 3" />
@@ -2032,6 +2120,7 @@ export default function ShadowField({ serif }: Props) {
             </g>
             <circle ref={nextDotRef} cx="23" cy="10" r="2.4" fill="rgb(var(--rose))" />
             <circle ref={lapDotRef} cx="23" cy="3" r="1.8" fill="currentColor" />
+            <circle ref={youRef} cx="23" cy="23" r="4" fill="none" stroke="currentColor" strokeWidth="1.2" style={{ opacity: 0 }} />
           </svg>
         </button>
       )}
