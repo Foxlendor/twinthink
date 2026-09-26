@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { dayOf } from '../shadowfield/prompts';
 // Shadows people post, kept in Postgres. Plain SQL behind a tiny query
 // interface, so the same code runs on Neon (production) and PGlite (tests).
@@ -127,6 +128,11 @@ export async function getPicture(q: Query, mediaId: string, viewerSub: string | 
   return { mime: String(r.mime), bytes: Buffer.from(String(r.data), 'base64'), open };
 }
 
+/** A maker's key for gathering their work: keyed, one-way, and the same everywhere. */
+export function makerKey(sub: string, secret = process.env.SESSION_SECRET ?? 'twinthink') {
+  return createHmac('sha256', secret).update(`maker|${sub}`).digest('hex').slice(0, 12);
+}
+
 /** What a viewer is sent: never the maker's account id, only whether it is theirs; a story never says who told it. */
 export function forViewer(s: ServerShadow, viewerSub: string | undefined) {
   return {
@@ -143,6 +149,8 @@ export function forViewer(s: ServerShadow, viewerSub: string | undefined) {
     media: s.media,
     day: s.day,
     sparks: s.sparks,
+    // the same maker's work can be gathered by this key, which never leads back to their account
+    maker: s.kind === 'story' ? '' : makerKey(s.owner),
     mine: s.owner === viewerSub,
     // only its maker is told it was taken down
     ...(s.owner === viewerSub && s.hidden ? { hidden: true } : {}),

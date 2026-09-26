@@ -360,6 +360,8 @@ export default function ShadowField({ serif }: Props) {
     const stream = buildStream(world);
     streamRef.current = stream;
     const fc = flightCamRef.current;
+    // a flight under way keeps going to the same thing, wherever it now sits
+    const bound = oldStream && fc.target !== null ? focusOf(oldStream, fc.target) : null;
     const idx = oldHere ? stream.byId.get(oldHere.node.id) : undefined;
     if (oldStream && oldHere && idx !== undefined) {
       const offset = wrapDelta(fc.z, oldHere.z - FOCUS, oldStream.length);
@@ -367,6 +369,8 @@ export default function ShadowField({ serif }: Props) {
       fc.target = null;
       hereRef.current = stream.stations[idx];
     }
+    const to = bound ? stream.byId.get(bound.node.id) : undefined;
+    if (bound && to !== undefined) fc.target = bound.depth === 0 ? fc.z + wrapDelta(-ARRIVE, fc.z, stream.length) : focusZ(stream, stream.stations[to], fc.z);
     const cam = camRef.current;
     if (cam) {
       const ids = cam.path.slice(1).map((n) => n.id);
@@ -731,7 +735,8 @@ export default function ShadowField({ serif }: Props) {
     const at = pendingAtRef.current;
     if (at && worldRef.current) {
       pendingAtRef.current = null;
-      const p = resolvePath(worldRef.current, at);
+      // found wherever it lives now (links outlive how the Canvas is arranged)
+      const p = findPath(worldRef.current, at[at.length - 1]) ?? resolvePath(worldRef.current, at);
       if (p.length > 1) flyTo(p);
     }
   }, [rebuild, flyTo]);
@@ -2212,7 +2217,7 @@ export default function ShadowField({ serif }: Props) {
     [...path]
       .slice(1)
       .reverse()
-      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/') && !n.id.startsWith('p/') && n.id !== 'people' && n.id !== 'yours' && n.id !== 'stories' && n.id !== 'today' && n.id !== 'sketchbook' && !n.id.startsWith('k/')) ?? null;
+      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/') && !n.id.startsWith('p/') && n.id !== 'people' && n.id !== 'yours' && n.id !== 'stories' && n.id !== 'today' && n.id !== 'sketchbook' && !n.id.startsWith('k/') && !n.id.startsWith('maker/')) ?? null;
   // an idea given away is never followed by an ask for money, nor is a song while it plays
   // nothing given away (songs, starters, throwaways) is ever followed by an ask
   const asking = supportTarget && !path.some((n) => n.free) && playingId !== current?.id ? supportTarget : null;

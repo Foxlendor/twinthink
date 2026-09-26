@@ -18,6 +18,8 @@ export interface Posted {
   kind?: 'shadow' | 'story';
   from?: string | null;
   sparks?: number;
+  /** Gathers one maker's work (a key that never leads back to them); empty for stories. */
+  maker?: string;
   /** For an answer to the day's word: that day. */
   day?: string | null;
   /** Pictures and films its maker added (height over width). */
@@ -134,7 +136,25 @@ export function buildPosted(pub: Posted[], mine: Posted[], today = false): IdeaN
   const others = pub.filter((p) => !p.mine && !isStory(p));
   mine = mine.filter((p) => !isStory(p));
   if (stories.length) out.push(ring('stories', 'story time', 'true stories of making do, told without names.', stories.map(node), 0.1, 0.65));
-  if (others.length) out.push(ring('people', 'from everyone', 'shared by the people who made them.', others.map(node), 0.6, -0.1));
+  if (others.length) {
+    // one ring for each maker, holding what they have shared: flying in is visiting them
+    const byMaker = new Map<string, Posted[]>();
+    for (const p of others) {
+      const k = p.maker || `one/${p.id}`;
+      byMaker.set(k, [...(byMaker.get(k) ?? []), p]);
+    }
+    const makers = [...byMaker.entries()].map(([k, list], i) => {
+      const r = ring(`maker/${k}`, list[0].by || 'someone', list.length > 1 ? 'what they have shared.' : 'what they shared.', list.map(node), 0, 0);
+      r.fixed = false;
+      r.r = 0.05;
+      r.x = Math.cos(i * 2.39996) * 0.5;
+      r.y = Math.sin(i * 2.39996) * 0.5;
+      // newest work first
+      r.began = Math.max(...list.map((p) => p.created));
+      return r;
+    });
+    out.push(ring('people', 'from everyone', 'shared by the people who made them.', makers, 0.6, -0.1));
+  }
   if (mine.length) out.push(ring('yours', 'yours', 'what you have made here.', mine.map(node), -0.6, -0.2));
   return out;
 }
