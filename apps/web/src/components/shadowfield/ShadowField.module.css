@@ -1,8 +1,12 @@
 .field {
+  --ink: 30, 28, 36;
+  --paper: #fbfaf7;
+  --paper-rgb: 251, 250, 247;
+  --rose: 150, 92, 122;
   position: fixed;
   inset: 0;
-  background: #fbfaf7;
-  color: #1e1c24;
+  background: var(--paper);
+  color: rgb(var(--ink));
   overflow: hidden;
   touch-action: none;
   user-select: none;
@@ -30,13 +34,13 @@
   font-style: italic;
   font-size: 1.15rem;
   letter-spacing: 0.01em;
-  color: rgba(30, 28, 36, 0.62);
+  color: rgba(var(--ink), 0.62);
   transition: color 200ms ease;
 }
 
 .mark:hover,
 .mark:focus-visible {
-  color: rgba(30, 28, 36, 0.95);
+  color: rgba(var(--ink), 0.95);
 }
 
 .mode {
@@ -50,7 +54,7 @@
   font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
   font-size: 0.95rem;
-  color: rgba(30, 28, 36, 0.45);
+  color: rgba(var(--ink), 0.45);
   border-bottom: 1px solid transparent;
   transition: color 160ms ease, border-color 160ms ease;
 }
@@ -67,15 +71,15 @@
   font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
   font-size: 0.9rem;
-  color: rgba(150, 92, 122, 0.8);
+  color: rgba(var(--rose), 0.8);
 }
 
 .me:hover,
 .me:focus-visible,
 .mode:hover,
 .mode:focus-visible {
-  color: rgba(30, 28, 36, 0.9);
-  border-bottom-color: rgba(30, 28, 36, 0.25);
+  color: rgba(var(--ink), 0.9);
+  border-bottom-color: rgba(var(--ink), 0.25);
 }
 
 .trail {
@@ -90,7 +94,7 @@
   font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
   font-size: 0.98rem;
-  color: rgba(30, 28, 36, 0.5);
+  color: rgba(var(--ink), 0.5);
 }
 
 /* the trail's empty space lets a swipe through to the Canvas */
@@ -112,16 +116,16 @@
 
 .crumb:hover,
 .crumb:focus-visible {
-  color: rgba(30, 28, 36, 0.9);
+  color: rgba(var(--ink), 0.9);
 }
 
 .here {
-  color: rgba(30, 28, 36, 0.85);
+  color: rgba(var(--ink), 0.85);
   cursor: default;
 }
 
 .sep {
-  color: rgba(30, 28, 36, 0.25);
+  color: rgba(var(--ink), 0.25);
 }
 
 .actions {
@@ -144,7 +148,7 @@
   font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
   font-size: 1rem;
-  color: rgba(30, 28, 36, 0.52);
+  color: rgba(var(--ink), 0.52);
   cursor: pointer;
   border-bottom: 1px solid transparent;
   transition: color 160ms ease, border-color 160ms ease;
@@ -152,12 +156,12 @@
 
 .quiet:hover,
 .quiet:focus-visible {
-  color: rgba(30, 28, 36, 0.92);
-  border-bottom-color: rgba(30, 28, 36, 0.25);
+  color: rgba(var(--ink), 0.92);
+  border-bottom-color: rgba(var(--ink), 0.25);
 }
 
 .following {
-  color: rgb(150, 92, 122);
+  color: rgb(var(--rose));
 }
 
 .tip {
@@ -172,8 +176,8 @@
   font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
   font-size: 0.98rem;
-  color: rgba(30, 28, 36, 0.85);
-  text-shadow: 0 0 6px #fbfaf7, 0 0 2px #fbfaf7;
+  color: rgba(var(--ink), 0.85);
+  text-shadow: 0 0 6px var(--paper), 0 0 2px var(--paper);
 }
 
 .tipLine {
@@ -181,8 +185,8 @@
   font-style: italic;
   font-size: 0.85rem;
   letter-spacing: 0;
-  color: rgba(30, 28, 36, 0.5);
-  text-shadow: 0 0 6px #fbfaf7;
+  color: rgba(var(--ink), 0.5);
+  text-shadow: 0 0 6px var(--paper);
 }
 
 @keyframes tipIn {
@@ -204,24 +208,24 @@
   width: 100%;
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(30, 28, 36, 0.3);
+  border-bottom: 1px solid rgba(var(--ink), 0.3);
   padding: 4px 0;
   font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
   font-size: 1.1rem;
-  color: #1e1c24;
+  color: rgb(var(--ink));
   outline: none;
 }
 
 .composer input::placeholder {
-  color: rgba(30, 28, 36, 0.35);
+  color: rgba(var(--ink), 0.35);
 }
 
 .composerHint {
   font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
   font-size: 0.85rem;
-  color: rgba(30, 28, 36, 0.4);
+  color: rgba(var(--ink), 0.4);
 }
 
 .hint {
@@ -232,7 +236,7 @@
   font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
   font-size: 1rem;
-  color: rgba(30, 28, 36, 0.4);
+  color: rgba(var(--ink), 0.4);
   pointer-events: none;
   animation: hintIn 1.2s 2.5s both, breathe 5s 3.7s ease-in-out infinite;
 }
@@ -269,7 +273,7 @@
   left: 20px;
   top: 56px;
   padding: 10px 12px;
-  background: rgba(251, 250, 247, 0.96);
+  background: rgba(var(--paper-rgb), 0.96);
   font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
 }
@@ -353,7 +357,7 @@
   right: 0;
   top: 9px;
   height: 1px;
-  background: rgba(30, 28, 36, 0.14);
+  background: rgba(var(--ink), 0.14);
 }
 
 .replayFill {
@@ -361,11 +365,11 @@
   left: 0;
   top: 8.5px;
   height: 2px;
-  background: rgba(30, 28, 36, 0.55);
+  background: rgba(var(--ink), 0.55);
 }
 
 .replayTrack:focus-visible::before {
-  background: rgba(30, 28, 36, 0.4);
+  background: rgba(var(--ink), 0.4);
 }
 
 .news {
@@ -380,14 +384,14 @@
 }
 
 .news .quiet {
-  color: rgb(150, 92, 122);
+  color: rgb(var(--rose));
 }
 
 .newsClose {
   background: none;
   border: none;
   font-size: 1rem;
-  color: rgba(30, 28, 36, 0.35);
+  color: rgba(var(--ink), 0.35);
   cursor: pointer;
 }
 
@@ -407,7 +411,7 @@
   font-style: italic;
   font-size: 0.85rem;
   letter-spacing: 0;
-  color: rgba(150, 92, 122, 0.8);
+  color: rgba(var(--rose), 0.8);
   pointer-events: none;
 }
 
@@ -423,7 +427,7 @@
   font-style: italic;
   font-size: 0.85rem;
   letter-spacing: 0;
-  color: rgba(150, 92, 122, 0.85);
+  color: rgba(var(--rose), 0.85);
   margin-bottom: 6px;
 }
 
@@ -437,16 +441,16 @@
   transition: opacity 400ms ease;
 }
 
-.field[data-flow='moving'] :is(.mark, .mode, .me, .trail, .actions, .privacy) {
+.field[data-flow='moving'] :is(.mark, .mode, .me, .night, .compass, .trail, .actions, .privacy) {
   opacity: 0.12;
 }
 
-.field[data-flow='rest'] :is(.mark, .mode, .me, .trail, .actions, .privacy) {
+.field[data-flow='rest'] :is(.mark, .mode, .me, .night, .compass, .trail, .actions, .privacy) {
   opacity: 0.35;
 }
 
 /* a control reached with the keyboard is always fully there */
-.field[data-flow] :is(.mark, .mode, .me, .trail, .actions, .privacy):focus-within {
+.field[data-flow] :is(.mark, .mode, .me, .night, .compass, .trail, .actions, .privacy):focus-within {
   opacity: 1;
 }
 
@@ -469,8 +473,8 @@
   max-height: 50vh;
   overflow: auto;
   padding: 12px 14px;
-  background: rgba(251, 250, 247, 0.96);
-  border-left: 1px solid rgba(150, 92, 122, 0.4);
+  background: rgba(var(--paper-rgb), 0.96);
+  border-left: 1px solid rgba(var(--rose), 0.4);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -484,7 +488,7 @@
   font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
   font-size: 0.85rem;
-  color: rgba(150, 92, 122, 0.85);
+  color: rgba(var(--rose), 0.85);
 }
 
 .noteText {
@@ -492,6 +496,63 @@
   font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
   font-size: 1rem;
-  color: rgba(30, 28, 36, 0.8);
+  color: rgba(var(--ink), 0.8);
   white-space: pre-wrap;
+}
+
+/* night: pale ink on dark paper */
+.field[data-night] {
+  --ink: 232, 228, 238;
+  --paper: #121116;
+  --paper-rgb: 18, 17, 22;
+  --rose: 214, 160, 186;
+  color-scheme: dark;
+}
+
+.night {
+  position: absolute;
+  top: 46px;
+  left: 20px;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: rgba(var(--ink), 0.45);
+}
+
+.night:hover,
+.night:focus-visible {
+  color: rgba(var(--ink), 0.9);
+}
+
+/* the compass: which way is up in space, where you are, where the next thing lies */
+.compass {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  margin-top: -23px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: rgb(var(--ink));
+  opacity: 0.7;
+  transition: opacity 160ms ease;
+}
+
+.compass:hover,
+.compass:focus-visible {
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  .compass {
+    right: 8px;
+    top: 38%;
+  }
 }

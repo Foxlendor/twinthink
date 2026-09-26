@@ -11,7 +11,7 @@
 import { IdeaNode, LifeEvent, lastActivity, rippleReach } from './model';
 import { ScreenTransform } from './camera';
 import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, flightScale, project, travelled, viewOf } from './flight';
-import { Hit, INK, PAPER, ROSE, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
+import { Hit, INK, PAPER, ROSE, TINT_COOL, TINT_WARM, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
 import { AUTHOR } from './sources/author';
 import { getImage } from './media';
 import { clamp, hash01, noise1, smoothstep } from './rng';
@@ -87,6 +87,33 @@ export interface FlightState {
   still?: number;
   /** The one line for a thing, when it has one right now. */
   lineFor?: (s: Station) => string | undefined;
+  /** Written back each frame, for the compass: which way is up, and where the next thing lies. */
+  compass?: { roll: number; next: number | null };
+}
+
+/**
+ * The clock at the centre of the flight: twelve faint ticks that turn with the
+ * stream, and a dotted hand that always points at what comes next.
+ */
+function drawClock(st: RenderState, v: View, next: [number, number] | null, ink: Ink) {
+  const M = st.M;
+  const rf = 0.17 * M;
+  for (let k = 0; k < 12; k++) {
+    const a = -Math.PI / 2 + (k * Math.PI) / 6 + v.roll;
+    ink.dot(v.cx + Math.cos(a) * rf, v.cy + Math.sin(a) * rf, k === 0 ? 3 : 1.6, k === 0 ? 0.3 : 0.16);
+  }
+  if (!next) return;
+  const dx = next[0] - v.cx;
+  const dy = next[1] - v.cy;
+  const d = Math.hypot(dx, dy);
+  if (d < 4) return;
+  const len = Math.min(d, rf * 0.9);
+  const n = Math.floor(len / 5);
+  for (let i = 1; i <= n; i++) {
+    const f = (i * 5) / d;
+    ink.dot(v.cx + dx * f, v.cy + dy * f, 1.4, 0.3 * (1 - (i / n) * 0.4));
+  }
+  ink.dot(v.cx + (dx / d) * len, v.cy + (dy / d) * len, 3.2, 0.7, true);
 }
 
 function fogOf(dz: number) {
@@ -155,13 +182,13 @@ function drawTube(st: RenderState, v: View, s: Station, L: number, ink: Ink) {
       if (a < 0.02) continue;
       const k = v.F / dz;
       const size = clamp(0.0045 * k, 0.45, 2.6);
-      const ox = v.cx - v.x * k;
-      const oy = v.cy - v.y * k;
+      const ox = v.cx + (-v.x * v.rc + v.y * v.rs) * k;
+      const oy = v.cy + (-v.x * v.rs - v.y * v.rc) * k;
       const rk = s.r * k;
       for (let j = 0; j < strands; j++) {
         const ang = turn + (j / strands) * Math.PI * 2 + 0.35 * noise1(m * 0.4 + j, s.node.seed);
-        const sx = ox + Math.cos(ang) * rk;
-        const sy = oy + Math.sin(ang) * rk;
+        const sx = ox + Math.cos(ang + v.roll) * rk;
+        const sy = oy + Math.sin(ang + v.roll) * rk;
         if (sx < -4 || sy < -4 || sx > st.w + 4 || sy > st.h + 4) continue;
         ink.dot(sx, sy, size, a);
       }
@@ -251,7 +278,7 @@ function drawGate(st: RenderState, s: Station, x: number, y: number, R: number, 
     const wa = alpha * 0.35 * smoothstep(0.03 * M, 0.2 * M, R) * (1 - smoothstep(0.5 * M, 1.4 * M, R));
     if (wa > 0.01) {
       const warm = hash01(node.seed, 99) > 0.5;
-      const tint = warm ? '238,231,219' : '233,229,236';
+      const tint = warm ? TINT_WARM : TINT_COOL;
       const g = ctx.createRadialGradient(x, y, R * 0.2, x, y, R * 1.05);
       g.addColorStop(0, `rgba(${tint},0)`);
       g.addColorStop(0.75, `rgba(${tint},${wa * 0.6})`);
@@ -614,6 +641,17 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
       }
     }
   }
+  // the clock hand points at the next thing beyond the one in front of you
+  let next: [number, number] | null = null;
+  let nextDz = Infinity;
+  for (const { s, dz } of list) {
+    if (s.depth === 0 || dz <= FOCUS * 1.15 || dz >= nextDz) continue;
+    const [x, y] = project(v, s.x, s.y, dz);
+    next = [x, y];
+    nextDz = dz;
+  }
+  drawClock(st, v, next, ink);
+  fs.compass = { roll: v.roll, next: next ? Math.atan2(next[1] - v.cy, next[0] - v.cx) : null };
   ink.flush(ctx);
   // the nearest thing under a finger is the one it means
   st.hits.reverse();

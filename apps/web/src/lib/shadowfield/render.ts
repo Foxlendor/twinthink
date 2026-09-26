@@ -14,9 +14,25 @@ import { getPeaks } from './audio';
 import { PLOT, Plot } from './plots';
 import { clamp, hash01, noise1, smoothstep } from './rng';
 
-export const PAPER = '#fbfaf7';
-export const INK = '30,28,36';
-export const ROSE = '176,118,146';
+// The palette. Day is ink on paper; night is the same page inverted: pale
+// ink on dark paper. Exported as live bindings, so every drawing follows.
+export let PAPER = '#fbfaf7';
+export let PAPER_RGB = '251,250,247';
+export let INK = '30,28,36';
+export let ROSE = '176,118,146';
+export let TINT_WARM = '238,231,219';
+export let TINT_COOL = '233,229,236';
+export let NIGHT = false;
+
+export function setNight(on: boolean) {
+  NIGHT = on;
+  PAPER = on ? '#121116' : '#fbfaf7';
+  PAPER_RGB = on ? '18,17,22' : '251,250,247';
+  INK = on ? '232,228,238' : '30,28,36';
+  ROSE = on ? '214,160,186' : '176,118,146';
+  TINT_WARM = on ? '44,40,36' : '238,231,219';
+  TINT_COOL = on ? '36,34,44' : '233,229,236';
+}
 
 export interface Lens {
   /** Viewer closeness p in [0, 1] for a top-level Twin. */
@@ -269,7 +285,7 @@ function drawWash(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: nu
   if (a < 0.004) return;
   const { ctx } = st;
   const warm = hash01(node.seed, 99) > 0.5;
-  const tint = warm ? '238,231,219' : '233,229,236';
+  const tint = warm ? TINT_WARM : TINT_COOL;
   const rr = R * 1.2;
   const g = ctx.createRadialGradient(T.ox, T.oy, 0, T.ox, T.oy, rr);
   g.addColorStop(0, `rgba(${tint},${a})`);
@@ -698,7 +714,8 @@ export function drawVideo(
     }
   }
   // printed onto the paper: its whites become the page, its darks become ink
-  ctx.globalCompositeOperation = 'multiply';
+  // (at night a drawing is printed as its negative: pale lines on dark paper)
+  ctx.globalCompositeOperation = NIGHT ? 'source-over' : 'multiply';
   if (live && live.readyState >= 2) ctx.drawImage(live, x0, y0, W, H);
   else {
     const poster = getImage(m.poster);
@@ -710,6 +727,11 @@ export function drawVideo(
       ctx.fillStyle = `rgba(${INK},0.05)`;
       ctx.fillRect(x0, y0, W, H);
     }
+  }
+  if (NIGHT && !m.round) {
+    ctx.globalCompositeOperation = 'difference';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x0, y0, W, H);
   }
   ctx.globalCompositeOperation = 'source-over';
   if (!m.round) {
@@ -723,8 +745,8 @@ export function drawVideo(
       [0, y0 + H, 0, y0 + H - f, x0, y0 + H - f, W, f],
     ]) {
       const g = ctx.createLinearGradient(gx0, gy0, gx1, gy1);
-      g.addColorStop(0, 'rgba(251,250,247,1)');
-      g.addColorStop(1, 'rgba(251,250,247,0)');
+      g.addColorStop(0, `rgba(${PAPER_RGB},1)`);
+      g.addColorStop(1, `rgba(${PAPER_RGB},0)`);
       ctx.fillStyle = g;
       ctx.fillRect(rx0, ry0, rw, rh);
     }
@@ -735,8 +757,8 @@ export function drawVideo(
     ctx.translate(cx, cy);
     ctx.scale(1, ry / rx);
     const g = ctx.createRadialGradient(0, 0, rx * 0.58, 0, 0, rx * 0.97);
-    g.addColorStop(0, 'rgba(251,250,247,0)');
-    g.addColorStop(1, 'rgba(251,250,247,1)');
+    g.addColorStop(0, `rgba(${PAPER_RGB},0)`);
+    g.addColorStop(1, `rgba(${PAPER_RGB},1)`);
     ctx.fillStyle = g;
     ctx.fillRect(-rx - 2, -rx - 2, rx * 2 + 4, rx * 2 + 4);
   }

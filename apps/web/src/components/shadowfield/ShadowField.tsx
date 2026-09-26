@@ -6,7 +6,7 @@ import { Camera, ScreenTransform } from '@/lib/shadowfield/camera';
 import { IdeaNode, LifeEvent, SEAL_MARGIN, findPath, lastActivity } from '@/lib/shadowfield/model';
 import { topologyOf } from '@/lib/shadowfield/layout';
 import { Access, Flight, pan as panCam, stepFlight, transformOfPath, zoomAt } from '@/lib/shadowfield/navigate';
-import { Hit, Lens, RenderState, drawSketch, lifeWord, drawVoidLattice, pulseChain, render, shortDate } from '@/lib/shadowfield/render';
+import { Hit, Lens, NIGHT, PAPER_RGB, RenderState, drawSketch, setNight, lifeWord, drawVoidLattice, pulseChain, render, shortDate } from '@/lib/shadowfield/render';
 import { restVideos, setFilmRate, setMediaReadyCallback, settleVideos, toggleVideoSound } from '@/lib/shadowfield/media';
 import {
   ARRIVE,
@@ -18,6 +18,7 @@ import {
   buildStream,
   focusOf,
   focusZ,
+  mod,
   newFlightCam,
   stepFlightCam,
   stepFocus,
@@ -25,7 +26,7 @@ import {
   wrapDelta,
 } from '@/lib/shadowfield/flight';
 import { renderFlight } from '@/lib/shadowfield/flightRender';
-import { clamp, smoothstep } from '@/lib/shadowfield/rng';
+import { clamp, hash01, smoothstep } from '@/lib/shadowfield/rng';
 import Donate from '@/components/support/Donate';
 import { founderPlots } from '@/lib/shadowfield/plots';
 import { buildWorld, resolvePath } from '@/lib/shadowfield/world';
@@ -276,6 +277,16 @@ export default function ShadowField({ serif }: Props) {
   const [replayView, setReplayView] = useState<{ progress: number; t: number; playing: boolean } | null>(null);
   const [mode, setMode] = useState<'flight' | 'map'>('flight');
   // who is looking (Google sign-in, when switched on)
+  // night: pale ink on dark paper; a thin place in the web can drop you back through to day
+  const [night, setNightState] = useState(false);
+  const fallRef = useRef<number | null>(null);
+  const prevZRef = useRef<number | null>(null);
+  // the clock turns slowly by itself; the compass stops or starts it
+  const spinRef = useRef(true);
+  const needleRef = useRef<SVGGElement | null>(null);
+  const nextDotRef = useRef<SVGCircleElement | null>(null);
+  const lapDotRef = useRef<SVGCircleElement | null>(null);
+  const compassRef = useRef<{ roll: number; next: number | null } | undefined>(undefined);
   const [notesView, setNotesView] = useState<{ title: string; notes: { t: number; text: string }[] } | null>(null);
   const [me, setMe] = useState<{ enabled: boolean; user: { name: string; owner: boolean } | null } | null>(null);
 
@@ -607,6 +618,32 @@ export default function ShadowField({ serif }: Props) {
     };
   }, [access, flyToIds, ripple]);
 
+  // night or day: the visitor's own choice, or their system's
+  useEffect(() => {
+    let want = false;
+    try {
+      const saved = window.localStorage.getItem('twinthink.night.v1');
+      want = saved ? saved === '1' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch {
+      want = false;
+    }
+    setNight(want);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNightState(want);
+  }, []);
+
+  const toggleNight = () => {
+    const on = !NIGHT;
+    setNight(on);
+    setNightState(on);
+    fallRef.current = null;
+    try {
+      window.localStorage.setItem('twinthink.night.v1', on ? '1' : '0');
+    } catch {
+      // optional
+    }
+  };
+
   // who is looking: signed in with Google, or nobody
   useEffect(() => {
     let live = true;
@@ -717,6 +754,22 @@ export default function ShadowField({ serif }: Props) {
       // motion
       if (flying) {
         stepFlightCam(fc, stream, dt, closed);
+        // the clock turns by itself: once every three minutes
+        if (spinRef.current && !reducedQuery.matches) fc.spin += (dt * Math.PI * 2) / 180;
+        // at night, a thin place in the web gives way as you pass through it
+        const pz = prevZRef.current;
+        prevZRef.current = fc.z;
+        if (NIGHT && fallRef.current === null && pz !== null && fc.z > pz) {
+          for (const s of stream.stations) {
+            if (!s.gate || s.depth < 1 || hash01(s.node.seed, 31) > 0.34 || closed(s)) continue;
+            const d0 = wrapDelta(s.z, pz, stream.length);
+            const d1 = wrapDelta(s.z, fc.z, stream.length);
+            if (d0 > 0 && d1 <= 0) {
+              fallRef.current = nowMs;
+              break;
+            }
+          }
+        }
       } else {
         if (flightRef.current) {
           if (stepFlight(cam, flightRef.current, access, dt)) flightRef.current = null;
@@ -830,15 +883,18 @@ export default function ShadowField({ serif }: Props) {
             : reducedQuery.matches
               ? Number(fc.idle > 1.6)
               : smoothstep(1.6, 3, fc.idle) * (1 - smoothstep(0.15, 0.4, Math.abs(fc.shown)));
-        renderFlight(st, stream, fc, {
+        const fstate: Parameters<typeof renderFlight>[3] = {
           frames: framesRef.current,
           closeness: (s) => (s.depth === 0 ? 1 : lensRef.current.closeness(s.path[1])),
           hidden: skip,
           here: here?.node.id,
           still,
+          compass: undefined,
           lineFor: (s) =>
             hasMedia(s.node, 'audio') && soundBlockedRef.current && !playingRef.current ? 'tap to hear it' : s.node.line,
-        });
+        };
+        renderFlight(st, stream, fc, fstate);
+        compassRef.current = fstate.compass;
       } else {
         const k = Math.max(0, cam.depth - 2);
         const T = cam.transformAt(k);
@@ -848,6 +904,47 @@ export default function ShadowField({ serif }: Props) {
           let real = cam.depth;
           while (real > 0 && cam.path[real].void) real--;
           drawVoidLattice(st, cam.transformAt(cam.depth), cam.transformAt(real).s);
+        }
+      }
+      // falling through: day opens from the middle of the night, edged in ink
+      if (flying && fallRef.current !== null) {
+        const q = Math.min(1, (nowMs - fallRef.current) / 900);
+        const e = q * q * (3 - 2 * q);
+        const rr = e * Math.hypot(rect.width, rect.height) * 0.6;
+        ctx.fillStyle = '#fbfaf7';
+        ctx.beginPath();
+        ctx.arc(rect.width / 2, rect.height * 0.47, rr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(${PAPER_RGB === '251,250,247' ? '30,28,36' : '232,228,238'},0.5)`;
+        for (let i = 0; i < 90; i++) {
+          const a = (i / 90) * Math.PI * 2 + e;
+          ctx.beginPath();
+          ctx.arc(rect.width / 2 + Math.cos(a) * rr, rect.height * 0.47 + Math.sin(a) * rr, 1.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (q >= 1) {
+          fallRef.current = null;
+          setNight(false);
+          setNightState(false);
+        }
+      }
+      // the compass: world-up, where you are in the lap, where the next thing lies
+      const comp = compassRef.current;
+      if (flying && comp && needleRef.current) {
+        needleRef.current.setAttribute('transform', `rotate(${(comp.roll * 180) / Math.PI} 23 23)`);
+        const nd = nextDotRef.current;
+        if (nd) {
+          nd.style.opacity = comp.next === null ? '0' : '1';
+          if (comp.next !== null) {
+            nd.setAttribute('cx', String(23 + Math.cos(comp.next) * 13));
+            nd.setAttribute('cy', String(23 + Math.sin(comp.next) * 13));
+          }
+        }
+        const ld = lapDotRef.current;
+        if (ld) {
+          const a = (mod(fc.z + ARRIVE, stream.length) / stream.length) * Math.PI * 2 - Math.PI / 2;
+          ld.setAttribute('cx', String(23 + Math.cos(a) * 20));
+          ld.setAttribute('cy', String(23 + Math.sin(a) * 20));
         }
       }
       settleVideos(st.videos ?? new Set());
@@ -1696,7 +1793,7 @@ export default function ShadowField({ serif }: Props) {
   const p = top ? closenessFor(top, followed) : 1;
 
   return (
-    <div className={styles.field} ref={rootRef}>
+    <div className={styles.field} ref={rootRef} data-night={night ? '' : undefined}>
       <canvas
         ref={canvasRef}
         className={styles.canvas}
@@ -1734,6 +1831,32 @@ export default function ShadowField({ serif }: Props) {
       <button type="button" className={styles.mode} onClick={switchMode}>
         {mode === 'flight' ? 'see it whole' : 'fly through'}
       </button>
+
+      <button type="button" className={styles.night} onClick={toggleNight} aria-pressed={night}>
+        {night ? 'day' : 'night'}
+      </button>
+
+      {mode === 'flight' && (
+        <button
+          type="button"
+          className={styles.compass}
+          onClick={() => {
+            spinRef.current = !spinRef.current;
+            setNotice(spinRef.current ? 'the clock turns again' : 'the clock holds still');
+          }}
+          aria-label="Compass: which way is up, where you are, where the next thing is. Tap to stop or start the turning."
+        >
+          <svg viewBox="0 0 46 46" width="46" height="46" aria-hidden>
+            <circle cx="23" cy="23" r="20" fill="none" stroke="currentColor" strokeOpacity="0.25" strokeWidth="1" strokeDasharray="1 3" />
+            <g ref={needleRef}>
+              <path d="M23 6 L26 23 L23 21 L20 23 Z" fill="currentColor" fillOpacity="0.75" />
+              <path d="M23 40 L26 23 L23 25 L20 23 Z" fill="currentColor" fillOpacity="0.2" />
+            </g>
+            <circle ref={nextDotRef} cx="23" cy="10" r="2.4" fill="rgb(var(--rose))" />
+            <circle ref={lapDotRef} cx="23" cy="3" r="1.8" fill="currentColor" />
+          </svg>
+        </button>
+      )}
 
       {me?.user ? (
         <button type="button" className={styles.me} onClick={signOut} title="sign out">

@@ -14,7 +14,6 @@
 // the Canvas the track reaches the Canvas again, so there is no end either way.
 
 import { IdeaNode, lastActivity } from './model';
-import { hash01 } from './rng';
 
 /** Distance ahead (track units) at which a thing is in focus: fully itself. */
 export const FOCUS = 1;
@@ -26,7 +25,6 @@ export const FAR = 14;
 export const ARRIVE = 1.6;
 
 const DAY = 86400000;
-const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 
 /** Radius of the Canvas's own ring, and of an idea that holds others (depth 1). */
 const ROOT_R = 0.8;
@@ -42,6 +40,18 @@ const LEAN = 0.55;
 /** A pause entering and leaving a ring, so a ring never sits on what it holds. */
 const ENTER_GAP = 0.5;
 const EXIT_GAP = 0.45;
+
+/** His own clock (the offset his work is stamped with), for the clock face. */
+const HIS_CLOCK_MS = -6 * 3600000;
+
+/** Where a moment sits on a 12-hour clock face: twelve at the top, turning clockwise. */
+export function clockAngle(t: number): number {
+  const hours = (((t + HIS_CLOCK_MS) / 3600000) % 12 + 12) % 12;
+  return (hours / 12) * Math.PI * 2 - Math.PI / 2;
+}
+
+/** Travelling this far turns the view once around: the stream is a spiral, a clock you fall through. */
+export const TURN = 12;
 
 export interface Station {
   i: number;
@@ -125,12 +135,13 @@ export function buildStream(root: IdeaNode): Stream {
       .map((c, k) => ({ c, k }))
       .sort((a, b) => b.c.began - a.c.began || a.k - b.k)
       .map(({ c }) => c);
-    const turn = hash01(node.seed, 7) * Math.PI * 2;
+
     kids.forEach((c, k) => {
       const gap = prev === null ? 0 : silence(prev, c);
       z += spacing(gap) + (k === 0 ? ENTER_GAP : 0);
       const gate = travelled(c).length > 0;
-      const ang = turn + k * GOLDEN;
+      // around the stream, a thing sits at the hour it was made, like a clock face
+      const ang = clockAngle(c.began) + (k % 2 ? 0.08 : -0.08);
       const s: Station = {
         i: stations.length,
         node: c,
@@ -262,10 +273,12 @@ export interface FlightCam {
   shown: number;
   /** Where a push began, if it began at rest in front of something. */
   from: number | null;
+  /** The clock's own slow turning (radians), on top of the turn that travel gives. */
+  spin: number;
 }
 
 export function newFlightCam(): FlightCam {
-  return { z: -ARRIVE, v: 0, wx: 0, wy: 0, target: null, idle: 0, held: false, dir: 0, shown: 0, from: null };
+  return { z: -ARRIVE, v: 0, wx: 0, wy: 0, target: null, idle: 0, held: false, dir: 0, shown: 0, from: null, spin: 0 };
 }
 
 /** Called as the viewer starts to push: remembers the thing they were resting on. */
@@ -416,6 +429,15 @@ export interface View {
   /** Vanishing point on screen. */
   cx: number;
   cy: number;
+  /** How far the view has turned (radians), and its cosine and sine. */
+  roll: number;
+  rc: number;
+  rs: number;
+}
+
+/** How far the view has turned at track position z: a full turn every TURN units, plus the live spin. */
+export function rollAt(z: number, spin: number) {
+  return (z / TURN) * Math.PI * 2 + spin;
 }
 
 /**
@@ -431,13 +453,16 @@ export function viewOf(stream: Stream, cam: FlightCam, w: number, h: number, ski
   const [lx, ly] = leanAt(stream, cam.z, skip);
   // at speed the field of view widens a little, as if pulled forward
   const rush = smooth((Math.abs(cam.shown) - 3) / 20);
-  return { z: cam.z, x: lx + cam.wx, y: ly + cam.wy, F: M * (1 - 0.16 * rush), cx: w / 2, cy: h * 0.47 };
+  const roll = rollAt(cam.z, cam.spin);
+  return { z: cam.z, x: lx + cam.wx, y: ly + cam.wy, F: M * (1 - 0.16 * rush), cx: w / 2, cy: h * 0.47, roll, rc: Math.cos(roll), rs: Math.sin(roll) };
 }
 
 /** Screen position and scale (pixels per unit) of a point dz ahead of the camera. */
 export function project(v: View, x: number, y: number, dz: number): [number, number, number] {
   const k = v.F / dz;
-  return [v.cx + (x - v.x) * k, v.cy + (y - v.y) * k, k];
+  const dx = x - v.x;
+  const dy = y - v.y;
+  return [v.cx + (dx * v.rc - dy * v.rs) * k, v.cy + (dx * v.rs + dy * v.rc) * k, k];
 }
 
 /**
