@@ -4,6 +4,7 @@
 // Twin, ideas the inventor cleared from their archive, and the viewer's own.
 // Synthetic specimens are a test fixture only and are never served.
 
+import { buildPosted, Posted } from './sources/posted';
 import { IdeaNode, findPath } from './model';
 import { topologyOf } from './layout';
 import { buildTwinThinkTwin } from './sources/twinthink';
@@ -24,7 +25,7 @@ let dance: IdeaNode | null = null;
 let moments: IdeaNode | null = null;
 let current: IdeaNode | null = null;
 
-export function buildWorld(local: LocalShadow[]): IdeaNode {
+export function buildWorld(local: LocalShadow[], posted?: { public: Posted[]; mine: Posted[] }): IdeaNode {
   twinthink ??= buildTwinThinkTwin();
   throwaways ??= buildThrowaways();
   starters ??= buildStarters();
@@ -35,7 +36,16 @@ export function buildWorld(local: LocalShadow[]): IdeaNode {
     weaveTraces([music, dance]);
   }
   moments ??= buildMoments();
-  const children = [twinthink, ...starters, music, dance, moments, throwaways, ...local.map(localShadowNode)];
+  const children = [
+    twinthink,
+    ...starters,
+    music,
+    dance,
+    moments,
+    throwaways,
+    ...(posted ? buildPosted(posted.public, posted.mine) : []),
+    ...local.map(localShadowNode),
+  ];
   const world = rootNode('canvas', children);
   current = world;
   for (const c of children) attachPortals(c);

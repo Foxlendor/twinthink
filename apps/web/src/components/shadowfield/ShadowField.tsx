@@ -30,6 +30,7 @@ import { clamp, hash01, smoothstep } from '@/lib/shadowfield/rng';
 import Donate from '@/components/support/Donate';
 import { founderPlots } from '@/lib/shadowfield/plots';
 import { buildWorld, resolvePath } from '@/lib/shadowfield/world';
+import type { Posted } from '@/lib/shadowfield/sources/posted';
 import { createLocalStore, LocalShadow, ShadowStore } from '@/lib/shadowfield/sources/local';
 import styles from './ShadowField.module.css';
 
@@ -289,6 +290,10 @@ export default function ShadowField({ serif }: Props) {
   const compassRef = useRef<{ roll: number; next: number | null } | undefined>(undefined);
   const [notesView, setNotesView] = useState<{ title: string; notes: { t: number; text: string }[] } | null>(null);
   const [me, setMe] = useState<{ enabled: boolean; user: { name: string; owner: boolean } | null } | null>(null);
+  // work people have posted, kept on the server (see /api/shadows)
+  const postedRef = useRef<{ public: Posted[]; mine: Posted[] }>({ public: [], mine: [] });
+  const [posting, setPosting] = useState(false);
+  const [posted, setPostedList] = useState<Posted[]>([]);
 
   const access: Access = useMemo(
     () => ({
@@ -324,7 +329,7 @@ export default function ShadowField({ serif }: Props) {
     const store = storeRef.current!;
     const list = store.list();
     setLocalList(list);
-    const world = buildWorld(list);
+    const world = buildWorld(list, postedRef.current);
     worldRef.current = world;
     // the flight keeps what is in front of you in front of you
     const oldStream = streamRef.current;
@@ -500,7 +505,7 @@ export default function ShadowField({ serif }: Props) {
     const mono = getComputedStyle(document.documentElement).getPropertyValue('--font-jetbrains-mono').trim();
     monoRef.current = mono ? `${mono}, monospace` : 'monospace';
 
-    const world = buildWorld(storeRef.current.list());
+    const world = buildWorld(storeRef.current.list(), postedRef.current);
     worldRef.current = world;
     const cam = new Camera(world);
     camRef.current = cam;
@@ -661,6 +666,53 @@ export default function ShadowField({ serif }: Props) {
       live = false;
     };
   }, []);
+
+  /** What people have posted: everyone's shared work, and (signed in) your own. */
+  const loadPosted = useCallback(async () => {
+    const d = (await fetch('/api/shadows', { cache: 'no-store' })
+      .then((r) => r.json())
+      .catch(() => null)) as { enabled?: boolean; public?: Posted[]; mine?: Posted[] } | null;
+    if (!d) return;
+    postedRef.current = { public: d.public ?? [], mine: d.mine ?? [] };
+    setPosting(!!d.enabled);
+    setPostedList([...(d.mine ?? []), ...(d.public ?? []).filter((p) => !p.mine)]);
+    if (storeRef.current) rebuild();
+  }, [rebuild]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadPosted();
+  }, [loadPosted, me?.user]);
+
+  /** Change one of your posted Shadows (share it, keep it to yourself) or let it go. */
+  const changePosted = async (id: string, change: { public?: boolean } | 'remove' | 'take down') => {
+    const remove = change === 'remove' || change === 'take down';
+    const res = await fetch(`/api/shadows/${encodeURIComponent(id)}`, {
+      method: remove ? 'DELETE' : 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: remove ? undefined : JSON.stringify(change),
+    }).catch(() => null);
+    if (!res || !res.ok) {
+      const d = (await res?.json().catch(() => ({}))) as { error?: string } | undefined;
+      setNotice((d?.error ?? 'that could not be changed').toLowerCase());
+      return;
+    }
+    if (change === 'take down') setNotice('taken down');
+    else if (change === 'remove') setNotice('let go');
+    else setNotice(change.public ? 'shared with everyone' : 'only you can see it now');
+    if (remove) flyTo(focusPath().slice(0, 1));
+    await loadPosted();
+    ripple(`p/${id}`);
+  };
+
+  const reportPosted = async (id: string) => {
+    const res = await fetch(`/api/shadows/${encodeURIComponent(id)}/report`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ reason: 'reported from the Canvas' }),
+    }).catch(() => null);
+    setNotice(res?.ok ? 'thank you, it will be looked at' : 'that could not be sent');
+  };
 
   /** The maker reads the notes left at something's seal. */
   const readNotes = async (node: IdeaNode) => {
@@ -1230,7 +1282,8 @@ export default function ShadowField({ serif }: Props) {
     const node = path[path.length - 1];
     const top = path[1];
     if (!node || !top) return;
-    const open = ownerSignedIn || top.ownedBy === 'viewer' || lensRef.current.followed.has(top.id);
+    const mineHere = node.id.startsWith('p/') && postedRef.current.mine.some((p) => `p/${p.id}` === node.id);
+    const open = ownerSignedIn || mineHere || top.ownedBy === 'viewer' || lensRef.current.followed.has(top.id);
     if (!open) {
       openSeal(node);
       return;
@@ -1665,6 +1718,28 @@ export default function ShadowField({ serif }: Props) {
     }
   };
 
+  /** A Shadow kept on this device goes online (still private), with its thoughts written inside. */
+  const putOnline = async (shadowId: string) => {
+    const record = storeRef.current?.list().find((v) => v.id === shadowId);
+    if (!record) return;
+    const body = record.thoughts
+      .filter((t) => !t.letGo)
+      .map((t) => t.text)
+      .join('\n');
+    const res = await fetch('/api/shadows', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: record.text, body }),
+    }).catch(() => null);
+    const d = (await res?.json().catch(() => ({}))) as { error?: string } | undefined;
+    if (!res?.ok) {
+      setNotice((d?.error ?? 'that could not be kept').toLowerCase());
+      return;
+    }
+    await loadPosted();
+    setNotice('online now, only you can see it until you share it');
+  };
+
   /**
    * Taking a throwaway: the visitor gets their own private copy (its name only),
    * which remembers who gave it. A gift ripples; nothing is counted.
@@ -1718,7 +1793,24 @@ export default function ShadowField({ serif }: Props) {
     if (!c || !store) return;
     const value = text.trim();
     if (!value) return;
-    if (c.mode === 'cast') {
+    if (c.mode === 'cast' && posting && me?.user) {
+      // signed in: it is kept on the server, private until its maker shares it
+      fetch('/api/shadows', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: value }) })
+        .then(async (res) => {
+          const d = (await res.json().catch(() => ({}))) as { shadow?: Posted; error?: string };
+          if (!res.ok || !d.shadow) {
+            setNotice((d.error ?? 'that could not be kept').toLowerCase());
+            return;
+          }
+          await loadPosted();
+          const world = worldRef.current;
+          const yours = world?.children.find((n) => n.id === 'yours');
+          const node = yours?.children.find((n) => n.id === `p/${d.shadow!.id}`);
+          if (world && yours && node) flyTo([world, yours, node]);
+          setNotice('kept, only you can see it until you share it');
+        })
+        .catch(() => setNotice('that could not be kept'));
+    } else if (c.mode === 'cast') {
       const s = store.cast(value, c.lx, c.ly);
       rebuild();
       const world = worldRef.current!;
@@ -1781,7 +1873,7 @@ export default function ShadowField({ serif }: Props) {
     [...path]
       .slice(1)
       .reverse()
-      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/')) ?? null;
+      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/') && !n.id.startsWith('p/') && n.id !== 'people' && n.id !== 'yours') ?? null;
   // an idea given away is never followed by an ask for money, nor is a song while it plays
   // nothing given away (songs, starters, throwaways) is ever followed by an ask
   const asking = supportTarget && !path.some((n) => n.free) && playingId !== current?.id ? supportTarget : null;
@@ -1790,6 +1882,7 @@ export default function ShadowField({ serif }: Props) {
   // a copy taken from his throwaways is the visitor's to keep, but not theirs to prove
   const takenCopy = ownedHereFrom(localList, current);
   const top = path[1];
+  const postedHere = current?.id.startsWith('p/') ? posted.find((q) => `p/${q.id}` === current.id) ?? null : null;
   const ownedHere = current ? localIds(current) : null;
   const isFollowed = top ? followed.has(top.id) : false;
   const nearby = current ? (topologyOf(current), current.children) : [];
@@ -1963,7 +2056,30 @@ export default function ShadowField({ serif }: Props) {
             {isFollowed ? 'following, you can go a little further' : 'I want to see what happens next'}
           </button>
         )}
-        {me?.user?.owner && current && path.length > 1 && !ownedHere && (
+        {postedHere?.mine && (
+          <>
+            <button type="button" className={postedHere.public ? styles.following : styles.quiet} onClick={() => changePosted(postedHere.id, { public: !postedHere.public })}>
+              {postedHere.public ? 'shared, keep it to myself' : 'share it with everyone'}
+            </button>
+            <button type="button" className={styles.quiet} onClick={() => current && readNotes(current)}>
+              notes
+            </button>
+            <button type="button" className={styles.quiet} onClick={() => changePosted(postedHere.id, 'remove')}>
+              let it go
+            </button>
+          </>
+        )}
+        {postedHere && !postedHere.mine && (
+          <button type="button" className={styles.quiet} onClick={() => reportPosted(postedHere.id)}>
+            report
+          </button>
+        )}
+        {postedHere && !postedHere.mine && me?.user?.owner && (
+          <button type="button" className={styles.quiet} onClick={() => changePosted(postedHere.id, 'take down')}>
+            take down
+          </button>
+        )}
+        {me?.user?.owner && current && path.length > 1 && !ownedHere && !current.id.startsWith('p/') && (
           <button type="button" className={styles.quiet} onClick={() => readNotes(current)}>
             notes
           </button>
@@ -2022,6 +2138,11 @@ export default function ShadowField({ serif }: Props) {
             {!ownedHere.thoughtId && (
               <button type="button" className={styles.quiet} onClick={() => keepCopy(ownedHere.shadowId)}>
                 keep a copy
+              </button>
+            )}
+            {!ownedHere.thoughtId && posting && me?.user && (
+              <button type="button" className={styles.quiet} onClick={() => putOnline(ownedHere.shadowId)}>
+                put it online
               </button>
             )}
             {!ownedHere.thoughtId && !takenCopy && (
@@ -2218,7 +2339,11 @@ export default function ShadowField({ serif }: Props) {
           />
           <span className={styles.composerHint}>
             {composer.mode === 'cast'
-              ? 'enter to cast · kept on this device for now'
+              ? posting && me?.user
+                ? 'enter to cast · only you see it until you share it'
+                : posting && me?.enabled
+                  ? 'enter to cast · kept on this device · sign in to share it'
+                  : 'enter to cast · kept on this device for now'
               : composer.mode === 'note'
                 ? 'sealed · no name is kept · only the maker reads it'
                 : 'enter to keep'}

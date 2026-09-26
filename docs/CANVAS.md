@@ -62,7 +62,7 @@ out past the edges, behind you.
 |---|---|
 | `STRIPE_SECRET_KEY` | Enables donations and "help it continue" via Stripe Checkout (`/api/donate`). |
 | `NEXT_PUBLIC_DONATE_URL` | Optional hosted donation link (Stripe Payment Link, Ko-fi) for general support. |
-
+| `DATABASE_URL` (or `STORAGE_URL`, `POSTGRES_URL`) | Postgres (Neon) for posted Shadows, notes and reports. Connecting a Neon store in Vercel sets it. |
 | `GOOGLE_CLIENT_ID` | Sign in with Google (from Google Cloud → APIs & Services → Credentials → OAuth client ID, type "Web application"). |
 | `GOOGLE_CLIENT_SECRET` | The same client's secret. |
 | `SESSION_SECRET` | 32+ random characters; signs the login cookie. |
@@ -79,6 +79,19 @@ picture and owner flag; nothing else is stored, and the email never reaches the 
 Until all three Google/session variables are set, "sign in" does not appear.
 Support given toward a specific idea is recorded in Checkout metadata (`shadowId`);
 paying creators directly needs Stripe Connect (not built).
+
+### Posting
+With a database and sign-in both set, anyone signed in can cast a Shadow that is
+kept on the server. It is private until its maker taps "share it with everyone";
+shared ones appear to all in the ring "from everyone", and your own in "yours".
+A maker can keep it to themselves again, let it go (deleted), read the notes left
+at its seal, and move a Shadow kept on their device online ("put it online").
+Anyone can report a shared Shadow; an owner (`OWNER_EMAILS`) can take one down
+(hidden, not deleted). Three taps on your own Shadow opens it; on someone else's,
+its seal takes an anonymous note for them. Only a first name is shown and only the
+account id is stored. Tables (`tt_shadows`, `tt_notes`, `tt_reports`) are created
+on first use; limit 20 posts a day per person. Without a database, casting stays
+on the device as before.
 
 ## Plots (3 x 3)
 The Canvas grid (cells of 1/8) is tiled into plots of 3 x 3 cells (`plots.ts`).
