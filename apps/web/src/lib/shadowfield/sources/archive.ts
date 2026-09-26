@@ -1,131 +1,153 @@
-// Ideas from the inventor's own archive, cleared by the inventor on 2026-09-25
-// to appear on the public Canvas.
+// Public-safe creator archive cleared for the Canvas.
 //
-// Disclosure rule chosen by the inventor: say what each idea does and the
-// problem it answers, never how it works. Do not add mechanisms, materials or
-// construction details here without new, explicit permission.
+// The creator profile is intentionally one Shadow. Zooming inward reveals
+// categories, projects, and then the public description/evolution of each
+// project. This keeps a body of work spatial instead of scattering it into
+// unrelated top-level dots.
 //
-// History rule: nothing is invented. Each record begins on the day it was
-// added to the Canvas; earlier history exists but has not been recorded yet.
+// Privacy rule: this source contains project context only. Do not add personal
+// biography, health/legal/relationship history, credentials, or private notes.
+//
+// Provenance rule: dates are not invented. Historical era labels live in each
+// project artifact; the Canvas continuity event only records publication here.
 
 import { IdeaNode } from '../model';
 import { hashString } from '../rng';
+import { PUBLIC_CATEGORIES, PUBLIC_IDEAS, PublicIdeaRecord } from './public';
 
 const ADDED = Date.parse('2026-09-25T15:00:00Z');
 
-interface Cleared {
-  id: string;
-  title: string;
-  kind: IdeaNode['kind'];
-  /** What it does, in one line. */
-  does: string;
-  /** The problem it answers. */
-  why: string;
-  x: number;
-  y: number;
-}
+const CATEGORY_POSITIONS: Record<string, [number, number]> = {
+  'TwinThink': [-0.06, -0.50],
+  'Physical inventions': [0.43, -0.34],
+  'Energy & motion': [0.60, 0.10],
+  'Interfaces & materials': [0.35, 0.50],
+  'Games & interactive systems': [-0.12, 0.60],
+  'AI-native experiments': [-0.55, 0.35],
+  'Creative worlds': [-0.62, -0.08],
+  'Music & performance': [-0.38, -0.47],
+};
 
-const CLEARED: Cleared[] = [
-  {
-    id: 'coinceit',
-    title: 'CoinCeit',
-    kind: 'software',
-    does: 'A place to share ideas while keeping credit for them.',
-    why: 'Ideas are easy to take and hard to attribute. An earlier attempt at the problem TwinThink now works on.',
-    x: -0.46,
-    y: -0.31,
-  },
-  {
-    id: 'bubbleblock',
-    title: 'BUBBLEYEBLOCK',
-    kind: 'physical',
-    does: 'Glasses that keep advertisements in the real world out of the wearer’s view.',
-    why: 'You can block ads on a screen, but not on a street.',
-    x: 0.52,
-    y: 0.27,
-  },
-  {
-    id: 'wear-os',
-    title: 'Wear O’s',
-    kind: 'physical',
-    does: 'A ring that is also a discreet personal vaporizer.',
-    why: 'An everyday object that is both jewellery and a working device, so there is nothing extra to carry.',
-    x: -0.18,
-    y: 0.49,
-  },
-  {
-    id: 'sipsmolder',
-    title: 'SipSmolder',
-    kind: 'physical',
-    does: 'A reusable straw that warms a drink as you sip it, with no cord and no battery.',
-    why: 'A drink goes cold long before you finish it.',
-    x: 0.08,
-    y: -0.57,
-  },
-  {
-    id: 'smholder',
-    title: 'Smholder',
-    kind: 'physical',
-    does: 'A food and drink container that warms what is inside on demand, without a microwave.',
-    why: 'Warm food wherever you are, with nothing to plug in.',
-    x: 0.63,
-    y: -0.38,
-  },
-  {
-    id: 'u3dpen',
-    title: 'U3dPEN',
-    kind: 'physical',
-    does: 'A handheld pen that builds three-dimensional things from recovered material.',
-    why: 'Making something by hand usually means buying new material; this starts from what would be thrown away.',
-    x: -0.69,
-    y: 0.18,
-  },
-  {
-    id: 'ferropen',
-    title: 'FerroPen',
-    kind: 'physical',
-    does: 'A drawing tool whose marks can be moved, reshaped, and taken back up after they are made.',
-    why: 'Ink is final. This lets a drawing stay changeable and its material reusable.',
-    x: -0.38,
-    y: -0.66,
-  },
-  {
-    id: 'ferro-display',
-    title: 'Ferro / crystalline display',
-    kind: 'physical',
-    does: 'A display whose pixels physically move and can hold their shape, so you can feel an image as well as see it.',
-    why: 'Screens are flat and untouchable; information could have shape.',
-    x: 0.34,
-    y: 0.63,
-  },
-  {
-    id: 'xylem-camouflage',
-    title: 'Xylem thread camouflage',
-    kind: 'physical',
-    does: 'A fabric that changes its own appearance to match its surroundings.',
-    why: 'Printed camouflage only works in the place it was designed for.',
-    x: 0.71,
-    y: 0.05,
-  },
-];
-
-export function buildArchiveShadows(): IdeaNode[] {
-  return CLEARED.map((c) => ({
-    id: `archive/${c.id}`,
-    title: c.title,
-    note: c.does,
-    kind: c.kind,
+function detailNode(project: PublicIdeaRecord, suffix: string, title: string, body: string, index: number): IdeaNode {
+  return {
+    id: `creator/foxlendor/${project.id}/${suffix}`,
+    title,
+    note: body,
+    kind: project.kind,
     origin: 'real',
     began: ADDED,
-    events: [{ t: ADDED, kind: 'begin', note: 'added to the Canvas; earlier history not recorded yet' }],
+    events: [{ t: ADDED + index, kind: 'evidence', note: 'public archive note' }],
     state: 'alive',
     disclosure: 0,
     children: [],
-    artifact: { type: 'text', body: `${c.does}\n\n${c.why}\n\nIts earlier history has not been recorded here yet.` },
-    x: c.x,
-    y: c.y,
-    r: 0.0025,
+    artifact: { type: 'text', body },
+    x: 0,
+    y: 0,
+    r: 0.05,
+    seed: hashString(`${project.id}:${suffix}`),
+  };
+}
+
+function projectNode(project: PublicIdeaRecord): IdeaNode {
+  const details: IdeaNode[] = [
+    detailNode(project, 'what', 'what it is', project.summary, 1),
+    detailNode(project, 'problem', 'what it was trying to solve', project.problem, 2),
+  ];
+
+  if (project.evolution) details.push(detailNode(project, 'evolution', 'how it changed', project.evolution, 3));
+
+  if (project.highlights?.length) {
+    details.push(
+      detailNode(
+        project,
+        'notes',
+        'public notes',
+        project.highlights.map((line) => `• ${line}`).join('\n'),
+        4
+      )
+    );
+  }
+
+  details.push(
+    detailNode(
+      project,
+      'record',
+      'record',
+      `Era: ${project.era}\nStatus: ${project.status}\nSource: ${project.evidence}\n\nThis is a public-safe summary. Missing dates or mechanics are left missing rather than guessed.`,
+      5
+    )
+  );
+
+  return {
+    id: `creator/foxlendor/${project.id}`,
+    title: project.title,
+    note: project.summary,
+    kind: project.kind,
+    origin: 'real',
+    began: ADDED,
+    events: [{ t: ADDED, kind: 'begin', note: 'added to the public inventor archive' }],
+    state: project.status.includes('failed') ? 'abandoned' : 'alive',
+    disclosure: 0,
+    children: details,
+    x: 0,
+    y: 0,
+    r: 0.055,
+    seed: hashString(project.id),
+  };
+}
+
+function categoryNode(category: string, projects: PublicIdeaRecord[], index: number): IdeaNode {
+  const [x, y] = CATEGORY_POSITIONS[category] ?? [0, 0];
+  return {
+    id: `creator/foxlendor/category/${hashString(category)}`,
+    title: category,
+    note: `${projects.length} public project${projects.length === 1 ? '' : 's'}`,
+    kind: 'unknown',
+    origin: 'real',
+    began: ADDED,
+    events: [{ t: ADDED + index, kind: 'begin', note: 'public archive branch' }],
+    state: 'alive',
+    disclosure: 0,
+    children: projects.map(projectNode),
+    x,
+    y,
+    r: 0.07,
     fixed: true,
-    seed: hashString(c.id),
-  }));
+    seed: hashString(category),
+  };
+}
+
+export function buildArchiveShadows(): IdeaNode[] {
+  const categories = PUBLIC_CATEGORIES
+    .map((category, index) => {
+      const projects = PUBLIC_IDEAS.filter((idea) => idea.category === category);
+      return projects.length ? categoryNode(category, projects, index) : null;
+    })
+    .filter(Boolean) as IdeaNode[];
+
+  const creator: IdeaNode = {
+    id: 'creator/foxlendor',
+    title: 'Foxlendor / Johne.boi',
+    note: 'Inventor, systems thinker, game designer, musician, and maker. Zoom in to follow the ideas instead of reading a résumé.',
+    kind: 'unknown',
+    origin: 'real',
+    began: ADDED,
+    events: [{ t: ADDED, kind: 'begin', note: 'public body of work added to the Canvas' }],
+    state: 'alive',
+    disclosure: 0,
+    children: categories,
+    artifact: {
+      type: 'text',
+      body:
+        'This public creator Shadow collects projects that were cleared for the Canvas. It intentionally excludes private personal history and projects whose meaning could not be reconstructed reliably.',
+    },
+    x: -0.42,
+    y: 0.12,
+    r: 0.0032,
+    fixed: true,
+    seed: hashString('creator/foxlendor'),
+    signals: { returns: 0 },
+  };
+
+  return [creator];
 }
