@@ -485,6 +485,19 @@ function drawThing(st: RenderState, s: Station, x: number, y: number, R: number,
 
 // ---------------------------------------------------------------------------
 
+/** Colour emoji print in the page's ink like every other mark (their shape stays, their colour goes). */
+const PICTOGRAPH = /\p{Extended_Pictographic}/u;
+export function inkText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number) {
+  if (!PICTOGRAPH.test(text)) {
+    ctx.fillText(text, x, y);
+    return;
+  }
+  const op = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'luminosity';
+  ctx.fillText(text, x, y);
+  ctx.globalCompositeOperation = op;
+}
+
 interface Title {
   text: string;
   x: number;
@@ -673,7 +686,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     const q0 = r;
     if (covers.some((c) => c.near > t.near * 1.02 && q0[0] < c.r[2] && q0[2] > c.r[0] && q0[1] < c.r[3] && q0[3] > c.r[1])) continue;
     ctx.fillStyle = `rgba(${INK},${t.a * 0.78})`;
-    ctx.fillText(t.text, t.x, t.y);
+    inkText(ctx, t.text, t.x, t.y);
     if (t.sub && (t.subA ?? 0) > 0.01) {
       const ss = Math.max(13, Math.round(t.size * 0.78));
       setFont(`italic ${ss}px ${st.serif}`);

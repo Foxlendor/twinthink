@@ -538,7 +538,14 @@ export function drawArtifact(st: RenderState, node: IdeaNode, T: ScreenTransform
     let y = T.oy - R * 0.2 - (lines.length * lh) / 2 + fpx * 0.8;
     ctx.textAlign = 'center';
     for (const line of lines) {
-      if (y > -lh && y < st.h + lh) ctx.fillText(line, T.ox, y);
+      if (y > -lh && y < st.h + lh) {
+        // colour emoji print in ink, like everything else
+        if (/\p{Extended_Pictographic}/u.test(line)) {
+          ctx.globalCompositeOperation = 'luminosity';
+          ctx.fillText(line, T.ox, y);
+          ctx.globalCompositeOperation = 'source-over';
+        } else ctx.fillText(line, T.ox, y);
+      }
       y += lh;
     }
     ctx.textAlign = 'left';
