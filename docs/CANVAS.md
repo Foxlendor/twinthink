@@ -113,6 +113,17 @@ One word a day for everyone (`src/lib/shadowfield/prompts.ts`, changing at
 midnight UTC). Its ring is the newest thing on the Canvas; "today's word: …"
 answers it, and answers are shared under the maker's first name.
 
+### Makers and sound
+"from everyone" holds one ring per maker (first name only), gathered by a keyed
+one-way key (`makerKey`), never an account id; stories have none. Turning one
+film's sound on keeps films heard: each film you arrive at speaks and the last
+falls quiet, until you turn a film's sound off.
+
+### The tunnel
+The flight runs inside an ink tunnel (`drawTunnel` in flightRender.ts): rings
+from the vanishing point, strands that spiral with the clock, dots that stream
+into lines at speed.
+
 ### Sketchbooks
 Signed in, "keep it" keeps anything shared in your own sketchbook (a ring only
 you see, stored as places on the Canvas in `tt_keeps`); "go to it" flies to
