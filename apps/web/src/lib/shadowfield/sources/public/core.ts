@@ -1,6 +1,7 @@
 import type { PublicIdeaRecord } from './types';
 
-export const CORE_IDEAS: PublicIdeaRecord[] = [\n  {
+export const CORE_IDEAS: PublicIdeaRecord[] = [
+  {
     id: 'twinthink-project',
     title: 'TwinThink',
     kind: 'software',
