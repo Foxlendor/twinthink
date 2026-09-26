@@ -5,19 +5,23 @@ import { currentUser } from '@/lib/auth/session';
 import { cleanNote } from '@/lib/notes/rules';
 import { addNote, allowFrom, listNotes, notesConfigured } from '@/lib/notes/store';
 import { db, dbConfigured } from '@/lib/shadows/db';
-import { addNote as addNoteDb, getShadow, notesFor } from '@/lib/shadows/store';
+import { addNote as addNoteDb, allowSender, getShadow, notesFor } from '@/lib/shadows/store';
 
 // Anonymous notes left at a seal, for its maker. Anyone may leave one on a
 // public idea. The Canvas's owner reads notes on his own ideas; each person
 // reads the notes left at their own posted Shadows. Nothing but the words and
 // the moment is kept.
 
-/** The maker of a note's target: 'owner' for the Canvas's own ideas, else the poster's id. */
-async function targetMaker(id: string): Promise<{ maker: string } | null> {
+/**
+ * The maker of a note's target: 'owner' for the Canvas's own ideas, else the
+ * poster's id. Notes are left only at what is shared; its maker reads them always.
+ */
+async function targetMaker(id: string, reading = false): Promise<{ maker: string } | null> {
   if (id.startsWith('p/')) {
     if (!dbConfigured()) return null;
     const s = await getShadow(await db(), id.slice(2));
-    return s && s.public && !s.hidden ? { maker: s.owner } : null;
+    if (!s) return null;
+    return reading || (s.public && !s.hidden) ? { maker: s.owner } : null;
   }
   if (id.length > 200 || id.startsWith('local/')) return null;
   return findPath(buildWorld([]), id) ? { maker: 'owner' } : null;
@@ -28,7 +32,8 @@ export async function POST(req: Request) {
   if (!useDb && !notesConfigured()) return NextResponse.json({ error: 'Notes are not switched on yet.' }, { status: 503 });
   let body: { target?: unknown; text?: unknown } = {};
   try {
-    body = await req.json();
+    const raw: unknown = await req.json();
+    if (raw && typeof raw === 'object') body = raw;
   } catch {
     // validated below
   }
@@ -38,7 +43,8 @@ export async function POST(req: Request) {
     if (!target || !(await targetMaker(target))) return NextResponse.json({ error: 'That idea is not on the Canvas.' }, { status: 404 });
     if (!text) return NextResponse.json({ error: 'A note is 1 to 500 characters.' }, { status: 400 });
     const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'unknown';
-    if (notesConfigured() && !(await allowFrom(ip))) return NextResponse.json({ error: 'That is enough notes for now; try again later.' }, { status: 429 });
+    const allowed = useDb ? await allowSender(await db(), ip) : await allowFrom(ip);
+    if (!allowed) return NextResponse.json({ error: 'That is enough notes for now; try again later.' }, { status: 429 });
     if (useDb) await addNoteDb(await db(), target, text);
     else await addNote(target, text);
   } catch {
@@ -52,7 +58,7 @@ export async function GET(req: Request) {
   const target = new URL(req.url).searchParams.get('target') ?? '';
   if (!user || !target) return NextResponse.json({ error: 'Only the maker reads notes.' }, { status: 403 });
   try {
-    const t = await targetMaker(target);
+    const t = await targetMaker(target, true);
     const allowed = t && (t.maker === 'owner' ? user.owner : t.maker === user.sub);
     if (!allowed) return NextResponse.json({ error: 'Only the maker reads notes.' }, { status: 403 });
     if (dbConfigured()) return NextResponse.json({ enabled: true, notes: await notesFor(await db(), target) }, { headers: { 'cache-control': 'no-store' } });

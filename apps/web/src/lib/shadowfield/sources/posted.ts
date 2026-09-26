@@ -17,9 +17,12 @@ export interface Posted {
   kind?: 'shadow' | 'story';
   from?: string | null;
   sparks?: number;
+  /** Yours, taken down: only you see it. */
+  hidden?: boolean;
 }
 
 function lineFor(p: Posted) {
+  if (p.mine && p.hidden) return 'yours, taken down; only you can see it now.';
   if (p.kind === 'story') {
     if (p.mine) return 'yours, told without your name.';
     const n = p.sparks ?? 0;

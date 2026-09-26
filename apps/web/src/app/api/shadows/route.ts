@@ -28,7 +28,8 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'Sign in to post your work.' }, { status: 401 });
   let body: Record<string, unknown> = {};
   try {
-    body = await req.json();
+    const raw: unknown = await req.json();
+    if (raw && typeof raw === 'object') body = raw as Record<string, unknown>;
   } catch {
     // validated below
   }

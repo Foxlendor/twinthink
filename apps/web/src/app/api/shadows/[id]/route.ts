@@ -13,7 +13,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!user) return NextResponse.json({ error: 'Sign in first.' }, { status: 401 });
   let body: Record<string, unknown> = {};
   try {
-    body = await req.json();
+    const raw: unknown = await req.json();
+    if (raw && typeof raw === 'object') body = raw as Record<string, unknown>;
   } catch {
     // validated below
   }

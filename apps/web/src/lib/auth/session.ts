@@ -1,3 +1,4 @@
+import { isOwner } from './rules';
 import 'server-only';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
@@ -36,7 +37,8 @@ export async function readSession(token: string | undefined): Promise<SessionUse
       email: payload.email,
       name: typeof payload.name === 'string' ? payload.name : payload.email,
       picture: typeof payload.picture === 'string' ? payload.picture : undefined,
-      owner: payload.owner === true,
+      // owning the Canvas ends as soon as the email leaves OWNER_EMAILS, not when the cookie does
+      owner: payload.owner === true && isOwner(payload.email, true, process.env.OWNER_EMAILS),
     };
   } catch {
     return null;

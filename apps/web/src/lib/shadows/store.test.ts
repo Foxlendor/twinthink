@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { Query, REPORTS_TO_HIDE, addNote, forViewer, getShadow, createShadow, migrate, myShadows, notesFor, publicShadows, removeShadow, report, updateShadow } from './store';
+import { Query, REPORTS_TO_HIDE, allowSender, addNote, forViewer, getShadow, createShadow, migrate, myShadows, notesFor, publicShadows, removeShadow, report, updateShadow } from './store';
 
 let q: Query;
 const ana = { sub: 'g-ana', name: 'Ana Maria Lopez' };
@@ -94,5 +94,36 @@ describe('story time', () => {
     for (let i = 0; i < REPORTS_TO_HIDE - 1; i++) await report(q, `g-other${i}`, s.id, 'no');
     expect(await publicShadows(q)).toHaveLength(0);
     expect(await myShadows(q, ana.sub)).toHaveLength(1); // still its teller's
+  });
+});
+
+describe('limits that hold', () => {
+  it('counts posts let go toward the day, too', async () => {
+    for (let i = 0; i < 20; i++) {
+      const r = await createShadow(q, ben, { title: `t${i}` });
+      await removeShadow(q, ben, r.shadow!.id, false);
+    }
+    expect('error' in (await createShadow(q, ben, { title: 'one too many' }))).toBe(true);
+  });
+
+  it('does not let reports from before sign-in hide anything', async () => {
+    const s = (await createShadow(q, ana, { title: 'shared', public: true })).shadow!;
+    for (let i = 0; i < 5; i++) await q(`INSERT INTO tt_reports (shadow_id, reason) VALUES ($1, 'old')`, [s.id]);
+    await report(q, ben.sub, s.id, 'no');
+    expect(await publicShadows(q)).toHaveLength(1);
+  });
+
+  it('tells only its maker that something was taken down', async () => {
+    const s = (await createShadow(q, ana, { title: 'shared', public: true })).shadow!;
+    await removeShadow(q, ben, s.id, true);
+    const mine = (await myShadows(q, ana.sub))[0];
+    expect(forViewer(mine, ana.sub).hidden).toBe(true);
+    expect('hidden' in forViewer(mine, ben.sub)).toBe(false);
+  });
+
+  it('limits anonymous notes from one sender in an hour', async () => {
+    for (let i = 0; i < 10; i++) expect(await allowSender(q, '1.2.3.4')).toBe(true);
+    expect(await allowSender(q, '1.2.3.4')).toBe(false);
+    expect(await allowSender(q, '5.6.7.8')).toBe(true);
   });
 });

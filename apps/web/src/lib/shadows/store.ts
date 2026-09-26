@@ -31,6 +31,8 @@ export interface ServerShadow {
   from: string | null;
   /** For a story: how many Shadows it has sparked. */
   sparks: number;
+  /** Taken down by the Canvas's owner (or by reports): seen only by its maker. */
+  hidden: boolean;
 }
 
 /** What a viewer is sent: never the maker's account id, only whether it is theirs; a story never says who told it. */
@@ -47,6 +49,8 @@ export function forViewer(s: ServerShadow, viewerSub: string | undefined) {
     from: s.from,
     sparks: s.sparks,
     mine: s.owner === viewerSub,
+    // only its maker is told it was taken down
+    ...(s.owner === viewerSub && s.hidden ? { hidden: true } : {}),
   };
 }
 
@@ -87,13 +91,53 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS tt_shadows_from ON tt_shadows (sparked_from)`,
   `ALTER TABLE tt_reports ADD COLUMN IF NOT EXISTS reporter TEXT`,
   `CREATE UNIQUE INDEX IF NOT EXISTS tt_reports_once ON tt_reports (shadow_id, reporter)`,
+  // every post counts toward the day's limit, even one let go afterwards
+  `CREATE TABLE IF NOT EXISTS tt_post_log (
+    owner_sub TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS tt_post_log_owner ON tt_post_log (owner_sub, created_at DESC)`,
+  // anonymous notes are limited per sender, who is kept only as a keyed hash, per hour
+  `CREATE TABLE IF NOT EXISTS tt_limits (
+    k TEXT NOT NULL,
+    hour BIGINT NOT NULL,
+    n INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (k, hour)
+  )`,
 ];
+
+/** Bumped whenever SCHEMA changes, so a database already up to date is not locked for nothing. */
+const SCHEMA_VERSION = 3;
 
 // every read counts the Shadows a story has sparked
 const SELECT = `SELECT s.*, (SELECT COUNT(*)::int FROM tt_shadows c WHERE c.sparked_from = s.id) AS sparks FROM tt_shadows s`;
 
 export async function migrate(q: Query) {
+  await q(`CREATE TABLE IF NOT EXISTS tt_meta (k TEXT PRIMARY KEY, v INT NOT NULL)`);
+  const [m] = await q(`SELECT v FROM tt_meta WHERE k = 'schema'`);
+  if (m && Number(m.v) >= SCHEMA_VERSION) return;
   for (const s of SCHEMA) await q(s);
+  await q(`INSERT INTO tt_meta (k, v) VALUES ('schema', $1) ON CONFLICT (k) DO UPDATE SET v = EXCLUDED.v`, [SCHEMA_VERSION]);
+}
+
+/** A keyed one-way mark: without the site's secret it cannot be matched to anyone. */
+export async function mark(text: string, secret = process.env.SESSION_SECRET ?? 'twinthink') {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(text));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** At most `limit` a hour for one sender (an address, say), counted under a keyed hash. */
+export async function allowSender(q: Query, sender: string, limit = 10) {
+  const hour = Math.floor(Date.now() / 3600000);
+  const k = (await mark(`note|${sender}`)).slice(0, 32);
+  const [r] = await q(
+    `INSERT INTO tt_limits (k, hour, n) VALUES ($1, $2, 1) ON CONFLICT (k, hour) DO UPDATE SET n = tt_limits.n + 1 RETURNING n`,
+    [k, hour]
+  );
+  // old hours are cleared now and then
+  if (Math.random() < 0.02) await q(`DELETE FROM tt_limits WHERE hour < $1`, [hour - 1]);
+  return Number(r.n) <= limit;
 }
 
 /** Plain words: trimmed, no control characters, within a length. */
@@ -122,12 +166,8 @@ function row(r: Record<string, unknown>): ServerShadow {
     kind: r.kind === 'story' ? 'story' : 'shadow',
     from: r.sparked_from ? String(r.sparked_from) : null,
     sparks: Number(r.sparks ?? 0),
+    hidden: r.hidden === true,
   };
-}
-
-async function digest(text: string) {
-  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 function newId() {
@@ -169,8 +209,12 @@ export async function createShadow(
     if (!src || src.kind !== 'story' || !src.public || src.hidden) return { error: 'That story is not here any more.' } as const;
     from = src.id;
   }
-  const [{ n }] = await q(`SELECT COUNT(*)::int AS n FROM tt_shadows WHERE owner_sub = $1 AND created_at > NOW() - INTERVAL '1 day'`, [who.sub]);
-  if (Number(n) >= POSTS_PER_DAY) return { error: 'That is enough for today; come back tomorrow.' } as const;
+  // counted and claimed in one statement, so a burst of posts cannot slip past the limit together
+  const claimed = await q(
+    `INSERT INTO tt_post_log (owner_sub) SELECT $1 WHERE (SELECT COUNT(*) FROM tt_post_log WHERE owner_sub = $1 AND created_at > NOW() - INTERVAL '1 day') < $2 RETURNING 1`,
+    [who.sub, POSTS_PER_DAY]
+  );
+  if (!claimed.length) return { error: 'That is enough for today; come back tomorrow.' } as const;
   // stories are told to everyone; a Shadow stays private until its maker shares it
   const rows = await q(
     `INSERT INTO tt_shadows (id, owner_sub, owner_name, title, body, is_public, kind, sparked_from) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
@@ -191,9 +235,9 @@ export async function myShadows(q: Query, sub: string): Promise<ServerShadow[]> 
   return rows.map(row);
 }
 
-export async function getShadow(q: Query, id: string): Promise<(ServerShadow & { hidden: boolean }) | null> {
+export async function getShadow(q: Query, id: string): Promise<ServerShadow | null> {
   const rows = await q(`${SELECT} WHERE s.id = $1`, [id]);
-  return rows[0] ? { ...row(rows[0]), hidden: rows[0].hidden === true } : null;
+  return rows[0] ? row(rows[0]) : null;
 }
 
 /** Only its maker changes a Shadow. */
@@ -231,13 +275,14 @@ export async function report(q: Query, reporter: string, id: string, reason: unk
   const s = await getShadow(q, id);
   if (!s || !s.public || s.hidden) return { error: 'Not found.' } as const;
   // only a one-way mark that this person reported this one thing, so it counts once
-  const mark = await digest(`${reporter}:${id}`);
+  const who = await mark(`report|${reporter}|${id}`);
   await q(`INSERT INTO tt_reports (shadow_id, reason, reporter) VALUES ($1, $2, $3) ON CONFLICT (shadow_id, reporter) DO NOTHING`, [
     id,
     clean(reason, 300, true) ?? '',
-    mark,
+    who,
   ]);
-  const [{ n }] = await q(`SELECT COUNT(*)::int AS n FROM tt_reports WHERE shadow_id = $1`, [id]);
+  // reports from before sign-in was needed (no reporter) do not count toward hiding
+  const [{ n }] = await q(`SELECT COUNT(*)::int AS n FROM tt_reports WHERE shadow_id = $1 AND reporter IS NOT NULL`, [id]);
   if (Number(n) >= REPORTS_TO_HIDE) await q(`UPDATE tt_shadows SET hidden = TRUE WHERE id = $1`, [id]);
   return { ok: true } as const;
 }

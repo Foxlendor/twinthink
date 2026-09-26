@@ -717,6 +717,11 @@ describe('signing in', () => {
   it('after signing in, only ever returns to a page on this site', () => {
     expect(safeNext('/canvas#path=dance')).toBe('/canvas#path=dance');
     expect(safeNext('https://evil.example')).toBe('/canvas');
+    // browsers drop tabs and line breaks, and read a backslash as a slash
+    for (const bad of ['/\t/evil.example', '/\n/evil.example', '/\r\\evil.example', '/\\evil.example', '//evil.example', '/%09/x'.replace('%09', '\t')]) {
+      expect(safeNext(bad)).toBe('/canvas');
+    }
+    expect(safeNext('/canvas?x=1')).toBe('/canvas?x=1');
     expect(safeNext('//evil.example')).toBe('/canvas');
     expect(safeNext('/\\evil.example')).toBe('/canvas');
     expect(safeNext(null)).toBe('/canvas');

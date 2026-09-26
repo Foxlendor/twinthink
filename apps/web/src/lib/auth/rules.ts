@@ -12,8 +12,18 @@ export function isOwner(email: string | undefined, verified: boolean | undefined
 
 /** Where to go after signing in: only a path on this site, never another site. */
 export function safeNext(next: string | null | undefined): string {
-  if (!next || !next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) return '/canvas';
-  return next.slice(0, 500);
+  if (!next || !next.startsWith('/') || next.length > 500) return '/canvas';
+  // browsers drop tabs and line breaks and read \\ as /, so none of those are allowed at all
+  if (/[\u0000-\u001f\u007f\\]/.test(next)) return '/canvas';
+  let u: URL;
+  try {
+    u = new URL(next, 'https://here.invalid');
+  } catch {
+    return '/canvas';
+  }
+  // and whatever it resolves to must still be this site
+  if (u.origin !== 'https://here.invalid') return '/canvas';
+  return u.pathname + u.search + u.hash;
 }
 
 export interface SessionUser {
