@@ -5,13 +5,14 @@
 // Rules:
 // - Only posts from accounts their owner has linked may appear. Linking an
 //   account is the owner's permission. johne.boi linked his on 2026-09-25.
-// - Shown: his words and the moment. Never shown: images, or where a post was
-//   first published (no platform names, no logos). The source is kept here
-//   only so each trace can be checked.
+// - Shown: his words, the moment, and the film itself when he has handed it
+//   over (FILMS below: his own footage, printed in ink like everything else).
+//   Never shown: where a post was first published (no platform names, no
+//   logos). The source is kept here only so each trace can be checked.
 // - Nothing is invented: times are decoded from each post's own id, which
 //   carries the moment it was created, and words are copied as he wrote them.
 
-import { IdeaNode } from '../model';
+import { IdeaNode, Media } from '../model';
 import { hashString } from '../rng';
 
 /** Accounts the owner has linked. Only their posts may become traces. */
@@ -57,6 +58,22 @@ export const TRACES: Trace[] = [
   },
   { id: 'DdQXMEwPyDP', platform: 'instagram', owner: 'johne.boi', at: '2026-09-14T05:15:36Z', words: 'GOD KNOWS EVERY1 of my CRHYMES', belongsTo: 'music/crhymes' },
 ];
+
+/**
+ * The footage of a post, when he has handed the file over: served from
+ * /films/moments/<post id>.mp4 (+ .webm, .jpg poster). Width over height.
+ */
+export const FILMS: Record<string, { aspect: number }> = {};
+
+/** A post's film, as the Canvas plays it: printed on the page, signed by him. */
+export function filmOf(id: string): Media[] | undefined {
+  const f = FILMS[id];
+  if (!f) return undefined;
+  const base = `/films/moments/${id}`;
+  // tall phone footage is narrower on the page, so it is not taller than the screen
+  const w = f.aspect < 1 ? 0.95 : 1.5;
+  return [{ kind: 'video', src: `${base}.mp4`, webm: `${base}.webm`, poster: `${base}.jpg`, x: 0, y: 0, w, aspect: 1 / f.aspect, by: 'johne.boi' }];
+}
 
 /** Whether a trace comes from an account its owner has linked. */
 export function isLinked(t: Pick<Trace, 'platform' | 'owner'>): boolean {
@@ -126,7 +143,9 @@ export function buildMoments(): IdeaNode {
       state: 'alive',
       disclosure: 0,
       line: when(t),
-      artifact: t.words.trim() ? { type: 'text', body: t.words.trim() } : undefined,
+      // with its film, the words stay as its name and line; without, they are what is shown
+      artifact: !FILMS[t.id] && t.words.trim() ? { type: 'text', body: t.words.trim() } : undefined,
+      media: filmOf(t.id),
       children: [],
       x: 0,
       y: 0,
