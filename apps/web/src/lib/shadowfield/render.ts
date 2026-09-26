@@ -669,6 +669,28 @@ function drawMedia(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: n
   }
 }
 
+
+let negSheet: HTMLCanvasElement | null = null;
+
+/** A frame as its negative, on one reused sheet no larger than it needs to be. */
+function negative(src: CanvasImageSource, W: number, H: number): HTMLCanvasElement {
+  const scale = Math.min(1, 1100 / Math.max(W, H, 1));
+  const w = Math.max(1, Math.round(W * scale));
+  const h = Math.max(1, Math.round(H * scale));
+  negSheet ??= document.createElement('canvas');
+  if (negSheet.width !== w || negSheet.height !== h) {
+    negSheet.width = w;
+    negSheet.height = h;
+  }
+  const c = negSheet.getContext('2d')!;
+  c.globalCompositeOperation = 'source-over';
+  c.drawImage(src, 0, 0, w, h);
+  c.globalCompositeOperation = 'difference';
+  c.fillStyle = '#ffffff';
+  c.fillRect(0, 0, w, h);
+  c.globalCompositeOperation = 'source-over';
+  return negSheet;
+}
 /**
  * A film inside an idea. Far away its poster stands in, pale as a shadow; near,
  * the film itself plays (silently until tapped), looping within [from, to].
@@ -722,24 +744,29 @@ export function drawVideo(
     }
   }
   // printed onto the paper: its whites become the page, its darks become ink
-  // (at night a drawing is printed as its negative: pale lines on dark paper)
-  ctx.globalCompositeOperation = NIGHT ? 'source-over' : 'multiply';
-  if (live && live.readyState >= 2) ctx.drawImage(live, x0, y0, W, H);
+  let frame: CanvasImageSource | null = null;
+  if (live && live.readyState >= 2) frame = live;
   else {
     const poster = getImage(m.poster);
     if (poster) {
       const need = Math.max(0, Math.floor(Math.log2(poster.img.naturalWidth / Math.max(W, 1))));
       const lvl = Math.min(poster.mips.length - 1, Math.max(Math.round((1 - reveal) * 4), need));
-      ctx.drawImage(poster.mips[lvl], x0, y0, W, H);
-    } else {
-      ctx.fillStyle = `rgba(${INK},0.05)`;
-      ctx.fillRect(x0, y0, W, H);
+      frame = poster.mips[lvl];
     }
   }
-  if (NIGHT && !m.round) {
-    ctx.globalCompositeOperation = 'difference';
-    ctx.fillStyle = '#ffffff';
+  if (!frame) {
+    ctx.fillStyle = `rgba(${INK},0.05)`;
     ctx.fillRect(x0, y0, W, H);
+  } else if (NIGHT && !m.round) {
+    // at night a drawing is printed as its negative, pale lines on the dark page:
+    // inverted whole on a sheet of its own, then only its light is laid down, so
+    // its paper leaves the night's paper as it was (no pale box around it)
+    const neg = negative(frame, W, H);
+    ctx.globalCompositeOperation = 'lighten';
+    ctx.drawImage(neg, x0, y0, W, H);
+  } else {
+    ctx.globalCompositeOperation = NIGHT ? 'source-over' : 'multiply';
+    ctx.drawImage(frame, x0, y0, W, H);
   }
   ctx.globalCompositeOperation = 'source-over';
   if (!m.round) {
