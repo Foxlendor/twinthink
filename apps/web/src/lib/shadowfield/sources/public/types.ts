@@ -7,7 +7,8 @@ export type PublicCategory =
   | 'Interfaces & materials'
   | 'Games & interactive systems'
   | 'AI-native experiments'
-  | 'Creative worlds'\n  | 'Music & performance';
+  | 'Creative worlds'
+  | 'Music & performance';
 
 export interface PublicIdeaRecord {
   id: string;
