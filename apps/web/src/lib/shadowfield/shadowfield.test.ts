@@ -26,6 +26,7 @@ import { topologyOf, strandAt } from './layout';
 import { IdeaNode, countEvents, findPath, reachedBy, rippleReach, webSize } from './model';
 import { buildWorld, resolvePath } from './world';
 import { THROWAWAYS } from './sources/archive';
+import { TRACES, isLinked } from './sources/traces';
 import { AUTHOR } from './sources/author';
 import { isOwner, safeNext } from '../auth/rules';
 import { createLocalStore, localShadowNode } from './sources/local';
@@ -349,6 +350,50 @@ describe('throwaways', () => {
     const node = localShadowNode(store.list().find((v) => v.id === s.id)!);
     expect(node.ownedBy).toBe('viewer');
     expect(node.line).toContain('johne.boi');
+  });
+});
+
+describe('traces: what he shared elsewhere', () => {
+  const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  const decodedTime = (code: string) => {
+    let n = BigInt(0);
+    for (const ch of code) n = n * BigInt(64) + BigInt(ALPHA.indexOf(ch));
+    return Number((n >> BigInt(23)) + BigInt(1314220021721));
+  };
+
+  it('only comes from accounts the owner linked, at the moment each post was made', () => {
+    for (const t of TRACES) {
+      expect(isLinked(t), t.id).toBe(true);
+      // the time is the post's own, not typed in (to the second)
+      expect(Math.abs(Date.parse(t.at) - decodedTime(t.id)), t.id).toBeLessThan(1000);
+    }
+    expect(isLinked({ platform: 'instagram', owner: 'someone.else' })).toBe(false);
+  });
+
+  it('is woven into what it belongs to', () => {
+    const world = buildWorld([]);
+    const music = world.children.find((c) => c.id === 'music')!;
+    const crhymes = music.children.find((c) => c.id === 'music/crhymes')!;
+    expect(crhymes.events.some((e) => e.kind === 'evidence' && e.note?.includes('CRHYMES'))).toBe(true);
+    const dance = world.children.find((c) => c.id === 'dance')!;
+    expect(dance.began).toBeLessThanOrEqual(Date.parse('2024-06-25T10:59:55Z'));
+    const moments = world.children.find((c) => c.id === 'moments')!;
+    expect(moments.children.length).toBe(TRACES.filter((t) => !t.belongsTo).length);
+  });
+
+  it('shows his words and the moment: never images, never where it was posted', () => {
+    const world = buildWorld([]);
+    const shown: string[] = [];
+    const visit = (n: IdeaNode) => {
+      if (n.id.startsWith('moment')) {
+        expect(n.media ?? []).toEqual([]);
+        shown.push(n.title ?? '', n.line ?? '', n.artifact?.type === 'text' ? n.artifact.body : '');
+      }
+      for (const e of n.events) if (e.note?.startsWith('shared')) shown.push(e.note);
+      if (!n.portal) n.children.forEach(visit);
+    };
+    visit(world);
+    for (const text of shown) expect(/instagram|insta|tiktok|discord|reels?/i.test(text), text).toBe(false);
   });
 });
 

@@ -341,8 +341,10 @@ export function restingPlace(stream: Stream, camZ: number, dir: number, skip?: (
   const da = ahead === null ? Infinity : ahead - camZ;
   const REACH = 0.9;
   const NEARBY = 0.55;
-  if (dir > 0) return da < REACH ? ahead : db < NEARBY ? back : null;
-  if (dir < 0) return db < REACH ? back : da < NEARBY ? ahead : null;
+  // (a push that lands exactly at the edge of reach still arrives: float error must not decide)
+  const EPS = 1e-9;
+  if (dir > 0) return da < REACH + EPS ? ahead : db < NEARBY ? back : null;
+  if (dir < 0) return db < REACH + EPS ? back : da < NEARBY ? ahead : null;
   if (db <= da) return db < NEARBY ? back : null;
   return da < NEARBY ? ahead : null;
 }

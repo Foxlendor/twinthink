@@ -11,6 +11,7 @@ import { buildThrowaways } from './sources/archive';
 import { buildStarters } from './sources/starters';
 import { buildMusic } from './sources/music';
 import { buildDance } from './sources/dance';
+import { buildMoments, weaveTraces } from './sources/traces';
 import { LocalShadow, localShadowNode } from './sources/local';
 
 export const CANVAS_EXTENT = 1;
@@ -20,6 +21,7 @@ let throwaways: IdeaNode | null = null;
 let starters: IdeaNode[] | null = null;
 let music: IdeaNode | null = null;
 let dance: IdeaNode | null = null;
+let moments: IdeaNode | null = null;
 let current: IdeaNode | null = null;
 
 export function buildWorld(local: LocalShadow[]): IdeaNode {
@@ -27,8 +29,13 @@ export function buildWorld(local: LocalShadow[]): IdeaNode {
   throwaways ??= buildThrowaways();
   starters ??= buildStarters();
   music ??= buildMusic();
-  dance ??= buildDance();
-  const children = [twinthink, ...starters, music, dance, throwaways, ...local.map(localShadowNode)];
+  if (!dance) {
+    dance = buildDance();
+    // what he shared elsewhere joins the songs and dances it belongs to
+    weaveTraces([music, dance]);
+  }
+  moments ??= buildMoments();
+  const children = [twinthink, ...starters, music, dance, moments, throwaways, ...local.map(localShadowNode)];
   const world = rootNode('canvas', children);
   current = world;
   for (const c of children) attachPortals(c);
