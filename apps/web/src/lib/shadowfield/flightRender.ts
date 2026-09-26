@@ -669,7 +669,14 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
         const size = Math.round(clamp(11 + R / 22, 12, s.gate ? 22 : 19) * 2) / 2;
         const song = s.node.media?.some((m) => m.kind === 'audio');
         // a song's name sits inside its ring; anything else's beneath it
-        const ty = s.gate ? Math.max(58, y - R - size * 0.6) : song ? y + R * 0.18 + size * 0.4 : y + R * 0.62 + size * 1.1;
+        let ty = s.gate ? Math.max(58, y - R - size * 0.6) : song ? y + R * 0.18 + size * 0.4 : y + R * 0.62 + size * 1.1;
+        // a film's name is written under it, below its signature, never across the picture
+        const film = !s.gate && !song ? s.node.media?.find((m) => m.kind === 'video') : undefined;
+        if (film && film.kind === 'video') {
+          const fit = filmFit(film.w * R, st.w);
+          const H = film.w * R * fit * film.aspect;
+          ty = Math.max(ty, y + film.y * R * fit + H / 2 + size * (film.by ? 2.4 : 1.3));
+        }
         // and the one line, only for the thing in front of you, only while you are still
         const sub = fs.here === s.node.id ? fs.lineFor?.(s) : undefined;
         titles.push({ text: s.node.title, x, y: ty, size, a: ta, near: 1 / dz, sub, subA: sub ? ta * (fs.still ?? 0) : 0 });

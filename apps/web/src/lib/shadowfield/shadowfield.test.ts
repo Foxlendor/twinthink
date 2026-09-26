@@ -27,7 +27,7 @@ import { topologyOf, strandAt } from './layout';
 import { IdeaNode, countEvents, findPath, reachedBy, rippleReach, webSize } from './model';
 import { buildWorld, resolvePath } from './world';
 import { THROWAWAYS } from './sources/archive';
-import { TRACES, isLinked } from './sources/traces';
+import { FILMS, TRACES, isLinked } from './sources/traces';
 import { AUTHOR } from './sources/author';
 import { isOwner, safeNext } from '../auth/rules';
 import { cleanNote } from '../notes/rules';
@@ -383,19 +383,28 @@ describe('traces: what he shared elsewhere', () => {
     expect(moments.children.length).toBe(TRACES.filter((t) => !t.belongsTo).length);
   });
 
-  it('shows his words and the moment: never images, never where it was posted', () => {
+  it('shows his words, the moment and only his own films: never where it was posted', () => {
     const world = buildWorld([]);
     const shown: string[] = [];
+    let films = 0;
     const visit = (n: IdeaNode) => {
-      if (n.id.startsWith('moment')) {
-        expect(n.media ?? []).toEqual([]);
+      if (n.id.startsWith('moment/')) {
+        const id = n.id.slice('moment/'.length);
+        for (const m of n.media ?? []) {
+          // the only thing carried is the film he handed over, served from this site
+          expect(m.kind).toBe('video');
+          expect(m.kind === 'video' && m.src).toBe(`/films/moments/${id}.mp4`);
+          expect(existsSync(join(process.cwd(), 'public', 'films', 'moments', `${id}.mp4`))).toBe(true);
+          films++;
+        }
         shown.push(n.title ?? '', n.line ?? '', n.artifact?.type === 'text' ? n.artifact.body : '');
       }
       for (const e of n.events) if (e.note?.startsWith('shared')) shown.push(e.note);
       if (!n.portal) n.children.forEach(visit);
     };
     visit(world);
-    for (const text of shown) expect(/instagram|insta|tiktok|discord|reels?/i.test(text), text).toBe(false);
+    expect(films).toBe(Object.keys(FILMS).length);
+    for (const text of shown) expect(/instagram|insta\b|tiktok|discord|\breels?\b/i.test(text), text).toBe(false);
   });
 });
 
@@ -576,7 +585,7 @@ describe('the flight', () => {
     const canvas = tw.children.find((c) => c.id === 'twinthink/canvas')!;
     // TwinThink was being worked on when its newest branch began: no silence
     expect(silence(tw, canvas)).toBe(0);
-    const songs = world.children.find((c) => c.id === 'music')!.children;
+    const songs = world.children.find((c) => c.id === 'music')!.children.filter((c) => c.media?.some((m) => m.kind === 'audio'));
     expect(silence(songs[0], songs[1])).toBeLessThan(3600000);
   });
 
@@ -677,13 +686,15 @@ describe('free music modules', () => {
     const world = buildWorld([]);
     const music = world.children.find((c) => c.id === 'music')!;
     expect(music.free).toBe(true);
-    expect(music.children).toHaveLength(7);
-    for (const s of music.children) {
+    // seven songs, and beside them a film of his that belongs with them
+    const songs = music.children.filter((c) => !c.id.startsWith('moment/'));
+    expect(songs).toHaveLength(7);
+    for (const s of songs) {
       expect(s.free).toBe(true);
       const a = s.media?.find((m) => m.kind === 'audio');
       expect(a && a.kind === 'audio' && a.src).toMatch(/^\/music\/[a-z0-9-]+\.m4a$/);
     }
-    const times = music.children.map((s) => s.began);
+    const times = songs.map((s) => s.began);
     expect([...times].sort((a, b) => a - b)).toEqual(times);
   });
 });

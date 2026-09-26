@@ -63,7 +63,20 @@ export const TRACES: Trace[] = [
  * The footage of a post, when he has handed the file over: served from
  * /films/moments/<post id>.mp4 (+ .webm, .jpg poster). Width over height.
  */
-export const FILMS: Record<string, { aspect: number }> = {};
+// Fetched 2026-09-26 from his linked account, at his request, and made small for the web.
+export const FILMS: Record<string, { aspect: number }> = {
+  'C8ot6S0RsGg': { aspect: 432 / 768 },
+  'ChFx8JwpSC3': { aspect: 432 / 768 },
+  'DFE84eyO5xA': { aspect: 432 / 768 },
+  'DFtuMlmO3se': { aspect: 432 / 768 },
+  'DGCl2kyOAL-': { aspect: 432 / 768 },
+  'DGEkNcCyNTR': { aspect: 432 / 768 },
+  'DTmwFKkjmNa': { aspect: 432 / 768 },
+  'DWbpTnkji1l': { aspect: 432 / 768 },
+  'DcBm0YtvV-Y': { aspect: 1 },
+  'DdKHMNLPJSt': { aspect: 432 / 768 },
+  'DdQXMEwPyDP': { aspect: 432 / 768 },
+};
 
 /** A post's film, as the Canvas plays it: printed on the page, signed by him. */
 export function filmOf(id: string): Media[] | undefined {
@@ -71,8 +84,8 @@ export function filmOf(id: string): Media[] | undefined {
   if (!f) return undefined;
   const base = `/films/moments/${id}`;
   // tall phone footage is narrower on the page, so it is not taller than the screen
-  const w = f.aspect < 1 ? 0.95 : 1.5;
-  return [{ kind: 'video', src: `${base}.mp4`, webm: `${base}.webm`, poster: `${base}.jpg`, x: 0, y: 0, w, aspect: 1 / f.aspect, by: 'johne.boi' }];
+  const w = f.aspect < 1 ? 1.2 : 1.6;
+  return [{ kind: 'video', src: `${base}.mp4`, poster: `${base}.jpg`, x: 0, y: 0, w, aspect: 1 / f.aspect, by: 'johne.boi' }];
 }
 
 /** Whether a trace comes from an account its owner has linked. */
@@ -121,6 +134,8 @@ export function weaveTraces(roots: IdeaNode[]) {
     if (!node || node.events.some((e) => e.t === Date.parse(t.at))) continue;
     const e = eventOf(t);
     node.events = [...node.events, e].sort((a, b) => a.t - b.t);
+    // its film is carried inside what it belongs to, as a moment of its own
+    if (FILMS[t.id]) node.children = [...node.children, momentNode(t)].sort((a, b) => a.began - b.began);
     node.began = Math.min(node.began, e.t);
     // siblings kept in the order they began stay in that order
     const parent = parentOf.get(node);
@@ -128,31 +143,35 @@ export function weaveTraces(roots: IdeaNode[]) {
   }
 }
 
+/** One thing he shared, as a moment: his words, and his film if it has been handed over. */
+function momentNode(t: Trace): IdeaNode {
+  const at = Date.parse(t.at);
+  return {
+    id: `moment/${t.id}`,
+    // a film he gave no words is named by its day
+    title: !t.words.trim() && FILMS[t.id] ? when(t) : nameOf(t),
+    kind: 'visual',
+    origin: 'real',
+    began: at,
+    events: [{ t: at, kind: 'begin', note: 'shared' }],
+    state: 'alive',
+    disclosure: 0,
+    line: !t.words.trim() && FILMS[t.id] ? undefined : when(t),
+    // with its film, the words stay as its name and line; without, they are what is shown
+    artifact: !FILMS[t.id] && t.words.trim() ? { type: 'text', body: t.words.trim() } : undefined,
+    media: filmOf(t.id),
+    children: [],
+    x: 0,
+    y: 0,
+    r: 0.05,
+    seed: hashString(t.id),
+  };
+}
+
 /** Moments: what he shared that belongs to nothing else yet, oldest first. */
 export function buildMoments(): IdeaNode {
   const loose = TRACES.filter((t) => !t.belongsTo && isLinked(t)).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
-  const children: IdeaNode[] = loose.map((t) => {
-    const at = Date.parse(t.at);
-    return {
-      id: `moment/${t.id}`,
-      title: nameOf(t),
-      kind: 'visual',
-      origin: 'real',
-      began: at,
-      events: [{ t: at, kind: 'begin', note: 'shared' }],
-      state: 'alive',
-      disclosure: 0,
-      line: when(t),
-      // with its film, the words stay as its name and line; without, they are what is shown
-      artifact: !FILMS[t.id] && t.words.trim() ? { type: 'text', body: t.words.trim() } : undefined,
-      media: filmOf(t.id),
-      children: [],
-      x: 0,
-      y: 0,
-      r: 0.05,
-      seed: hashString(t.id),
-    };
-  });
+  const children: IdeaNode[] = loose.map(momentNode);
   const first = children.length ? children[0].began : Date.now();
   return {
     id: 'moments',
