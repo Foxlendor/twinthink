@@ -28,15 +28,14 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   // shared links and their cards resolve against the site itself
   metadataBase: new URL("https://twinth.ink"),
-  title: "TWINTH.INK | The digital shadow of physical reality.",
-  description: "A living digital shadow for things people imagine, build, and test. The ink is where you think.",
-  keywords: ["twin", "thermodynamic simulation", "hardware engineering", "open source hardware", "Resip", "thermal straw", "digital shadow"],
+  title: "twinth.ink",
+  description: "A place where ideas are kept, given away, and built on.",
   authors: [{ name: "anonymous" }],
   creator: "anonymous",
   publisher: "TwinThink",
   openGraph: {
-    title: "TWINTH.INK | The digital shadow of physical reality.",
-    description: "A living digital shadow for things people imagine, build, and test. The ink is where you think.",
+    title: "twinth.ink",
+    description: "A place where ideas are kept, given away, and built on.",
     url: "https://www.twinth.ink",
     siteName: "TwinThink",
     type: "website",

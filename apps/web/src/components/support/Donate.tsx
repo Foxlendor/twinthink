@@ -52,25 +52,25 @@ export default function Donate({
     amount: {
       background: 'none',
       border: 'none',
-      borderBottom: '1px solid rgba(30,28,36,0.2)',
+      borderBottom: '1px solid rgba(var(--ink, 30, 28, 36),0.2)',
       padding: '2px 0',
       fontFamily: 'var(--font-serif), Georgia, serif',
       fontStyle: 'italic',
       fontSize: compact ? '1rem' : '1.3rem',
-      color: 'rgba(30,28,36,0.8)',
+      color: 'rgba(var(--ink, 30, 28, 36),0.8)',
       cursor: busy ? 'wait' : 'pointer',
     },
     input: {
       width: compact ? 64 : 90,
       background: 'transparent',
       border: 'none',
-      borderBottom: '1px solid rgba(30,28,36,0.2)',
+      borderBottom: '1px solid rgba(var(--ink, 30, 28, 36),0.2)',
       fontFamily: 'var(--font-serif), Georgia, serif',
       fontStyle: 'italic',
       fontSize: compact ? '1rem' : '1.3rem',
       outline: 'none',
     },
-    msg: { marginTop: 8, fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'rgba(30,28,36,0.55)' },
+    msg: { marginTop: 8, fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'rgba(var(--ink, 30, 28, 36),0.55)' },
   };
 
   return (
@@ -100,7 +100,7 @@ export default function Donate({
           />
         </form>
         {onDone && (
-          <button type="button" style={{ ...style.amount, border: 'none', color: 'rgba(30,28,36,0.4)' }} onClick={onDone}>
+          <button type="button" style={{ ...style.amount, border: 'none', color: 'rgba(var(--ink, 30, 28, 36),0.4)' }} onClick={onDone}>
             not now
           </button>
         )}

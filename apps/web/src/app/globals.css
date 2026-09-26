@@ -67,6 +67,8 @@ html[data-theme='dark'] {
   --border-color: #2A2833;
   --accent-primary: #ECE9F2;
   --ink-primary: #ECE9F2;
+  /* ink as an rgb triplet, for pages drawn like the Canvas */
+  --ink: 232, 228, 238;
   --header-bg: rgba(15, 15, 19, 0.9);
   --card-bg: rgba(22, 22, 28, 0.9);
   --logo-pattern-opacity: 0.1;
@@ -112,10 +114,10 @@ body::before {
   left: -50%;
   width: 200vw;
   height: 200vh;
-  background-image: url('/logo.png');
+  /* no logos behind the page: only the paper (the pattern is kept, switched off) */
+  background-image: none;
   background-repeat: repeat;
   background-size: 240px auto;
-  /* the mirrored logo pattern: visible, still quiet */
   opacity: var(--logo-pattern-opacity);
   pointer-events: none;
   z-index: -1;

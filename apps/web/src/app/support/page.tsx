@@ -21,7 +21,7 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
   return (
     <main
       className={serif.variable}
-      style={{ minHeight: '80vh', display: 'grid', placeItems: 'center', background: '#fbfaf7', padding: '48px 20px' }}
+      style={{ minHeight: 'calc(100vh - 64px)', display: 'grid', placeItems: 'center', padding: '48px 20px' }}
     >
       <div style={{ maxWidth: 520, width: '100%' }}>
         <h1
@@ -30,20 +30,20 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
             fontStyle: 'italic',
             fontWeight: 400,
             fontSize: '2.2rem',
-            color: '#1e1c24',
+            color: 'var(--text-primary)',
             margin: 0,
           }}
         >
           {thanks ? 'thank you.' : 'keep ideas alive.'}
         </h1>
-        <p style={{ fontFamily: 'var(--font-serif), Georgia, serif', fontSize: '1.15rem', color: 'rgba(30,28,36,0.6)', margin: '14px 0 28px' }}>
+        <p style={{ fontFamily: 'var(--font-serif), Georgia, serif', fontSize: '1.15rem', color: 'var(--text-secondary)', margin: '14px 0 28px' }}>
           {thanks
             ? 'Your gift went straight to keeping TwinThink running.'
-            : 'TwinThink has no ads to sell and no ideas to sell. If you want it to exist, you can help.'}
+            : 'No ads, and no one’s ideas for sale. If you want it to keep existing, you can help. A gift is only a gift: it buys nothing and pays nothing back.'}
         </p>
         {!thanks && <Donate />}
         <p style={{ marginTop: 36 }}>
-          <Link href="/canvas" style={{ fontFamily: 'var(--font-serif), Georgia, serif', fontStyle: 'italic', color: 'rgba(30,28,36,0.6)' }}>
+          <Link href="/canvas" style={{ fontFamily: 'var(--font-serif), Georgia, serif', fontStyle: 'italic', color: 'var(--text-secondary)' }}>
             back to the Canvas
           </Link>
         </p>
