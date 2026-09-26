@@ -61,10 +61,29 @@ export function setFilmRate(rate: number) {
   for (const v of videos.values()) v.playbackRate = rate;
 }
 
+/** At most this many films are kept loaded; the one used longest ago is let go first. */
+const LIVE_FILMS = 5;
+const usedAt = new Map<string, number>();
+
 export function getVideo(src: string, webm?: string): HTMLVideoElement | null {
   if (typeof document === 'undefined') return null;
   let v = videos.get(src);
+  usedAt.set(src, performance.now());
   if (!v) {
+    // make room: the resting film used longest ago lets go of what it loaded
+    while (videos.size >= LIVE_FILMS) {
+      let oldest: string | null = null;
+      for (const [k, o] of videos) {
+        if (!o.paused) continue;
+        if (oldest === null || (usedAt.get(k) ?? 0) < (usedAt.get(oldest) ?? 0)) oldest = k;
+      }
+      if (oldest === null) break;
+      const o = videos.get(oldest)!;
+      o.removeAttribute('src');
+      o.load();
+      videos.delete(oldest);
+      usedAt.delete(oldest);
+    }
     v = document.createElement('video');
     v.muted = true;
     v.playsInline = true;
@@ -110,6 +129,7 @@ export function toggleVideoSound(src: string, webm?: string): boolean {
   const v = getVideo(src, webm);
   if (!v) return false;
   v.muted = !v.muted;
+  if (!v.muted) v.volume = 1;
   soundOn = !v.muted;
   if (!v.muted) {
     // one film is heard at a time
@@ -126,6 +146,15 @@ export function hearFilm(src: string, webm?: string): boolean {
   if (!v) return false;
   for (const [k, o] of videos) if (k !== src) o.muted = true;
   v.muted = false;
+  // it swells in rather than starting at full voice
+  v.volume = 0;
+  const t0 = performance.now();
+  const swell = () => {
+    const k = Math.min(1, (performance.now() - t0) / 140);
+    v.volume = k;
+    if (k < 1 && !v.muted) requestAnimationFrame(swell);
+  };
+  requestAnimationFrame(swell);
   void v.play().catch(() => {
     // the browser would not allow it: quiet again, and wait for a tap
     v.muted = true;

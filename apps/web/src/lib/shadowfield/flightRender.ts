@@ -145,7 +145,8 @@ function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink, stream: 
   const speed = Math.abs(cam.shown);
   // how much of the wall is there: a whisper at rest, whole when moving
   const presence = 0.3 + 0.7 * smoothstep(0.15, 3, speed);
-  const fast = st.reduced ? 0 : clamp(cam.shown * 0.035, -1.1, 1.1);
+  // quick hops only stir the walls; real speed streams them
+  const fast = st.reduced ? 0 : clamp(cam.shown * 0.035, -1.1, 1.1) * smoothstep(3, 10, Math.abs(cam.shown));
   const level = st.audio?.level ?? 0;
   const clock = st.reduced ? 0 : st.clock ?? 0;
   // the axis at a place along the way: where the flight leans when it gets there

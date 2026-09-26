@@ -288,31 +288,96 @@ export interface FlightCam {
   from: number | null;
   /** The clock's own slow turning (radians), on top of the turn that travel gives. */
   spin: number;
-  /**
-   * A hop from one thing to another: the view dips back, pulls out wide as it
-   * travels, then zooms in and snaps into place on what it came for.
-   */
+  /** A hop under way: a spring pulling the camera onto the next thing. */
   hop: Hop | null;
+  /** How far the view is pulled out right now (a fraction of its scale), and how fast that changes. */
+  pull: number;
+  pullV: number;
+  /** Counts: hops begun, and landings (a landing is when a hop settles exactly on its thing). */
+  hops: number;
+  landed: number;
 }
+
+export type HopKind = 'step' | 'touch' | 'skim' | 'back' | 'catch' | 'threshold';
+
+/**
+ * How each kind of hop feels, as a spring: w is its stiffness (angular
+ * frequency, 1/s), zeta its damping (1 settles without overshoot, less
+ * overshoots a little and settles, like a magnet taking hold), breath how far
+ * the view pulls out wide on the way (only at thresholds).
+ */
+export const HOP_KINDS: Record<HopKind, { w: number; zeta: number; breath: number }> = {
+  step: { w: 12, zeta: 0.82, breath: 0 },
+  touch: { w: 16, zeta: 0.8, breath: 0 },
+  skim: { w: 20, zeta: 1, breath: 0 },
+  back: { w: 18, zeta: 0.9, breath: 0 },
+  catch: { w: 15, zeta: 0.7, breath: 0 },
+  threshold: { w: 7.5, zeta: 0.9, breath: 0.18 },
+};
 
 export interface Hop {
-  from: number;
   to: number;
-  /** Seconds into the hop, and how long it takes. */
-  t: number;
-  dur: number;
-  /** Carrying on from a hop already under way: no dip back, it keeps going. */
-  flow: boolean;
+  kind: HopKind;
+  w: number;
+  zeta: number;
+  breath: number;
+  /** The distance it began with (for how far through it is). */
+  e0: number;
 }
 
-/** Start a hop to camera z `to` (from wherever the camera is, even mid-hop). */
-export function hopTo(cam: FlightCam, to: number) {
-  const d = Math.abs(to - cam.z);
-  const flow = !!cam.hop && Math.sign(cam.hop.to - cam.hop.from) === Math.sign(to - cam.z);
-  cam.hop = { from: cam.z, to, t: 0, dur: Math.min(1.25, 0.55 + 0.2 * Math.log1p(d)), flow };
+/**
+ * One step of a damped spring pulling x toward `to`, solved exactly, so it
+ * moves the same however often it is stepped. Returns the new [x, v].
+ */
+export function springStep(x: number, v: number, to: number, w: number, zeta: number, dt: number): [number, number] {
+  const e0 = x - to;
+  if (zeta >= 1) {
+    const B = v + w * e0;
+    const k = Math.exp(-w * dt);
+    const e = (e0 + B * dt) * k;
+    return [to + e, (B - w * (e0 + B * dt)) * k];
+  }
+  const wd = w * Math.sqrt(1 - zeta * zeta);
+  const k = Math.exp(-zeta * w * dt);
+  const c = Math.cos(wd * dt);
+  const sn = Math.sin(wd * dt);
+  const B = (v + zeta * w * e0) / wd;
+  const e = k * (e0 * c + B * sn);
+  const ve = k * (-zeta * w * (e0 * c + B * sn) + (-e0 * wd * sn + B * wd * c));
+  return [to + e, ve];
+}
+
+/**
+ * Hop to camera z `to`. The camera keeps its position and speed, so changing
+ * where it is going mid-hop keeps its momentum. `gap` is the seconds since the
+ * last hop began: quick successive hops grow lighter and faster; `v` is the
+ * speed a hand threw it with.
+ */
+export function hopTo(cam: FlightCam, to: number, kind: HopKind = 'step', opts: { v?: number; gap?: number } = {}) {
+  const base = HOP_KINDS[kind];
+  const D = Math.abs(to - cam.z);
+  // cadence: in a quick run of hops each is lighter, quicker, and never breathes out
+  const s = 1 - smoothstep01(0.25, 0.9, opts.gap ?? 10);
+  let w = base.w + (20 - base.w) * s;
+  let zeta = base.zeta + (1 - base.zeta) * s;
+  const breath = base.breath * (1 - s);
+  // a long way is a little softer, so it does not whip
+  w *= Math.pow(Math.min(1, 1.6 / Math.max(D, 1e-6)), 0.35);
+  // a throw keeps the hand's speed toward the thing (never away from it), and damps harder the harder it is
+  const dir = Math.sign(to - cam.z) || 1;
+  let v = cam.hop ? cam.v : 0;
+  if (opts.v !== undefined) v = Math.max(0, Math.min(w * D, opts.v * dir)) * dir;
+  zeta = Math.min(1, zeta + 0.2 * smoothstep01(0.3, 1, Math.abs(v) / Math.max(w * D, 1e-6)));
+  cam.v = v;
+  cam.hop = { to, kind, w, zeta, breath, e0: Math.max(D, 1e-6) };
   cam.target = null;
-  cam.v = 0;
   cam.from = null;
+  cam.hops++;
+}
+
+function smoothstep01(a: number, b: number, x: number) {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
 }
 
 /** Where a hop is headed (or the camera, if none): the base for the next step. */
@@ -320,40 +385,48 @@ export function hopBase(cam: FlightCam) {
   return cam.hop ? cam.hop.to : cam.target ?? cam.z;
 }
 
-/** How far through its hop the camera is (0 at rest). */
-export function hopProgress(cam: FlightCam) {
-  return cam.hop ? Math.min(1, cam.hop.t / cam.hop.dur) : 0;
+/** Camera z where a station is in front of you (the Canvas itself is met from further back). */
+export function stopZ(stream: Stream, s: Station, camZ: number) {
+  const f = s.z - (s.depth === 0 ? ARRIVE : FOCUS);
+  return camZ + wrapDelta(f, camZ, stream.length);
 }
 
 /**
- * The hop's easing: a small dip back, a fast middle, and a slight overshoot
- * that settles, like something pulled into place by a magnet.
+ * Let go between things: go on to the thing ahead if it is within one step,
+ * otherwise back to the nearest. The camera always comes to rest on something.
  */
-export function hopEase(p: number) {
-  const c1 = 0.7;
-  const c2 = c1 * 1.525;
-  return p < 0.5
-    ? (Math.pow(2 * p, 2) * ((c2 + 1) * 2 * p - c2)) / 2
-    : (Math.pow(2 * p - 2, 2) * ((c2 + 1) * (p * 2 - 2) + c2) + 2) / 2;
-}
-
-/** Carrying on: straight into motion, and the same settling snap at the end. */
-export function flowEase(p: number) {
-  const c1 = 0.7;
-  const c3 = c1 + 1;
-  return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2);
-}
-
-/** How much the view pulls out mid-hop (a fraction of its scale). */
-export function hopZoom(cam: FlightCam) {
-  const h = cam.hop;
-  if (!h) return 0;
-  const p = Math.min(1, h.t / h.dur);
-  return Math.sin(Math.PI * p) * Math.min(0.42, 0.2 + 0.07 * Math.abs(h.to - h.from));
+export function settle(cam: FlightCam, stream: Stream, skip?: (s: Station) => boolean) {
+  if (cam.hop) return;
+  const [back, ahead] = focusAround(stream, cam.z, skip);
+  if (back === null && ahead === null) return;
+  if (back !== null && Math.abs(back - cam.z) < 1e-4) return;
+  if (ahead !== null && Math.abs(ahead - cam.z) < 1e-4) return;
+  const gap = back !== null && ahead !== null ? ahead - back : Infinity;
+  const toAhead = cam.dir > 0 && ahead !== null && ahead - cam.z < gap;
+  const to = toAhead ? ahead! : back === null ? ahead! : ahead === null ? back : cam.z - back <= ahead - cam.z ? back : ahead;
+  hopTo(cam, to, to === back ? 'back' : 'step');
 }
 
 export function newFlightCam(): FlightCam {
-  return { z: -ARRIVE, v: 0, wx: 0, wy: 0, panZ: -ARRIVE, target: null, idle: 0, held: false, dir: 0, shown: 0, from: null, spin: 0, hop: null };
+  return {
+    z: -ARRIVE,
+    v: 0,
+    wx: 0,
+    wy: 0,
+    panZ: -ARRIVE,
+    target: null,
+    idle: 0,
+    held: false,
+    dir: 0,
+    shown: 0,
+    from: null,
+    spin: 0,
+    hop: null,
+    pull: 0,
+    pullV: 0,
+    hops: 0,
+    landed: 0,
+  };
 }
 
 /** Called as the viewer starts to push: remembers the thing they were resting on. */
@@ -439,20 +512,24 @@ export function restingPlace(stream: Stream, camZ: number, dir: number, skip?: (
 
 export function stepFlightCam(cam: FlightCam, stream: Stream, dt: number, skip?: (s: Station) => boolean) {
   cam.idle += dt;
-  // every flight to somewhere is a hop
-  if (cam.target !== null) hopTo(cam, cam.target);
+  // every flight to somewhere is a hop (one that crosses into somewhere breathes out)
+  if (cam.target !== null) hopTo(cam, cam.target, Math.abs(cam.target - cam.z) > 2.5 ? 'threshold' : 'step');
+  // the view's pull springs toward how far the hop wants it pulled out, so it never jumps
+  const h0 = cam.hop;
+  const want = h0 && h0.breath > 0 ? h0.breath * Math.sin(Math.PI * (1 - Math.min(1, Math.abs(cam.z - h0.to) / h0.e0))) : 0;
+  [cam.pull, cam.pullV] = springStep(cam.pull, cam.pullV, want, 12, 1, dt);
+  if (Math.abs(cam.pull) < 1e-5 && Math.abs(cam.pullV) < 1e-5) cam.pull = cam.pullV = 0;
   if (cam.hop) {
     const h = cam.hop;
-    const z0 = cam.z;
-    h.t += dt;
-    const p = Math.min(1, h.t / h.dur);
-    cam.z = h.from + (h.to - h.from) * (h.flow ? flowEase(p) : hopEase(p));
-    cam.shown = dt > 0 ? (cam.z - z0) / dt : 0;
-    cam.v = 0;
-    if (p >= 1) {
+    [cam.z, cam.v] = springStep(cam.z, cam.v, h.to, h.w, h.zeta, dt);
+    cam.shown = cam.v;
+    // landed: close enough that the rest could not be seen, and nearly still (then exactly there)
+    if (Math.abs(cam.z - h.to) < 0.004 && Math.abs(cam.v) < 0.08) {
       cam.z = h.to;
+      cam.v = 0;
       cam.hop = null;
       cam.shown = 0;
+      cam.landed++;
     }
     return;
   }
@@ -572,11 +649,11 @@ export function viewOf(stream: Stream, cam: FlightCam, w: number, h: number, ski
   const M = flightScale(w, h);
   const [lx, ly] = leanAt(stream, cam.z, skip);
   // at speed the field of view widens a little, as if pulled forward
-  const rush = smooth((Math.abs(cam.shown) - 3) / 20);
+  const rush = smooth((Math.abs(cam.shown) - 6) / 18);
   const roll = rollAt(cam.z, cam.spin);
   const [px, py] = panAt(cam, stream.length);
-  // mid-hop the view pulls out wide, then zooms back in as it arrives
-  const F = M * (1 - 0.16 * rush) * (1 - hopZoom(cam));
+  // crossing a threshold the view breathes out wide, then zooms back in as it arrives
+  const F = M * (1 - 0.16 * rush) * (1 - cam.pull);
   return { z: cam.z, x: lx + px, y: ly + py, F, cx: w / 2, cy: h * 0.47, roll, rc: Math.cos(roll), rs: Math.sin(roll) };
 }
 

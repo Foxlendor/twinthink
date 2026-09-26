@@ -764,31 +764,107 @@ describe('today’s word', () => {
 });
 
 describe('hops', () => {
-  it('a hop dips back, pulls the view out, and snaps exactly onto what it came for', async () => {
-    const { hopTo, hopEase, hopZoom, viewOf: view } = await import('./flight');
-    const w = buildWorld([]);
-    const stream = buildStream(w);
+  const setup = () => {
+    const stream = buildStream(buildWorld([]));
     const cam = newFlightCam();
     const next = stepFocus(stream, cam.z, 1)!;
-    const start = cam.z;
-    hopTo(cam, next);
+    return { stream, cam, next };
+  };
+  const fly = (cam: ReturnType<typeof newFlightCam>, stream: ReturnType<typeof buildStream>, n = 400) => {
     const zs: number[] = [];
-    let widest = 0;
-    const F0 = view(stream, newFlightCam(), 390, 844).F;
-    for (let i = 0; i < 200 && cam.hop; i++) {
+    for (let i = 0; i < n && cam.hop; i++) {
       stepFlightCam(cam, stream, 1 / 60);
       zs.push(cam.z);
-      widest = Math.max(widest, hopZoom(cam));
     }
+    return zs;
+  };
+
+  it('lands exactly on what it came for, never moving back first, overshooting only a touch', async () => {
+    const { hopTo } = await import('./flight');
+    const { stream, cam, next } = setup();
+    const start = cam.z;
+    hopTo(cam, next, 'step');
+    const zs = fly(cam, stream);
     expect(cam.hop).toBeNull();
     expect(cam.z).toBe(next);
-    // it dipped back before going, and went a touch past before settling
-    expect(Math.min(...zs)).toBeLessThan(start);
-    expect(Math.max(...zs)).toBeGreaterThan(next);
-    expect(hopEase(0)).toBeCloseTo(0);
-    expect(hopEase(1)).toBeCloseTo(1);
-    // mid-hop the view was wider than at rest, and at rest it is itself again
-    expect(widest).toBeGreaterThan(0.15);
-    expect(view(stream, cam, 390, 844).F).toBeCloseTo(F0 * 1, 0);
+    expect(cam.landed).toBe(1);
+    expect(Math.min(...zs)).toBeGreaterThanOrEqual(start - 1e-9);
+    expect((Math.max(...zs) - next) / (next - start)).toBeLessThanOrEqual(0.02);
+  });
+
+  it('a step is quick: nine tenths of the way in about a quarter second', async () => {
+    const { hopTo } = await import('./flight');
+    const { stream, cam, next } = setup();
+    const start = cam.z;
+    hopTo(cam, next, 'step');
+    let t = 0;
+    while (cam.hop && (cam.z - start) / (next - start) < 0.9) {
+      stepFlightCam(cam, stream, 1 / 240);
+      t += 1 / 240;
+    }
+    expect(t).toBeGreaterThan(0.18);
+    expect(t).toBeLessThan(0.3);
+  });
+
+  it('a catch takes hold like a magnet: a little more overshoot, still settling exactly', async () => {
+    const { hopTo } = await import('./flight');
+    const { stream, cam, next } = setup();
+    const start = cam.z;
+    hopTo(cam, next, 'catch');
+    const zs = fly(cam, stream);
+    expect(cam.z).toBe(next);
+    expect((Math.max(...zs) - next) / (next - start)).toBeLessThanOrEqual(0.06);
+  });
+
+  it('changing where it goes mid-hop keeps its momentum and never jolts the view', async () => {
+    const { hopTo, viewOf: view } = await import('./flight');
+    const { stream, cam, next } = setup();
+    hopTo(cam, next + 2.5, 'threshold');
+    let F = view(stream, cam, 390, 844).F;
+    for (let i = 0; i < 90; i++) {
+      if (i === 12) hopTo(cam, stepFocus(stream, next, 1)!, 'step');
+      stepFlightCam(cam, stream, 1 / 60);
+      const F2 = view(stream, cam, 390, 844).F;
+      expect(Math.abs(F2 - F) / F).toBeLessThan(0.04);
+      F = F2;
+    }
+  });
+
+  it('only a threshold breathes out wide; in a quick run of hops, nothing does', async () => {
+    const { hopTo } = await import('./flight');
+    const { stream, cam, next } = setup();
+    hopTo(cam, next + 3, 'threshold');
+    let widest = 0;
+    for (let i = 0; i < 60; i++) {
+      stepFlightCam(cam, stream, 1 / 60);
+      widest = Math.max(widest, cam.pull);
+    }
+    expect(widest).toBeGreaterThan(0.08);
+    const b = setup();
+    hopTo(b.cam, b.next, 'step');
+    for (let i = 0; i < 60; i++) stepFlightCam(b.cam, b.stream, 1 / 60);
+    expect(b.cam.pull).toBe(0);
+    const c = setup();
+    hopTo(c.cam, c.next + 3, 'threshold', { gap: 0.1 });
+    let most = 0;
+    for (let i = 0; i < 60; i++) {
+      stepFlightCam(c.cam, c.stream, 1 / 60);
+      most = Math.max(most, c.cam.pull);
+    }
+    expect(most).toBeLessThan(0.005);
+  });
+
+  it('let go anywhere, it always comes to rest on something', async () => {
+    const { settle, nearestFocus: nf } = await import('./flight');
+    const stream = buildStream(buildWorld([]));
+    for (let k = 0; k < 200; k++) {
+      const cam = newFlightCam();
+      cam.z = ((k * 7919) % 1000) / 1000 * stream.length;
+      cam.dir = k % 3 === 0 ? 1 : 0;
+      settle(cam, stream);
+      for (let i = 0; i < 400 && cam.hop; i++) stepFlightCam(cam, stream, 1 / 60);
+      const f = nf(stream, cam.z)!;
+      expect(Math.abs(f - cam.z)).toBeLessThan(1e-3);
+    }
   });
 });
