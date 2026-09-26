@@ -30,15 +30,31 @@ import {
   HopKind,
   focusAround,
   settle,
+  stopZ,
 } from '@/lib/shadowfield/flight';
 import { VelocityTracker, WheelHops, landing, pxPerStop } from '@/lib/shadowfield/gesture';
+import {
+  Food,
+  Pluck,
+  WebMemory,
+  admitPlucks,
+  beginVisit,
+  emptyMemory,
+  findFood,
+  markMaker,
+  markSeen,
+  plucksFor,
+  readMemory,
+  trembleAt,
+  writeMemory,
+} from '@/lib/shadowfield/web';
 import { renderFlight } from '@/lib/shadowfield/flightRender';
 import { hash01, smoothstep } from '@/lib/shadowfield/rng';
 import Donate from '@/components/support/Donate';
 import { founderPlots } from '@/lib/shadowfield/plots';
 import { buildWorld, resolvePath } from '@/lib/shadowfield/world';
 import type { Posted } from '@/lib/shadowfield/sources/posted';
-import { wordFor } from '@/lib/shadowfield/prompts';
+import { dayOf, wordFor } from '@/lib/shadowfield/prompts';
 import { createLocalStore, LocalShadow, ShadowStore } from '@/lib/shadowfield/sources/local';
 import styles from './ShadowField.module.css';
 
@@ -266,6 +282,20 @@ export default function ShadowField({ serif }: Props) {
   const seenLandedRef = useRef(0);
   const landedAtRef = useRef(0);
   const hearNextRef = useRef<string | null>(null);
+  // the web that moves (see web.ts): what this device remembers, what is waiting, and plucks under way
+  const webMemRef = useRef<WebMemory>(emptyMemory());
+  const foodRef = useRef<Food[]>([]);
+  const foodSetRef = useRef<Set<string>>(new Set());
+  const foundAtRef = useRef<Map<string, number>>(new Map());
+  const plucksRef = useRef<Pluck[]>([]);
+  const echoesRef = useRef<Pluck[]>([]);
+  const lastPluckRef = useRef<Map<string, number>>(new Map());
+  const calmRef = useRef(1);
+  const hadFoodRef = useRef(false);
+  const eatRef = useRef<{ id: string; t: number } | null>(null);
+  const holdRef = useRef<{ timer: number; consumed: boolean }>({ timer: 0, consumed: false });
+  const wheelLastRef = useRef(0);
+  const findFoodRef = useRef<() => void>(() => undefined);
   const pinchRef = useRef<{ d: number; x: number; y: number } | null>(null);
   const hoverRef = useRef<Hit | null>(null);
   const monoRef = useRef('monospace');
@@ -334,11 +364,13 @@ export default function ShadowField({ serif }: Props) {
   const needleRef = useRef<SVGGElement | null>(null);
   const nextDotRef = useRef<SVGCircleElement | null>(null);
   const lapDotRef = useRef<SVGCircleElement | null>(null);
+  // the compass's rose dot: where something waits for you
+  const foodDotRef = useRef<SVGCircleElement | null>(null);
   // the compass is also a stick: held and pushed, it slides the view any way; the ring shows how far
   const youRef = useRef<SVGCircleElement | null>(null);
   const joyRef = useRef<{ id: number; x0: number; y0: number; dx: number; dy: number; moved: boolean } | null>(null);
   const centreRef = useRef(false);
-  const compassRef = useRef<{ roll: number; next: number | null } | undefined>(undefined);
+  const compassRef = useRef<{ roll: number; next: number | null; food: number | null } | undefined>(undefined);
   const [notesView, setNotesView] = useState<{ title: string; notes: { t: number; text: string }[] } | null>(null);
   const [me, setMe] = useState<{ enabled: boolean; user: { name: string; owner: boolean } | null } | null>(null);
   // work people have posted, kept on the server (see /api/shadows)
@@ -397,16 +429,32 @@ export default function ShadowField({ serif }: Props) {
     streamRef.current = stream;
     const fc = flightCamRef.current;
     // a flight under way keeps going to the same thing, wherever it now sits
-    const bound = oldStream && fc.target !== null ? focusOf(oldStream, fc.target) : null;
+    const going = fc.hop ? fc.hop.to : fc.target;
+    const bound = oldStream && going !== null ? focusOf(oldStream, going) : null;
     const idx = oldHere ? stream.byId.get(oldHere.node.id) : undefined;
+    const zBefore = fc.z;
     if (oldStream && oldHere && idx !== undefined) {
       const offset = wrapDelta(fc.z, oldHere.z - FOCUS, oldStream.length);
       fc.z = stream.stations[idx].z - FOCUS + offset;
       fc.target = null;
       hereRef.current = stream.stations[idx];
     }
+    // what the view was slid by stays where it was
+    fc.panZ += fc.z - zBefore;
+    prevZRef.current = null;
     const to = bound ? stream.byId.get(bound.node.id) : undefined;
-    if (bound && to !== undefined) fc.target = bound.depth === 0 ? fc.z + wrapDelta(-ARRIVE, fc.z, stream.length) : focusZ(stream, stream.stations[to], fc.z);
+    if (bound && to !== undefined) {
+      const z = stopZ(stream, stream.stations[to], fc.z);
+      if (fc.hop) {
+        fc.hop.to = z;
+        fc.hop.e0 = Math.max(Math.abs(z - fc.z), 1e-6);
+      } else fc.target = z;
+    } else if (fc.hop && oldStream) {
+      // what it was going to is gone: come to rest on something
+      fc.hop = null;
+      settle(fc, stream, skipRef.current);
+    }
+    findFoodRef.current();
     const cam = camRef.current;
     if (cam) {
       const ids = cam.path.slice(1).map((n) => n.id);
@@ -536,6 +584,9 @@ export default function ShadowField({ serif }: Props) {
     const now = performance.now();
     const gap = (now - lastHopAtRef.current) / 1000;
     lastHopAtRef.current = now;
+    // arriving at something waiting for you is a catch: it takes hold like a strike on the web
+    const stream = streamRef.current;
+    if (stream && kind !== 'threshold' && kind !== 'skim' && foodSetRef.current.has(focusOf(stream, to, skipRef.current).node.id)) kind = 'catch';
     hopTo(flightCamRef.current, to, kind, { gap, v });
   }, []);
 
@@ -584,6 +635,9 @@ export default function ShadowField({ serif }: Props) {
     const stream = buildStream(world);
     streamRef.current = stream;
     setMediaReadyCallback(() => undefined); // the frame loop repaints continuously
+    // the web remembers, on this device only, what you have found and when you were last here
+    webMemRef.current = beginVisit(readMemory(storage), Date.now());
+    writeMemory(storage, webMemRef.current);
     import('@google/model-viewer').catch(() => undefined);
     // exposed for scripted visual checks (e2e); read-only by convention
     (window as unknown as { __shadowField?: unknown }).__shadowField = {
@@ -721,6 +775,87 @@ export default function ShadowField({ serif }: Props) {
     setNightState(want);
   }, []);
 
+  /** Find what is waiting for you (called whenever the Canvas is rebuilt or posts arrive). */
+  const findFoodNow = useCallback(() => {
+    const stream = streamRef.current;
+    const world = worldRef.current;
+    if (!stream || !world) return;
+    const closed = skipRef.current;
+    const posted = [...postedRef.current.mine, ...postedRef.current.public.filter((p) => !p.mine)];
+    const fresh = stream.stations
+      .filter((s2) => s2.depth >= 1 && !s2.node.id.startsWith('p/'))
+      .map((s2) => ({ id: s2.node.id, began: s2.node.began, ring: s2.path[1]?.id }));
+    const foods = findFood({
+      posted,
+      keeps: postedRef.current.keeps ?? [],
+      memory: webMemRef.current,
+      today: dayOf(),
+      fresh,
+      open: (id) => {
+        const i = stream.byId.get(id);
+        if (i === undefined) return false;
+        const s2 = stream.stations[i];
+        return !closed(s2) && !id.startsWith('local/') && s2.node.ownedBy !== 'viewer' && !s2.path.some((n) => n.id === 'sketchbook');
+      },
+    });
+    const now = performance.now() / 1000;
+    for (const f of foods) if (!foundAtRef.current.has(f.id)) foundAtRef.current.set(f.id, now);
+    foodRef.current = foods;
+    foodSetRef.current = new Set(foods.map((f) => f.id));
+    if (foods.length) hadFoodRef.current = true;
+  }, []);
+  useEffect(() => {
+    findFoodRef.current = findFoodNow;
+    findFoodNow();
+  }, [findFoodNow]);
+
+  /** Found: it no longer trembles, and the web settles a little. */
+  const eatFood = useCallback((id: string) => {
+    if (!foodSetRef.current.has(id)) return;
+    webMemRef.current = markSeen(webMemRef.current, id);
+    try {
+      writeMemory(window.localStorage, webMemRef.current);
+    } catch {
+      // private browsing: it is remembered for this visit only
+    }
+    foodRef.current = foodRef.current.filter((f) => f.id !== id);
+    foodSetRef.current = new Set(foodRef.current.map((f) => f.id));
+    ripple(id);
+  }, [ripple]);
+
+  /** Pluck the web yourself: everything still waiting answers once. */
+  const pluckWeb = useCallback(() => {
+    const stream = streamRef.current;
+    if (!stream) return;
+    const fc = flightCamRef.current;
+    const now = performance.now() / 1000;
+    echoesRef.current = foodRef.current.map((f, i) => {
+      const s2 = stream.stations[stream.byId.get(f.id) ?? 0];
+      let d = wrapDelta(s2.z, fc.z, stream.length);
+      if (d < 0) d += stream.length;
+      return { id: f.id, z: fc.z + d, t0: now + i * 0.22, a: 0.55 * f.strength, rose: f.rose };
+    });
+    if (!foodRef.current.length) setNotice('nothing is waiting');
+  }, []);
+
+  /** Go to the nearest thing waiting ahead (a crossing: the view breathes out on the way). */
+  const goToFood = useCallback((): boolean => {
+    const stream = streamRef.current;
+    if (!stream) return false;
+    const fc = flightCamRef.current;
+    let best: number | null = null;
+    for (const f of foodRef.current) {
+      const i = stream.byId.get(f.id);
+      if (i === undefined) continue;
+      let z = stopZ(stream, stream.stations[i], hopBase(fc));
+      if (z <= hopBase(fc) + 0.05) z += stream.length;
+      if (best === null || z < best) best = z;
+    }
+    if (best === null) return false;
+    hopFlight(best, 'threshold');
+    return true;
+  }, [hopFlight]);
+
   /** A tap on the compass: back to the middle if the view was slid; otherwise the clock stops or turns. */
   const tapCompass = () => {
     const stream = streamRef.current;
@@ -730,6 +865,8 @@ export default function ShadowField({ serif }: Props) {
       centreRef.current = true;
       return;
     }
+    // something waiting: the compass takes you to it
+    if (foodRef.current.length && goToFood()) return;
     spinRef.current = !spinRef.current;
     setNotice(spinRef.current ? 'the clock turns again' : 'the clock holds still');
   };
@@ -1016,6 +1153,26 @@ export default function ShadowField({ serif }: Props) {
     setNotice('signed out');
   };
 
+  // while you are here: remember that you were, and look for new work every two minutes
+  useEffect(() => {
+    const beat = window.setInterval(() => {
+      if (document.hidden) return;
+      webMemRef.current = { ...webMemRef.current, left: Date.now() };
+      try {
+        writeMemory(window.localStorage, webMemRef.current);
+      } catch {
+        // remembered for this visit only
+      }
+    }, 60000);
+    const look = window.setInterval(() => {
+      if (!document.hidden) void loadPosted();
+    }, 120000);
+    return () => {
+      window.clearInterval(beat);
+      window.clearInterval(look);
+    };
+  }, [loadPosted]);
+
   // leaving the Canvas silences everything; a hidden tab rests the films
   useEffect(() => {
     const onHide = () => {
@@ -1194,6 +1351,50 @@ export default function ShadowField({ serif }: Props) {
           audioState = { src: pl.src, progress: d > 0 ? au.el.currentTime / d : 0, level };
         }
       }
+      // the web: plucks on their rhythm (quiet while sound plays, while you read, or while a panel is open)
+      if (flying) {
+        const nowSec = nowMs / 1000;
+        const reading = !!here?.node.artifact && nowMs - landedAtRef.current < 8000;
+        const hushed = !!playingRef.current || reading || uiBusyRef.current;
+        const fresh: Pluck[] = [];
+        for (const f of foodRef.current) {
+          const i = stream.byId.get(f.id);
+          if (i === undefined) continue;
+          const times = plucksFor(f.id, foundAtRef.current.get(f.id) ?? nowSec, nowSec);
+          const t = times[times.length - 1];
+          if (t === undefined || t <= (lastPluckRef.current.get(f.id) ?? -1)) continue;
+          lastPluckRef.current.set(f.id, t);
+          if (hushed) continue;
+          let d = wrapDelta(stream.stations[i].z, fc.z, stream.length);
+          if (d < 0) d += stream.length;
+          fresh.push({ id: f.id, z: fc.z + d, t0: t, a: f.strength, rose: f.rose });
+        }
+        plucksRef.current = admitPlucks([...plucksRef.current, ...fresh], nowSec);
+        echoesRef.current = echoesRef.current.filter((p) => nowSec - p.t0 < 3);
+        // found: staying a moment with something waiting
+        if (here && foodSetRef.current.has(here.node.id) && !fc.hop && !fc.held) {
+          if (eatRef.current?.id !== here.node.id) eatRef.current = { id: here.node.id, t: nowMs };
+          else if (nowMs - eatRef.current.t > 1200) {
+            eatRef.current = null;
+            eatFood(here.node.id);
+          }
+        } else eatRef.current = null;
+        // a maker whose ring you stayed in: their new work will stir the web
+        if (here?.node.id.startsWith('maker/') && nowMs - hereSinceRef.current.t > 1500) {
+          const key = here.node.id.slice('maker/'.length);
+          if (!webMemRef.current.makers.includes(key)) {
+            webMemRef.current = markMaker(webMemRef.current, key);
+            try {
+              writeMemory(window.localStorage, webMemRef.current);
+            } catch {
+              // remembered for this visit only
+            }
+          }
+        }
+        // caught up: once everything that moved has been reached, the tunnel breathes out and goes still
+        const calmTo = !foodRef.current.length && hadFoodRef.current ? 0.2 : 1;
+        calmRef.current += (calmTo - calmRef.current) * (1 - Math.exp(-dt / 1));
+      }
       // setting off: what lies ahead is readied, and a song begins as you come to it
       if (flying && fc.hops !== seenHopsRef.current && fc.hop) {
         seenHopsRef.current = fc.hops;
@@ -1293,6 +1494,12 @@ export default function ShadowField({ serif }: Props) {
           here: here?.node.id,
           still,
           compass: undefined,
+          web: {
+            plucks: echoesRef.current.length ? [...plucksRef.current, ...echoesRef.current] : plucksRef.current,
+            now: nowMs / 1000,
+            food: foodSetRef.current,
+            calm: calmRef.current,
+          },
           lineFor: (s) => {
             const line = hasMedia(s.node, 'audio') && soundBlockedRef.current && !playingRef.current ? 'tap to hear it' : s.node.line;
             return line && written < line.length ? line.slice(0, Math.floor(written)) : line;
@@ -1337,7 +1544,17 @@ export default function ShadowField({ serif }: Props) {
       // the compass: world-up, where you are in the lap, where the next thing lies
       const comp = compassRef.current;
       if (flying && comp && needleRef.current) {
-        needleRef.current.setAttribute('transform', `rotate(${(comp.roll * 180) / Math.PI} 23 23)`);
+        // the needle twitches as a pluck reaches you
+        const twitch = plucksRef.current.length ? trembleAt(plucksRef.current, fc.z, fc.z, nowMs / 1000).T * 25 : 0;
+        needleRef.current.setAttribute('transform', `rotate(${(comp.roll * 180) / Math.PI + twitch} 23 23)`);
+        const fd = foodDotRef.current;
+        if (fd) {
+          fd.style.opacity = comp.food === null ? '0' : '1';
+          if (comp.food !== null) {
+            fd.setAttribute('cx', String(23 + Math.cos(comp.food) * 17));
+            fd.setAttribute('cy', String(23 + Math.sin(comp.food) * 17));
+          }
+        }
         const nd = nextDotRef.current;
         if (nd) {
           nd.style.opacity = comp.next === null ? '0' : '1';
@@ -1517,7 +1734,7 @@ export default function ShadowField({ serif }: Props) {
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [access, serif, hiddenStation, toggleSong]);
+  }, [access, serif, hiddenStation, toggleSong, eatFood]);
 
   useEffect(() => {
     uiBusyRef.current = !!(composer || giving || givingTo || sketching || replayView || notice);
@@ -1554,6 +1771,12 @@ export default function ShadowField({ serif }: Props) {
         fc.idle = 0;
         const d = (Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX) * unit;
         const dir = wheelHopsRef.current.push(e.ctrlKey ? -d * 3 : d, e.timeStamp || performance.now(), e.deltaMode !== 0);
+        const nowMs = performance.now();
+        const sinceWheel = nowMs - wheelLastRef.current;
+        wheelLastRef.current = nowMs;
+        // a scroll that reaches something waiting stops there, until the hand pauses
+        const atFood = foodSetRef.current.has(focusOf(stream, hopBase(fc), skipRef.current).node.id);
+        if (dir && atFood && fc.hops > 0 && sinceWheel < 260) return;
         if (dir) {
           const z = stepFocus(stream, hopBase(fc), dir, skipRef.current);
           if (z !== null) {
@@ -1759,6 +1982,22 @@ export default function ShadowField({ serif }: Props) {
     }
     velocityRef.current.reset();
     velocityRef.current.add(performance.now(), e.clientY);
+    // holding still on empty paper plucks the web: whatever is waiting answers
+    window.clearTimeout(holdRef.current.timer);
+    holdRef.current.consumed = false;
+    if (modeRef.current === 'flight' && pointersRef.current.size === 1) {
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      const onSomething = hitsRef.current.some((h) => Math.hypot(h.x - px, h.y - py) < h.r);
+      if (!onSomething) {
+        holdRef.current.timer = window.setTimeout(() => {
+          if (dragRef.current.active && dragRef.current.moved < 6) {
+            holdRef.current.consumed = true;
+            pluckWeb();
+          }
+        }, 450);
+      }
+    }
     dragRef.current = { active: true, moved: 0, lastT: performance.now(), axis: null, tx: 0, ty: 0, run, u0, resume };
     if (pointersRef.current.size === 2) {
       const [a, b] = [...pointersRef.current.values()];
@@ -1919,9 +2158,15 @@ export default function ShadowField({ serif }: Props) {
       }
     }
     if (performance.now() - dragRef.current.lastT > 80) velRef.current = { x: 0, y: 0 };
+    window.clearTimeout(holdRef.current.timer);
     if (moved > 6) return;
     velRef.current = { x: 0, y: 0 };
     if (flying) fc.v = 0;
+    // the release after plucking the web is only a release
+    if (holdRef.current.consumed) {
+      holdRef.current.consumed = false;
+      return;
+    }
 
     const now = performance.now();
     const lastTap = lastTapRef.current;
@@ -1931,6 +2176,8 @@ export default function ShadowField({ serif }: Props) {
     lastTapRef.current = { t: now, x, y, n: taps };
 
     const hit = hoverRef.current ?? hitsRef.current.find((h) => Math.hypot(h.x - x, h.y - y) < h.r) ?? null;
+    // touching something that was waiting is finding it
+    if (hit?.kind === 'node') eatFood(hit.node.id);
     const focused = focusPath();
     // three taps knock: the way in opens for those it is open to; for anyone else, a seal
     if (taps === 3) {
@@ -1991,9 +2238,10 @@ export default function ShadowField({ serif }: Props) {
         const stream = streamRef.current;
         if (!stream) return;
         const go = (dir: 1 | -1) => {
-          // a held key skims, at most a thing every 120ms
+          // a held key skims, at most a thing every 120ms, and stops at what is waiting
           const now = performance.now();
           if (e.repeat && now - keyHopAtRef.current < 120) return;
+          if (e.repeat && foodSetRef.current.has(focusOf(stream, hopBase(fc), skipRef.current).node.id)) return;
           keyHopAtRef.current = now;
           const z = stepFocus(stream, hopBase(fc), dir, skipRef.current);
           if (z !== null) {
@@ -2001,7 +2249,9 @@ export default function ShadowField({ serif }: Props) {
             fc.dir = dir;
           }
         };
-        if (['ArrowDown', 'ArrowRight', 'PageDown', '+', '=', 'j'].includes(e.key)) go(1);
+        if (e.key === ' ') pluckWeb();
+        else if (e.key === 'n') goToFood();
+        else if (['ArrowDown', 'ArrowRight', 'PageDown', '+', '=', 'j'].includes(e.key)) go(1);
         else if (['ArrowUp', 'ArrowLeft', 'PageUp', '-', '_', 'k'].includes(e.key)) go(-1);
         else if (e.key === 'Escape' || e.key === 'Backspace') {
           const p = focusPath();
@@ -2027,7 +2277,7 @@ export default function ShadowField({ serif }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [composer, dismissHint, flyTo, focusPath, hiddenStation, hopFlight]);
+  }, [composer, dismissHint, flyTo, focusPath, hiddenStation, hopFlight, goToFood, pluckWeb]);
 
   // ---------------------------------------------------------------- actions
   const wander = () => {
@@ -2462,7 +2712,8 @@ export default function ShadowField({ serif }: Props) {
               <path d="M23 6 L26 23 L23 21 L20 23 Z" fill="currentColor" fillOpacity="0.75" />
               <path d="M23 40 L26 23 L23 25 L20 23 Z" fill="currentColor" fillOpacity="0.2" />
             </g>
-            <circle ref={nextDotRef} cx="23" cy="10" r="2.4" fill="rgb(var(--rose))" />
+            <circle ref={nextDotRef} cx="23" cy="10" r="2.2" fill="currentColor" fillOpacity="0.55" />
+            <circle ref={foodDotRef} cx="23" cy="6" r="2.8" fill="rgb(var(--rose))" style={{ opacity: 0 }} />
             <circle ref={lapDotRef} cx="23" cy="3" r="1.8" fill="currentColor" />
             <circle ref={youRef} cx="23" cy="23" r="4" fill="none" stroke="currentColor" strokeWidth="1.2" style={{ opacity: 0 }} />
           </svg>

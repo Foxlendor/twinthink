@@ -13,6 +13,7 @@ import { ScreenTransform } from './camera';
 import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, flightScale, leanAt, project, travelled, viewOf } from './flight';
 import { Hit, INK, PAPER, ROSE, TINT_COOL, TINT_WARM, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
 import { AUTHOR } from './sources/author';
+import { Pluck, trembleAt } from './web';
 import { getImage } from './media';
 import { clamp, hash01, noise1, smoothstep } from './rng';
 
@@ -87,8 +88,14 @@ export interface FlightState {
   still?: number;
   /** The one line for a thing, when it has one right now. */
   lineFor?: (s: Station) => string | undefined;
-  /** Written back each frame, for the compass: which way is up, and where the next thing lies. */
-  compass?: { roll: number; next: number | null };
+  /** Written back each frame, for the compass: which way is up, where the next thing lies, and where food waits. */
+  compass?: { roll: number; next: number | null; food: number | null };
+  /**
+   * The web that moves: plucks travelling toward you (see web.ts), the time
+   * now in seconds, which things are food, and how calm the tunnel is (1 as
+   * ever; less once everything that moved has been reached).
+   */
+  web?: { plucks: Pluck[]; now: number; food: Set<string>; calm: number };
 }
 
 /**
@@ -136,7 +143,28 @@ function liveness(node: IdeaNode, now: number) {
  * and at speed its dots stream into lines. While a song or a film is heard,
  * waves travel down its walls toward you with the sound.
  */
-function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink, stream: Stream, skip: (s: Station) => boolean) {
+function drawTunnel(
+  st: RenderState,
+  v: View,
+  cam: FlightCam,
+  ink: Ink,
+  stream: Stream,
+  skip: (s: Station) => boolean,
+  web?: FlightState['web']
+) {
+  const plucks = web?.plucks.length && !st.reduced ? web.plucks : null;
+  // the walls tremble where a pluck is passing (worked out once per slice of the tunnel)
+  const trem = new Map<number, number>();
+  const trembleOf = (zAbs: number) => {
+    if (!plucks) return 0;
+    const key = Math.round(zAbs * 20);
+    let T = trem.get(key);
+    if (T === undefined) {
+      T = clamp(trembleAt(plucks, zAbs, v.z, web!.now).T, -1, 1);
+      trem.set(key, T);
+    }
+    return T;
+  };
   const STEP = 0.7;
   const RADIUS = 1.3;
   const DOTS = 64;
@@ -144,7 +172,7 @@ function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink, stream: 
   const TWIST = 0.22;
   const speed = Math.abs(cam.shown);
   // how much of the wall is there: a whisper at rest, whole when moving
-  const presence = 0.3 + 0.7 * smoothstep(0.15, 3, speed);
+  const presence = (0.3 + 0.7 * smoothstep(0.15, 3, speed)) * (web?.calm ?? 1);
   // quick hops only stir the walls; real speed streams them
   const fast = st.reduced ? 0 : clamp(cam.shown * 0.035, -1.1, 1.1) * smoothstep(3, 10, Math.abs(cam.shown));
   const level = st.audio?.level ?? 0;
@@ -166,6 +194,9 @@ function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink, stream: 
     let r = RADIUS * (1 + 0.06 * noise1(zAbs * 0.35, 11) + 0.035 * noise1(ang * 2 + zAbs * 0.2, 7));
     // sound: a wave travels from the vanishing point toward you
     if (level > 0.02) r *= 1 + 0.07 * level * Math.max(0, Math.sin(zAbs * 2.2 + clock * 7));
+    // food: the wall ripples as a pluck runs past
+    const T = trembleOf(zAbs);
+    if (T !== 0) r *= 1 + 0.045 * T * Math.sin(6 * ang + 1.7);
     const [x, y] = project(v, ax + Math.cos(ang) * r, ay + Math.sin(ang) * r, dz);
     return [x, y];
   };
@@ -286,7 +317,8 @@ function drawTube(st: RenderState, v: View, s: Station, L: number, ink: Ink) {
 }
 
 /** One dotted thread through everything, in order. It thins across long silences. */
-function drawThread(st: RenderState, v: View, stream: Stream, ink: Ink, cam: FlightCam, skip: (s: Station) => boolean) {
+function drawThread(st: RenderState, v: View, stream: Stream, ink: Ink, cam: FlightCam, skip: (s: Station) => boolean, web?: FlightState['web']) {
+  const plucks = web?.plucks.length ? web.plucks : null;
   const { length: L } = stream;
   // only what exists for this viewer is joined: the thread never bends toward a hidden place
   const stations = stream.stations.filter((s) => s.depth === 0 || !skip(s));
@@ -314,8 +346,28 @@ function drawThread(st: RenderState, v: View, stream: Stream, ink: Ink, cam: Fli
         const dz = base + u * span;
         const [sx, sy, k] = project(v, x, y, dz);
         if (sx < -6 || sy < -6 || sx > st.w + 6 || sy > st.h + 6) continue;
-        const alpha = 0.34 * fogOf(dz) * (0.75 + 0.25 * hash01(n, a.i));
+        let alpha = 0.34 * fogOf(dz) * (0.75 + 0.25 * hash01(n, a.i));
         const size = clamp(0.0075 * k, 0.5, 2.8);
+        // the web moves: the thread shivers sideways as a pluck runs along it toward you
+        if (plucks) {
+          const tr = trembleAt(plucks, v.z + dz, v.z, web!.now);
+          if (tr.T !== 0) {
+            const T = clamp(tr.T, -1, 1);
+            alpha = Math.min(0.9, alpha * (1 + (st.reduced ? 1.2 : 0.6) * Math.abs(T)));
+            if (!st.reduced) {
+              // sideways to the line of sight
+              const ox = sy - v.cy;
+              const oy = -(sx - v.cx);
+              const len = Math.hypot(ox, oy) || 1;
+              const px = sx + (ox / len) * 5 * T;
+              const py = sy + (oy / len) * 5 * T;
+              ink.dot(px, py, size * (1 + 0.3 * Math.abs(T)), alpha, tr.rose && Math.abs(T) > 0.04);
+              continue;
+            }
+            ink.dot(sx, sy, size, alpha, tr.rose && Math.abs(T) > 0.04);
+            continue;
+          }
+        }
         if (Math.abs(streak) > 0.05 && k > 60) {
           let [tx, ty] = project(v, x, y, Math.max(NEAR, dz + streak));
           // a streak is a smear of ink, never a rule across the page
@@ -696,10 +748,10 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   const born = (s: Station) => st.cut === null || s.depth === 0 || s.node.began <= st.cut;
   const gone = (s: Station) => !born(s) || fs.hidden(s);
 
-  drawTunnel(st, v, cam, ink, stream, fs.hidden);
+  drawTunnel(st, v, cam, ink, stream, fs.hidden, fs.web);
   drawSpecks(st, v, cam, ink);
   for (const s of stream.stations) if (s.gate && !gone(s)) drawTube(st, v, s, L, ink);
-  drawThread(st, v, stream, ink, cam, gone);
+  drawThread(st, v, stream, ink, cam, gone, fs.web);
   ink.flush(ctx);
 
   // far to near, so nearer things are drawn over farther ones
@@ -811,7 +863,18 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     nextDz = dz;
   }
   drawClock(st, v, next, ink);
-  fs.compass = { roll: v.roll, next: next ? Math.atan2(next[1] - v.cy, next[0] - v.cx) : null };
+  // where the nearest food ahead lies, for the compass's rose dot
+  let food: number | null = null;
+  if (fs.web?.food.size) {
+    let bestDz = Infinity;
+    for (const { s, dz } of list) {
+      if (!fs.web.food.has(s.node.id) || dz <= FOCUS * 1.15 || dz >= bestDz) continue;
+      const [x, y] = project(v, s.x, s.y, dz);
+      food = Math.atan2(y - v.cy, x - v.cx);
+      bestDz = dz;
+    }
+  }
+  fs.compass = { roll: v.roll, next: next ? Math.atan2(next[1] - v.cy, next[0] - v.cx) : null, food };
   ink.flush(ctx);
   // the nearest thing under a finger is the one it means
   st.hits.reverse();

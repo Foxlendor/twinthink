@@ -120,6 +120,22 @@ one-way key (`makerKey`), never an account id; stories have none. Turning one
 film's sound on keeps films heard: each film you arrive at speaks and the last
 falls quiet, until you turn a film's sound off.
 
+### The web that moves
+A spider knows food is there because the web moves (`src/lib/shadowfield/web.ts`).
+The thread and the tunnel tremble toward what is waiting for you, and the compass
+needle twitches while its rose dot points there: work built on yours (rose), work
+built on something you kept (rose), new work by a maker whose ring you stayed in,
+answers to today's word, and faintly what is new since your last visit (never on a
+first visit). Views and popularity never move it. Plucks come often at first, then
+slow to a hum; they hush while sound plays, while you read, or while a panel is
+open; no more than three at once. A scroll or a held key stops at what is waiting
+(until the hand pauses); arriving there is a catch, and staying 1.2s (or tapping it)
+finds it, so it stops trembling. Hold still on empty paper (or press Space) to pluck
+the web yourself; the compass's rose dot, or "n", takes you to the nearest. Once
+everything that moved is found, the tunnel breathes out and goes still: caught up,
+with no words or numbers. What you found, and which makers you stayed with, is kept
+only on your device (`twinthink.web.v1`: ids and times).
+
 ### The tunnel
 The flight runs inside an ink tunnel (`drawTunnel` in flightRender.ts) that winds toward what comes next, fades to a whisper at rest, and carries waves toward you while a song or film is heard: rings
 from the vanishing point, strands that spiral with the clock, dots that stream
