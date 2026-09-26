@@ -626,13 +626,8 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     if (!fs.frames.has(s.node.id) || dz < FOCUS * 2) fs.frames.set(s.node.id, { ox: x, oy: y, s: R });
 
     if (s.depth > 0) {
-      if (!s.gate && R < 0.9 * M) {
-        // a film is touched anywhere on it, not only near its centre
-        let r = Math.max(R * 0.6, 16);
-        for (const m of s.node.media ?? []) {
-          if (m.kind === 'video' || m.kind === 'image' || m.kind === 'model') r = Math.max(r, 0.45 * Math.max(m.w * R, m.w * R * m.aspect));
-        }
-        st.hits.push({ kind: 'node', node: s.node, path: s.path, sealed, x, y, r, size: R });
+      // what a film, picture or object covers, however near: names from behind are not written over it
+      if (!sealed) {
         for (const m of s.node.media ?? []) {
           if (m.kind !== 'video' && m.kind !== 'image' && m.kind !== 'model') continue;
           const W = m.w * R;
@@ -641,6 +636,14 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
           const cy = y + m.y * R;
           covers.push({ r: [cx - W / 2, cy - H / 2, cx + W / 2, cy + H / 2], near: 1 / dz });
         }
+      }
+      if (!s.gate && R < 0.9 * M) {
+        // a film is touched anywhere on it, not only near its centre
+        let r = Math.max(R * 0.6, 16);
+        for (const m of s.node.media ?? []) {
+          if (m.kind === 'video' || m.kind === 'image' || m.kind === 'model') r = Math.max(r, 0.45 * Math.max(m.w * R, m.w * R * m.aspect));
+        }
+        st.hits.push({ kind: 'node', node: s.node, path: s.path, sealed, x, y, r, size: R });
       } else if (s.gate && R < 0.3 * M) {
         st.hits.push({ kind: 'node', node: s.node, path: s.path, sealed, x, y, r: Math.max(R * 0.9, 16), size: R * 1.5 });
       }
