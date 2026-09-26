@@ -114,10 +114,10 @@ body::before {
   left: -50%;
   width: 200vw;
   height: 200vh;
-  /* no logos behind the page: only the paper (the pattern is kept, switched off) */
-  background-image: none;
+  background-image: url('/logo.png');
   background-repeat: repeat;
   background-size: 240px auto;
+  /* the mirrored logo pattern: his art, behind every page */
   opacity: var(--logo-pattern-opacity);
   pointer-events: none;
   z-index: -1;

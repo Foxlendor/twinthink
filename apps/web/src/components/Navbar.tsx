@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import BrandLogo from './BrandLogo';
 
 // A few words at the top of the page: where you are, the way in, and day or night.
 export default function Navbar() {
@@ -42,9 +43,9 @@ export default function Navbar() {
     cursor: 'pointer',
   };
   return (
-    <header style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '20px 24px', height: 64 }}>
-      <Link href="/" style={{ ...word, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
-        twinth.ink
+    <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', height: 64 }}>
+      <Link href="/" aria-label="twinth.ink, home" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'var(--text-primary)' }}>
+        <BrandLogo height={32} />
       </Link>
       <nav style={{ display: 'flex', gap: 22, alignItems: 'baseline' }}>
         <Link href="/canvas" style={word}>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Cormorant_Garamond } from 'next/font/google';
+import BrandVideoBanner from '@/components/BrandVideoBanner';
 
 const serif = Cormorant_Garamond({
   subsets: ['latin'],
@@ -21,9 +22,23 @@ export default function HomePage() {
   return (
     <main
       className={serif.variable}
-      style={{ minHeight: 'calc(100vh - 64px)', display: 'grid', placeItems: 'center', padding: '48px 24px', textAlign: 'center' }}
+      style={{ position: 'relative', minHeight: 'calc(100vh - 64px)', display: 'grid', placeItems: 'center', padding: '48px 24px', textAlign: 'center', overflow: 'hidden' }}
     >
-      <div style={{ maxWidth: 560 }}>
+      {/* his ink film, behind the words */}
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', opacity: 0.85 }}>
+        <BrandVideoBanner />
+      </div>
+      <div
+        style={{
+          position: 'relative',
+          maxWidth: 560,
+          padding: '36px 28px',
+          borderRadius: 22,
+          background: 'var(--card-bg)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid var(--border-subtle)',
+        }}
+      >
         <h1 style={{ fontFamily: font, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(2.4rem, 7vw, 3.6rem)', lineHeight: 1.1, margin: 0, color: 'var(--text-primary)' }}>
           every idea deserves a place.
         </h1>
