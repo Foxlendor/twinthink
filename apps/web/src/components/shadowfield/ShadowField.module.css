@@ -204,8 +204,10 @@
   gap: 4px;
 }
 
-.composer input {
+.composer input,
+.composer textarea {
   width: 100%;
+  resize: none;
   background: transparent;
   border: none;
   border-bottom: 1px solid rgba(var(--ink), 0.3);
@@ -217,8 +219,45 @@
   outline: none;
 }
 
-.composer input::placeholder {
+.composer textarea {
+  font-size: 1rem;
+  line-height: 1.45;
+  border: 1px solid rgba(var(--ink), 0.2);
+  padding: 8px 10px;
+}
+
+.composer input::placeholder,
+.composer textarea::placeholder {
   color: rgba(var(--ink), 0.35);
+}
+
+.composer.wide {
+  width: min(460px, calc(100vw - 32px));
+  padding: 12px;
+  background: rgba(var(--paper-rgb), 0.94);
+  box-shadow: 0 0 40px 20px rgba(var(--paper-rgb), 0.94);
+}
+
+.composer.wide textarea {
+  background: var(--paper);
+}
+
+.composerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.composerSend {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: rgb(var(--rose));
 }
 
 .composerHint {

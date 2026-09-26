@@ -93,6 +93,17 @@ account id is stored. Tables (`tt_shadows`, `tt_notes`, `tt_reports`) are create
 on first use; limit 20 posts a day per person. Without a database, casting stays
 on the device as before.
 
+### Story time
+Signed-in people tell true stories of making do ("tell a story"), shown to
+everyone in the ring "story time" with no name at all (the teller's account id is
+kept only so they can take it back; it never reaches any page). A story cannot be
+rewritten. Anyone signed in can answer one with "there's an idea in this": that
+makes a private Shadow of their own that remembers the story, and the story shows
+how many ideas it has sparked. House rule, shown as the story is written: no one's
+real name, nothing that hurts anyone. A signed-in report counts once per person
+(kept only as a one-way hash); three reports hide a story until an owner looks,
+and owners can take anything down.
+
 ## Plots (3 x 3)
 The Canvas grid (cells of 1/8) is tiled into plots of 3 x 3 cells (`plots.ts`).
 Today only the founder holds plots: the block containing each public idea.

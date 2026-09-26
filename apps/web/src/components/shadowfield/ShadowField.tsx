@@ -39,7 +39,7 @@ interface Props {
 }
 
 interface Composer {
-  mode: 'cast' | 'thought' | 'rewrite' | 'challenge' | 'synthesis' | 'note';
+  mode: 'cast' | 'thought' | 'rewrite' | 'challenge' | 'synthesis' | 'note' | 'story' | 'spark';
   /** For a note left at a seal: the idea it is left at. */
   target?: string;
   /** For dialectic modes: the thought ids this one answers. */
@@ -698,11 +698,37 @@ export default function ShadowField({ serif }: Props) {
       return;
     }
     if (change === 'take down') setNotice('taken down');
-    else if (change === 'remove') setNotice('let go');
+    else if (change === 'remove') setNotice(id && posted.find((q) => q.id === id)?.kind === 'story' ? 'taken back' : 'let go');
     else setNotice(change.public ? 'shared with everyone' : 'only you can see it now');
     if (remove) flyTo(focusPath().slice(0, 1));
     await loadPosted();
     ripple(`p/${id}`);
+  };
+
+  const signIn = () => {
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a route handler that redirects to Google needs a full page load
+    window.location.assign('/api/auth/google?next=/canvas');
+  };
+
+  /** Story time: signed in (so it can be taken back), told without a name. */
+  const tellStory = () => {
+    if (!me?.user) {
+      signIn();
+      return;
+    }
+    const c = camRef.current;
+    const w = c?.w ?? 400;
+    const h = c?.h ?? 600;
+    setComposer({ mode: 'story', x: w / 2 - Math.min(230, w / 2 - 16), y: Math.max(80, h / 2 - 120), lx: 0, ly: 0 });
+  };
+
+  const sparkFrom = (storyId: string) => {
+    if (!me?.user) {
+      signIn();
+      return;
+    }
+    const c = camRef.current;
+    setComposer({ mode: 'spark', target: storyId, x: (c?.w ?? 400) / 2 - 140, y: (c?.h ?? 600) - 170, lx: 0, ly: 0 });
   };
 
   const reportPosted = async (id: string) => {
@@ -711,7 +737,8 @@ export default function ShadowField({ serif }: Props) {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ reason: 'reported from the Canvas' }),
     }).catch(() => null);
-    setNotice(res?.ok ? 'thank you, it will be looked at' : 'that could not be sent');
+    if (res?.status === 401) setNotice('sign in to report');
+    else setNotice(res?.ok ? 'thank you, it will be looked at' : 'that could not be sent');
   };
 
   /** The maker reads the notes left at something's seal. */
@@ -1793,7 +1820,27 @@ export default function ShadowField({ serif }: Props) {
     if (!c || !store) return;
     const value = text.trim();
     if (!value) return;
-    if (c.mode === 'cast' && posting && me?.user) {
+    if (c.mode === 'story' || c.mode === 'spark') {
+      // a story is told to everyone without a name; an idea it sparks is yours, private until shared
+      const payload = c.mode === 'story' ? { kind: 'story', body: value } : { title: value, from: c.target };
+      fetch('/api/shadows', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
+        .then(async (res) => {
+          const d = (await res.json().catch(() => ({}))) as { shadow?: Posted; error?: string };
+          if (!res.ok || !d.shadow) {
+            setNotice((d.error ?? 'that could not be kept').toLowerCase());
+            return;
+          }
+          await loadPosted();
+          const world = worldRef.current;
+          const ringId = c.mode === 'story' ? 'stories' : 'yours';
+          const ring = world?.children.find((n) => n.id === ringId);
+          const node = ring?.children.find((n) => n.id === `p/${d.shadow!.id}`);
+          if (world && ring && node) flyTo([world, ring, node]);
+          if (c.mode === 'spark') ripple(`p/${c.target}`);
+          setNotice(c.mode === 'story' ? 'told, and no one will know it was you' : 'yours now, only you can see it until you share it');
+        })
+        .catch(() => setNotice('that could not be kept'));
+    } else if (c.mode === 'cast' && posting && me?.user) {
       // signed in: it is kept on the server, private until its maker shares it
       fetch('/api/shadows', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: value }) })
         .then(async (res) => {
@@ -1873,7 +1920,7 @@ export default function ShadowField({ serif }: Props) {
     [...path]
       .slice(1)
       .reverse()
-      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/') && !n.id.startsWith('p/') && n.id !== 'people' && n.id !== 'yours') ?? null;
+      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/') && !n.id.startsWith('p/') && n.id !== 'people' && n.id !== 'yours' && n.id !== 'stories') ?? null;
   // an idea given away is never followed by an ask for money, nor is a song while it plays
   // nothing given away (songs, starters, throwaways) is ever followed by an ask
   const asking = supportTarget && !path.some((n) => n.free) && playingId !== current?.id ? supportTarget : null;
@@ -2002,6 +2049,11 @@ export default function ShadowField({ serif }: Props) {
                 cast a shadow
               </button>
             )}
+            {posting && me?.enabled && (
+              <button type="button" className={styles.quiet} onClick={tellStory}>
+                tell a story
+              </button>
+            )}
             <button type="button" className={styles.quiet} onClick={wander}>
               wander
             </button>
@@ -2056,16 +2108,28 @@ export default function ShadowField({ serif }: Props) {
             {isFollowed ? 'following, you can go a little further' : 'I want to see what happens next'}
           </button>
         )}
+        {top?.id === 'stories' && path.length === 2 && (
+          <button type="button" className={styles.quiet} onClick={tellStory}>
+            tell a story
+          </button>
+        )}
+        {postedHere && postedHere.kind === 'story' && !postedHere.mine && (
+          <button type="button" className={styles.quiet} onClick={() => sparkFrom(postedHere.id)}>
+            there’s an idea in this
+          </button>
+        )}
         {postedHere?.mine && (
           <>
-            <button type="button" className={postedHere.public ? styles.following : styles.quiet} onClick={() => changePosted(postedHere.id, { public: !postedHere.public })}>
-              {postedHere.public ? 'shared, keep it to myself' : 'share it with everyone'}
-            </button>
+            {postedHere.kind !== 'story' && (
+              <button type="button" className={postedHere.public ? styles.following : styles.quiet} onClick={() => changePosted(postedHere.id, { public: !postedHere.public })}>
+                {postedHere.public ? 'shared, keep it to myself' : 'share it with everyone'}
+              </button>
+            )}
             <button type="button" className={styles.quiet} onClick={() => current && readNotes(current)}>
               notes
             </button>
             <button type="button" className={styles.quiet} onClick={() => changePosted(postedHere.id, 'remove')}>
-              let it go
+              {postedHere.kind === 'story' ? 'take it back' : 'let it go'}
             </button>
           </>
         )}
@@ -2299,7 +2363,46 @@ export default function ShadowField({ serif }: Props) {
         </div>
       )}
 
-      {composer && (
+      {composer && composer.mode === 'story' && (
+        <form
+          className={`${styles.composer} ${styles.wide}`}
+          style={{
+            left: Math.max(16, Math.min(view.w - 476, composer.x)),
+            top: Math.max(16, Math.min(view.h - 320, composer.y)),
+          }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            const input = e.currentTarget.elements.namedItem('text') as HTMLTextAreaElement;
+            submitComposer(input.value);
+          }}
+        >
+          <textarea
+            name="text"
+            autoFocus
+            rows={7}
+            maxLength={4000}
+            placeholder="a time you made do with what you had…"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setComposer(null);
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                e.currentTarget.form?.requestSubmit();
+              }
+            }}
+          />
+          <div className={styles.composerRow}>
+            <span className={styles.composerHint}>told without your name · no one’s real name · nothing that hurts anyone</span>
+            <button type="submit" className={styles.composerSend}>
+              tell it
+            </button>
+          </div>
+          <button type="button" className={styles.composerHint} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }} onClick={() => setComposer(null)}>
+            not now
+          </button>
+        </form>
+      )}
+
+      {composer && composer.mode !== 'story' && (
         <form
           className={styles.composer}
           style={{
@@ -2328,7 +2431,9 @@ export default function ShadowField({ serif }: Props) {
                       ? 'what holds both?'
                       : composer.mode === 'note'
                         ? 'a note for its maker'
-                        : ''
+                        : composer.mode === 'spark'
+                          ? 'what could be made from it?'
+                          : ''
             }
             onKeyDown={(e) => {
               if (e.key === 'Escape') setComposer(null);
@@ -2346,7 +2451,9 @@ export default function ShadowField({ serif }: Props) {
                   : 'enter to cast · kept on this device for now'
               : composer.mode === 'note'
                 ? 'sealed · no name is kept · only the maker reads it'
-                : 'enter to keep'}
+                : composer.mode === 'spark'
+                  ? 'enter to keep · yours, private until you share it'
+                  : 'enter to keep'}
           </span>
         </form>
       )}

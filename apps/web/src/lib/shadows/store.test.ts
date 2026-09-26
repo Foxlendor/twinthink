@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { Query, addNote, createShadow, migrate, myShadows, notesFor, publicShadows, removeShadow, report, updateShadow } from './store';
+import { Query, REPORTS_TO_HIDE, addNote, forViewer, getShadow, createShadow, migrate, myShadows, notesFor, publicShadows, removeShadow, report, updateShadow } from './store';
 
 let q: Query;
 const ana = { sub: 'g-ana', name: 'Ana Maria Lopez' };
@@ -51,8 +51,48 @@ describe('shared Shadows', () => {
     const id = r.shadow!.id;
     await addNote(q, `p/${id}`, 'this stayed with me');
     expect((await notesFor(q, `p/${id}`)).map((n) => n.text)).toEqual(['this stayed with me']);
-    expect('ok' in (await report(q, id, 'spam'))).toBe(true);
+    expect('ok' in (await report(q, ben.sub, id, 'spam'))).toBe(true);
     const cols = (await q(`SELECT column_name FROM information_schema.columns WHERE table_name IN ('tt_notes','tt_reports')`)).map((c) => c.column_name);
     expect(cols.some((c) => /sub|name|ip|email/.test(String(c)))).toBe(false);
+  });
+});
+
+describe('story time', () => {
+  it('is told to everyone without a name, and cannot be rewritten', async () => {
+    const r = await createShadow(q, ana, { kind: 'story', body: 'The day the kettle broke I boiled water in a paper cup.\nIt worked.' });
+    const s = r.shadow!;
+    expect(s.kind).toBe('story');
+    expect(s.public).toBe(true);
+    expect(s.title).toBe('The day the kettle broke I boiled water in a paper cup.');
+    const seen = forViewer((await publicShadows(q))[0], ben.sub);
+    expect(seen.by).toBe('');
+    expect(seen.mine).toBe(false);
+    expect(JSON.stringify(seen)).not.toContain('Ana');
+    expect(forViewer(s, ana.sub).mine).toBe(true);
+    expect('error' in (await updateShadow(q, ana, s.id, { body: 'rewritten' }))).toBe(true);
+    expect('ok' in (await removeShadow(q, ana, s.id, false))).toBe(true);
+  });
+
+  it('refuses a story too short to be one', async () => {
+    expect('error' in (await createShadow(q, ana, { kind: 'story', body: 'hi' }))).toBe(true);
+  });
+
+  it('counts the ideas a story sparks', async () => {
+    const story = (await createShadow(q, ana, { kind: 'story', body: 'I fixed a bike chain with a paperclip and some tape.' })).shadow!;
+    const idea = await createShadow(q, ben, { title: 'a chain link you can bend by hand', from: story.id });
+    expect(idea.shadow!.from).toBe(story.id);
+    expect(idea.shadow!.public).toBe(false);
+    expect((await getShadow(q, story.id))!.sparks).toBe(1);
+    // only a story can spark, and only one that is still told
+    expect('error' in (await createShadow(q, ben, { title: 'x', from: idea.shadow!.id }))).toBe(true);
+  });
+
+  it('hides what enough different people report, once each', async () => {
+    const s = (await createShadow(q, ana, { kind: 'story', body: 'A story that some people will not like at all.' })).shadow!;
+    for (let i = 0; i < 5; i++) await report(q, ben.sub, s.id, 'no');
+    expect(await publicShadows(q)).toHaveLength(1); // one person, counted once
+    for (let i = 0; i < REPORTS_TO_HIDE - 1; i++) await report(q, `g-other${i}`, s.id, 'no');
+    expect(await publicShadows(q)).toHaveLength(0);
+    expect(await myShadows(q, ana.sub)).toHaveLength(1); // still its teller's
   });
 });

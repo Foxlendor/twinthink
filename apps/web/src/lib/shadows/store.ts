@@ -10,6 +10,12 @@ export type Query = (text: string, params?: unknown[]) => Promise<Record<string,
 export const TITLE_MAX = 120;
 export const BODY_MAX = 2000;
 export const POSTS_PER_DAY = 20;
+export const STORY_MAX = 4000;
+/** Distinct signed-in reports that hide something until the owner looks. */
+export const REPORTS_TO_HIDE = 3;
+
+/** A Shadow is someone's idea; a story is told without a name and may spark ideas in others. */
+export type Kind = 'shadow' | 'story';
 
 export interface ServerShadow {
   id: string;
@@ -20,11 +26,28 @@ export interface ServerShadow {
   public: boolean;
   created: number;
   updated: number;
+  kind: Kind;
+  /** For a Shadow sparked by a story: the story's id. */
+  from: string | null;
+  /** For a story: how many Shadows it has sparked. */
+  sparks: number;
 }
 
-/** What a viewer is sent: never the maker's account id, only whether it is theirs. */
+/** What a viewer is sent: never the maker's account id, only whether it is theirs; a story never says who told it. */
 export function forViewer(s: ServerShadow, viewerSub: string | undefined) {
-  return { id: s.id, by: s.by, title: s.title, body: s.body, public: s.public, created: s.created, updated: s.updated, mine: s.owner === viewerSub };
+  return {
+    id: s.id,
+    by: s.kind === 'story' ? '' : s.by,
+    title: s.title,
+    body: s.body,
+    public: s.public,
+    created: s.created,
+    updated: s.updated,
+    kind: s.kind,
+    from: s.from,
+    sparks: s.sparks,
+    mine: s.owner === viewerSub,
+  };
 }
 
 export interface Author {
@@ -59,7 +82,15 @@ const SCHEMA = [
     reason TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
+  `ALTER TABLE tt_shadows ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'shadow'`,
+  `ALTER TABLE tt_shadows ADD COLUMN IF NOT EXISTS sparked_from TEXT`,
+  `CREATE INDEX IF NOT EXISTS tt_shadows_from ON tt_shadows (sparked_from)`,
+  `ALTER TABLE tt_reports ADD COLUMN IF NOT EXISTS reporter TEXT`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS tt_reports_once ON tt_reports (shadow_id, reporter)`,
 ];
+
+// every read counts the Shadows a story has sparked
+const SELECT = `SELECT s.*, (SELECT COUNT(*)::int FROM tt_shadows c WHERE c.sparked_from = s.id) AS sparks FROM tt_shadows s`;
 
 export async function migrate(q: Query) {
   for (const s of SCHEMA) await q(s);
@@ -88,7 +119,15 @@ function row(r: Record<string, unknown>): ServerShadow {
     public: r.is_public === true,
     created: new Date(r.created_at as string).getTime(),
     updated: new Date(r.updated_at as string).getTime(),
+    kind: r.kind === 'story' ? 'story' : 'shadow',
+    from: r.sparked_from ? String(r.sparked_from) : null,
+    sparks: Number(r.sparks ?? 0),
   };
+}
+
+async function digest(text: string) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 function newId() {
@@ -97,33 +136,63 @@ function newId() {
   return [...b].map((x) => x.toString(36).padStart(2, '0')).join('').slice(0, 14);
 }
 
-export async function createShadow(q: Query, who: Author, input: { title?: unknown; body?: unknown; public?: unknown }) {
-  const title = clean(input.title, TITLE_MAX);
-  const body = clean(input.body, BODY_MAX, true);
-  if (!title || body === null) return { error: 'A Shadow needs a name (up to 120 characters) and at most 2000 characters inside.' } as const;
+/** A story's name: its first line, cut at a word. */
+export function storyTitle(text: string) {
+  const first = text.split(/\n/)[0].trim();
+  if (first.length <= 70) return first;
+  const cut = first.slice(0, 68);
+  return cut.slice(0, Math.max(40, cut.lastIndexOf(' '))).trim() + '…';
+}
+
+export async function createShadow(
+  q: Query,
+  who: Author,
+  input: { title?: unknown; body?: unknown; public?: unknown; kind?: unknown; from?: unknown }
+) {
+  const story = input.kind === 'story';
+  let title: string | null;
+  let body: string | null;
+  if (story) {
+    // a story is told in one piece; its first line names it
+    const text = clean(input.body, STORY_MAX);
+    if (!text || text.length < 20) return { error: 'Tell a little more of the story (at least a sentence).' } as const;
+    title = storyTitle(text);
+    body = text;
+  } else {
+    title = clean(input.title, TITLE_MAX);
+    body = clean(input.body, BODY_MAX, true);
+    if (!title || body === null) return { error: 'A Shadow needs a name (up to 120 characters) and at most 2000 characters inside.' } as const;
+  }
+  let from: string | null = null;
+  if (!story && typeof input.from === 'string') {
+    const src = await getShadow(q, input.from);
+    if (!src || src.kind !== 'story' || !src.public || src.hidden) return { error: 'That story is not here any more.' } as const;
+    from = src.id;
+  }
   const [{ n }] = await q(`SELECT COUNT(*)::int AS n FROM tt_shadows WHERE owner_sub = $1 AND created_at > NOW() - INTERVAL '1 day'`, [who.sub]);
-  if (Number(n) >= POSTS_PER_DAY) return { error: 'That is enough new Shadows for today.' } as const;
+  if (Number(n) >= POSTS_PER_DAY) return { error: 'That is enough for today; come back tomorrow.' } as const;
+  // stories are told to everyone; a Shadow stays private until its maker shares it
   const rows = await q(
-    `INSERT INTO tt_shadows (id, owner_sub, owner_name, title, body, is_public) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [newId(), who.sub, firstName(who.name), title, body, input.public === true]
+    `INSERT INTO tt_shadows (id, owner_sub, owner_name, title, body, is_public, kind, sparked_from) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+    [newId(), who.sub, story ? '' : firstName(who.name), title, body, story || input.public === true, story ? 'story' : 'shadow', from]
   );
   return { shadow: row(rows[0]) } as const;
 }
 
 /** Everyone's public Shadows, newest first (hidden ones never). */
 export async function publicShadows(q: Query, limit = 300): Promise<ServerShadow[]> {
-  const rows = await q(`SELECT * FROM tt_shadows WHERE is_public AND NOT hidden ORDER BY created_at DESC LIMIT $1`, [limit]);
+  const rows = await q(`${SELECT} WHERE s.is_public AND NOT s.hidden ORDER BY s.created_at DESC LIMIT $1`, [limit]);
   return rows.map(row);
 }
 
 /** A person's own Shadows, public or not. */
 export async function myShadows(q: Query, sub: string): Promise<ServerShadow[]> {
-  const rows = await q(`SELECT * FROM tt_shadows WHERE owner_sub = $1 ORDER BY created_at DESC LIMIT 300`, [sub]);
+  const rows = await q(`${SELECT} WHERE s.owner_sub = $1 ORDER BY s.created_at DESC LIMIT 300`, [sub]);
   return rows.map(row);
 }
 
 export async function getShadow(q: Query, id: string): Promise<(ServerShadow & { hidden: boolean }) | null> {
-  const rows = await q(`SELECT * FROM tt_shadows WHERE id = $1`, [id]);
+  const rows = await q(`${SELECT} WHERE s.id = $1`, [id]);
   return rows[0] ? { ...row(rows[0]), hidden: rows[0].hidden === true } : null;
 }
 
@@ -134,9 +203,11 @@ export async function updateShadow(q: Query, who: Author, id: string, input: { t
   const title = input.title === undefined ? s.title : clean(input.title, TITLE_MAX);
   const body = input.body === undefined ? s.body : clean(input.body, BODY_MAX, true);
   if (!title || body === null) return { error: 'A Shadow needs a name (up to 120 characters) and at most 2000 characters inside.' } as const;
+  // a story is told once: its teller may take it back, not rewrite it
+  if (s.kind === 'story') return { error: 'A story stays as it was told.' } as const;
   const pub = input.public === undefined ? s.public : input.public === true;
-  const rows = await q(`UPDATE tt_shadows SET title = $2, body = $3, is_public = $4, updated_at = NOW() WHERE id = $1 RETURNING *`, [id, title, body, pub]);
-  return { shadow: row(rows[0]) } as const;
+  await q(`UPDATE tt_shadows SET title = $2, body = $3, is_public = $4, updated_at = NOW() WHERE id = $1`, [id, title, body, pub]);
+  return { shadow: (await getShadow(q, id))! } as const;
 }
 
 /** Its maker lets it go; the Canvas's owner can take anything down. */
@@ -155,10 +226,19 @@ export async function removeShadow(q: Query, who: Author, id: string, siteOwner:
   return { error: 'Not yours to remove.' } as const;
 }
 
-export async function report(q: Query, id: string, reason: unknown) {
+/** One report per signed-in person; enough of them hide it until the Canvas's owner looks. */
+export async function report(q: Query, reporter: string, id: string, reason: unknown) {
   const s = await getShadow(q, id);
-  if (!s || !s.public) return { error: 'Not found.' } as const;
-  await q(`INSERT INTO tt_reports (shadow_id, reason) VALUES ($1, $2)`, [id, clean(reason, 300, true) ?? '']);
+  if (!s || !s.public || s.hidden) return { error: 'Not found.' } as const;
+  // only a one-way mark that this person reported this one thing, so it counts once
+  const mark = await digest(`${reporter}:${id}`);
+  await q(`INSERT INTO tt_reports (shadow_id, reason, reporter) VALUES ($1, $2, $3) ON CONFLICT (shadow_id, reporter) DO NOTHING`, [
+    id,
+    clean(reason, 300, true) ?? '',
+    mark,
+  ]);
+  const [{ n }] = await q(`SELECT COUNT(*)::int AS n FROM tt_reports WHERE shadow_id = $1`, [id]);
+  if (Number(n) >= REPORTS_TO_HIDE) await q(`UPDATE tt_shadows SET hidden = TRUE WHERE id = $1`, [id]);
   return { ok: true } as const;
 }
 

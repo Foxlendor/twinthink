@@ -13,6 +13,20 @@ export interface Posted {
   created: number;
   updated: number;
   mine: boolean;
+  /** A story is told without a name; ideas it sparks remember it. */
+  kind?: 'shadow' | 'story';
+  from?: string | null;
+  sparks?: number;
+}
+
+function lineFor(p: Posted) {
+  if (p.kind === 'story') {
+    if (p.mine) return 'yours, told without your name.';
+    const n = p.sparks ?? 0;
+    return n ? `told without a name. it has sparked ${n === 1 ? 'an idea' : `${n} ideas`}.` : 'told without a name.';
+  }
+  const who = p.mine ? (p.public ? 'yours, shared with everyone.' : 'yours, only you can see it.') : `by ${p.by}.`;
+  return p.from ? `${who} sparked by a story.` : who;
 }
 
 function node(p: Posted, i: number): IdeaNode {
@@ -30,7 +44,7 @@ function node(p: Posted, i: number): IdeaNode {
     disclosure: 0,
     children: [],
     artifact: p.body ? { type: 'text', body: p.body } : undefined,
-    line: p.mine ? (p.public ? 'yours, shared with everyone.' : 'yours, only you can see it.') : `by ${p.by}.`,
+    line: lineFor(p),
     x: Math.cos(i * 2.39996) * 0.5,
     y: Math.sin(i * 2.39996) * 0.5,
     r: 0.05,
@@ -62,7 +76,11 @@ function ring(id: string, title: string, line: string, kids: IdeaNode[], x: numb
 /** The rings for posted work: everyone's public Shadows, and (signed in) your own. */
 export function buildPosted(pub: Posted[], mine: Posted[]): IdeaNode[] {
   const out: IdeaNode[] = [];
-  const others = pub.filter((p) => !p.mine);
+  const isStory = (p: Posted) => p.kind === 'story';
+  const stories = [...mine.filter(isStory), ...pub.filter((p) => isStory(p) && !p.mine)].sort((a, b) => b.created - a.created);
+  const others = pub.filter((p) => !p.mine && !isStory(p));
+  mine = mine.filter((p) => !isStory(p));
+  if (stories.length) out.push(ring('stories', 'story time', 'true stories of making do, told without names.', stories.map(node), 0.1, 0.65));
   if (others.length) out.push(ring('people', 'from everyone', 'shared by the people who made them.', others.map(node), 0.6, -0.1));
   if (mine.length) out.push(ring('yours', 'yours', 'what you have made here.', mine.map(node), -0.6, -0.2));
   return out;
