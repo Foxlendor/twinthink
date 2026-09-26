@@ -205,6 +205,13 @@ const SCHEMA = [
   // an answer to the day's word remembers the day
   `ALTER TABLE tt_shadows ADD COLUMN IF NOT EXISTS prompt_day TEXT`,
   `CREATE INDEX IF NOT EXISTS tt_shadows_prompt ON tt_shadows (prompt_day)`,
+  // a person's sketchbook: what they kept of others' work, by its place on the Canvas
+  `CREATE TABLE IF NOT EXISTS tt_keeps (
+    owner_sub TEXT NOT NULL,
+    target TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (owner_sub, target)
+  )`,
   // anonymous notes are limited per sender, who is kept only as a keyed hash, per hour
   `CREATE TABLE IF NOT EXISTS tt_limits (
     k TEXT NOT NULL,
@@ -215,7 +222,7 @@ const SCHEMA = [
 ];
 
 /** Bumped whenever SCHEMA changes, so a database already up to date is not locked for nothing. */
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 // every read counts what grew from each, and names what each grew from (never who told a story)
 const SELECT = `SELECT s.*,
@@ -416,4 +423,32 @@ export async function addNote(q: Query, target: string, body: string) {
 export async function notesFor(q: Query, target: string) {
   const rows = await q(`SELECT body, created_at FROM tt_notes WHERE target = $1 ORDER BY created_at DESC LIMIT 100`, [target]);
   return rows.map((r) => ({ t: new Date(r.created_at as string).getTime(), text: String(r.body) }));
+}
+
+export const KEEPS_MAX = 300;
+
+/** A place on the Canvas that can be kept: a station id or a posted Shadow (never anything on a device). */
+function keepable(target: unknown): target is string {
+  return typeof target === 'string' && target.length <= 200 && /^[a-z0-9][a-z0-9/_.:-]*$/i.test(target) && !target.startsWith('local/') && !target.startsWith('k/');
+}
+
+/** Keep something in your sketchbook (again is harmless). */
+export async function keep(q: Query, sub: string, target: unknown) {
+  if (!keepable(target)) return { error: 'That cannot be kept.' } as const;
+  const [{ n }] = await q(`SELECT COUNT(*)::int AS n FROM tt_keeps WHERE owner_sub = $1`, [sub]);
+  if (Number(n) >= KEEPS_MAX) return { error: 'Your sketchbook is full; let something go first.' } as const;
+  await q(`INSERT INTO tt_keeps (owner_sub, target) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [sub, target]);
+  return { ok: true } as const;
+}
+
+export async function unkeep(q: Query, sub: string, target: unknown) {
+  if (typeof target !== 'string') return { error: 'That was not kept.' } as const;
+  await q(`DELETE FROM tt_keeps WHERE owner_sub = $1 AND target = $2`, [sub, target]);
+  return { ok: true } as const;
+}
+
+/** What you kept, newest first. */
+export async function myKeeps(q: Query, sub: string): Promise<string[]> {
+  const rows = await q(`SELECT target FROM tt_keeps WHERE owner_sub = $1 ORDER BY created_at DESC LIMIT $2`, [sub, KEEPS_MAX]);
+  return rows.map((r) => String(r.target));
 }

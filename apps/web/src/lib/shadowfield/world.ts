@@ -25,7 +25,7 @@ let dance: IdeaNode | null = null;
 let moments: IdeaNode | null = null;
 let current: IdeaNode | null = null;
 
-export function buildWorld(local: LocalShadow[], posted?: { public: Posted[]; mine: Posted[]; today?: boolean }): IdeaNode {
+export function buildWorld(local: LocalShadow[], posted?: { public: Posted[]; mine: Posted[]; today?: boolean; keeps?: string[] }): IdeaNode {
   twinthink ??= buildTwinThinkTwin();
   throwaways ??= buildThrowaways();
   starters ??= buildStarters();
@@ -46,10 +46,57 @@ export function buildWorld(local: LocalShadow[], posted?: { public: Posted[]; mi
     ...(posted ? buildPosted(posted.public, posted.mine, posted.today) : []),
     ...local.map(localShadowNode),
   ];
+  // your sketchbook: what you kept of others' work, while it is still there to be seen
+  if (posted?.keeps?.length) {
+    const book = sketchbook(rootNode('canvas', children), posted.keeps);
+    if (book) children.push(book);
+  }
   const world = rootNode('canvas', children);
   current = world;
   for (const c of children) attachPortals(c);
   return world;
+}
+
+/** Copies of what you kept, each remembering where it lives (tap "go to it" to fly there). */
+function sketchbook(world: IdeaNode, keeps: string[]): IdeaNode | null {
+  const kids: IdeaNode[] = [];
+  keeps.forEach((target, i) => {
+    const p = findPath(world, target);
+    // nothing sealed, private, or on a device is ever kept in view
+    if (!p || p.length < 2 || p.some((n) => n.disclosure > 0 || n.id.startsWith('local/') || n.ownedBy === 'viewer')) return;
+    const n = p[p.length - 1];
+    const from = p.length > 2 ? p[p.length - 2].title : undefined;
+    kids.push({
+      ...n,
+      id: `k/${target}`,
+      children: [],
+      links: undefined,
+      line: from ? `kept from ${from}.` : 'kept.',
+      x: Math.cos(i * 2.39996) * 0.5,
+      y: Math.sin(i * 2.39996) * 0.5,
+      fixed: false,
+      r: 0.05,
+    });
+  });
+  if (!kids.length) return null;
+  const first = kids.reduce((t, k) => Math.min(t, k.began), Date.now());
+  return {
+    id: 'sketchbook',
+    title: 'your sketchbook',
+    line: 'what you kept of others’ work.',
+    kind: 'unknown',
+    origin: 'real',
+    began: first,
+    events: [{ t: first, kind: 'begin', note: 'first kept' }],
+    state: 'alive',
+    disclosure: 0,
+    children: kids,
+    x: 0.5,
+    y: 0.55,
+    r: 0.0025,
+    fixed: true,
+    seed: 7331,
+  };
 }
 
 /**

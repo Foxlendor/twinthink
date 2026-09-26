@@ -113,6 +113,11 @@ One word a day for everyone (`src/lib/shadowfield/prompts.ts`, changing at
 midnight UTC). Its ring is the newest thing on the Canvas; "today's word: …"
 answers it, and answers are shared under the maker's first name.
 
+### Sketchbooks
+Signed in, "keep it" keeps anything shared in your own sketchbook (a ring only
+you see, stored as places on the Canvas in `tt_keeps`); "go to it" flies to
+where it lives. Nothing sealed, private or on a device is ever shown there.
+
 ### Story time
 Signed-in people tell true stories of making do ("tell a story"), shown to
 everyone in the ring "story time" with no name at all (the teller's account id is

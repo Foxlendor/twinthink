@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { Query, REPORTS_TO_HIDE, addMedia, allowSender, getPicture, addNote, forViewer, getShadow, createShadow, migrate, myShadows, notesFor, publicShadows, removeShadow, report, updateShadow } from './store';
+import { Query, REPORTS_TO_HIDE, addMedia, keep, myKeeps, unkeep, allowSender, getPicture, addNote, forViewer, getShadow, createShadow, migrate, myShadows, notesFor, publicShadows, removeShadow, report, updateShadow } from './store';
 
 let q: Query;
 const ana = { sub: 'g-ana', name: 'Ana Maria Lopez' };
@@ -196,5 +196,23 @@ describe('today’s word', () => {
     // a story is never an answer
     const story = (await createShadow(q, ana, { kind: 'story', body: 'A story told on the day of the word, not an answer.', answer: true })).shadow!;
     expect(story.day).toBeNull();
+  });
+});
+
+describe('sketchbooks', () => {
+  it('keeps places on the Canvas once each, newest first, and lets them go', async () => {
+    await keep(q, ana.sub, 'music/crhymes');
+    await keep(q, ana.sub, 'p/abc123');
+    await keep(q, ana.sub, 'music/crhymes');
+    expect((await myKeeps(q, ana.sub)).sort()).toEqual(['music/crhymes', 'p/abc123']);
+    expect(await myKeeps(q, ben.sub)).toEqual([]);
+    await unkeep(q, ana.sub, 'p/abc123');
+    expect(await myKeeps(q, ana.sub)).toEqual(['music/crhymes']);
+  });
+
+  it('never keeps what lives on a device, or a copy of a copy', async () => {
+    expect('error' in (await keep(q, ana.sub, 'local/xyz'))).toBe(true);
+    expect('error' in (await keep(q, ana.sub, 'k/music'))).toBe(true);
+    expect('error' in (await keep(q, ana.sub, '<script>'))).toBe(true);
   });
 });

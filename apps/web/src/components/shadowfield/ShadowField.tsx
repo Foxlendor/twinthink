@@ -306,7 +306,8 @@ export default function ShadowField({ serif }: Props) {
   const [notesView, setNotesView] = useState<{ title: string; notes: { t: number; text: string }[] } | null>(null);
   const [me, setMe] = useState<{ enabled: boolean; user: { name: string; owner: boolean } | null } | null>(null);
   // work people have posted, kept on the server (see /api/shadows)
-  const postedRef = useRef<{ public: Posted[]; mine: Posted[]; today?: boolean }>({ public: [], mine: [] });
+  const postedRef = useRef<{ public: Posted[]; mine: Posted[]; today?: boolean; keeps?: string[] }>({ public: [], mine: [] });
+  const [keeps, setKeeps] = useState<string[]>([]);
   // a shared link to posted work waits for it to arrive from the server
   const pendingAtRef = useRef<string[] | null>(null);
   const [posting, setPosting] = useState(false);
@@ -718,10 +719,11 @@ export default function ShadowField({ serif }: Props) {
   const loadPosted = useCallback(async () => {
     const d = (await fetch('/api/shadows', { cache: 'no-store' })
       .then((r) => r.json())
-      .catch(() => null)) as { enabled?: boolean; films?: boolean; public?: Posted[]; mine?: Posted[] } | null;
+      .catch(() => null)) as { enabled?: boolean; films?: boolean; public?: Posted[]; mine?: Posted[]; keeps?: string[] } | null;
     if (!d) return;
     setFilmsOn(!!d.films);
-    postedRef.current = { public: d.public ?? [], mine: d.mine ?? [], today: !!d.enabled };
+    postedRef.current = { public: d.public ?? [], mine: d.mine ?? [], today: !!d.enabled, keeps: d.keeps ?? [] };
+    setKeeps(d.keeps ?? []);
     setPosting(!!d.enabled);
     setPostedList([...(d.mine ?? []), ...(d.public ?? []).filter((p) => !p.mine)]);
     if (storeRef.current) rebuild();
@@ -910,6 +912,28 @@ export default function ShadowField({ serif }: Props) {
     } catch (e) {
       setNotice(((e as Error)?.message || 'that film could not be sent').toLowerCase());
     }
+  };
+
+  /** Your sketchbook: keep what someone else made, or let it go from it. */
+  const toggleKeep = async (target: string) => {
+    if (!me?.user) {
+      signIn();
+      return;
+    }
+    const kept = keeps.includes(target);
+    const res = await fetch('/api/keeps', {
+      method: kept ? 'DELETE' : 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ target }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      const d = (await res?.json().catch(() => ({}))) as { error?: string } | undefined;
+      setNotice((d?.error ?? 'that could not be kept').toLowerCase());
+      return;
+    }
+    setNotice(kept ? 'let go from your sketchbook' : 'kept in your sketchbook');
+    if (!kept) ripple(target);
+    await loadPosted();
   };
 
   const reportPosted = async (id: string) => {
@@ -2173,7 +2197,7 @@ export default function ShadowField({ serif }: Props) {
     [...path]
       .slice(1)
       .reverse()
-      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/') && !n.id.startsWith('p/') && n.id !== 'people' && n.id !== 'yours' && n.id !== 'stories' && n.id !== 'today') ?? null;
+      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/') && !n.id.startsWith('p/') && n.id !== 'people' && n.id !== 'yours' && n.id !== 'stories' && n.id !== 'today' && n.id !== 'sketchbook' && !n.id.startsWith('k/')) ?? null;
   // an idea given away is never followed by an ask for money, nor is a song while it plays
   // nothing given away (songs, starters, throwaways) is ever followed by an ask
   const asking = supportTarget && !path.some((n) => n.free) && playingId !== current?.id ? supportTarget : null;
@@ -2186,7 +2210,7 @@ export default function ShadowField({ serif }: Props) {
   const shareable =
     !!current &&
     path.length > 1 &&
-    !path.some((n) => n.id.startsWith('local/') || n.disclosure > 0) &&
+    !path.some((n) => n.id.startsWith('local/') || n.id === 'sketchbook' || n.disclosure > 0) &&
     (!current.id.startsWith('p/') || !!posted.find((q) => `p/${q.id}` === current.id && q.public && !q.hidden));
   const postedHere = current?.id.startsWith('p/') ? posted.find((q) => `p/${q.id}` === current.id) ?? null : null;
   const ownedHere = current ? localIds(current) : null;
@@ -2362,6 +2386,29 @@ export default function ShadowField({ serif }: Props) {
           <button type="button" className={styles.quiet} onClick={() => shareHere([...path])}>
             send it
           </button>
+        )}
+        {posting && me?.enabled && current && shareable && !current.id.startsWith('k/') && !postedHere?.mine && top?.id !== 'sketchbook' && (
+          <button type="button" className={keeps.includes(current.id) ? styles.following : styles.quiet} onClick={() => toggleKeep(current.id)}>
+            {keeps.includes(current.id) ? 'kept' : 'keep it'}
+          </button>
+        )}
+        {current?.id.startsWith('k/') && (
+          <>
+            <button
+              type="button"
+              className={styles.quiet}
+              onClick={() => {
+                const world = worldRef.current;
+                const p = world ? findPath(world, current.id.slice(2)) : null;
+                if (p) flyTo(p);
+              }}
+            >
+              go to it
+            </button>
+            <button type="button" className={styles.quiet} onClick={() => toggleKeep(current.id.slice(2))}>
+              let it go from here
+            </button>
+          </>
         )}
         {top && top.id !== 'throwaways' && (
           <button type="button" className={styles.quiet} onClick={replayView ? stopReplay : startReplay}>
