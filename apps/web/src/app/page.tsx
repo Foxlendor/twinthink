@@ -12,7 +12,7 @@ export default function HomePage() {
         position: 'relative',
         minHeight: 'calc(100vh - 70px)',
         background: 'transparent',
-        color: '#111827',
+        color: 'var(--text-primary)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -40,12 +40,12 @@ export default function HomePage() {
         zIndex: 10, 
         maxWidth: '850px', 
         textAlign: 'center',
-        background: 'rgba(250, 250, 250, 0.92)',
+        background: 'var(--card-bg)',
         backdropFilter: 'blur(10px)',
         padding: '3rem 2.5rem',
         borderRadius: '24px',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
-        border: '1px solid rgba(255, 255, 255, 0.5)'
+        border: '1px solid var(--border-subtle)'
       }}>
         <h1
           style={{
@@ -54,7 +54,7 @@ export default function HomePage() {
             lineHeight: 1.05,
             margin: '0 0 1.5rem',
             letterSpacing: '-0.02em',
-            color: '#111827'
+            color: 'var(--text-primary)'
           }}
         >
           Give an idea a reality.
@@ -62,7 +62,7 @@ export default function HomePage() {
         <p
           style={{
             fontSize: '1.2rem',
-            color: '#4B5563',
+            color: 'var(--text-secondary)',
             lineHeight: 1.6,
             margin: '0 auto 2.5rem',
             fontWeight: 400,
@@ -76,8 +76,8 @@ export default function HomePage() {
             href="/explore"
             style={{
               padding: '0.85rem 1.75rem',
-              background: '#111827',
-              color: '#FFFFFF',
+              background: 'var(--text-primary)',
+              color: 'var(--bg-primary)',
               borderRadius: '10px',
               textDecoration: 'none',
               fontWeight: 600,
@@ -96,8 +96,8 @@ export default function HomePage() {
             style={{
               padding: '0.85rem 1.75rem',
               background: 'transparent',
-              color: '#111827',
-              border: '1px solid #D1D5DB',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-strong)',
               borderRadius: '10px',
               textDecoration: 'none',
               fontWeight: 600,
@@ -115,9 +115,9 @@ export default function HomePage() {
             href="/roundup"
             style={{
               padding: '0.85rem 1.75rem',
-              background: '#F1F5F9',
-              color: '#0F172A',
-              border: '1px solid #CBD5E1',
+              background: 'var(--bg-tertiary)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-strong)',
               borderRadius: '10px',
               textDecoration: 'none',
               fontWeight: 600,

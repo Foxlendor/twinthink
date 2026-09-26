@@ -636,6 +636,8 @@ export default function ShadowField({ serif }: Props) {
     const on = !NIGHT;
     setNight(on);
     setNightState(on);
+    if (on) document.documentElement.setAttribute('data-theme', 'dark');
+    else document.documentElement.removeAttribute('data-theme');
     fallRef.current = null;
     try {
       window.localStorage.setItem('twinthink.night.v1', on ? '1' : '0');
@@ -926,6 +928,7 @@ export default function ShadowField({ serif }: Props) {
           fallRef.current = null;
           setNight(false);
           setNightState(false);
+          document.documentElement.removeAttribute('data-theme');
         }
       }
       // the compass: world-up, where you are in the lap, where the next thing lies

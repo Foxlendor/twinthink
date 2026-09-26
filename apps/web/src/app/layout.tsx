@@ -55,15 +55,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       className={`${plusJakartaSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
-      style={{ background: '#FAFAFA' }}
+      style={{ background: 'var(--bg-primary)' }}
+      suppressHydrationWarning
     >
       <head>
+        {/* day or night before the first paint: the visitor's choice (shared with the Canvas), else their system */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var s=localStorage.getItem('twinthink.night.v1');var d=s?s==='1':matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.setAttribute('data-theme','dark')}catch(e){}`,
+          }}
+        />
         <link rel="icon" href="/favicon.ico?v=20260921" sizes="any" />
         <link rel="icon" href="/icon.png?v=20260921" type="image/png" />
         <link rel="icon" href="/icon.svg?v=20260921" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260921" />
       </head>
-      <body className="min-h-full flex flex-col" style={{ color: '#111827' }}>
+      <body className="min-h-full flex flex-col" style={{ color: 'var(--text-primary)' }}>
         <Navbar />
         <div style={{ flex: 1 }}>
           {children}

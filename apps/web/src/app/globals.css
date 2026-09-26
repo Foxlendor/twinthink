@@ -44,6 +44,44 @@
   --shadow-twin: 0 20px 40px -10px rgba(0, 0, 0, 0.15), 0 10px 20px -5px rgba(0, 0, 0, 0.08);
   --shadow-twin-hover: 0 30px 60px -15px rgba(0, 0, 0, 0.25), 0 15px 30px -10px rgba(0, 0, 0, 0.15);
   --ink-primary: #111827;
+  --header-bg: rgba(255, 255, 255, 0.92);
+  --card-bg: rgba(250, 250, 250, 0.92);
+  --bg-hover: #F9FAFB;
+  --logo-pattern-opacity: 0.07;
+}
+
+/* Dark: the same page at night. Set on <html> before first paint (layout.tsx),
+   from the visitor's choice (shared with the Canvas's night) or their system. */
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-primary: #0F0F13;
+  --bg-secondary: #16161C;
+  --bg-tertiary: #1F1E27;
+  --bg-elevated: #1A1A21;
+  --bg-hover: #1C1B23;
+  --text-primary: #ECE9F2;
+  --text-secondary: #B6B2C1;
+  --text-muted: #8E8A9B;
+  --border-subtle: #2A2833;
+  --border-strong: #3B3846;
+  --border-color: #2A2833;
+  --accent-primary: #ECE9F2;
+  --ink-primary: #ECE9F2;
+  --header-bg: rgba(15, 15, 19, 0.9);
+  --card-bg: rgba(22, 22, 28, 0.9);
+  --logo-pattern-opacity: 0.1;
+}
+
+/* the logos and the ink film are drawn in dark ink: at night they print pale */
+html[data-theme='dark'] img[src*='logo'],
+html[data-theme='dark'] img[src*='glyph'],
+html[data-theme='dark'] img[src*='wordmark'] {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+html[data-theme='dark'] .brand-ink-video {
+  filter: invert(1) hue-rotate(180deg);
+  mix-blend-mode: screen !important;
 }
 * {
   box-sizing: border-box;
@@ -77,11 +115,16 @@ body::before {
   background-image: url('/logo.png');
   background-repeat: repeat;
   background-size: 240px auto;
-  opacity: 0.02;
+  /* the mirrored logo pattern: visible, still quiet */
+  opacity: var(--logo-pattern-opacity);
   pointer-events: none;
   z-index: -1;
   will-change: transform;
   animation: scrollLogoBg 90s linear infinite;
+}
+
+html[data-theme='dark'] body::before {
+  filter: invert(1) hue-rotate(180deg);
 }
 
 @keyframes scrollLogoBg {

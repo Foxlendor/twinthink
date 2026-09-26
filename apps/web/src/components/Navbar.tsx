@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, Menu, X, Plus, ShieldCheck, Sparkles, FolderArchive, Compass, Coffee, BookOpen, Feather, Briefcase, Coins } from 'lucide-react';
+import { User, Menu, X, Moon, Sun, Plus, ShieldCheck, Sparkles, FolderArchive, Compass, Coffee, BookOpen, Feather, Briefcase, Coins } from 'lucide-react';
 import CreateTwinModal from './CreateTwinModal';
 import BrandLogo from './BrandLogo';
 import InventorNotebookModal from './InventorNotebookModal';
@@ -52,6 +52,25 @@ export default function Navbar() {
     }
   }, [logoClickCount]);
 
+  // day or night, shared with the Canvas's own night switch
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    // read what the pre-paint script already chose
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDark(document.documentElement.getAttribute('data-theme') === 'dark');
+  }, []);
+  const toggleDark = () => {
+    const on = !dark;
+    setDark(on);
+    if (on) document.documentElement.setAttribute('data-theme', 'dark');
+    else document.documentElement.removeAttribute('data-theme');
+    try {
+      localStorage.setItem('twinthink.night.v1', on ? '1' : '0');
+    } catch {
+      // optional
+    }
+  };
+
   // The Canvas is an immersive medium with its own quiet chrome.
   if (pathname?.startsWith('/canvas')) return null;
 
@@ -61,9 +80,9 @@ export default function Navbar() {
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        background: 'rgba(255, 255, 255, 0.92)',
+        background: 'var(--header-bg)',
         backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid #E5E7EB',
+        borderBottom: '1px solid var(--border-subtle)',
         width: '100%'
       }}>
         <div style={{
@@ -96,7 +115,7 @@ export default function Navbar() {
                 display: 'flex', 
                 alignItems: 'center', 
                 textDecoration: 'none', 
-                color: '#111827' 
+                color: 'var(--text-primary)' 
               }}
             >
               <BrandLogo height={34} />
@@ -117,7 +136,7 @@ export default function Navbar() {
                 gap: '0.35rem',
                 padding: '0.35rem 0.65rem',
                 borderRadius: '8px',
-                background: pathname === '/bounties' ? '#EFF6FF' : 'transparent',
+                background: pathname === '/bounties' ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -130,7 +149,7 @@ export default function Navbar() {
               style={{
                 fontSize: '0.8125rem',
                 fontWeight: 700,
-                color: '#4B5563',
+                color: 'var(--text-secondary)',
                 textDecoration: 'none',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -147,7 +166,7 @@ export default function Navbar() {
               style={{
                 fontSize: '0.8125rem',
                 fontWeight: 700,
-                color: '#4B5563',
+                color: 'var(--text-secondary)',
                 textDecoration: 'none',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -179,18 +198,38 @@ export default function Navbar() {
               <span>IP Kiosk &amp; Pool</span>
             </Link>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: '0.25rem', color: '#4B5563' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: '0.25rem', color: 'var(--text-secondary)' }}>
+              <button
+                type="button"
+                onClick={toggleDark}
+                aria-label={dark ? 'Switch to day' : 'Switch to night'}
+                title={dark ? 'Day' : 'Night'}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  display: 'grid',
+                  placeItems: 'center',
+                  cursor: 'pointer',
+                  color: 'var(--text-secondary)'
+                }}
+              >
+                {dark ? <Sun size={15} /> : <Moon size={15} />}
+              </button>
+
               <button 
                 style={{ 
                   background: 'none', 
-                  border: '1px solid #E5E7EB', 
+                  border: '1px solid var(--border-subtle)', 
                   borderRadius: '50%',
                   width: '32px',
                   height: '32px',
                   display: 'grid',
                   placeItems: 'center',
                   cursor: 'pointer', 
-                  color: '#4B5563' 
+                  color: 'var(--text-secondary)' 
                 }}
                 onClick={() => setShowProfileModal(true)}
                 aria-label="Inventor Profile"
@@ -202,12 +241,12 @@ export default function Navbar() {
               {/* Burger Menu Button */}
               <button 
                 style={{ 
-                  background: mobileMenuOpen ? '#F3F4F6' : 'none', 
-                  border: '1px solid #E5E7EB', 
+                  background: mobileMenuOpen ? 'var(--bg-tertiary)' : 'none', 
+                  border: '1px solid var(--border-subtle)', 
                   borderRadius: '8px',
                   padding: '6px',
                   cursor: 'pointer', 
-                  color: '#111827',
+                  color: 'var(--text-primary)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
@@ -231,8 +270,8 @@ export default function Navbar() {
               top: '100%',
               left: 0,
               right: 0,
-              background: '#FFFFFF',
-              borderBottom: '1px solid #E5E7EB',
+              background: 'var(--bg-secondary)',
+              borderBottom: '1px solid var(--border-subtle)',
               boxShadow: '0 20px 40px rgba(0, 0, 0, 0.08)',
               padding: '1.25rem 1.5rem',
               animation: 'fadeIn 0.15s ease-out'
@@ -254,18 +293,18 @@ export default function Navbar() {
                     gap: '0.75rem',
                     padding: '0.75rem 1rem',
                     borderRadius: '12px',
-                    background: '#F9FAFB',
-                    border: '1px solid #F3F4F6',
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--bg-tertiary)',
                     textDecoration: 'none',
-                    color: '#111827'
+                    color: 'var(--text-primary)'
                   }}
                 >
-                  <div style={{ padding: '6px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                  <div style={{ padding: '6px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
                     <Compass size={18} color="#2563EB" />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Explore Records</div>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Concept previews & verified models</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Concept previews & verified models</div>
                   </div>
                 </Link>
 
@@ -278,18 +317,18 @@ export default function Navbar() {
                     gap: '0.75rem',
                     padding: '0.75rem 1rem',
                     borderRadius: '12px',
-                    background: '#F9FAFB',
-                    border: '1px solid #F3F4F6',
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--bg-tertiary)',
                     textDecoration: 'none',
-                    color: '#111827'
+                    color: 'var(--text-primary)'
                   }}
                 >
-                  <div style={{ padding: '6px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                  <div style={{ padding: '6px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
                     <FolderArchive size={18} color="#059669" />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Public Archive</div>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Curated public invention records</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Curated public invention records</div>
                   </div>
                 </Link>
 
@@ -302,18 +341,18 @@ export default function Navbar() {
                     gap: '0.75rem',
                     padding: '0.75rem 1rem',
                     borderRadius: '12px',
-                    background: '#F9FAFB',
-                    border: '1px solid #F3F4F6',
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--bg-tertiary)',
                     textDecoration: 'none',
-                    color: '#111827'
+                    color: 'var(--text-primary)'
                   }}
                 >
-                  <div style={{ padding: '6px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                  <div style={{ padding: '6px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
                     <Sparkles size={18} color="#EA580C" />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Concept Studio</div>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Prepare concept preview for review</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Prepare concept preview for review</div>
                   </div>
                 </Link>
 
@@ -326,18 +365,18 @@ export default function Navbar() {
                     gap: '0.75rem',
                     padding: '0.75rem 1rem',
                     borderRadius: '12px',
-                    background: '#F9FAFB',
-                    border: '1px solid #F3F4F6',
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--bg-tertiary)',
                     textDecoration: 'none',
-                    color: '#111827'
+                    color: 'var(--text-primary)'
                   }}
                 >
-                  <div style={{ padding: '6px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                  <div style={{ padding: '6px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
                     <ShieldCheck size={18} color="#DC2626" />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Pitch Access</div>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Investor paywall bypass</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Investor paywall bypass</div>
                   </div>
                 </Link>
 
@@ -350,18 +389,18 @@ export default function Navbar() {
                     gap: '0.75rem',
                     padding: '0.75rem 1rem',
                     borderRadius: '12px',
-                    background: '#F9FAFB',
-                    border: '1px solid #F3F4F6',
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--bg-tertiary)',
                     textDecoration: 'none',
-                    color: '#111827'
+                    color: 'var(--text-primary)'
                   }}
                 >
-                  <div style={{ padding: '6px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                  <div style={{ padding: '6px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
                     <Briefcase size={18} color="#2563EB" />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>R&amp;D Bounties</div>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Corporate challenges &amp; think tanks</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Corporate challenges &amp; think tanks</div>
                   </div>
                 </Link>
 
@@ -374,15 +413,15 @@ export default function Navbar() {
                     gap: '0.75rem',
                     padding: '0.75rem 1rem',
                     borderRadius: '12px',
-                    background: '#F9FAFB',
-                    border: '1px solid #F3F4F6',
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--bg-tertiary)',
                     textDecoration: 'none',
-                    color: '#111827'
+                    color: 'var(--text-primary)'
                   }}
                 >
                   <div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Canvas</div>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Move through ideas by zooming into them</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Move through ideas by zooming into them</div>
                   </div>
                 </Link>
 
@@ -395,15 +434,15 @@ export default function Navbar() {
                     gap: '0.75rem',
                     padding: '0.75rem 1rem',
                     borderRadius: '12px',
-                    background: '#F9FAFB',
-                    border: '1px solid #F3F4F6',
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--bg-tertiary)',
                     textDecoration: 'none',
-                    color: '#111827'
+                    color: 'var(--text-primary)'
                   }}
                 >
                   <div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Support</div>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Help keep TwinThink running</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Help keep TwinThink running</div>
                   </div>
                 </Link>
 
@@ -416,18 +455,18 @@ export default function Navbar() {
                     gap: '0.75rem',
                     padding: '0.75rem 1rem',
                     borderRadius: '12px',
-                    background: '#F9FAFB',
-                    border: '1px solid #F3F4F6',
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--bg-tertiary)',
                     textDecoration: 'none',
-                    color: '#111827'
+                    color: 'var(--text-primary)'
                   }}
                 >
-                  <div style={{ padding: '6px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                  <div style={{ padding: '6px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
                     <Coins size={18} color="#059669" />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>IP Kiosk &amp; Monthly Pool</div>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>Countertop stands &amp; grant lottery</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Countertop stands &amp; grant lottery</div>
                   </div>
                 </Link>
 
@@ -449,7 +488,7 @@ export default function Navbar() {
                     color: '#1E3A8A'
                   }}
                 >
-                  <div style={{ padding: '6px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #BFDBFE' }}>
+                  <div style={{ padding: '6px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid #BFDBFE' }}>
                     <BookOpen size={18} color="#1E3A8A" />
                   </div>
                   <div>
@@ -466,7 +505,7 @@ export default function Navbar() {
                 alignItems: 'center',
                 flexWrap: 'wrap',
                 gap: '1rem',
-                borderTop: '1px solid #F3F4F6',
+                borderTop: '1px solid var(--bg-tertiary)',
                 paddingTop: '1rem'
               }}>
                 <div style={{
@@ -474,7 +513,7 @@ export default function Navbar() {
                   alignItems: 'center',
                   gap: '0.5rem',
                   fontSize: '0.75rem',
-                  color: '#6B7280'
+                  color: 'var(--text-muted)'
                 }}>
                   <ShieldCheck size={14} color="#10B981" />
                   <span>Controlled Disclosure Active · Private drafts stay unlisted</span>
@@ -519,7 +558,7 @@ export default function Navbar() {
           padding: '1rem'
         }}>
           <div style={{
-            background: '#FFFFFF',
+            background: 'var(--bg-secondary)',
             borderRadius: '20px',
             maxWidth: '420px',
             width: '100%',
@@ -535,7 +574,7 @@ export default function Navbar() {
                 right: '1rem',
                 background: 'none',
                 border: 'none',
-                color: '#6B7280',
+                color: 'var(--text-muted)',
                 cursor: 'pointer',
                 padding: '4px'
               }}
@@ -549,26 +588,26 @@ export default function Navbar() {
                 width: '44px',
                 height: '44px',
                 borderRadius: '50%',
-                background: '#F3F4F6',
-                border: '1px solid #E5E7EB',
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-subtle)',
                 display: 'grid',
                 placeItems: 'center'
               }}>
                 <User size={22} color="#374151" />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#111827' }}>Inventor Session</h3>
-                <div style={{ fontSize: '0.78rem', color: '#6B7280' }}>Local Token Authentication</div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>Inventor Session</h3>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Local Token Authentication</div>
               </div>
             </div>
 
-            <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.55, margin: '0 0 1.25rem' }}>
-              Your private twins are authenticated via per-twin owner tokens (<code style={{ fontFamily: 'var(--font-mono)', background: '#F3F4F6', padding: '2px 6px', borderRadius: '4px' }}>x-twin-owner-token</code>). No personal data is stored publicly.
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.55, margin: '0 0 1.25rem' }}>
+              Your private twins are authenticated via per-twin owner tokens (<code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: '4px' }}>x-twin-owner-token</code>). No personal data is stored publicly.
             </p>
 
             <div style={{
-              background: '#F9FAFB',
-              border: '1px solid #E5E7EB',
+              background: 'var(--bg-hover)',
+              border: '1px solid var(--border-subtle)',
               borderRadius: '12px',
               padding: '0.85rem 1rem',
               marginBottom: '1.5rem',

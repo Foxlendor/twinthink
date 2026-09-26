@@ -40,6 +40,7 @@ export default function BrandVideoBanner({
     >
       <video
         ref={videoRef}
+        className="brand-ink-video"
         src="/brand_ink_reveal.mp4"
         poster="/brand_ink_reveal_poster.jpg"
         autoPlay
