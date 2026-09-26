@@ -127,3 +127,24 @@ describe('limits that hold', () => {
     expect(await allowSender(q, '5.6.7.8')).toBe(true);
   });
 });
+
+describe('build on it', () => {
+  it('builds on anything shared, keeps it private, and credits back along the chain', async () => {
+    const lamp = (await createShadow(q, ana, { title: 'a lamp that listens', public: true })).shadow!;
+    const mine = (await createShadow(q, ben, { title: 'a lamp that hums back', from: lamp.id })).shadow!;
+    expect(mine.public).toBe(false);
+    expect(mine.parent).toEqual({ title: 'a lamp that listens', kind: 'shadow', by: 'Ana' });
+    // a private one grows nothing visible, and cannot be built on
+    const hidden = (await createShadow(q, ana, { title: 'not yet' })).shadow!;
+    expect('error' in (await createShadow(q, ben, { title: 'x', from: hidden.id }))).toBe(true);
+    // it is known that something grew from it, never what, while that stays private
+    expect((await getShadow(q, lamp.id))!.sparks).toBe(1);
+  });
+
+  it('never names who told a story, even through what it sparked', async () => {
+    const story = (await createShadow(q, ana, { kind: 'story', body: 'The kettle broke so I used a paper cup and it worked.' })).shadow!;
+    const idea = (await createShadow(q, ben, { title: 'a cup that boils', from: story.id })).shadow!;
+    expect(idea.parent).toEqual({ title: story.title, kind: 'story', by: '' });
+    expect(JSON.stringify(forViewer(idea, ben.sub))).not.toContain('Ana');
+  });
+});

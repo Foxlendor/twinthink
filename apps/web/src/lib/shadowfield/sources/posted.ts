@@ -17,9 +17,13 @@ export interface Posted {
   kind?: 'shadow' | 'story';
   from?: string | null;
   sparks?: number;
+  /** What it was built on (a story or someone's Shadow), while that is shared. */
+  parent?: { title: string; kind: 'shadow' | 'story'; by: string } | null;
   /** Yours, taken down: only you see it. */
   hidden?: boolean;
 }
+
+const short = (t: string) => (t.length > 36 ? t.slice(0, 34).replace(/\s+\S*$/, '') + '…' : t);
 
 function lineFor(p: Posted) {
   if (p.mine && p.hidden) return 'yours, taken down; only you can see it now.';
@@ -29,7 +33,16 @@ function lineFor(p: Posted) {
     return n ? `told without a name. it has sparked ${n === 1 ? 'an idea' : `${n} ideas`}.` : 'told without a name.';
   }
   const who = p.mine ? (p.public ? 'yours, shared with everyone.' : 'yours, only you can see it.') : `by ${p.by}.`;
-  return p.from ? `${who} sparked by a story.` : who;
+  // credit runs back along the chain: what it was built on, and who made that
+  const on = p.parent
+    ? p.parent.kind === 'story'
+      ? ' sparked by a story.'
+      : ` built on ${p.parent.by ? `${p.parent.by}’s ` : ''}“${short(p.parent.title)}”.`
+    : p.from
+      ? ' built on something no longer shared.'
+      : '';
+  const grew = !p.mine && (p.sparks ?? 0) > 0 ? ' others have built on it.' : '';
+  return `${who}${on}${grew}`;
 }
 
 function node(p: Posted, i: number): IdeaNode {
@@ -48,6 +61,7 @@ function node(p: Posted, i: number): IdeaNode {
     children: [],
     artifact: p.body ? { type: 'text', body: p.body } : undefined,
     line: lineFor(p),
+    links: p.parent && p.from ? [{ to: `p/${p.from}`, kind: 'grew-from' as const }] : undefined,
     x: Math.cos(i * 2.39996) * 0.5,
     y: Math.sin(i * 2.39996) * 0.5,
     r: 0.05,

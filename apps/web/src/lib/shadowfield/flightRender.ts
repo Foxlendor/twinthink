@@ -693,6 +693,8 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   list.sort((a, b) => b.dz - a.dz);
 
   const titles: Title[] = [];
+  // where each thing was drawn (nearest copy last wins, as it is drawn last): for threads of credit
+  const seen = new Map<string, [number, number, number]>();
   // what a near film, picture or object covers: names of things behind it are not written over it
   const covers: { r: [number, number, number, number]; near: number }[] = [];
   const quiet = 1 - smoothstep(2.5, 7, Math.abs(speed));
@@ -710,6 +712,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     if (s.depth === 0) drawAuthor(st, stream, x, y, R, alpha, ink);
     ink.flush(ctx);
     if (!fs.frames.has(s.node.id) || dz < FOCUS * 2) fs.frames.set(s.node.id, { ox: x, oy: y, s: R });
+    if (!sealed) seen.set(s.node.id, [x, y, alpha]);
 
     if (s.depth > 0) {
       // what a film, picture or object covers, however near: names from behind are not written over it
@@ -755,6 +758,27 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
       }
     }
   }
+  // credit is a thread: what was built on something is joined to it in rose
+  for (const { s } of list) {
+    for (const l of s.node.links ?? []) {
+      if (l.kind !== 'grew-from') continue;
+      const a = seen.get(s.node.id);
+      const b = seen.get(l.to);
+      if (!a || !b) continue;
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const n = Math.min(160, Math.floor(len / 7));
+      const alpha = 0.55 * Math.min(a[2], b[2]);
+      for (let i = 1; i < n; i++) {
+        const t = i / n;
+        // it bows a little, like a thread and not a ruler
+        const bow = Math.sin(t * Math.PI) * len * 0.08;
+        const nx = -(b[1] - a[1]) / (len || 1);
+        const ny = (b[0] - a[0]) / (len || 1);
+        ink.dot(a[0] + (b[0] - a[0]) * t + nx * bow, a[1] + (b[1] - a[1]) * t + ny * bow, 1.1, alpha, true);
+      }
+    }
+  }
+  ink.flush(ctx);
   // the clock hand points at the next thing beyond the one in front of you
   let next: [number, number] | null = null;
   let nextDz = Infinity;

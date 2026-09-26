@@ -33,6 +33,8 @@ export interface ServerShadow {
   sparks: number;
   /** Taken down by the Canvas's owner (or by reports): seen only by its maker. */
   hidden: boolean;
+  /** What it was built on, as anyone may see it. */
+  parent: { title: string; kind: Kind; by: string } | null;
 }
 
 /** What a viewer is sent: never the maker's account id, only whether it is theirs; a story never says who told it. */
@@ -47,6 +49,7 @@ export function forViewer(s: ServerShadow, viewerSub: string | undefined) {
     updated: s.updated,
     kind: s.kind,
     from: s.from,
+    parent: s.parent,
     sparks: s.sparks,
     mine: s.owner === viewerSub,
     // only its maker is told it was taken down
@@ -110,7 +113,11 @@ const SCHEMA = [
 const SCHEMA_VERSION = 3;
 
 // every read counts the Shadows a story has sparked
-const SELECT = `SELECT s.*, (SELECT COUNT(*)::int FROM tt_shadows c WHERE c.sparked_from = s.id) AS sparks FROM tt_shadows s`;
+// every read counts what grew from each, and names what each grew from (never who told a story)
+const SELECT = `SELECT s.*,
+  (SELECT COUNT(*)::int FROM tt_shadows c WHERE c.sparked_from = s.id AND NOT c.hidden) AS sparks,
+  p.title AS from_title, p.kind AS from_kind, p.owner_name AS from_by
+  FROM tt_shadows s LEFT JOIN tt_shadows p ON p.id = s.sparked_from AND p.is_public AND NOT p.hidden`;
 
 export async function migrate(q: Query) {
   await q(`CREATE TABLE IF NOT EXISTS tt_meta (k TEXT PRIMARY KEY, v INT NOT NULL)`);
@@ -165,6 +172,10 @@ function row(r: Record<string, unknown>): ServerShadow {
     updated: new Date(r.updated_at as string).getTime(),
     kind: r.kind === 'story' ? 'story' : 'shadow',
     from: r.sparked_from ? String(r.sparked_from) : null,
+    // what it grew from, while that is still shared: a story's teller is never named
+    parent: r.from_title
+      ? { title: String(r.from_title), kind: r.from_kind === 'story' ? 'story' : 'shadow', by: r.from_kind === 'story' ? '' : String(r.from_by ?? '') }
+      : null,
     sparks: Number(r.sparks ?? 0),
     hidden: r.hidden === true,
   };
@@ -206,7 +217,8 @@ export async function createShadow(
   let from: string | null = null;
   if (!story && typeof input.from === 'string') {
     const src = await getShadow(q, input.from);
-    if (!src || src.kind !== 'story' || !src.public || src.hidden) return { error: 'That story is not here any more.' } as const;
+    // anything shared can be built on: a story, or someone's Shadow
+    if (!src || !src.public || src.hidden) return { error: 'That is not here any more.' } as const;
     from = src.id;
   }
   // counted and claimed in one statement, so a burst of posts cannot slip past the limit together
@@ -220,7 +232,7 @@ export async function createShadow(
     `INSERT INTO tt_shadows (id, owner_sub, owner_name, title, body, is_public, kind, sparked_from) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
     [newId(), who.sub, story ? '' : firstName(who.name), title, body, story || input.public === true, story ? 'story' : 'shadow', from]
   );
-  return { shadow: row(rows[0]) } as const;
+  return { shadow: (await getShadow(q, String(rows[0].id)))! } as const;
 }
 
 /** Everyone's public Shadows, newest first (hidden ones never). */

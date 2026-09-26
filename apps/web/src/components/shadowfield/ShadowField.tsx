@@ -2286,9 +2286,9 @@ export default function ShadowField({ serif }: Props) {
             tell a story
           </button>
         )}
-        {postedHere && postedHere.kind === 'story' && !postedHere.mine && (
+        {postedHere && !postedHere.mine && (
           <button type="button" className={styles.quiet} onClick={() => sparkFrom(postedHere.id)}>
-            there’s an idea in this
+            {postedHere.kind === 'story' ? 'there’s an idea in this' : 'build on it'}
           </button>
         )}
         {postedHere?.mine && (
@@ -2605,7 +2605,9 @@ export default function ShadowField({ serif }: Props) {
                       : composer.mode === 'note'
                         ? 'a note for its maker'
                         : composer.mode === 'spark'
-                          ? 'what could be made from it?'
+                          ? posted.find((q) => q.id === composer.target)?.kind === 'story'
+                            ? 'what could be made from it?'
+                            : 'what would you make of it?'
                           : ''
             }
             onKeyDown={(e) => {
