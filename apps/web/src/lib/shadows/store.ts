@@ -64,12 +64,22 @@ function parseMedia(raw: unknown): PostMedia[] {
   return Array.isArray(v) ? (v as PostMedia[]) : [];
 }
 
-/** Films are only ever taken from the site's own file store. */
-export function isStoreUrl(url: unknown): url is string {
-  if (typeof url !== 'string' || url.length > 500) return false;
+/** The site's own file store, as named by its token (vercel_blob_rw_<store>_<secret>). */
+export function storeHost(token = process.env.BLOB_READ_WRITE_TOKEN): string | null {
+  const id = token?.match(/^vercel_blob_rw_([A-Za-z0-9]+)_/)?.[1];
+  return id ? `${id.toLowerCase()}.public.blob.vercel-storage.com` : null;
+}
+
+/**
+ * A film is only ever taken from the site's own file store, and only from the
+ * place uploads for this very Shadow are put (films/<shadow id>/...), so no one
+ * can claim, or later remove, a film that is not theirs.
+ */
+export function isStoreUrl(url: unknown, shadowId: string, host: string | null = storeHost()): url is string {
+  if (typeof url !== 'string' || url.length > 500 || !host) return false;
   try {
     const u = new URL(url);
-    return u.protocol === 'https:' && u.hostname.endsWith('.public.blob.vercel-storage.com');
+    return u.protocol === 'https:' && u.hostname === host && u.pathname.startsWith(`/films/${shadowId}/`) && !u.search && !u.hash;
   } catch {
     return false;
   }
@@ -96,7 +106,13 @@ async function keepPicture(q: Query, shadowId: string, pic: { mime: string; b64:
  * Its maker adds a picture ({kind:'image', data}) or a film already in the
  * file store ({kind:'video', url, poster?}) to their Shadow.
  */
-export async function addMedia(q: Query, who: Author, id: string, input: { kind?: unknown; data?: unknown; url?: unknown; poster?: unknown; aspect?: unknown }) {
+export async function addMedia(
+  q: Query,
+  who: Author,
+  id: string,
+  input: { kind?: unknown; data?: unknown; url?: unknown; poster?: unknown; aspect?: unknown },
+  host: string | null = storeHost()
+) {
   const s = await getShadow(q, id);
   if (!s || s.owner !== who.sub) return { error: 'Not yours to change.' } as const;
   if (s.kind === 'story') return { error: 'A story is told in words.' } as const;
@@ -107,11 +123,21 @@ export async function addMedia(q: Query, who: Author, id: string, input: { kind?
     if (!pic) return { error: 'That picture is too large or not a picture.' } as const;
     item = { kind: 'image', src: await keepPicture(q, id, pic), aspect: aspectOf(input.aspect) };
   } else if (input.kind === 'video') {
-    if (!isStoreUrl(input.url)) return { error: 'That film did not arrive.' } as const;
+    if (!isStoreUrl(input.url, id, host)) return { error: 'That film did not arrive.' } as const;
     const pic = input.poster === undefined ? null : readPicture(input.poster);
     item = { kind: 'video', src: input.url, aspect: aspectOf(input.aspect), ...(pic ? { poster: await keepPicture(q, id, pic) } : {}) };
   } else return { error: 'Only pictures and films.' } as const;
-  await q(`UPDATE tt_shadows SET media = media || $2::jsonb, updated_at = NOW() WHERE id = $1`, [id, JSON.stringify([item])]);
+  // added in one step that also holds the limit, so a burst of additions cannot pass it
+  const done = await q(
+    `UPDATE tt_shadows SET media = media || $2::jsonb, updated_at = NOW() WHERE id = $1 AND owner_sub = $3 AND jsonb_array_length(media) < $4 RETURNING id`,
+    [id, JSON.stringify([item]), who.sub, MEDIA_MAX]
+  );
+  if (!done.length) {
+    // the picture kept for it is let go again
+    const kept = [item.kind === 'image' ? item.src : item.poster].filter(Boolean) as string[];
+    for (const src of kept) await q(`DELETE FROM tt_media WHERE id = $1`, [src.split('/').pop()]);
+    return { error: 'That is as much as one Shadow holds.' } as const;
+  }
   return { shadow: (await getShadow(q, id))! } as const;
 }
 
@@ -144,7 +170,8 @@ export function forViewer(s: ServerShadow, viewerSub: string | undefined) {
     created: s.created,
     updated: s.updated,
     kind: s.kind,
-    from: s.from,
+    // what it grew from, only while that is still shared
+    from: s.parent ? s.from : null,
     parent: s.parent,
     media: s.media,
     day: s.day,
@@ -234,7 +261,7 @@ const SCHEMA_VERSION = 6;
 
 // every read counts what grew from each, and names what each grew from (never who told a story)
 const SELECT = `SELECT s.*,
-  (SELECT COUNT(*)::int FROM tt_shadows c WHERE c.sparked_from = s.id AND NOT c.hidden) AS sparks,
+  (SELECT COUNT(*)::int FROM tt_shadows c WHERE c.sparked_from = s.id AND c.is_public AND NOT c.hidden) AS sparks,
   p.title AS from_title, p.kind AS from_kind, p.owner_name AS from_by
   FROM tt_shadows s LEFT JOIN tt_shadows p ON p.id = s.sparked_from AND p.is_public AND NOT p.hidden`;
 
@@ -398,7 +425,7 @@ export async function removeShadow(q: Query, who: Author, id: string, siteOwner:
     await q(`DELETE FROM tt_notes WHERE target = $1`, [`p/${id}`]);
     await q(`DELETE FROM tt_media WHERE shadow_id = $1`, [id]);
     // films in the file store are for the route to let go of
-    return { ok: true, films: s.media.filter((m) => m.kind === 'video').map((m) => m.src) } as const;
+    return { ok: true, films: s.media.filter((m) => m.kind === 'video' && isStoreUrl(m.src, id)).map((m) => m.src) } as const;
   }
   if (siteOwner) {
     await q(`UPDATE tt_shadows SET hidden = TRUE WHERE id = $1`, [id]);
@@ -445,7 +472,10 @@ export async function keep(q: Query, sub: string, target: unknown) {
   if (!keepable(target)) return { error: 'That cannot be kept.' } as const;
   const [{ n }] = await q(`SELECT COUNT(*)::int AS n FROM tt_keeps WHERE owner_sub = $1`, [sub]);
   if (Number(n) >= KEEPS_MAX) return { error: 'Your sketchbook is full; let something go first.' } as const;
-  await q(`INSERT INTO tt_keeps (owner_sub, target) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [sub, target]);
+  await q(
+    `INSERT INTO tt_keeps (owner_sub, target) SELECT $1, $2 WHERE (SELECT COUNT(*) FROM tt_keeps WHERE owner_sub = $1) < $3 ON CONFLICT DO NOTHING`,
+    [sub, target, KEEPS_MAX]
+  );
   return { ok: true } as const;
 }
 

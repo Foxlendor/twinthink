@@ -14,8 +14,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return new Response(new Uint8Array(pic.bytes), {
       headers: {
         'content-type': pic.mime,
-        // a shared picture never changes; a private one is never kept by anyone in between
-        'cache-control': pic.open ? 'public, max-age=31536000, immutable' : 'private, no-store',
+        // briefly, so taking something down or keeping it private takes hold within minutes
+        'cache-control': pic.open ? 'public, max-age=300' : 'private, no-store',
         'x-content-type-options': 'nosniff',
       },
     });

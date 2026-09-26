@@ -27,7 +27,8 @@ export async function GET(req: Request) {
   const at = url.searchParams.get('at') ?? undefined;
   const d = (await describeShared(at)) ?? { title: 'the Canvas', line: 'songs, dances, animation and inventions' };
   const font = await loadSerif();
-  const still = d.still ? new URL(d.still, url.origin).toString() : null;
+  // a still is only ever one of the site's own files, fetched from the site itself
+  const still = d.still && d.still.startsWith('/') && !d.still.startsWith('//') ? new URL(d.still, 'https://twinth.ink').toString() : null;
   const title = d.title.length > 90 ? d.title.slice(0, 88) + '…' : d.title;
   return new ImageResponse(
     (

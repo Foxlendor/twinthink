@@ -82,9 +82,13 @@ describe('story time', () => {
     const idea = await createShadow(q, ben, { title: 'a chain link you can bend by hand', from: story.id });
     expect(idea.shadow!.from).toBe(story.id);
     expect(idea.shadow!.public).toBe(false);
+    // what grew is counted once it is shared
+    expect((await getShadow(q, story.id))!.sparks).toBe(0);
+    await updateShadow(q, ben, idea.shadow!.id, { public: true });
     expect((await getShadow(q, story.id))!.sparks).toBe(1);
-    // only a story can spark, and only one that is still told
-    expect('error' in (await createShadow(q, ben, { title: 'x', from: idea.shadow!.id }))).toBe(true);
+    // only what is still shared can be built on
+    const kept = (await createShadow(q, ana, { title: 'not shared' })).shadow!;
+    expect('error' in (await createShadow(q, ben, { title: 'x', from: kept.id }))).toBe(true);
   });
 
   it('hides what enough different people report, once each', async () => {
@@ -137,7 +141,9 @@ describe('build on it', () => {
     // a private one grows nothing visible, and cannot be built on
     const hidden = (await createShadow(q, ana, { title: 'not yet' })).shadow!;
     expect('error' in (await createShadow(q, ben, { title: 'x', from: hidden.id }))).toBe(true);
-    // it is known that something grew from it, never what, while that stays private
+    // what grew is counted only once it is shared
+    expect((await getShadow(q, lamp.id))!.sparks).toBe(0);
+    await updateShadow(q, ben, mine.id, { public: true });
     expect((await getShadow(q, lamp.id))!.sparks).toBe(1);
   });
 
@@ -151,7 +157,8 @@ describe('build on it', () => {
 
 describe('pictures and films', () => {
   const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-  const FILM = 'https://abc123.public.blob.vercel-storage.com/films/x/a-XYZ.mp4';
+  const HOST = 'abc123.public.blob.vercel-storage.com';
+  const film = (id: string) => `https://${HOST}/films/${id}/a-XYZ.mp4`;
 
   it('only its maker adds them; a private Shadow’s pictures are seen by its maker alone', async () => {
     const s = (await createShadow(q, ana, { title: 'a chair' })).shadow!;
@@ -170,19 +177,28 @@ describe('pictures and films', () => {
 
   it('takes films only from the site’s own file store, and refuses what is not a picture', async () => {
     const s = (await createShadow(q, ana, { title: 'a dance' })).shadow!;
-    expect('error' in (await addMedia(q, ana, s.id, { kind: 'video', url: 'https://evil.example/x.mp4' }))).toBe(true);
+    expect('error' in (await addMedia(q, ana, s.id, { kind: 'video', url: 'https://evil.example/x.mp4' }, HOST))).toBe(true);
+    // another store, or another Shadow's film in this one, is never taken
+    expect('error' in (await addMedia(q, ana, s.id, { kind: 'video', url: `https://other9.public.blob.vercel-storage.com/films/${s.id}/a.mp4` }, HOST))).toBe(true);
+    expect('error' in (await addMedia(q, ana, s.id, { kind: 'video', url: film('someoneelse') }, HOST))).toBe(true);
     expect('error' in (await addMedia(q, ana, s.id, { kind: 'image', data: 'data:text/html;base64,PHNjcmlwdD4=' }))).toBe(true);
-    const r = await addMedia(q, ana, s.id, { kind: 'video', url: FILM, aspect: 16 / 9, poster: PNG });
-    expect(r.shadow!.media[0]).toMatchObject({ kind: 'video', src: FILM });
+    const r = await addMedia(q, ana, s.id, { kind: 'video', url: film(s.id), aspect: 16 / 9, poster: PNG }, HOST);
+    expect(r.shadow!.media[0]).toMatchObject({ kind: 'video', src: film(s.id) });
     expect(r.shadow!.media[0].kind === 'video' && r.shadow!.media[0].poster).toMatch(/^\/api\/media\//);
   });
 
   it('holds at most six, and lets its films go with it', async () => {
     const s = (await createShadow(q, ana, { title: 'many' })).shadow!;
-    for (let i = 0; i < 6; i++) expect('shadow' in (await addMedia(q, ana, s.id, { kind: 'video', url: FILM }))).toBe(true);
-    expect('error' in (await addMedia(q, ana, s.id, { kind: 'image', data: PNG }))).toBe(true);
-    const gone = await removeShadow(q, ana, s.id, false);
-    expect('films' in gone && gone.films).toHaveLength(6);
+    // even all at once, no more than six
+    const tries = await Promise.all(Array.from({ length: 9 }, () => addMedia(q, ana, s.id, { kind: 'image', data: PNG })));
+    expect(tries.filter((t) => 'shadow' in t)).toHaveLength(6);
+    const left = await q(`SELECT COUNT(*)::int AS n FROM tt_media WHERE shadow_id = $1`, [s.id]);
+    expect(Number(left[0].n)).toBe(6);
+    const v = (await createShadow(q, ana, { title: 'films' })).shadow!;
+    await addMedia(q, ana, v.id, { kind: 'video', url: film(v.id) }, HOST);
+    const gone = await removeShadow(q, ana, v.id, false);
+    // only its own films are let go from the store (the store is named by the site's token)
+    expect('films' in gone).toBe(true);
   });
 });
 

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { currentUser } from '@/lib/auth/session';
 import { db, dbConfigured } from '@/lib/shadows/db';
-import { getShadow } from '@/lib/shadows/store';
+import { MEDIA_MAX, allowSender, getShadow } from '@/lib/shadows/store';
 
 // Films go straight from the maker's phone to the file store (Vercel Blob):
 // this only says yes, for a signed-in maker adding to their own Shadow.
@@ -23,11 +23,18 @@ export async function POST(req: Request) {
     const result = await handleUpload({
       body,
       request: req,
-      onBeforeGenerateToken: async (_pathname, clientPayload) => {
+      onBeforeGenerateToken: async (pathname, clientPayload) => {
         const user = await currentUser();
         if (!user) throw new Error('Sign in first.');
-        const s = clientPayload ? await getShadow(await db(), clientPayload) : null;
+        const q = await db();
+        const s = clientPayload ? await getShadow(q, clientPayload) : null;
         if (!s || s.owner !== user.sub) throw new Error('Not yours to change.');
+        // a film goes only into its own Shadow's place in the store
+        if (!pathname.startsWith(`films/${s.id}/`) || pathname.includes('..')) throw new Error('Not yours to change.');
+        if (s.kind === 'story') throw new Error('A story is told in words.');
+        if (s.media.length >= MEDIA_MAX) throw new Error('That is as much as one Shadow holds.');
+        // a few films an hour from one maker is plenty
+        if (!(await allowSender(q, `film|${user.sub}`, 12))) throw new Error('That is enough films for now; try again later.');
         return {
           allowedContentTypes: ['video/mp4', 'video/quicktime', 'video/webm'],
           maximumSizeInBytes: FILM_BYTES_MAX,

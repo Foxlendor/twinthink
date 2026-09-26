@@ -876,8 +876,8 @@ export default function ShadowField({ serif }: Props) {
     // its shape, and a still from a second in (if this browser can read it)
     let aspect = 16 / 9;
     let poster: string | undefined;
+    const url = URL.createObjectURL(file);
     try {
-      const url = URL.createObjectURL(file);
       const v = document.createElement('video');
       v.muted = true;
       v.playsInline = true;
@@ -900,9 +900,10 @@ export default function ShadowField({ serif }: Props) {
       c.height = Math.round(v.videoHeight * sc);
       c.getContext('2d')?.drawImage(v, 0, 0, c.width, c.height);
       poster = c.toDataURL('image/jpeg', 0.78);
-      URL.revokeObjectURL(url);
     } catch {
       poster = undefined;
+    } finally {
+      URL.revokeObjectURL(url);
     }
     try {
       const { upload } = await import('@vercel/blob/client');
