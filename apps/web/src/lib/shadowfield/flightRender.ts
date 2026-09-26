@@ -364,6 +364,16 @@ function drawImage(st: RenderState, m: { src: string; x: number; y: number; w: n
 }
 
 /** What an idea carries (images, films, songs, drawings, objects), in its own frame. */
+/** How much a film of width W is held back so it fits a screen of width sw while you look at it. */
+export function filmFit(W: number, sw: number) {
+  const C = sw - 24;
+  if (W <= C) return 1;
+  const over = W / C;
+  // held at the edge until it is well past you, then let go smoothly
+  const held = C * (1 + smoothstep(1.8, 3.2, over) * (over - 1));
+  return held / W;
+}
+
 function drawCarried(st: RenderState, node: IdeaNode, x: number, y: number, R: number, alpha: number, speed: number, ink: Ink, p: number) {
   const { M } = st;
   const clock = st.reduced ? 0 : st.clock ?? 0;
@@ -372,17 +382,21 @@ function drawCarried(st: RenderState, node: IdeaNode, x: number, y: number, R: n
     if (m.kind === 'image') drawImage(st, m, T, alpha, p);
     else if (m.kind === 'video') {
       const reveal = smoothstep(0.08 * M, (0.4 - 0.16 * p) * M, m.w * R);
-      drawVideo(st, m, T, alpha, reveal);
+      // on a narrow screen a film in front of you holds at the screen's width, so none of it is
+      // cut off; only once you are flying on past it does it grow beyond the edges
+      const fit = filmFit(m.w * R, st.w);
+      const FT: ScreenTransform = fit === 1 ? T : { ox: x, oy: y, s: R * fit };
+      drawVideo(st, m, FT, alpha, reveal);
       if (m.by && reveal > 0.4) {
         // signed under its corner, like a pencil signature under a print
-        const W = m.w * R;
+        const W = m.w * R * fit;
         const H = W * m.aspect;
         const size = Math.round(clamp(W * 0.04, 13, 17));
         const { ctx } = st;
         ctx.textAlign = 'right';
         ctx.font = `italic ${size}px ${st.serif}`;
         ctx.fillStyle = `rgba(${INK},${alpha * 0.75 * smoothstep(0.4, 0.8, reveal)})`;
-        ctx.fillText(m.by, Math.min(st.w - 12, x + m.x * R + W / 2), y + m.y * R + H / 2 + size * 1.3);
+        ctx.fillText(m.by, Math.min(st.w - 12, x + m.x * R * fit + W / 2), y + m.y * R * fit + H / 2 + size * 1.3);
         ctx.textAlign = 'left';
       }
     }

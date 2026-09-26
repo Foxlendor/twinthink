@@ -219,6 +219,10 @@ function smooth(t: number) {
 }
 
 /** How far the camera leans toward a thing: a film settles centred, a picture or object nearly so. */
+function hasFilm(s: Station) {
+  return !!s.node.media?.some((m) => m.kind === 'video');
+}
+
 function leanOf(s: Station) {
   const media = s.node.media ?? [];
   if (media.some((m) => m.kind === 'video')) return 1;
@@ -245,10 +249,13 @@ export function leanAt(stream: Stream, camZ: number, skip?: (s: Station) => bool
   const za = a.z;
   const zb = j < st.length ? b.z : b.z + L;
   const u = smooth((mod(camZ + FOCUS, L) - za) / Math.max(1e-6, zb - za));
-  const ax = a.gate ? 0 : a.x * leanOf(a);
-  const ay = a.gate ? 0 : a.y * leanOf(a);
-  const bx = b.gate ? 0 : b.x * leanOf(b);
-  const by = b.gate ? 0 : b.y * leanOf(b);
+  // a ring is flown through at its middle, unless it carries a film: then the film is what you came to see
+  const la = a.gate && !hasFilm(a) ? 0 : leanOf(a);
+  const lb = b.gate && !hasFilm(b) ? 0 : leanOf(b);
+  const ax = a.x * la;
+  const ay = a.y * la;
+  const bx = b.x * lb;
+  const by = b.y * lb;
   return [ax + (bx - ax) * u, ay + (by - ay) * u];
 }
 
