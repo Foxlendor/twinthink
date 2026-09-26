@@ -9,7 +9,7 @@ depth (`flight.ts`, drawn by `flightRender.ts`): things wait small near the
 vanishing point, grow as you move toward them, resolve into what they are
 (a song's waveform, a film, a 3D object, a session's constellation) and slide
 out past the edges, behind you.
-- Scroll down / swipe up / spread two fingers: forward. The other way: back.
+- Scroll down / swipe up: hop to the next thing; the other way: back. A hop dips back, pulls the view out as it travels, then zooms in and snaps onto the thing like a magnet. A long scroll hops again after each landing; a hard flick hops several; a swipe that does not mean it snaps back. Spreading two fingers still glides.
   A flick carries you through many things; coming to rest, one settles into focus.
 - Slide: a drag that begins sideways (or two fingers moving together) slides the view any way, and it stays where you leave it until you travel on. The compass is a stick for the same: hold and push it to slide any way (arrow keys when it has focus); its hollow ring shows how far you have slid; tap it to come back to the middle (tap it in the middle to stop or start the clock). Tap anything to go to it. Keys: arrows, Esc.
 - An idea that holds others is a ring you pass through; inside, its silk runs

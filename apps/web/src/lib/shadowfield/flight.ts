@@ -288,10 +288,72 @@ export interface FlightCam {
   from: number | null;
   /** The clock's own slow turning (radians), on top of the turn that travel gives. */
   spin: number;
+  /**
+   * A hop from one thing to another: the view dips back, pulls out wide as it
+   * travels, then zooms in and snaps into place on what it came for.
+   */
+  hop: Hop | null;
+}
+
+export interface Hop {
+  from: number;
+  to: number;
+  /** Seconds into the hop, and how long it takes. */
+  t: number;
+  dur: number;
+  /** Carrying on from a hop already under way: no dip back, it keeps going. */
+  flow: boolean;
+}
+
+/** Start a hop to camera z `to` (from wherever the camera is, even mid-hop). */
+export function hopTo(cam: FlightCam, to: number) {
+  const d = Math.abs(to - cam.z);
+  const flow = !!cam.hop && Math.sign(cam.hop.to - cam.hop.from) === Math.sign(to - cam.z);
+  cam.hop = { from: cam.z, to, t: 0, dur: Math.min(1.25, 0.55 + 0.2 * Math.log1p(d)), flow };
+  cam.target = null;
+  cam.v = 0;
+  cam.from = null;
+}
+
+/** Where a hop is headed (or the camera, if none): the base for the next step. */
+export function hopBase(cam: FlightCam) {
+  return cam.hop ? cam.hop.to : cam.target ?? cam.z;
+}
+
+/** How far through its hop the camera is (0 at rest). */
+export function hopProgress(cam: FlightCam) {
+  return cam.hop ? Math.min(1, cam.hop.t / cam.hop.dur) : 0;
+}
+
+/**
+ * The hop's easing: a small dip back, a fast middle, and a slight overshoot
+ * that settles, like something pulled into place by a magnet.
+ */
+export function hopEase(p: number) {
+  const c1 = 0.7;
+  const c2 = c1 * 1.525;
+  return p < 0.5
+    ? (Math.pow(2 * p, 2) * ((c2 + 1) * 2 * p - c2)) / 2
+    : (Math.pow(2 * p - 2, 2) * ((c2 + 1) * (p * 2 - 2) + c2) + 2) / 2;
+}
+
+/** Carrying on: straight into motion, and the same settling snap at the end. */
+export function flowEase(p: number) {
+  const c1 = 0.7;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2);
+}
+
+/** How much the view pulls out mid-hop (a fraction of its scale). */
+export function hopZoom(cam: FlightCam) {
+  const h = cam.hop;
+  if (!h) return 0;
+  const p = Math.min(1, h.t / h.dur);
+  return Math.sin(Math.PI * p) * Math.min(0.42, 0.2 + 0.07 * Math.abs(h.to - h.from));
 }
 
 export function newFlightCam(): FlightCam {
-  return { z: -ARRIVE, v: 0, wx: 0, wy: 0, panZ: -ARRIVE, target: null, idle: 0, held: false, dir: 0, shown: 0, from: null, spin: 0 };
+  return { z: -ARRIVE, v: 0, wx: 0, wy: 0, panZ: -ARRIVE, target: null, idle: 0, held: false, dir: 0, shown: 0, from: null, spin: 0, hop: null };
 }
 
 /** Called as the viewer starts to push: remembers the thing they were resting on. */
@@ -377,6 +439,23 @@ export function restingPlace(stream: Stream, camZ: number, dir: number, skip?: (
 
 export function stepFlightCam(cam: FlightCam, stream: Stream, dt: number, skip?: (s: Station) => boolean) {
   cam.idle += dt;
+  // every flight to somewhere is a hop
+  if (cam.target !== null) hopTo(cam, cam.target);
+  if (cam.hop) {
+    const h = cam.hop;
+    const z0 = cam.z;
+    h.t += dt;
+    const p = Math.min(1, h.t / h.dur);
+    cam.z = h.from + (h.to - h.from) * (h.flow ? flowEase(p) : hopEase(p));
+    cam.shown = dt > 0 ? (cam.z - z0) / dt : 0;
+    cam.v = 0;
+    if (p >= 1) {
+      cam.z = h.to;
+      cam.hop = null;
+      cam.shown = 0;
+    }
+    return;
+  }
   if (cam.target !== null) {
     cam.from = null;
     const d = cam.target - cam.z;
@@ -496,7 +575,9 @@ export function viewOf(stream: Stream, cam: FlightCam, w: number, h: number, ski
   const rush = smooth((Math.abs(cam.shown) - 3) / 20);
   const roll = rollAt(cam.z, cam.spin);
   const [px, py] = panAt(cam, stream.length);
-  return { z: cam.z, x: lx + px, y: ly + py, F: M * (1 - 0.16 * rush), cx: w / 2, cy: h * 0.47, roll, rc: Math.cos(roll), rs: Math.sin(roll) };
+  // mid-hop the view pulls out wide, then zooms back in as it arrives
+  const F = M * (1 - 0.16 * rush) * (1 - hopZoom(cam));
+  return { z: cam.z, x: lx + px, y: ly + py, F, cx: w / 2, cy: h * 0.47, roll, rc: Math.cos(roll), rs: Math.sin(roll) };
 }
 
 /** Screen position and scale (pixels per unit) of a point dz ahead of the camera. */

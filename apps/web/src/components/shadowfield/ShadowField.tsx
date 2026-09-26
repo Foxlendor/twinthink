@@ -12,7 +12,6 @@ import {
   ARRIVE,
   FOCUS,
   FlightCam,
-  beginPush,
   Station,
   Stream,
   buildStream,
@@ -26,9 +25,13 @@ import {
   wrapDelta,
   panAt,
   panBy,
+  hopBase,
+  hopProgress,
+  hopTo,
+  nearestFocus,
 } from '@/lib/shadowfield/flight';
 import { renderFlight } from '@/lib/shadowfield/flightRender';
-import { clamp, hash01, smoothstep } from '@/lib/shadowfield/rng';
+import { hash01, smoothstep } from '@/lib/shadowfield/rng';
 import Donate from '@/components/support/Donate';
 import { founderPlots } from '@/lib/shadowfield/plots';
 import { buildWorld, resolvePath } from '@/lib/shadowfield/world';
@@ -222,14 +225,18 @@ export default function ShadowField({ serif }: Props) {
   const zoomVelRef = useRef({ v: 0, x: 0, y: 0 });
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   // in the flight a drag either travels (up and down) or slides the view (it began sideways)
-  const dragRef = useRef<{ active: boolean; moved: number; lastT: number; axis: 'travel' | 'slide' | null; tx: number; ty: number }>({
+  const dragRef = useRef<{ active: boolean; moved: number; lastT: number; axis: 'travel' | 'slide' | null; tx: number; ty: number; z0: number; base: number }>({
     active: false,
     moved: 0,
     lastT: 0,
     axis: null,
     tx: 0,
     ty: 0,
+    z0: 0,
+    base: 0,
   });
+  // a scroll gesture: how far it has gone since its last hop, and how many hops it has made
+  const wheelRef = useRef({ acc: 0, last: 0, hops: 0, dir: 0 });
   const pinchRef = useRef<{ d: number; x: number; y: number } | null>(null);
   const hoverRef = useRef<Hit | null>(null);
   const monoRef = useRef('monospace');
@@ -1472,20 +1479,36 @@ export default function ShadowField({ serif }: Props) {
       const y = e.clientY - rect.top;
       const unit = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? rect.height : 1;
       if (modeRef.current === 'flight') {
-        // scrolling is moving: down (or a pinch outward) carries you forward
+        // scrolling hops: one thing at a time, pulled into place; a long scroll hops again
         const fc = flightCamRef.current;
         const stream = streamRef.current;
-        if (stream) beginPush(fc, stream, skipRef.current);
-        if (fc.target !== null) {
-          // a scroll takes over from a flight already under way
-          fc.target = null;
-          fc.v = 0;
-        }
+        if (!stream) return;
         fc.idle = 0;
         const d = (Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX) * unit;
-        const push = e.ctrlKey ? -d * 0.06 : d * 0.018;
-        if (push) fc.dir = Math.sign(push);
-        fc.v += push;
+        const push = e.ctrlKey ? -d * 3 : d;
+        if (!push) return;
+        const w = wheelRef.current;
+        const now = performance.now();
+        // a pause, or a turn the other way, begins a new gesture
+        if (now - w.last > 260 || Math.sign(push) !== w.dir) {
+          w.acc = 0;
+          w.hops = 0;
+          w.dir = Math.sign(push);
+        }
+        w.last = now;
+        w.acc += push;
+        // the first hop comes at once; more need a longer scroll, and wait for the landing
+        const need = w.hops === 0 ? 24 : hopProgress(fc) > 0.55 || !fc.hop ? 140 : Infinity;
+        if (Math.abs(w.acc) >= need) {
+          const dir = w.acc > 0 ? 1 : -1;
+          const z = stepFocus(stream, hopBase(fc), dir, skipRef.current);
+          if (z !== null) {
+            hopTo(fc, z);
+            fc.dir = dir;
+          }
+          w.acc = 0;
+          w.hops++;
+        }
         dismissHint();
         return;
       }
@@ -1648,17 +1671,21 @@ export default function ShadowField({ serif }: Props) {
     handRef.current = performance.now();
     // a tap is what lets the browser play sound
     soundBlockedRef.current = false;
+    let z0 = 0;
+    let base = 0;
     if (modeRef.current === 'flight') {
-      // a touch catches the flight, the way a finger stops a spinning wheel
+      // a touch catches the flight where it is; it lands somewhere when let go
       const fc = flightCamRef.current;
       const stream = streamRef.current;
-      if (stream) beginPush(fc, stream, skipRef.current);
+      base = fc.hop ? fc.hop.to : stream ? (nearestFocus(stream, fc.z, skipRef.current) ?? fc.z) : fc.z;
+      fc.hop = null;
       fc.held = true;
       fc.target = null;
       fc.v = 0;
       fc.idle = 0;
+      z0 = fc.z;
     }
-    dragRef.current = { active: true, moved: 0, lastT: performance.now(), axis: null, tx: 0, ty: 0 };
+    dragRef.current = { active: true, moved: 0, lastT: performance.now(), axis: null, tx: 0, ty: 0, z0, base };
     if (pointersRef.current.size === 2) {
       const [a, b] = [...pointersRef.current.values()];
       pinchRef.current = { d: Math.hypot(a.x - b.x, a.y - b.y), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
@@ -1786,11 +1813,28 @@ export default function ShadowField({ serif }: Props) {
     const flying = modeRef.current === 'flight';
     const fc = flightCamRef.current;
     if (flying) {
-      // let go: the flight carries on with the swipe's speed, unless the finger had stopped
+      // let go: a swipe that meant it hops on (a fling, several things); one that did not, back
       fc.held = false;
       fc.idle = 0;
-      if (performance.now() - dragRef.current.lastT > 90 || dragRef.current.axis === 'slide') fc.v = 0;
-      fc.v = clamp(fc.v, -40, 40);
+      const dr = dragRef.current;
+      const vel = performance.now() - dr.lastT > 90 ? 0 : fc.v;
+      fc.v = 0;
+      const stream = streamRef.current;
+      if (stream && dr.axis === 'travel') {
+        const d = fc.z - dr.z0;
+        const dir = Math.abs(vel) > 2.5 ? Math.sign(vel) : Math.sign(d);
+        const next = dir ? stepFocus(stream, dr.base, dir as 1 | -1, skipRef.current) : null;
+        const gap = next !== null ? Math.abs(next - dr.base) : 1;
+        const meant = dir !== 0 && (Math.abs(vel) > 2.5 || Math.abs(fc.z - dr.base) > 0.2 * gap);
+        let to = dr.base;
+        if (meant && next !== null) {
+          to = next;
+          const extra = Math.min(4, Math.floor(Math.abs(vel) / 14));
+          for (let i = 0; i < extra; i++) to = stepFocus(stream, to, dir as 1 | -1, skipRef.current) ?? to;
+          fc.dir = dir;
+        }
+        hopTo(fc, to);
+      }
     }
     if (performance.now() - dragRef.current.lastT > 80) velRef.current = { x: 0, y: 0 };
     if (moved > 6) return;
@@ -1865,11 +1909,8 @@ export default function ShadowField({ serif }: Props) {
         const stream = streamRef.current;
         if (!stream) return;
         const go = (dir: 1 | -1) => {
-          const z = stepFocus(stream, fc.target ?? fc.z, dir, skipRef.current);
-          if (z !== null) {
-            fc.target = z;
-            fc.v = 0;
-          }
+          const z = stepFocus(stream, hopBase(fc), dir, skipRef.current);
+          if (z !== null) hopTo(fc, z);
         };
         if (['ArrowDown', 'ArrowRight', 'PageDown', '+', '=', 'j'].includes(e.key)) go(1);
         else if (['ArrowUp', 'ArrowLeft', 'PageUp', '-', '_', 'k'].includes(e.key)) go(-1);

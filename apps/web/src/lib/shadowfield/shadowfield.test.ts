@@ -558,8 +558,9 @@ describe('the flight', () => {
     cam.z = stream.length * 5 - 0.3; // many laps on, just before the seam
     cam.target = focusZ(stream, song, cam.z);
     expect(Math.abs(cam.target - cam.z)).toBeLessThanOrEqual(stream.length / 2);
-    for (let i = 0; i < 600 && cam.target !== null; i++) stepFlightCam(cam, stream, 1 / 60);
+    for (let i = 0; i < 600 && (cam.target !== null || cam.hop !== null); i++) stepFlightCam(cam, stream, 1 / 60);
     expect(cam.target).toBeNull();
+    expect(cam.hop).toBeNull();
     expect(focusOf(stream, cam.z).node.id).toBe(song.node.id);
     // and the camera leans toward it, so it arrives near the middle
     const [lx, ly] = leanAt(stream, cam.z);
@@ -756,5 +757,35 @@ describe('today’s word', () => {
     const week = ['2026-09-20', '2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24', '2026-09-25', '2026-09-26'].map(wordFor);
     expect(new Set(week).size).toBe(7);
     expect(dayOf(Date.parse('2026-09-26T23:59:00Z'))).toBe('2026-09-26');
+  });
+});
+
+describe('hops', () => {
+  it('a hop dips back, pulls the view out, and snaps exactly onto what it came for', async () => {
+    const { hopTo, hopEase, hopZoom, viewOf: view } = await import('./flight');
+    const w = buildWorld([]);
+    const stream = buildStream(w);
+    const cam = newFlightCam();
+    const next = stepFocus(stream, cam.z, 1)!;
+    const start = cam.z;
+    hopTo(cam, next);
+    const zs: number[] = [];
+    let widest = 0;
+    const F0 = view(stream, newFlightCam(), 390, 844).F;
+    for (let i = 0; i < 200 && cam.hop; i++) {
+      stepFlightCam(cam, stream, 1 / 60);
+      zs.push(cam.z);
+      widest = Math.max(widest, hopZoom(cam));
+    }
+    expect(cam.hop).toBeNull();
+    expect(cam.z).toBe(next);
+    // it dipped back before going, and went a touch past before settling
+    expect(Math.min(...zs)).toBeLessThan(start);
+    expect(Math.max(...zs)).toBeGreaterThan(next);
+    expect(hopEase(0)).toBeCloseTo(0);
+    expect(hopEase(1)).toBeCloseTo(1);
+    // mid-hop the view was wider than at rest, and at rest it is itself again
+    expect(widest).toBeGreaterThan(0.15);
+    expect(view(stream, cam, 390, 844).F).toBeCloseTo(F0 * 1, 0);
   });
 });
