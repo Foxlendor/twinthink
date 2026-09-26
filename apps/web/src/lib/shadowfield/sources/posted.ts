@@ -1,7 +1,7 @@
 // Shadows people have posted (kept on the server). Public ones join everyone's
 // Canvas in one ring; a signed-in maker also sees their own, public or not.
 
-import { IdeaNode } from '../model';
+import { IdeaNode, Media } from '../model';
 import { hashString } from '../rng';
 
 export interface Posted {
@@ -17,6 +17,8 @@ export interface Posted {
   kind?: 'shadow' | 'story';
   from?: string | null;
   sparks?: number;
+  /** Pictures and films its maker added (height over width). */
+  media?: ({ kind: 'image'; src: string; aspect: number } | { kind: 'video'; src: string; poster?: string; aspect: number })[];
   /** What it was built on (a story or someone's Shadow), while that is shared. */
   parent?: { title: string; kind: 'shadow' | 'story'; by: string } | null;
   /** Yours, taken down: only you see it. */
@@ -45,6 +47,21 @@ function lineFor(p: Posted) {
   return `${who}${on}${grew}`;
 }
 
+/** Its pictures and films laid side by side, the first in the middle; films signed by their maker. */
+function mediaOf(p: Posted): Media[] | undefined {
+  const list = p.media ?? [];
+  if (!list.length) return undefined;
+  const n = list.length;
+  const w = n === 1 ? 1.25 : n === 2 ? 0.95 : 0.7;
+  return list.map((m, i): Media => {
+    const x = (i - (n - 1) / 2) * w * 1.08;
+    const ww = m.aspect > 1 ? w * Math.min(1, 1.3 / m.aspect) : w;
+    return m.kind === 'image'
+      ? { kind: 'image', src: m.src, x, y: 0, w: ww, aspect: m.aspect }
+      : { kind: 'video', src: m.src, poster: m.poster ?? '', x, y: 0, w: ww, aspect: m.aspect, by: p.by || undefined };
+  });
+}
+
 function node(p: Posted, i: number): IdeaNode {
   return {
     id: `p/${p.id}`,
@@ -59,7 +76,9 @@ function node(p: Posted, i: number): IdeaNode {
     state: 'alive',
     disclosure: 0,
     children: [],
-    artifact: p.body ? { type: 'text', body: p.body } : undefined,
+    // its words are what is shown until it has pictures or films; then those are
+    artifact: p.body && !p.media?.length ? { type: 'text', body: p.body } : undefined,
+    media: mediaOf(p),
     line: lineFor(p),
     links: p.parent && p.from ? [{ to: `p/${p.from}`, kind: 'grew-from' as const }] : undefined,
     x: Math.cos(i * 2.39996) * 0.5,

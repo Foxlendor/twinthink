@@ -35,6 +35,93 @@ export interface ServerShadow {
   hidden: boolean;
   /** What it was built on, as anyone may see it. */
   parent: { title: string; kind: Kind; by: string } | null;
+  /** Pictures and films its maker added, in order. */
+  media: PostMedia[];
+}
+
+/** A picture (kept here, served from /api/media) or a film (in the file store), height over width. */
+export type PostMedia =
+  | { kind: 'image'; src: string; aspect: number }
+  | { kind: 'video'; src: string; poster?: string; aspect: number };
+
+export const MEDIA_MAX = 6;
+export const IMAGE_BYTES_MAX = 750_000;
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+function parseMedia(raw: unknown): PostMedia[] {
+  let v = raw;
+  if (typeof v === 'string') {
+    try {
+      v = JSON.parse(v);
+    } catch {
+      return [];
+    }
+  }
+  return Array.isArray(v) ? (v as PostMedia[]) : [];
+}
+
+/** Films are only ever taken from the site's own file store. */
+export function isStoreUrl(url: unknown): url is string {
+  if (typeof url !== 'string' || url.length > 500) return false;
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' && u.hostname.endsWith('.public.blob.vercel-storage.com');
+  } catch {
+    return false;
+  }
+}
+
+const aspectOf = (a: unknown) => (typeof a === 'number' && Number.isFinite(a) ? Math.min(3, Math.max(0.25, a)) : 1);
+
+/** A picture as a data URL, checked: a real picture type, small enough. */
+function readPicture(dataUrl: unknown): { mime: string; b64: string } | null {
+  if (typeof dataUrl !== 'string') return null;
+  const m = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+  if (!m || !IMAGE_TYPES.includes(m[1])) return null;
+  if ((m[2].length * 3) / 4 > IMAGE_BYTES_MAX) return null;
+  return { mime: m[1], b64: m[2] };
+}
+
+async function keepPicture(q: Query, shadowId: string, pic: { mime: string; b64: string }) {
+  const id = newId();
+  await q(`INSERT INTO tt_media (id, shadow_id, mime, data) VALUES ($1, $2, $3, $4)`, [id, shadowId, pic.mime, pic.b64]);
+  return `/api/media/${id}`;
+}
+
+/**
+ * Its maker adds a picture ({kind:'image', data}) or a film already in the
+ * file store ({kind:'video', url, poster?}) to their Shadow.
+ */
+export async function addMedia(q: Query, who: Author, id: string, input: { kind?: unknown; data?: unknown; url?: unknown; poster?: unknown; aspect?: unknown }) {
+  const s = await getShadow(q, id);
+  if (!s || s.owner !== who.sub) return { error: 'Not yours to change.' } as const;
+  if (s.kind === 'story') return { error: 'A story is told in words.' } as const;
+  if (s.media.length >= MEDIA_MAX) return { error: 'That is as much as one Shadow holds.' } as const;
+  let item: PostMedia;
+  if (input.kind === 'image') {
+    const pic = readPicture(input.data);
+    if (!pic) return { error: 'That picture is too large or not a picture.' } as const;
+    item = { kind: 'image', src: await keepPicture(q, id, pic), aspect: aspectOf(input.aspect) };
+  } else if (input.kind === 'video') {
+    if (!isStoreUrl(input.url)) return { error: 'That film did not arrive.' } as const;
+    const pic = input.poster === undefined ? null : readPicture(input.poster);
+    item = { kind: 'video', src: input.url, aspect: aspectOf(input.aspect), ...(pic ? { poster: await keepPicture(q, id, pic) } : {}) };
+  } else return { error: 'Only pictures and films.' } as const;
+  await q(`UPDATE tt_shadows SET media = media || $2::jsonb, updated_at = NOW() WHERE id = $1`, [id, JSON.stringify([item])]);
+  return { shadow: (await getShadow(q, id))! } as const;
+}
+
+/** A kept picture, for whoever may see the Shadow it belongs to. */
+export async function getPicture(q: Query, mediaId: string, viewerSub: string | undefined) {
+  const rows = await q(
+    `SELECT m.mime, m.data, s.owner_sub, s.is_public, s.hidden FROM tt_media m JOIN tt_shadows s ON s.id = m.shadow_id WHERE m.id = $1`,
+    [mediaId]
+  );
+  const r = rows[0];
+  if (!r) return null;
+  const open = r.is_public === true && r.hidden !== true;
+  if (!open && r.owner_sub !== viewerSub) return null;
+  return { mime: String(r.mime), bytes: Buffer.from(String(r.data), 'base64'), open };
 }
 
 /** What a viewer is sent: never the maker's account id, only whether it is theirs; a story never says who told it. */
@@ -50,6 +137,7 @@ export function forViewer(s: ServerShadow, viewerSub: string | undefined) {
     kind: s.kind,
     from: s.from,
     parent: s.parent,
+    media: s.media,
     sparks: s.sparks,
     mine: s.owner === viewerSub,
     // only its maker is told it was taken down
@@ -100,6 +188,16 @@ const SCHEMA = [
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
   `CREATE INDEX IF NOT EXISTS tt_post_log_owner ON tt_post_log (owner_sub, created_at DESC)`,
+  // pictures and films a maker adds to their Shadow: pictures are kept here, films in a file store
+  `ALTER TABLE tt_shadows ADD COLUMN IF NOT EXISTS media JSONB NOT NULL DEFAULT '[]'::jsonb`,
+  `CREATE TABLE IF NOT EXISTS tt_media (
+    id TEXT PRIMARY KEY,
+    shadow_id TEXT NOT NULL,
+    mime TEXT NOT NULL,
+    data TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS tt_media_shadow ON tt_media (shadow_id)`,
   // anonymous notes are limited per sender, who is kept only as a keyed hash, per hour
   `CREATE TABLE IF NOT EXISTS tt_limits (
     k TEXT NOT NULL,
@@ -110,9 +208,8 @@ const SCHEMA = [
 ];
 
 /** Bumped whenever SCHEMA changes, so a database already up to date is not locked for nothing. */
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
-// every read counts the Shadows a story has sparked
 // every read counts what grew from each, and names what each grew from (never who told a story)
 const SELECT = `SELECT s.*,
   (SELECT COUNT(*)::int FROM tt_shadows c WHERE c.sparked_from = s.id AND NOT c.hidden) AS sparks,
@@ -178,6 +275,7 @@ function row(r: Record<string, unknown>): ServerShadow {
       : null,
     sparks: Number(r.sparks ?? 0),
     hidden: r.hidden === true,
+    media: parseMedia(r.media),
   };
 }
 
@@ -273,7 +371,9 @@ export async function removeShadow(q: Query, who: Author, id: string, siteOwner:
   if (s.owner === who.sub) {
     await q(`DELETE FROM tt_shadows WHERE id = $1`, [id]);
     await q(`DELETE FROM tt_notes WHERE target = $1`, [`p/${id}`]);
-    return { ok: true } as const;
+    await q(`DELETE FROM tt_media WHERE shadow_id = $1`, [id]);
+    // films in the file store are for the route to let go of
+    return { ok: true, films: s.media.filter((m) => m.kind === 'video').map((m) => m.src) } as const;
   }
   if (siteOwner) {
     await q(`UPDATE tt_shadows SET hidden = TRUE WHERE id = $1`, [id]);

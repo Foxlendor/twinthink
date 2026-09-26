@@ -16,7 +16,7 @@ export async function GET() {
     const user = await currentUser();
     const pub = (await publicShadows(q)).map((s) => forViewer(s, user?.sub));
     const mine = user ? (await myShadows(q, user.sub)).map((s) => forViewer(s, user.sub)) : [];
-    return NextResponse.json({ enabled: true, signedIn: !!user, public: pub, mine }, { headers: { 'cache-control': 'no-store' } });
+    return NextResponse.json({ enabled: true, signedIn: !!user, films: !!process.env.BLOB_READ_WRITE_TOKEN, public: pub, mine }, { headers: { 'cache-control': 'no-store' } });
   } catch {
     return NextResponse.json({ enabled: false, public: [], mine: [], error: 'The Canvas could not be read just now.' }, { status: 502 });
   }

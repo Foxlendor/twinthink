@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { Query, REPORTS_TO_HIDE, allowSender, addNote, forViewer, getShadow, createShadow, migrate, myShadows, notesFor, publicShadows, removeShadow, report, updateShadow } from './store';
+import { Query, REPORTS_TO_HIDE, addMedia, allowSender, getPicture, addNote, forViewer, getShadow, createShadow, migrate, myShadows, notesFor, publicShadows, removeShadow, report, updateShadow } from './store';
 
 let q: Query;
 const ana = { sub: 'g-ana', name: 'Ana Maria Lopez' };
@@ -146,5 +146,42 @@ describe('build on it', () => {
     const idea = (await createShadow(q, ben, { title: 'a cup that boils', from: story.id })).shadow!;
     expect(idea.parent).toEqual({ title: story.title, kind: 'story', by: '' });
     expect(JSON.stringify(forViewer(idea, ben.sub))).not.toContain('Ana');
+  });
+});
+
+describe('pictures and films', () => {
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  const FILM = 'https://abc123.public.blob.vercel-storage.com/films/x/a-XYZ.mp4';
+
+  it('only its maker adds them; a private Shadow’s pictures are seen by its maker alone', async () => {
+    const s = (await createShadow(q, ana, { title: 'a chair' })).shadow!;
+    expect('error' in (await addMedia(q, ben, s.id, { kind: 'image', data: PNG }))).toBe(true);
+    const r = await addMedia(q, ana, s.id, { kind: 'image', data: PNG, aspect: 1 });
+    const src = r.shadow!.media[0].src;
+    expect(src).toMatch(/^\/api\/media\/[a-z0-9]+$/);
+    const mid = src.split('/').pop()!;
+    expect(await getPicture(q, mid, ben.sub)).toBeNull();
+    expect((await getPicture(q, mid, ana.sub))!.mime).toBe('image/png');
+    await updateShadow(q, ana, s.id, { public: true });
+    const open = await getPicture(q, mid, undefined);
+    expect(open!.open).toBe(true);
+    expect(open!.bytes.length).toBeGreaterThan(10);
+  });
+
+  it('takes films only from the site’s own file store, and refuses what is not a picture', async () => {
+    const s = (await createShadow(q, ana, { title: 'a dance' })).shadow!;
+    expect('error' in (await addMedia(q, ana, s.id, { kind: 'video', url: 'https://evil.example/x.mp4' }))).toBe(true);
+    expect('error' in (await addMedia(q, ana, s.id, { kind: 'image', data: 'data:text/html;base64,PHNjcmlwdD4=' }))).toBe(true);
+    const r = await addMedia(q, ana, s.id, { kind: 'video', url: FILM, aspect: 16 / 9, poster: PNG });
+    expect(r.shadow!.media[0]).toMatchObject({ kind: 'video', src: FILM });
+    expect(r.shadow!.media[0].kind === 'video' && r.shadow!.media[0].poster).toMatch(/^\/api\/media\//);
+  });
+
+  it('holds at most six, and lets its films go with it', async () => {
+    const s = (await createShadow(q, ana, { title: 'many' })).shadow!;
+    for (let i = 0; i < 6; i++) expect('shadow' in (await addMedia(q, ana, s.id, { kind: 'video', url: FILM }))).toBe(true);
+    expect('error' in (await addMedia(q, ana, s.id, { kind: 'image', data: PNG }))).toBe(true);
+    const gone = await removeShadow(q, ana, s.id, false);
+    expect('films' in gone && gone.films).toHaveLength(6);
   });
 });

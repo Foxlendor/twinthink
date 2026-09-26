@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { del } from '@vercel/blob';
 import { currentUser } from '@/lib/auth/session';
 import { db, dbConfigured } from '@/lib/shadows/db';
 import { forViewer, removeShadow, updateShadow } from '@/lib/shadows/store';
@@ -35,6 +36,9 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   try {
     const r = await removeShadow(await db(), { sub: user.sub, name: user.name }, id, user.owner);
     if ('error' in r) return NextResponse.json({ error: r.error }, { status: 403 });
+    // its films leave the file store too (best effort: the Shadow is gone either way)
+    const films = 'films' in r ? r.films ?? [] : [];
+    if (films.length && process.env.BLOB_READ_WRITE_TOKEN) await del(films).catch(() => undefined);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: 'That could not be removed; try again.' }, { status: 502 });

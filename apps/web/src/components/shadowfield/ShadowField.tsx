@@ -310,6 +310,11 @@ export default function ShadowField({ serif }: Props) {
   const pendingAtRef = useRef<string[] | null>(null);
   const [posting, setPosting] = useState(false);
   const [posted, setPostedList] = useState<Posted[]>([]);
+  // films can be added once the site has a file store for them
+  const [filmsOn, setFilmsOn] = useState(false);
+  const postPicRef = useRef<HTMLInputElement | null>(null);
+  const postFilmRef = useRef<HTMLInputElement | null>(null);
+  const mediaForRef = useRef<string | null>(null);
 
   const access: Access = useMemo(
     () => ({
@@ -712,8 +717,9 @@ export default function ShadowField({ serif }: Props) {
   const loadPosted = useCallback(async () => {
     const d = (await fetch('/api/shadows', { cache: 'no-store' })
       .then((r) => r.json())
-      .catch(() => null)) as { enabled?: boolean; public?: Posted[]; mine?: Posted[] } | null;
+      .catch(() => null)) as { enabled?: boolean; films?: boolean; public?: Posted[]; mine?: Posted[] } | null;
     if (!d) return;
+    setFilmsOn(!!d.films);
     postedRef.current = { public: d.public ?? [], mine: d.mine ?? [] };
     setPosting(!!d.enabled);
     setPostedList([...(d.mine ?? []), ...(d.public ?? []).filter((p) => !p.mine)]);
@@ -794,6 +800,106 @@ export default function ShadowField({ serif }: Props) {
     }
     const c = camRef.current;
     setComposer({ mode: 'spark', target: storyId, x: (c?.w ?? 400) / 2 - 140, y: (c?.h ?? 600) - 170, lx: 0, ly: 0 });
+  };
+
+  /** A picture or a film joins one of your posted Shadows. */
+  const sendMedia = async (id: string, body: Record<string, unknown>) => {
+    const res = await fetch(`/api/shadows/${encodeURIComponent(id)}/media`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }).catch(() => null);
+    const d = (await res?.json().catch(() => ({}))) as { error?: string } | undefined;
+    if (!res?.ok) {
+      setNotice((d?.error ?? 'that could not be kept').toLowerCase());
+      return false;
+    }
+    await loadPosted();
+    ripple(`p/${id}`);
+    return true;
+  };
+
+  /** A picture, made small enough to keep (about the size of a phone screen). */
+  const addPostPicture = async (id: string, file: File) => {
+    try {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      await new Promise<void>((res, rej) => {
+        img.onload = () => res();
+        img.onerror = () => rej(new Error('unreadable'));
+        img.src = url;
+      });
+      let scale = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+      let data = '';
+      // smaller until it fits what a Shadow may keep
+      for (let i = 0; i < 4; i++) {
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.naturalWidth * scale);
+        c.height = Math.round(img.naturalHeight * scale);
+        c.getContext('2d')?.drawImage(img, 0, 0, c.width, c.height);
+        data = c.toDataURL('image/jpeg', 0.8);
+        if (data.length * 0.75 < 700_000) break;
+        scale *= 0.75;
+      }
+      URL.revokeObjectURL(url);
+      setNotice('keeping the picture…');
+      if (await sendMedia(id, { kind: 'image', data, aspect: img.naturalHeight / img.naturalWidth })) setNotice('the picture is in it');
+    } catch {
+      setNotice('that picture could not be read');
+    }
+  };
+
+  /** A film: straight from the phone to the file store, then joined to the Shadow with a still of it. */
+  const addPostFilm = async (id: string, file: File) => {
+    if (file.size > 200 * 1024 * 1024) {
+      setNotice('that film is too long; keep it under about three minutes');
+      return;
+    }
+    // its shape, and a still from a second in (if this browser can read it)
+    let aspect = 16 / 9;
+    let poster: string | undefined;
+    try {
+      const url = URL.createObjectURL(file);
+      const v = document.createElement('video');
+      v.muted = true;
+      v.playsInline = true;
+      v.preload = 'auto';
+      v.src = url;
+      await new Promise<void>((res, rej) => {
+        v.onloadeddata = () => res();
+        v.onerror = () => rej(new Error('unreadable'));
+        setTimeout(() => rej(new Error('slow')), 8000);
+      });
+      aspect = v.videoHeight / v.videoWidth || aspect;
+      v.currentTime = Math.min(1, (v.duration || 2) / 3);
+      await new Promise<void>((res) => {
+        v.onseeked = () => res();
+        setTimeout(res, 3000);
+      });
+      const c = document.createElement('canvas');
+      const sc = Math.min(1, 720 / Math.max(v.videoWidth, v.videoHeight));
+      c.width = Math.round(v.videoWidth * sc);
+      c.height = Math.round(v.videoHeight * sc);
+      c.getContext('2d')?.drawImage(v, 0, 0, c.width, c.height);
+      poster = c.toDataURL('image/jpeg', 0.78);
+      URL.revokeObjectURL(url);
+    } catch {
+      poster = undefined;
+    }
+    try {
+      const { upload } = await import('@vercel/blob/client');
+      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-60) || 'film.mp4';
+      const blob = await upload(`films/${id}/${safe}`, file, {
+        access: 'public',
+        handleUploadUrl: '/api/films',
+        clientPayload: id,
+        multipart: file.size > 20 * 1024 * 1024,
+        onUploadProgress: ({ percentage }) => setNotice(`sending the film… ${Math.round(percentage)}%`),
+      });
+      if (await sendMedia(id, { kind: 'video', url: blob.url, aspect, ...(poster ? { poster } : {}) })) setNotice('the film is in it');
+    } catch (e) {
+      setNotice(((e as Error)?.message || 'that film could not be sent').toLowerCase());
+    }
   };
 
   const reportPosted = async (id: string) => {
@@ -2291,6 +2397,32 @@ export default function ShadowField({ serif }: Props) {
             {postedHere.kind === 'story' ? 'there’s an idea in this' : 'build on it'}
           </button>
         )}
+        {postedHere?.mine && postedHere.kind !== 'story' && (postedHere.media?.length ?? 0) < 6 && (
+          <>
+            <button
+              type="button"
+              className={styles.quiet}
+              onClick={() => {
+                mediaForRef.current = postedHere.id;
+                postPicRef.current?.click();
+              }}
+            >
+              add a picture
+            </button>
+            {filmsOn && (
+              <button
+                type="button"
+                className={styles.quiet}
+                onClick={() => {
+                  mediaForRef.current = postedHere.id;
+                  postFilmRef.current?.click();
+                }}
+              >
+                add a film
+              </button>
+            )}
+          </>
+        )}
         {postedHere?.mine && (
           <>
             {postedHere.kind !== 'story' && (
@@ -2474,6 +2606,30 @@ export default function ShadowField({ serif }: Props) {
         style: { display: 'none' },
       })}
 
+      <input
+        ref={postPicRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          const f = e.currentTarget.files?.[0];
+          const id = mediaForRef.current;
+          if (f && id) void addPostPicture(id, f);
+          e.currentTarget.value = '';
+        }}
+      />
+      <input
+        ref={postFilmRef}
+        type="file"
+        accept="video/mp4,video/quicktime,video/webm,video/*"
+        hidden
+        onChange={(e) => {
+          const f = e.currentTarget.files?.[0];
+          const id = mediaForRef.current;
+          if (f && id) void addPostFilm(id, f);
+          e.currentTarget.value = '';
+        }}
+      />
       <input
         ref={fileRef}
         type="file"

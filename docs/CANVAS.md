@@ -93,6 +93,21 @@ account id is stored. Tables (`tt_shadows`, `tt_notes`, `tt_reports`) are create
 on first use; limit 20 posts a day per person. Without a database, casting stays
 on the device as before.
 
+### Pictures and films in posts
+A maker adds up to six pictures or films to their own Shadow ("add a picture",
+"add a film"). Pictures are made small on the phone and kept in Postgres
+(served from `/api/media/<id>`, private ones only to their maker). Films go
+straight from the phone to Vercel Blob and appear once the project has a Blob
+store: Vercel → Storage → Create → Blob → connect to this project, which sets
+`BLOB_READ_WRITE_TOKEN`. Until then "add a film" does not appear. Letting a
+Shadow go removes its pictures and its films.
+
+### Sending and building on
+"send it" shares a link (`/canvas?at=...`) that arrives at that thing and unfolds
+into a preview card drawn in ink (`/canvas/og`). "build on it" makes your own
+Shadow from someone's shared one; it says what it was built on and whose it was,
+and a rose thread joins them in the flight.
+
 ### Story time
 Signed-in people tell true stories of making do ("tell a story"), shown to
 everyone in the ring "story time" with no name at all (the teller's account id is

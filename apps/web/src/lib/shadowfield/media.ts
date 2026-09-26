@@ -16,6 +16,7 @@ export function setMediaReadyCallback(fn: () => void) {
 }
 
 export function getImage(src: string): Loaded | null {
+  if (!src) return null;
   const hit = cache.get(src);
   if (hit && hit !== 'loading' && hit !== 'failed') return hit;
   if (hit) return null;
