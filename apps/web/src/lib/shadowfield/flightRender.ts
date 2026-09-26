@@ -128,6 +128,77 @@ function liveness(node: IdeaNode, now: number) {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * The tunnel you fall through: an ink wall around the whole way, drawn as
+ * rings that come out of the vanishing point and open past you, laced by
+ * strands that spiral with the clock. Faint, so what is in it stays clear;
+ * at speed its dots stream into lines, like falling.
+ */
+function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink) {
+  const STEP = 0.7;
+  const RADIUS = 1.3;
+  const DOTS = 64;
+  const STRANDS = 18;
+  const TWIST = 0.22;
+  const fast = st.reduced ? 0 : clamp(cam.shown * 0.035, -1.1, 1.1);
+  const ox = (dz: number) => {
+    const k = v.F / dz;
+    return [v.cx + (-v.x * v.rc + v.y * v.rs) * k, v.cy + (-v.x * v.rs - v.y * v.rc) * k, k] as const;
+  };
+  const at = (zAbs: number, ang: number, dz: number): [number, number] => {
+    const [cx, cy, k] = ox(dz);
+    // the wall is hand-drawn: it breathes a little along its length and around
+    const r = RADIUS * (1 + 0.06 * noise1(zAbs * 0.35, 11) + 0.035 * noise1(ang * 2 + zAbs * 0.2, 7)) * k;
+    return [cx + Math.cos(ang + v.roll) * r, cy + Math.sin(ang + v.roll) * r];
+  };
+  const onScreen = (x: number, y: number) => x > -6 && y > -6 && x < st.w + 6 && y < st.h + 6;
+
+  // rings, aligned to the track so they stream steadily toward you
+  const m0 = Math.ceil((v.z + Math.max(NEAR, 0.35)) / STEP);
+  const m1 = Math.floor((v.z + FAR) / STEP);
+  for (let m = m0; m <= m1; m++) {
+    const zAbs = m * STEP;
+    const dz = zAbs - v.z;
+    const a = 0.24 * (1 - smoothstep(8, FAR, dz)) * smoothstep(0.35, 1.4, dz) * (m % 3 === 0 ? 1.3 : 0.75);
+    if (a < 0.012) continue;
+    const size = clamp(0.011 * (v.F / dz), 0.9, 2.6);
+    const twist = zAbs * TWIST;
+    for (let i = 0; i < DOTS; i++) {
+      const ang = twist + (i / DOTS) * Math.PI * 2 + 0.03 * noise1(i + m * 13, 5);
+      const [x, y] = at(zAbs, ang, dz);
+      if (!onScreen(x, y)) continue;
+      if (Math.abs(fast) > 0.05) {
+        const dz2 = Math.max(NEAR + 0.05, dz + fast);
+        let [tx, ty] = at(zAbs, ang, dz2);
+        const len = Math.hypot(tx - x, ty - y);
+        const cap = st.M * 0.16;
+        if (len > cap) {
+          tx = x + ((tx - x) * cap) / len;
+          ty = y + ((ty - y) * cap) / len;
+        }
+        ink.line(x, y, tx, ty, size, a * 0.7);
+      } else ink.dot(x, y, size, a);
+    }
+  }
+
+  // strands along the wall, spiralling as the tunnel turns
+  const SP = 0.16;
+  const n0 = Math.ceil((v.z + 0.5) / SP);
+  const n1 = Math.floor((v.z + FAR) / SP);
+  for (let j = 0; j < STRANDS; j++) {
+    const base = (j / STRANDS) * Math.PI * 2;
+    for (let n = n0; n <= n1; n++) {
+      const zAbs = n * SP;
+      const dz = zAbs - v.z;
+      const a = 0.12 * (1 - smoothstep(8, FAR, dz)) * smoothstep(0.5, 2, dz);
+      if (a < 0.012) continue;
+      const [x, y] = at(zAbs, base + zAbs * TWIST, dz);
+      if (!onScreen(x, y)) continue;
+      ink.dot(x, y, clamp(0.008 * (v.F / dz), 0.75, 2), a);
+    }
+  }
+}
+
 /** Ink specks suspended in the space you move through: they streak when you rush. */
 function drawSpecks(st: RenderState, v: View, cam: FlightCam, ink: Ink) {
   const P = 4;
@@ -607,6 +678,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   const born = (s: Station) => st.cut === null || s.depth === 0 || s.node.began <= st.cut;
   const gone = (s: Station) => !born(s) || fs.hidden(s);
 
+  drawTunnel(st, v, cam, ink);
   drawSpecks(st, v, cam, ink);
   for (const s of stream.stations) if (s.gate && !gone(s)) drawTube(st, v, s, L, ink);
   drawThread(st, v, stream, ink, cam, gone);
