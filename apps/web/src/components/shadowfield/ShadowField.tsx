@@ -306,6 +306,8 @@ export default function ShadowField({ serif }: Props) {
   const [me, setMe] = useState<{ enabled: boolean; user: { name: string; owner: boolean } | null } | null>(null);
   // work people have posted, kept on the server (see /api/shadows)
   const postedRef = useRef<{ public: Posted[]; mine: Posted[] }>({ public: [], mine: [] });
+  // a shared link to posted work waits for it to arrive from the server
+  const pendingAtRef = useRef<string[] | null>(null);
   const [posting, setPosting] = useState(false);
   const [posted, setPostedList] = useState<Posted[]>([]);
 
@@ -546,6 +548,18 @@ export default function ShadowField({ serif }: Props) {
     cam.resize(rect.width, rect.height);
     cam.s = Math.min(rect.width, rect.height) * 0.45;
 
+    // a shared link (/canvas?at=a~b) arrives at what it points to
+    try {
+      const url = new URL(window.location.href);
+      const at = url.searchParams.get('at');
+      if (at) {
+        url.searchParams.delete('at');
+        history.replaceState(null, '', `${url.pathname}${url.search}#path=${at.split('~').map(encodeURIComponent).join('~')}`);
+        if (at.includes('p/')) pendingAtRef.current = at.split('~').filter(Boolean);
+      }
+    } catch {
+      // ignore malformed links
+    }
     // restore a journey from the URL: #path=a~b~c&z=..&c=x,y
     try {
       const params = new URLSearchParams(window.location.hash.slice(1));
@@ -704,7 +718,13 @@ export default function ShadowField({ serif }: Props) {
     setPosting(!!d.enabled);
     setPostedList([...(d.mine ?? []), ...(d.public ?? []).filter((p) => !p.mine)]);
     if (storeRef.current) rebuild();
-  }, [rebuild]);
+    const at = pendingAtRef.current;
+    if (at && worldRef.current) {
+      pendingAtRef.current = null;
+      const p = resolvePath(worldRef.current, at);
+      if (p.length > 1) flyTo(p);
+    }
+  }, [rebuild, flyTo]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -735,6 +755,24 @@ export default function ShadowField({ serif }: Props) {
   const signIn = () => {
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a route handler that redirects to Google needs a full page load
     window.location.assign('/api/auth/google?next=/canvas');
+  };
+
+  /** A link to the thing in front of you, which unfolds into its own card wherever it is sent. */
+  const shareHere = async (path: IdeaNode[]) => {
+    const ids = path.slice(1).filter((n) => !n.void && !n.portal).map((n) => n.id);
+    if (!ids.length) return;
+    const url = `${window.location.origin}/canvas?at=${ids.map(encodeURIComponent).join('~')}`;
+    const title = path[path.length - 1]?.title ?? 'the Canvas';
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setNotice('the link is copied');
+    } catch (e) {
+      if ((e as { name?: string })?.name !== 'AbortError') setNotice(url);
+    }
   };
 
   /** Story time: signed in (so it can be taken back), told without a name. */
@@ -2021,6 +2059,12 @@ export default function ShadowField({ serif }: Props) {
   // a copy taken from his throwaways is the visitor's to keep, but not theirs to prove
   const takenCopy = ownedHereFrom(localList, current);
   const top = path[1];
+  // what anyone may see can be sent: nothing on this device only, nothing private, nothing sealed
+  const shareable =
+    !!current &&
+    path.length > 1 &&
+    !path.some((n) => n.id.startsWith('local/') || n.disclosure > 0) &&
+    (!current.id.startsWith('p/') || !!posted.find((q) => `p/${q.id}` === current.id && q.public && !q.hidden));
   const postedHere = current?.id.startsWith('p/') ? posted.find((q) => `p/${q.id}` === current.id) ?? null : null;
   const ownedHere = current ? localIds(current) : null;
   const isFollowed = top ? followed.has(top.id) : false;
@@ -2185,6 +2229,11 @@ export default function ShadowField({ serif }: Props) {
               support his work
             </button>
           </>
+        )}
+        {shareable && (
+          <button type="button" className={styles.quiet} onClick={() => shareHere([...path])}>
+            send it
+          </button>
         )}
         {top && top.id !== 'throwaways' && (
           <button type="button" className={styles.quiet} onClick={replayView ? stopReplay : startReplay}>
