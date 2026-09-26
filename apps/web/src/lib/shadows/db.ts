@@ -4,8 +4,12 @@ import { Query, migrate } from './store';
 
 // The Postgres the Vercel project is connected to (Neon). Whatever prefix the
 // integration was given, one of these holds the connection string.
+const NAMES = ['DATABASE_URL', 'STORAGE_URL', 'POSTGRES_URL', 'STORAGE_DATABASE_URL', 'STORAGE_POSTGRES_URL', 'NEON_DATABASE_URL'];
 const url =
-  process.env.DATABASE_URL ?? process.env.STORAGE_URL ?? process.env.POSTGRES_URL ?? process.env.STORAGE_DATABASE_URL ?? '';
+  NAMES.map((n) => process.env[n]).find((v) => v?.startsWith('postgres')) ??
+  // any other prefix the integration was given
+  Object.entries(process.env).find(([k, v]) => /(DATABASE|POSTGRES)_URL$/.test(k) && v?.startsWith('postgres'))?.[1] ??
+  '';
 
 export function dbConfigured() {
   return url.startsWith('postgres');
