@@ -1,6 +1,25 @@
 import type { PublicIdeaRecord } from './types';
 
-export const CORE_IDEAS: PublicIdeaRecord[] = [
+export const CORE_IDEAS: PublicIdeaRecord[] = [\n  {
+    id: 'twinthink-project',
+    title: 'TwinThink',
+    kind: 'software',
+    category: 'TwinThink',
+    era: '2024–present',
+    status: 'active / core project',
+    summary: 'A medium for giving an idea a persistent reality before the finished object exists, preserving its structure, history, evidence, lineage, and changing relationship to the people around it.',
+    problem: 'Most systems preserve finished products, posts, or files. The early thought process, failed branches, evidence, and path from an idea to a real thing are usually lost.',
+    evolution: 'Grew from idea-attribution and digital-twin thinking into a recursive spatial Canvas. Ideas appear as Shadows at distance, reveal continuity as you move closer, and unfold into deeper topology through semantic Z-depth.',
+    highlights: [
+      'Twins can preserve identity, structure, behavior, evidence, history, lineage, and unknowns.',
+      'Shadows let an idea exist between total secrecy and full public disclosure.',
+      'The Canvas uses X/Y for exploration and Z for semantic depth.',
+      'Backing means “I want to see what happens next,” not a rating or purchase.',
+      'The current product emphasizes continuity and proof of care rather than hype.',
+    ],
+    evidence: 'repository history',
+  },
+
   {
     id: 'coinceit',
     title: 'CoinCeit',
