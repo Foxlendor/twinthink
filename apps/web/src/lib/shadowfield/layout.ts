@@ -5,7 +5,7 @@
 // that grew rather than a radial diagram. Each child is reached by a strand
 // whose shape, density and gaps come from that child's real history.
 
-import { IdeaNode, LifeEvent, lastActivity, countEvents } from './model';
+import { IdeaNode, LifeEvent, LinkKind, lastActivity, countEvents } from './model';
 import { hash01, hashString, noise1, clamp } from './rng';
 
 export interface StrandMark {
@@ -47,7 +47,7 @@ export function strandU(s: Strand, t: number) {
 }
 
 export interface Link {
-  kind: 'challenges' | 'resolves';
+  kind: LinkKind;
   strand: Strand;
 }
 
@@ -309,7 +309,8 @@ function buildTopology(node: IdeaNode): Topology {
           pts,
           cum,
           len: cum[cum.length - 1],
-          coherence: l.kind === 'resolves' ? 0.85 : 0.6,
+          // lineage is the most continuous thread there is: one thing became the next
+          coherence: l.kind === 'grew-from' ? 0.92 : l.kind === 'resolves' ? 0.85 : 0.6,
           taper: 0,
           child: null,
           // a challenge reads as a broken, tense line; a resolution as a whole one

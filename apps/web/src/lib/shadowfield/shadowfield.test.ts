@@ -25,8 +25,7 @@ import { Camera, ENTER } from './camera';
 import { topologyOf, strandAt } from './layout';
 import { IdeaNode, countEvents, findPath, reachedBy, rippleReach, webSize } from './model';
 import { buildWorld, resolvePath } from './world';
-import { CLEARED_LINES } from './sources/archive';
-import { CLEARED_TEXT } from './sources/archive.cleared';
+import { THROWAWAYS } from './sources/archive';
 import { AUTHOR } from './sources/author';
 import { isOwner, safeNext } from '../auth/rules';
 import { createLocalStore, localShadowNode } from './sources/local';
@@ -289,7 +288,7 @@ describe('nothing ends', () => {
 });
 
 describe('throwaways', () => {
-  it('his cleared ideas, given away in one ring, with no invented history', () => {
+  it('his ideas, given away in one ring, each with something inside and no invented history', () => {
     const world = buildWorld([]);
     const ring = world.children.find((c) => c.id === 'throwaways')!;
     expect(ring.title).toBe('throwaways');
@@ -297,17 +296,20 @@ describe('throwaways', () => {
     const archived = ring.children.filter((c) => c.id.startsWith('archive/'));
     expect(archived).toHaveLength(9);
     expect(archived[0].id).toBe('archive/bubbleblock');
-    for (const a of archived) expect(a.free).toBe(true);
     for (const a of archived) {
+      expect(a.free).toBe(true);
       expect(a.origin).toBe('real');
       expect(a.events[0].kind).toBe('begin');
       // anything after the beginning is only something the inventor chose to show
       for (const e of a.events.slice(1)) expect(e.kind).toBe('evidence');
       expect(a.events.length > 1).toBe(!!a.media?.length);
-      // names only: no descriptions, no text inside
-      expect(a.note).toBeUndefined();
-      expect(a.artifact).toBeUndefined();
       expect(Math.hypot(a.x, a.y)).toBeLessThan(1);
+      // a plain label, and real information inside: at least what it is and why
+      expect(a.line && a.line.length > 8).toBe(true);
+      const inside = a.children.map((c) => c.title);
+      expect(inside).toContain('what it is');
+      expect(inside).toContain('why it exists');
+      for (const c of a.children) expect(c.artifact?.type === 'text' && c.artifact.body.length > 10).toBe(true);
     }
     // the one film the inventor shared: BubbleBlock, signed as his animation
     const shown = archived.filter((a) => a.media?.length);
@@ -317,15 +319,24 @@ describe('throwaways', () => {
     expect(film?.kind === 'video' && film.by).toBe('animated by johne.boi');
   });
 
-  it('each line is cut from what he cleared: words only removed, never added', () => {
-    const words = (t: string) => t.toLowerCase().replace(/[^a-z' ]+/g, ' ').split(/\s+/).filter(Boolean);
-    for (const c of CLEARED_LINES) {
-      if (!c.line) continue;
-      const allowed = new Set(words(CLEARED_TEXT[c.id].why));
-      const used = words(c.line);
-      expect(used.length).toBeLessThanOrEqual(11);
-      for (const w of used) expect(allowed.has(w), `${c.id}: "${w}"`).toBe(true);
-    }
+  it('lineage runs between the ones that grew out of each other', () => {
+    const world = buildWorld([]);
+    const ring = world.children.find((c) => c.id === 'throwaways')!;
+    const byId = new Map(ring.children.map((c) => [c.id, c]));
+    const grew = (id: string) => (byId.get(id)?.links ?? []).filter((l) => l.kind === 'grew-from').map((l) => l.to);
+    expect(grew('archive/u3dpen')).toEqual(['archive/ferropen']);
+    expect(grew('archive/ferro-display')).toEqual(['archive/ferropen']);
+    expect(grew('archive/smholder')).toEqual(['archive/sipsmolder']);
+    // every thread lands on a real sibling
+    for (const c of ring.children) for (const l of c.links ?? []) expect(byId.has(l.to), `${c.id} -> ${l.to}`).toBe(true);
+  });
+
+  it('never says how anything works', () => {
+    // mechanisms, materials, parts and construction stay with the inventor
+    const forbidden = /ferrofluid|microfluid|sodium|acetate|phase.change|shape.memory|alloy|capillar|coil|electromagnet|magnet|esp32|camera|circuit|battery pack|heating element|snap disc|crystalli|cellulose|pulp|extru|dishwasher|oil|silicone|chamber/i;
+    // (names are the inventor's own and stay as he wrote them; everything written about them is checked)
+    const texts = THROWAWAYS.flatMap((t) => [t.line, t.what, t.why, t.roots, t.became, t.name]).filter(Boolean) as string[];
+    for (const text of texts) expect(forbidden.test(text), text).toBe(false);
     // and the old links to them still land
     const world = buildWorld([]);
     expect(resolvePath(world, ['archive/bubbleblock']).map((n) => n.id)).toEqual(['canvas', 'throwaways', 'archive/bubbleblock']);

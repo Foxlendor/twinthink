@@ -1,12 +1,13 @@
-// Throwaways: ideas from the inventor's own archive, cleared by the inventor
-// on 2026-09-25 and given away free, in his own word, as throwaways.
+// Throwaways: ideas from the inventor's own archive, given away free, in his
+// own word, as throwaways.
 //
-// Shown: the name and one line cut from the cleared `why` (the problem it
-// answers), with words only removed, never added (a test checks this). Plus
-// anything the inventor explicitly chose to show (SHOWN, below). The full
-// cleared text lives in archive.cleared.ts, which only tests import, so it
-// never ships to visitors. Never: how it works, mechanisms, materials or
-// construction.
+// What is shown was asked for by the inventor on 2026-09-25: each throwaway
+// carries a plain label, what it is, why it exists, where it came from, what
+// it led to and the story of its name, and threads of lineage run between the
+// ones that grew out of each other.
+//
+// Never shown: how anything works. No mechanisms, materials, parts or
+// construction (a test guards the words). Only the inventor can open that.
 //
 // History rule: nothing is invented. Each record begins on the day it was
 // added to the Canvas; earlier history exists but has not been recorded yet.
@@ -16,87 +17,112 @@ import { hashString } from '../rng';
 
 const ADDED = Date.parse('2026-09-25T15:00:00Z');
 
-interface Cleared {
+interface Throwaway {
   id: string;
   title: string;
   kind: IdeaNode['kind'];
-  /** Shown when still in front of it: cut from the cleared `why` (archive.cleared.ts), words only removed. */
-  line?: string;
-  x: number;
-  y: number;
+  /** The label under the name: what it is, in a few plain words. */
+  line: string;
+  /** What it is. */
+  what: string;
+  /** The problem it answers. */
+  why: string;
+  /** Where it came from. */
+  roots?: string;
+  /** What came of it. */
+  became?: string;
+  /** How it got its name. */
+  name?: string;
+  /** Throwaways (by id) this one grew out of. Drawn as a thread of lineage. */
+  grewFrom?: string[];
 }
 
-const CLEARED: Cleared[] = [
+export const THROWAWAYS: Throwaway[] = [
   {
     id: 'coinceit',
     title: 'CoinCeit',
     kind: 'software',
-    line: 'ideas are easy to take and hard to attribute.',
-    x: -0.46,
-    y: -0.31,
+    line: 'share an idea and keep the credit',
+    what: 'A place to put an idea out into the world and still be known as the person who had it.',
+    why: 'Ideas are easy to take and hard to attribute, so most people keep theirs to themselves.',
+    became: 'TwinThink grew out of the same problem, much further along.',
   },
   {
     id: 'bubbleblock',
     title: 'BUBBLEYEBLOCK',
     kind: 'physical',
-    x: 0.52,
-    y: 0.27,
+    line: 'glasses that keep ads out of the real world',
+    what: 'A pair of glasses that keeps advertisements in the physical world out of the wearer’s view.',
+    why: 'You can block ads on a screen, but not on a street, a bus or a billboard.',
+    name: 'First called BubbleBlock. The name grew an eye: BUBBLEYEBLOCK, said like bubble eye block.',
   },
   {
     id: 'wear-os',
     title: 'Wear O’s',
     kind: 'physical',
-    line: 'jewellery and a working device, nothing extra to carry.',
-    x: -0.18,
-    y: 0.49,
+    line: 'a ring that is also a working device',
+    what: 'A ring that is also a discreet personal vaporizer.',
+    why: 'Something you already wear can be the device itself, so there is nothing extra to carry.',
   },
   {
     id: 'sipsmolder',
     title: 'SipSmolder',
     kind: 'physical',
-    line: 'a drink goes cold long before you finish it.',
-    x: 0.08,
-    y: -0.57,
+    line: 'a straw that warms your drink as you sip',
+    what: 'A reusable straw that warms a drink as you sip it, with no cord and no battery.',
+    why: 'A drink goes cold long before you finish it.',
+    roots: 'It grew out of ReSip, a heated straw first built for a science fair in 2016.',
+    became: 'The same warmth moved into a bigger vessel: Smholder.',
   },
   {
     id: 'smholder',
     title: 'Smholder',
     kind: 'physical',
-    line: 'warm food wherever you are, with nothing to plug in.',
-    x: 0.63,
-    y: -0.38,
-  },
-  {
-    id: 'u3dpen',
-    title: 'U3dPEN',
-    kind: 'physical',
-    line: 'making by hand, from what would be thrown away.',
-    x: -0.69,
-    y: 0.18,
+    line: 'a container that warms food, nothing to plug in',
+    what: 'A food and drink container that warms what is inside when you want it to, without a microwave.',
+    why: 'Warm food wherever you are, with nothing to plug in.',
+    roots: 'SipSmolder’s warmth, given a whole meal to hold.',
+    grewFrom: ['sipsmolder'],
   },
   {
     id: 'ferropen',
     title: 'FerroPen',
     kind: 'physical',
-    line: 'ink is final. this lets a drawing stay changeable.',
-    x: -0.38,
-    y: -0.66,
+    line: 'a drawing that stays changeable',
+    what: 'A drawing tool whose marks can be moved again and taken back up, so a drawing is never final.',
+    why: 'Ink is final. This lets a drawing stay changeable.',
+    became: 'It went two ways: into U3dPEN, a pen that makes objects, and into a display whose pixels have shape.',
+  },
+  {
+    id: 'u3dpen',
+    title: 'U3dPEN',
+    kind: 'physical',
+    line: 'a pen that makes things from what gets thrown away',
+    what: 'A handheld pen that builds small objects out of material that would otherwise be thrown away.',
+    why: 'Making things by hand should not need new material every time.',
+    roots: 'It grew out of FerroPen: a mark you can take back up became a mark you can build with.',
+    name: 'Written U3dPEN on purpose. Turn it upside down and it reads differently.',
+    grewFrom: ['ferropen'],
   },
   {
     id: 'ferro-display',
     title: 'Ferro / crystalline display',
     kind: 'physical',
-    line: 'screens are flat and untouchable; information could have shape.',
-    x: 0.34,
-    y: 0.63,
+    line: 'a screen whose pixels have shape',
+    what: 'A display whose pixels can physically move, rise and hold their shape.',
+    why: 'Screens are flat and untouchable. Information could have shape.',
+    roots: 'From FerroPen: marks that can move, grown into a whole surface of them.',
+    became: 'Nothing built yet. It points toward maps you can feel, surfaces that reshape and patterns that stay put.',
+    grewFrom: ['ferropen'],
   },
   {
     id: 'xylem-camouflage',
     title: 'Xylem thread camouflage',
     kind: 'physical',
-    line: 'printed camouflage only works in the place it was designed for.',
-    x: 0.71,
-    y: 0.05,
+    line: 'fabric that changes its look to match where it is',
+    what: 'A fabric that changes how it looks to match its surroundings, instead of printing one pattern once.',
+    why: 'Printed camouflage only works in the place it was designed for.',
+    roots: 'Named after the way plants carry water up through themselves.',
   },
 ];
 
@@ -126,30 +152,59 @@ const SHOWN: Record<string, { media: Media[]; t: number }> = {
   },
 };
 
-/** The throwaways: one ring you fly into, holding the ideas he gives away. */
-export function buildThrowaways(): IdeaNode {
-  // his own hand-drawn film first
-  const order = [...CLEARED].sort((a, b) => Number(!!SHOWN[b.id]) - Number(!!SHOWN[a.id]));
-  const children: IdeaNode[] = order.map((c) => ({
-    id: `archive/${c.id}`,
-    title: c.title,
-    kind: c.kind,
-    origin: 'real',
+/** The parts you find inside a throwaway, in the order you meet them. */
+const FACETS: Array<{ key: 'what' | 'why' | 'roots' | 'became' | 'name'; title: string }> = [
+  { key: 'what', title: 'what it is' },
+  { key: 'why', title: 'why it exists' },
+  { key: 'roots', title: 'where it came from' },
+  { key: 'became', title: 'what came of it' },
+  { key: 'name', title: 'its name' },
+];
+
+function facets(t: Throwaway): IdeaNode[] {
+  return FACETS.filter((f) => t[f.key]).map((f) => ({
+    id: `archive/${t.id}/${f.key}`,
+    title: f.title,
+    kind: 'writing' as const,
+    origin: 'real' as const,
     began: ADDED,
-    events: [
-      { t: ADDED, kind: 'begin', note: 'added to the Canvas; earlier history not recorded yet' },
-      ...(SHOWN[c.id] ? [{ t: SHOWN[c.id].t, kind: 'evidence' as const, note: 'a version of it, shown' }] : []),
-    ],
-    media: SHOWN[c.id]?.media,
-    line: c.line,
-    free: true,
-    state: 'alive',
+    events: [{ t: ADDED, kind: 'begin' as const, note: 'written for the Canvas' }],
+    state: 'alive' as const,
     disclosure: 0,
+    artifact: { type: 'text' as const, body: t[f.key]! },
     children: [],
     x: 0,
     y: 0,
     r: 0.05,
-    seed: hashString(c.id),
+    seed: hashString(`${t.id}/${f.key}`),
+  }));
+}
+
+/** The throwaways: one ring you fly into, holding the ideas he gives away. */
+export function buildThrowaways(): IdeaNode {
+  // his own hand-drawn film first
+  const order = [...THROWAWAYS].sort((a, b) => Number(!!SHOWN[b.id]) - Number(!!SHOWN[a.id]));
+  const children: IdeaNode[] = order.map((t) => ({
+    id: `archive/${t.id}`,
+    title: t.title,
+    kind: t.kind,
+    origin: 'real',
+    began: ADDED,
+    events: [
+      { t: ADDED, kind: 'begin', note: 'added to the Canvas; earlier history not recorded yet' },
+      ...(SHOWN[t.id] ? [{ t: SHOWN[t.id].t, kind: 'evidence' as const, note: 'a version of it, shown' }] : []),
+    ],
+    media: SHOWN[t.id]?.media,
+    line: t.line,
+    free: true,
+    state: 'alive',
+    disclosure: 0,
+    children: facets(t),
+    links: (t.grewFrom ?? []).map((from) => ({ to: `archive/${from}`, kind: 'grew-from' as const })),
+    x: 0,
+    y: 0,
+    r: 0.05,
+    seed: hashString(t.id),
   }));
   return {
     id: 'throwaways',
@@ -170,6 +225,3 @@ export function buildThrowaways(): IdeaNode {
     seed: hashString('throwaways'),
   };
 }
-
-/** The lines shown, for tests that guard them against invention. */
-export const CLEARED_LINES = CLEARED.map((c) => ({ id: `archive/${c.id}`, line: c.line }));

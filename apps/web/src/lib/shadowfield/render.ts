@@ -1072,7 +1072,7 @@ export function drawNode(
 
   if (!isRoot && ia > 0.004) {
     for (const l of topo.links) {
-      drawStrand(st, l.strand, T, ia * smoothstep(40, 160, R) * (l.kind === 'resolves' ? 0.9 : 0.75), path);
+      drawStrand(st, l.strand, T, ia * smoothstep(40, 160, R) * (l.kind === 'grew-from' ? 0.95 : l.kind === 'resolves' ? 0.9 : 0.75), path);
     }
   }
 

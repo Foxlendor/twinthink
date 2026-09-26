@@ -32,6 +32,8 @@ export interface LifeEvent {
 /** Where a record came from. Only 'real' and 'local' may appear on the public Canvas. */
 export type Origin = 'real' | 'local' | 'synthetic';
 
+export type LinkKind = 'challenges' | 'resolves' | 'grew-from';
+
 export type LifeState = 'alive' | 'dormant' | 'abandoned' | 'realized';
 
 export type Artifact =
@@ -101,9 +103,10 @@ export interface IdeaNode {
   void?: boolean;
   /**
    * Relationships to sibling ideas (same parent): a challenge (antithesis of
-   * 'to') or a resolution (synthesis drawing on 'to').
+   * 'to'), a resolution (synthesis drawing on 'to'), or lineage: this idea
+   * grew out of 'to'.
    */
-  links?: { to: string; kind: 'challenges' | 'resolves' }[];
+  links?: { to: string; kind: LinkKind }[];
   /** A way back into the Canvas from the end of a path: its children are the Canvas's. */
   portal?: boolean;
   /** Given away by its inventor as a free starter to build on. */
