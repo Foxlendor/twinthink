@@ -7,7 +7,7 @@ import { IdeaNode, LifeEvent, SEAL_MARGIN, findPath, lastActivity } from '@/lib/
 import { topologyOf } from '@/lib/shadowfield/layout';
 import { Access, Flight, pan as panCam, stepFlight, transformOfPath, zoomAt } from '@/lib/shadowfield/navigate';
 import { Hit, Lens, NIGHT, PAPER_RGB, RenderState, drawSketch, setNight, lifeWord, drawVoidLattice, pulseChain, render, shortDate } from '@/lib/shadowfield/render';
-import { restVideos, setFilmRate, setMediaReadyCallback, settleVideos, toggleVideoSound } from '@/lib/shadowfield/media';
+import { filmsHeard, hearFilm, quietFilms, restVideos, setFilmRate, setMediaReadyCallback, settleVideos, toggleVideoSound } from '@/lib/shadowfield/media';
 import {
   ARRIVE,
   FOCUS,
@@ -445,6 +445,7 @@ export default function ShadowField({ serif }: Props) {
     }
     if (!auto) autoplayRef.current = true;
     a.el.src = media.src;
+    quietFilms();
     const rec = { src: media.src, path, silentFor: 0 };
     playingRef.current = rec;
     setPlayingId(node.id);
@@ -1157,6 +1158,20 @@ export default function ShadowField({ serif }: Props) {
         ) {
           since.tried = true;
           toggleSong(here.path, true);
+        } else if (!since.tried && nowMs - since.t > 300 && Math.abs(fc.shown) < 5 && filmsHeard()) {
+          // films heard: the one you arrive at speaks, and a song playing gives way to it
+          const film = here.node.media?.find((m) => m.kind === 'video');
+          if (film && film.kind === 'video') {
+            since.tried = true;
+            if (hearFilm(film.src, film.webm)) {
+              const a = audioRef.current;
+              if (a && playingRef.current) {
+                a.el.pause();
+                playingRef.current = null;
+                setPlayingId(null);
+              }
+            }
+          }
         }
       }
 

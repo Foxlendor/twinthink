@@ -93,14 +93,49 @@ export function settleVideos(active: Set<string>) {
 /** Films the viewer started by hand (with reduced motion, only these ever play). */
 export const startedByHand = new Set<string>();
 
+/**
+ * Whether films are heard: once the viewer turns one film's sound on, each
+ * film they arrive at is heard in turn (and the one they left falls quiet),
+ * until they turn a film's sound off again.
+ */
+let soundOn = false;
+
+export function filmsHeard() {
+  return soundOn;
+}
+
 /** Sound for a film, from a tap (browsers allow sound only after one). */
 export function toggleVideoSound(src: string, webm?: string): boolean {
   startedByHand.add(src);
   const v = getVideo(src, webm);
   if (!v) return false;
   v.muted = !v.muted;
-  if (!v.muted) void v.play().catch(() => undefined);
+  soundOn = !v.muted;
+  if (!v.muted) {
+    // one film is heard at a time
+    for (const [k, o] of videos) if (k !== src) o.muted = true;
+    void v.play().catch(() => undefined);
+  }
   return !v.muted;
+}
+
+/** Arriving at a film while films are heard: this one is heard, every other falls quiet. */
+export function hearFilm(src: string, webm?: string): boolean {
+  if (!soundOn) return false;
+  const v = getVideo(src, webm);
+  if (!v) return false;
+  for (const [k, o] of videos) if (k !== src) o.muted = true;
+  v.muted = false;
+  void v.play().catch(() => {
+    // the browser would not allow it: quiet again, and wait for a tap
+    v.muted = true;
+  });
+  return true;
+}
+
+/** A song begins: every film falls quiet (films stay heard when you arrive at the next one). */
+export function quietFilms() {
+  for (const v of videos.values()) v.muted = true;
 }
 
 /** Leaving the Canvas (or hiding the tab): every film rests, silently. */
