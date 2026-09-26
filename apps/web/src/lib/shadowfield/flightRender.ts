@@ -567,7 +567,12 @@ function wrapTwo(ctx: CanvasRenderingContext2D, text: string, width: number): st
   for (let i = 1; i < words.length; i++) {
     if (ctx.measureText(words.slice(0, i).join(' ')).width <= width) best = i;
   }
-  return [words.slice(0, best).join(' '), words.slice(best).join(' ')];
+  let rest = words.slice(best).join(' ');
+  if (ctx.measureText(rest).width > width) {
+    while (rest.length > 1 && ctx.measureText(rest + '…').width > width) rest = rest.slice(0, -1);
+    rest = rest.trimEnd() + '…';
+  }
+  return [words.slice(0, best).join(' '), rest];
 }
 
 export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs: FlightState) {
@@ -680,18 +685,22 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   };
   for (const t of titles) {
     setFont(`italic ${t.size}px ${st.serif}`);
-    const w = ctx.measureText(t.text).width;
-    const r: [number, number, number, number] = [t.x - w / 2 - 4, t.y - t.size, t.x + w / 2 + 4, t.y + t.size * 0.35];
+    // a long name wraps to the screen (a narrow phone included) instead of running off it
+    const names = wrapTwo(ctx, t.text, st.w - 32);
+    const w = Math.max(...names.map((n) => ctx.measureText(n).width));
+    const tx = w < st.w - 32 && names.length > 1 ? clamp(t.x, 16 + w / 2, st.w - 16 - w / 2) : t.x;
+    const lastY = t.y + (names.length - 1) * t.size * 1.2;
+    const r: [number, number, number, number] = [tx - w / 2 - 4, t.y - t.size, tx + w / 2 + 4, lastY + t.size * 0.35];
     if (placed.some((q) => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1])) continue;
     const q0 = r;
     if (covers.some((c) => c.near > t.near * 1.02 && q0[0] < c.r[2] && q0[2] > c.r[0] && q0[1] < c.r[3] && q0[3] > c.r[1])) continue;
     ctx.fillStyle = `rgba(${INK},${t.a * 0.78})`;
-    inkText(ctx, t.text, t.x, t.y);
+    names.forEach((n, i) => inkText(ctx, n, tx, t.y + i * t.size * 1.2));
     if (t.sub && (t.subA ?? 0) > 0.01) {
       const ss = Math.max(13, Math.round(t.size * 0.78));
       setFont(`italic ${ss}px ${st.serif}`);
       const lines = wrapTwo(ctx, t.sub, Math.min(360, st.w - 32));
-      let yy = t.y + t.size * 1.35;
+      let yy = lastY + t.size * 1.35;
       ctx.fillStyle = `rgba(${INK},${(t.subA ?? 0) * 0.62})`;
       let widest = w;
       for (const line of lines) {
@@ -701,8 +710,8 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
         ctx.fillText(line, lx, yy);
         yy += ss * 1.3;
       }
-      r[0] = Math.min(r[0], t.x - widest / 2 - 4);
-      r[2] = Math.max(r[2], t.x + widest / 2 + 4);
+      r[0] = Math.min(r[0], tx - widest / 2 - 4);
+      r[2] = Math.max(r[2], tx + widest / 2 + 4);
       r[3] = yy;
     }
     placed.push(r);

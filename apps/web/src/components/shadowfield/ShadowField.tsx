@@ -24,6 +24,7 @@ import {
   stepFocus,
   travelled,
   wrapDelta,
+  panBy,
 } from '@/lib/shadowfield/flight';
 import { renderFlight } from '@/lib/shadowfield/flightRender';
 import { clamp, hash01, smoothstep } from '@/lib/shadowfield/rng';
@@ -218,7 +219,15 @@ export default function ShadowField({ serif }: Props) {
   const velRef = useRef({ x: 0, y: 0 });
   const zoomVelRef = useRef({ v: 0, x: 0, y: 0 });
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
-  const dragRef = useRef({ active: false, moved: 0, lastT: 0 });
+  // in the flight a drag either travels (up and down) or slides the view (it began sideways)
+  const dragRef = useRef<{ active: boolean; moved: number; lastT: number; axis: 'travel' | 'slide' | null; tx: number; ty: number }>({
+    active: false,
+    moved: 0,
+    lastT: 0,
+    axis: null,
+    tx: 0,
+    ty: 0,
+  });
   const pinchRef = useRef<{ d: number; x: number; y: number } | null>(null);
   const hoverRef = useRef<Hit | null>(null);
   const monoRef = useRef('monospace');
@@ -1394,7 +1403,7 @@ export default function ShadowField({ serif }: Props) {
       fc.v = 0;
       fc.idle = 0;
     }
-    dragRef.current = { active: true, moved: 0, lastT: performance.now() };
+    dragRef.current = { active: true, moved: 0, lastT: performance.now(), axis: null, tx: 0, ty: 0 };
     if (pointersRef.current.size === 2) {
       const [a, b] = [...pointersRef.current.values()];
       pinchRef.current = { d: Math.hypot(a.x - b.x, a.y - b.y), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
@@ -1432,18 +1441,44 @@ export default function ShadowField({ serif }: Props) {
           fc.z += step;
           if (Math.abs(step) > 0.002) fc.dir = Math.sign(step);
         }
-        pinchRef.current = { d, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        // and two fingers moving together slide the view, which stays where they leave it
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2;
+        const stream = streamRef.current;
+        if (stream) panBy(fc, stream, mx - pinchRef.current.x, my - pinchRef.current.y, cam.w, cam.h);
+        pinchRef.current = { d, x: mx, y: my };
         dragRef.current.moved += 20;
         return;
       }
-      // up is forward, like scrolling; across is looking around
+      // up is forward, like scrolling; a drag that begins sideways slides the view
+      // instead (any way, then), and it stays where it is left, for reading what runs off
       const dx = x - prev.x;
       const dy = y - prev.y;
-      dragRef.current.moved += Math.abs(dx) + Math.abs(dy);
-      const step = (-dy / M) * SWIPE;
+      const dr = dragRef.current;
+      dr.moved += Math.abs(dx) + Math.abs(dy);
+      dr.tx += dx;
+      dr.ty += dy;
+      let travel = dy;
+      if (!dr.axis && Math.hypot(dr.tx, dr.ty) > 8) {
+        travel = dr.ty;
+        dr.axis = Math.abs(dr.tx) > Math.abs(dr.ty) ? 'slide' : 'travel';
+        // the part of the gesture that decided it counts too
+        if (dr.axis === 'slide') {
+          const stream = streamRef.current;
+          if (stream) panBy(fc, stream, dr.tx - dx, dr.ty - dy, cam.w, cam.h);
+        }
+      }
+      if (dr.axis === 'slide') {
+        const stream = streamRef.current;
+        if (stream) panBy(fc, stream, dx, dy, cam.w, cam.h);
+        fc.v = 0;
+        dr.lastT = performance.now();
+        return;
+      }
+      if (dr.axis !== 'travel') return;
+      const step = (-travel / M) * SWIPE;
       fc.z += step;
       if (Math.abs(step) > 0.002) fc.dir = Math.sign(step);
-      fc.wx = clamp(fc.wx - (dx / M) * 0.6, -0.5, 0.5);
       const now = performance.now();
       const dtm = Math.max(1, now - dragRef.current.lastT);
       dragRef.current.lastT = now;
@@ -1498,7 +1533,7 @@ export default function ShadowField({ serif }: Props) {
       // let go: the flight carries on with the swipe's speed, unless the finger had stopped
       fc.held = false;
       fc.idle = 0;
-      if (performance.now() - dragRef.current.lastT > 90) fc.v = 0;
+      if (performance.now() - dragRef.current.lastT > 90 || dragRef.current.axis === 'slide') fc.v = 0;
       fc.v = clamp(fc.v, -40, 40);
     }
     if (performance.now() - dragRef.current.lastT > 80) velRef.current = { x: 0, y: 0 };

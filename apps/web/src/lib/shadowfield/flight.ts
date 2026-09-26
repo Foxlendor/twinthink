@@ -222,6 +222,8 @@ function smooth(t: number) {
 function leanOf(s: Station) {
   const media = s.node.media ?? [];
   if (media.some((m) => m.kind === 'video')) return 1;
+  // words are read, so they arrive in the middle too
+  if (s.node.artifact) return 1;
   if (media.some((m) => m.kind === 'image' || m.kind === 'model')) return 0.85;
   return LEAN;
 }
@@ -258,9 +260,13 @@ export interface FlightCam {
   z: number;
   /** Speed along the track (units per second); positive is forward. */
   v: number;
-  /** Sideways wander from dragging across (track units); springs back. */
+  /**
+   * Where the viewer has slid the view (track units), set at panZ. It stays where
+   * they leave it while they stay there, and eases back to centre as they travel on.
+   */
   wx: number;
   wy: number;
+  panZ: number;
   /** A place being flown to (camera z), if any. */
   target: number | null;
   /** Seconds since the viewer last moved it. */
@@ -278,7 +284,7 @@ export interface FlightCam {
 }
 
 export function newFlightCam(): FlightCam {
-  return { z: -ARRIVE, v: 0, wx: 0, wy: 0, target: null, idle: 0, held: false, dir: 0, shown: 0, from: null, spin: 0 };
+  return { z: -ARRIVE, v: 0, wx: 0, wy: 0, panZ: -ARRIVE, target: null, idle: 0, held: false, dir: 0, shown: 0, from: null, spin: 0 };
 }
 
 /** Called as the viewer starts to push: remembers the thing they were resting on. */
@@ -409,9 +415,6 @@ export function stepFlightCam(cam: FlightCam, stream: Stream, dt: number, skip?:
         if (Math.abs(f - cam.z) < 1e-4) cam.z = f;
       }
     }
-    const k = Math.exp(-dt * 2.4);
-    cam.wx *= k;
-    cam.wy *= k;
   }
   cam.shown = cam.v;
 }
@@ -448,13 +451,45 @@ export function flightScale(w: number, h: number) {
   return Math.max(Math.min(w, h), 0.6 * Math.max(w, h));
 }
 
+/** How far to travel before a slid view is fully centred again. */
+const PAN_HOLD = 0.7;
+
+/** The slide still in effect at z: all of it where it was set, none once you have travelled on. */
+export function panAt(cam: FlightCam, L: number): [number, number] {
+  const d = Math.abs(wrapDelta(cam.z, cam.panZ, L));
+  const k = 1 - smooth(d / PAN_HOLD);
+  return [cam.wx * k, cam.wy * k];
+}
+
+/** The largest slide either way (track units): far enough to read anything wide or long. */
+export const PAN_MAX = 2.5;
+
+/**
+ * Slide the view by a finger's movement on screen (pixels), so what is under the
+ * finger follows it, whichever way the clock has turned the view.
+ */
+export function panBy(cam: FlightCam, stream: Stream, dx: number, dy: number, w: number, h: number) {
+  const [px, py] = panAt(cam, stream.length);
+  const F = flightScale(w, h);
+  const roll = rollAt(cam.z, cam.spin);
+  const c = Math.cos(roll);
+  const s = Math.sin(roll);
+  // screen = R(roll) * (world - camera) * F at the focus distance, so the camera moves by -R(-roll) * d / F
+  const ux = (dx * c + dy * s) / F;
+  const uy = (-dx * s + dy * c) / F;
+  cam.wx = Math.max(-PAN_MAX, Math.min(PAN_MAX, px - ux * FOCUS));
+  cam.wy = Math.max(-PAN_MAX, Math.min(PAN_MAX, py - uy * FOCUS));
+  cam.panZ = cam.z;
+}
+
 export function viewOf(stream: Stream, cam: FlightCam, w: number, h: number, skip?: (s: Station) => boolean): View {
   const M = flightScale(w, h);
   const [lx, ly] = leanAt(stream, cam.z, skip);
   // at speed the field of view widens a little, as if pulled forward
   const rush = smooth((Math.abs(cam.shown) - 3) / 20);
   const roll = rollAt(cam.z, cam.spin);
-  return { z: cam.z, x: lx + cam.wx, y: ly + cam.wy, F: M * (1 - 0.16 * rush), cx: w / 2, cy: h * 0.47, roll, rc: Math.cos(roll), rs: Math.sin(roll) };
+  const [px, py] = panAt(cam, stream.length);
+  return { z: cam.z, x: lx + px, y: ly + py, F: M * (1 - 0.16 * rush), cx: w / 2, cy: h * 0.47, roll, rc: Math.cos(roll), rs: Math.sin(roll) };
 }
 
 /** Screen position and scale (pixels per unit) of a point dz ahead of the camera. */

@@ -533,7 +533,8 @@ export function drawArtifact(st: RenderState, node: IdeaNode, T: ScreenTransform
   if (art.type === 'text') {
     ctx.font = `italic ${fpx}px ${st.serif}`;
     ctx.fillStyle = `rgba(${INK},${a * 0.82})`;
-    const lines = wrap(ctx, art.body, R * 1.05);
+    // never wider than the screen: a long text is read by dragging, not cut off at the sides
+    const lines = wrap(ctx, art.body, Math.min(R * 1.05, st.w - 32));
     const lh = fpx * 1.35;
     let y = T.oy - R * 0.2 - (lines.length * lh) / 2 + fpx * 0.8;
     ctx.textAlign = 'center';

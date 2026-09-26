@@ -348,6 +348,9 @@
     white-space: nowrap;
     scrollbar-width: none;
     gap: 16px;
+    /* the row fades at the edge, so it is plain there is more to swipe to */
+    mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+    padding-right: 40px;
   }
   .actions::-webkit-scrollbar {
     display: none;

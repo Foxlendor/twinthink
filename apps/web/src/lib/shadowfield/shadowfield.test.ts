@@ -11,6 +11,7 @@ import {
   beginPush,
   nearestFocus,
   newFlightCam,
+  panBy,
   restingPlace,
   silence,
   project,
@@ -513,6 +514,33 @@ describe('the flight', () => {
     expect(Math.abs(f - cam.z)).toBeLessThan(0.01);
     const here = focusOf(stream, cam.z);
     expect(here.depth).toBeGreaterThan(0);
+  });
+
+  it('a slid view stays where it is left, follows the finger, and centres again once you travel on', () => {
+    const cam = newFlightCam();
+    const song = st.find((s) => s.node.id.startsWith('music/'))!;
+    cam.z = focusZ(stream, song, 0);
+    const W = 390;
+    const H = 844;
+    const at = () => {
+      const v = viewOf(stream, cam, W, H);
+      return project(v, song.x, song.y, wrapDelta(song.z, cam.z, stream.length));
+    };
+    const [x0, y0] = at();
+    panBy(cam, stream, -120, -200, W, H);
+    const [x1, y1] = at();
+    expect(x1 - x0).toBeCloseTo(-120, 0);
+    expect(y1 - y0).toBeCloseTo(-200, 0);
+    // resting there, time passes: it stays
+    for (let i = 0; i < 300; i++) stepFlightCam(cam, stream, 1 / 60);
+    const [x2, y2] = at();
+    expect(Math.hypot(x2 - x1, y2 - y1)).toBeLessThan(1);
+    // travelling on, the slide lets go
+    cam.z += 1.5;
+    const v = viewOf(stream, cam, W, H);
+    const [lx, ly] = leanAt(stream, cam.z);
+    expect(v.x).toBeCloseTo(lx);
+    expect(v.y).toBeCloseTo(ly);
   });
 
   it('flies to a thing and puts it in focus, forwards or backwards, across the seam', () => {
