@@ -11,7 +11,7 @@ const SONGS: { id: string; title: string; made: string }[] = [
   { id: 'crhymes', title: 'CRHYMES', made: '2026-09-21T16:48:53.031Z' },
   { id: 'new-project', title: 'new project', made: '2026-09-21T17:26:16.490Z' },
   { id: 'dolonia', title: 'Dolonia', made: '2026-09-21T17:26:30.727Z' },
-  { id: 'iu3d', title: 'IU3d', made: '2026-09-21T17:28:47.235Z' },
+  { id: 'iu3d', title: '$IU3d', made: '2026-09-21T17:28:47.235Z' },
 ];
 
 export function buildMusic(): IdeaNode {
