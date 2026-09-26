@@ -29,6 +29,7 @@ import { THROWAWAYS } from './sources/archive';
 import { TRACES, isLinked } from './sources/traces';
 import { AUTHOR } from './sources/author';
 import { isOwner, safeNext } from '../auth/rules';
+import { cleanNote } from '../notes/rules';
 import { createLocalStore, localShadowNode } from './sources/local';
 import { Access, stepFlight, zoomAt } from './navigate';
 import continuity from './sources/twinthink-continuity.json';
@@ -691,5 +692,15 @@ describe('signing in', () => {
     expect(safeNext('//evil.example')).toBe('/canvas');
     expect(safeNext('/\\evil.example')).toBe('/canvas');
     expect(safeNext(null)).toBe('/canvas');
+  });
+});
+
+describe('notes at a seal', () => {
+  it('are plain words, 1 to 500 characters', () => {
+    expect(cleanNote('  thank you for this  ')).toBe('thank you for this');
+    expect(cleanNote('a\u0000b')).toBe('ab');
+    expect(cleanNote('')).toBeNull();
+    expect(cleanNote('x'.repeat(501))).toBeNull();
+    expect(cleanNote(42)).toBeNull();
   });
 });

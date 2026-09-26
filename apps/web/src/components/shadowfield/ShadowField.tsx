@@ -21,6 +21,7 @@ import {
   newFlightCam,
   stepFlightCam,
   stepFocus,
+  travelled,
   wrapDelta,
 } from '@/lib/shadowfield/flight';
 import { renderFlight } from '@/lib/shadowfield/flightRender';
@@ -36,7 +37,9 @@ interface Props {
 }
 
 interface Composer {
-  mode: 'cast' | 'thought' | 'rewrite' | 'challenge' | 'synthesis';
+  mode: 'cast' | 'thought' | 'rewrite' | 'challenge' | 'synthesis' | 'note';
+  /** For a note left at a seal: the idea it is left at. */
+  target?: string;
   /** For dialectic modes: the thought ids this one answers. */
   of?: string[];
   x: number;
@@ -218,7 +221,7 @@ export default function ShadowField({ serif }: Props) {
   const hoverRef = useRef<Hit | null>(null);
   const monoRef = useRef('monospace');
   const lastPathKey = useRef('');
-  const lastTapRef = useRef({ t: 0, x: 0, y: 0 });
+  const lastTapRef = useRef({ t: 0, x: 0, y: 0, n: 1 });
   const pulsesRef = useRef(new Map<string, number>());
   // sketching: strokes are drawn in the frame of the owned idea being sketched in
   const sketchRef = useRef<{ nodeId: string; stroke: number[] | null; pointerId?: number } | null>(null);
@@ -273,6 +276,7 @@ export default function ShadowField({ serif }: Props) {
   const [replayView, setReplayView] = useState<{ progress: number; t: number; playing: boolean } | null>(null);
   const [mode, setMode] = useState<'flight' | 'map'>('flight');
   // who is looking (Google sign-in, when switched on)
+  const [notesView, setNotesView] = useState<{ title: string; notes: { t: number; text: string }[] } | null>(null);
   const [me, setMe] = useState<{ enabled: boolean; user: { name: string; owner: boolean } | null } | null>(null);
 
   const access: Access = useMemo(
@@ -618,6 +622,18 @@ export default function ShadowField({ serif }: Props) {
       live = false;
     };
   }, []);
+
+  /** The maker reads the notes left at something's seal. */
+  const readNotes = async (node: IdeaNode) => {
+    const res = await fetch(`/api/notes?target=${encodeURIComponent(node.id)}`, { cache: 'no-store' }).catch(() => null);
+    if (!res || !res.ok) {
+      setNotice('notes could not be read');
+      return;
+    }
+    const d = (await res.json()) as { enabled?: boolean; notes?: { t: number; text: string }[] };
+    if (d.enabled === false) setNotice('notes are not switched on yet');
+    else setNotesView({ title: node.title ?? 'this', notes: d.notes ?? [] });
+  };
 
   const signOut = async () => {
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
@@ -1095,6 +1111,39 @@ export default function ShadowField({ serif }: Props) {
     return [(sx - T.ox) / T.s, (sy - T.oy) / T.s];
   };
 
+  /** A note for the maker, left at the seal of something not open to you. */
+  const openSeal = (node: IdeaNode) => {
+    if (node.id.startsWith('local/')) return;
+    const c = camRef.current;
+    // opened once the tap that asked for it has finished, so its own click does not close it
+    window.setTimeout(
+      () => setComposer({ mode: 'note', target: node.id, x: (c?.w ?? 400) / 2 - 140, y: (c?.h ?? 600) - 160, lx: 0, ly: 0 }),
+      250
+    );
+  };
+
+  /**
+   * Three taps: a knock. The owner, a follower, or whoever made it may go
+   * inside (the flight dives to what it holds); anyone else meets its seal.
+   */
+  const knock = (path: IdeaNode[]) => {
+    const node = path[path.length - 1];
+    const top = path[1];
+    if (!node || !top) return;
+    const open = ownerSignedIn || top.ownedBy === 'viewer' || lensRef.current.followed.has(top.id);
+    if (!open) {
+      openSeal(node);
+      return;
+    }
+    const inside = travelled(node).sort((a, b) => b.began - a.began);
+    ripple(node.id);
+    if (!inside.length) {
+      setNotice('nothing inside yet');
+      return;
+    }
+    flyTo([...path, inside[0]]);
+  };
+
   /** Sound for a film (from a tap); a song that is playing gives way to it. */
   const filmSound = (src: string, webm?: string) => {
     if (!toggleVideoSound(src, webm)) return;
@@ -1279,18 +1328,33 @@ export default function ShadowField({ serif }: Props) {
 
     const now = performance.now();
     const lastTap = lastTapRef.current;
-    const isDouble = now - lastTap.t < 320 && Math.hypot(lastTap.x - x, lastTap.y - y) < 24;
-    lastTapRef.current = { t: now, x, y };
+    const burst = now - lastTap.t < 380 && Math.hypot(lastTap.x - x, lastTap.y - y) < 28;
+    const taps = burst ? lastTap.n + 1 : 1;
+    const isDouble = taps === 2;
+    lastTapRef.current = { t: now, x, y, n: taps };
 
     const hit = hoverRef.current ?? hitsRef.current.find((h) => Math.hypot(h.x - x, h.y - y) < h.r) ?? null;
+    const focused = focusPath();
+    // three taps knock: the way in opens for those it is open to; for anyone else, a seal
+    if (taps === 3) {
+      if (hit && hit.kind === 'node' && hit.size < 1e8) knock(hit.path);
+      else if (focused.length > 1) knock(focused);
+      return;
+    }
+    // a sealed thing, touched, offers a note for its maker
+    if (hit && hit.kind === 'node' && hit.sealed) {
+      openSeal(hit.node);
+      return;
+    }
     if (hit && hit.kind === 'node' && hasMedia(hit.node, 'audio')) {
-      // a song: go to it and let it play (the tap is what allows sound)
+      // a song: go to it and let it play (the tap is what allows sound);
+      // further taps in the same burst are a knock in the making, not play/pause
+      if (taps > 1) return;
       flyTo(hit.path, 0.53);
       autoplayRef.current = true;
       toggleSong(hit.path);
       return;
     }
-    const focused = focusPath();
     const focusedNode = focused[focused.length - 1];
     const film = (n: IdeaNode | undefined) => n?.media?.find((m) => m.kind === 'video');
     if (hit && hit.kind === 'node' && film(hit.node)) {
@@ -1300,6 +1364,7 @@ export default function ShadowField({ serif }: Props) {
       return;
     }
     if (!hit && hasMedia(focusedNode, 'audio')) {
+      if (taps > 1) return;
       autoplayRef.current = true;
       toggleSong([...focused]);
       return;
@@ -1588,6 +1653,18 @@ export default function ShadowField({ serif }: Props) {
         flyTo(focusPath().slice(0, -1));
         ripple(`local/${c.shadowId}/${made.id}`);
       }
+    } else if (c.mode === 'note' && c.target) {
+      fetch('/api/notes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ target: c.target, text: value }) })
+        .then(async (res) => {
+          if (res.ok) {
+            ripple(c.target!);
+            setNotice('left for the maker, without your name');
+          } else {
+            const d = (await res.json().catch(() => ({}))) as { error?: string };
+            setNotice(res.status === 503 ? 'notes are not switched on yet' : (d.error ?? 'that note could not be left').toLowerCase());
+          }
+        })
+        .catch(() => setNotice('that note could not be left'));
     } else if (c.mode === 'rewrite' && c.shadowId) {
       store.revise(c.shadowId, c.thoughtId ?? null, value);
       rebuild();
@@ -1758,6 +1835,11 @@ export default function ShadowField({ serif }: Props) {
             aria-pressed={isFollowed}
           >
             {isFollowed ? 'following, you can go a little further' : 'I want to see what happens next'}
+          </button>
+        )}
+        {me?.user?.owner && current && path.length > 1 && !ownedHere && (
+          <button type="button" className={styles.quiet} onClick={() => readNotes(current)}>
+            notes
           </button>
         )}
         {ownedHere && current && (
@@ -1943,6 +2025,26 @@ export default function ShadowField({ serif }: Props) {
         </div>
       )}
 
+      {notesView && (
+        <div className={styles.notes} role="dialog" aria-label={`Notes left at ${notesView.title}`}>
+          <div className={styles.notesHead}>
+            <span>left at {notesView.title}</span>
+            <button type="button" className={styles.newsClose} aria-label="Close" onClick={() => setNotesView(null)}>
+              ×
+            </button>
+          </div>
+          {notesView.notes.length === 0 ? (
+            <p className={styles.noteText}>nothing left here yet</p>
+          ) : (
+            notesView.notes.map((n, i) => (
+              <p key={i} className={styles.noteText}>
+                {n.text}
+              </p>
+            ))
+          )}
+        </div>
+      )}
+
       {tip && (
         <div className={styles.tip} style={{ left: tip.x + 14, top: tip.y - 8 }}>
           <div className={styles.tipTitle}>{tip.title}</div>
@@ -1977,7 +2079,9 @@ export default function ShadowField({ serif }: Props) {
                     ? 'what argues against it?'
                     : composer.mode === 'synthesis'
                       ? 'what holds both?'
-                      : ''
+                      : composer.mode === 'note'
+                        ? 'a note for its maker'
+                        : ''
             }
             onKeyDown={(e) => {
               if (e.key === 'Escape') setComposer(null);
@@ -1987,7 +2091,11 @@ export default function ShadowField({ serif }: Props) {
             }}
           />
           <span className={styles.composerHint}>
-            {composer.mode === 'cast' ? 'enter to cast · kept on this device for now' : 'enter to keep'}
+            {composer.mode === 'cast'
+              ? 'enter to cast · kept on this device for now'
+              : composer.mode === 'note'
+                ? 'sealed · no name is kept · only the maker reads it'
+                : 'enter to keep'}
           </span>
         </form>
       )}

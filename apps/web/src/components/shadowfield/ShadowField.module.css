@@ -459,3 +459,39 @@
     transition: none;
   }
 }
+
+/* notes left at a seal, read by the maker */
+.notes {
+  position: absolute;
+  right: 20px;
+  bottom: 60px;
+  width: min(340px, calc(100vw - 40px));
+  max-height: 50vh;
+  overflow: auto;
+  padding: 12px 14px;
+  background: rgba(251, 250, 247, 0.96);
+  border-left: 1px solid rgba(150, 92, 122, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: tipIn 250ms ease-out;
+}
+
+.notesHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: rgba(150, 92, 122, 0.85);
+}
+
+.noteText {
+  margin: 0;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: rgba(30, 28, 36, 0.8);
+  white-space: pre-wrap;
+}

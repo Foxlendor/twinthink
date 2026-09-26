@@ -19,6 +19,10 @@ out past the edges, behind you.
   where the thread thins). After the oldest thing comes the Canvas again.
 - Songs play as you pass them (once a tap has allowed sound), loudest in front
   of you. Films play silently while near; a tap gives them sound.
+- Three taps on anything knock. For its maker, the owner (signed in) or a
+  follower, the flight dives inside; for anyone else its seal offers a note
+  for the maker, anonymous (no name, account or address is kept; only the
+  owner reads notes, from "notes" on the thing in front of them).
 - "see it whole" switches to the map: the same Canvas as nested frames
   (X/Y to wander, scroll/pinch to go deeper). "fly through" returns.
 
@@ -54,6 +58,7 @@ out past the edges, behind you.
 | `GOOGLE_CLIENT_ID` | Sign in with Google (from Google Cloud → APIs & Services → Credentials → OAuth client ID, type "Web application"). |
 | `GOOGLE_CLIENT_SECRET` | The same client's secret. |
 | `SESSION_SECRET` | 32+ random characters; signs the login cookie. |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Anonymous notes at a seal (Vercel → Storage → a Redis/KV store sets both). |
 | `OWNER_EMAILS` | Comma-separated Google emails that own the Canvas (they see everything on it). |
 
 Without `STRIPE_SECRET_KEY`, donation buttons say "Donations are not switched on yet".
