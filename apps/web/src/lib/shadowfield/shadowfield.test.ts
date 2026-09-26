@@ -748,3 +748,13 @@ describe('notes at a seal', () => {
     expect(cleanNote(42)).toBeNull();
   });
 });
+
+describe('today’s word', () => {
+  it('is one word a day, the same for everyone, and changes day to day', async () => {
+    const { wordFor, dayOf } = await import('./prompts');
+    expect(wordFor('2026-09-26')).toBe(wordFor('2026-09-26'));
+    const week = ['2026-09-20', '2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24', '2026-09-25', '2026-09-26'].map(wordFor);
+    expect(new Set(week).size).toBe(7);
+    expect(dayOf(Date.parse('2026-09-26T23:59:00Z'))).toBe('2026-09-26');
+  });
+});

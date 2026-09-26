@@ -33,6 +33,7 @@ import Donate from '@/components/support/Donate';
 import { founderPlots } from '@/lib/shadowfield/plots';
 import { buildWorld, resolvePath } from '@/lib/shadowfield/world';
 import type { Posted } from '@/lib/shadowfield/sources/posted';
+import { wordFor } from '@/lib/shadowfield/prompts';
 import { createLocalStore, LocalShadow, ShadowStore } from '@/lib/shadowfield/sources/local';
 import styles from './ShadowField.module.css';
 
@@ -41,7 +42,7 @@ interface Props {
 }
 
 interface Composer {
-  mode: 'cast' | 'thought' | 'rewrite' | 'challenge' | 'synthesis' | 'note' | 'story' | 'spark';
+  mode: 'cast' | 'thought' | 'rewrite' | 'challenge' | 'synthesis' | 'note' | 'story' | 'spark' | 'answer';
   /** For a note left at a seal: the idea it is left at. */
   target?: string;
   /** For dialectic modes: the thought ids this one answers. */
@@ -305,7 +306,7 @@ export default function ShadowField({ serif }: Props) {
   const [notesView, setNotesView] = useState<{ title: string; notes: { t: number; text: string }[] } | null>(null);
   const [me, setMe] = useState<{ enabled: boolean; user: { name: string; owner: boolean } | null } | null>(null);
   // work people have posted, kept on the server (see /api/shadows)
-  const postedRef = useRef<{ public: Posted[]; mine: Posted[] }>({ public: [], mine: [] });
+  const postedRef = useRef<{ public: Posted[]; mine: Posted[]; today?: boolean }>({ public: [], mine: [] });
   // a shared link to posted work waits for it to arrive from the server
   const pendingAtRef = useRef<string[] | null>(null);
   const [posting, setPosting] = useState(false);
@@ -720,7 +721,7 @@ export default function ShadowField({ serif }: Props) {
       .catch(() => null)) as { enabled?: boolean; films?: boolean; public?: Posted[]; mine?: Posted[] } | null;
     if (!d) return;
     setFilmsOn(!!d.films);
-    postedRef.current = { public: d.public ?? [], mine: d.mine ?? [] };
+    postedRef.current = { public: d.public ?? [], mine: d.mine ?? [], today: !!d.enabled };
     setPosting(!!d.enabled);
     setPostedList([...(d.mine ?? []), ...(d.public ?? []).filter((p) => !p.mine)]);
     if (storeRef.current) rebuild();
@@ -791,6 +792,15 @@ export default function ShadowField({ serif }: Props) {
     const w = c?.w ?? 400;
     const h = c?.h ?? 600;
     setComposer({ mode: 'story', x: w / 2 - Math.min(230, w / 2 - 16), y: Math.max(80, h / 2 - 120), lx: 0, ly: 0 });
+  };
+
+  const answerToday = () => {
+    if (!me?.user) {
+      signIn();
+      return;
+    }
+    const c = camRef.current;
+    setComposer({ mode: 'answer', x: (c?.w ?? 400) / 2 - 140, y: (c?.h ?? 600) - 170, lx: 0, ly: 0 });
   };
 
   const sparkFrom = (storyId: string) => {
@@ -2056,9 +2066,10 @@ export default function ShadowField({ serif }: Props) {
     if (!c || !store) return;
     const value = text.trim();
     if (!value) return;
-    if (c.mode === 'story' || c.mode === 'spark') {
-      // a story is told to everyone without a name; an idea it sparks is yours, private until shared
-      const payload = c.mode === 'story' ? { kind: 'story', body: value } : { title: value, from: c.target };
+    if (c.mode === 'story' || c.mode === 'spark' || c.mode === 'answer') {
+      // a story is told to everyone without a name; an idea it sparks is yours, private until shared;
+      // an answer to today's word is shared with the others
+      const payload = c.mode === 'story' ? { kind: 'story', body: value } : c.mode === 'answer' ? { title: value, answer: true } : { title: value, from: c.target };
       fetch('/api/shadows', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
         .then(async (res) => {
           const d = (await res.json().catch(() => ({}))) as { shadow?: Posted; error?: string };
@@ -2068,12 +2079,18 @@ export default function ShadowField({ serif }: Props) {
           }
           await loadPosted();
           const world = worldRef.current;
-          const ringId = c.mode === 'story' ? 'stories' : 'yours';
+          const ringId = c.mode === 'story' ? 'stories' : c.mode === 'answer' ? 'today' : 'yours';
           const ring = world?.children.find((n) => n.id === ringId);
           const node = ring?.children.find((n) => n.id === `p/${d.shadow!.id}`);
           if (world && ring && node) flyTo([world, ring, node]);
           if (c.mode === 'spark') ripple(`p/${c.target}`);
-          setNotice(c.mode === 'story' ? 'told, and no one will know it was you' : 'yours now, only you can see it until you share it');
+          setNotice(
+            c.mode === 'story'
+              ? 'told, and no one will know it was you'
+              : c.mode === 'answer'
+                ? 'your answer is with the others'
+                : 'yours now, only you can see it until you share it'
+          );
         })
         .catch(() => setNotice('that could not be kept'));
     } else if (c.mode === 'cast' && posting && me?.user) {
@@ -2156,7 +2173,7 @@ export default function ShadowField({ serif }: Props) {
     [...path]
       .slice(1)
       .reverse()
-      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/') && !n.id.startsWith('p/') && n.id !== 'people' && n.id !== 'yours' && n.id !== 'stories') ?? null;
+      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/') && !n.id.startsWith('p/') && n.id !== 'people' && n.id !== 'yours' && n.id !== 'stories' && n.id !== 'today') ?? null;
   // an idea given away is never followed by an ask for money, nor is a song while it plays
   // nothing given away (songs, starters, throwaways) is ever followed by an ask
   const asking = supportTarget && !path.some((n) => n.free) && playingId !== current?.id ? supportTarget : null;
@@ -2324,9 +2341,14 @@ export default function ShadowField({ serif }: Props) {
               </button>
             )}
             {posting && me?.enabled && (
-              <button type="button" className={styles.quiet} onClick={tellStory}>
-                tell a story
-              </button>
+              <>
+                <button type="button" className={styles.quiet} onClick={answerToday}>
+                  today’s word: {wordFor()}
+                </button>
+                <button type="button" className={styles.quiet} onClick={tellStory}>
+                  tell a story
+                </button>
+              </>
             )}
             <button type="button" className={styles.quiet} onClick={wander}>
               wander
@@ -2385,6 +2407,11 @@ export default function ShadowField({ serif }: Props) {
             aria-pressed={isFollowed}
           >
             {isFollowed ? 'following, you can go a little further' : 'I want to see what happens next'}
+          </button>
+        )}
+        {top?.id === 'today' && path.length === 2 && (
+          <button type="button" className={styles.quiet} onClick={answerToday}>
+            answer it
           </button>
         )}
         {top?.id === 'stories' && path.length === 2 && (
@@ -2760,7 +2787,9 @@ export default function ShadowField({ serif }: Props) {
                       ? 'what holds both?'
                       : composer.mode === 'note'
                         ? 'a note for its maker'
-                        : composer.mode === 'spark'
+                        : composer.mode === 'answer'
+                          ? `something made of “${wordFor()}”`
+                          : composer.mode === 'spark'
                           ? posted.find((q) => q.id === composer.target)?.kind === 'story'
                             ? 'what could be made from it?'
                             : 'what would you make of it?'
@@ -2782,7 +2811,9 @@ export default function ShadowField({ serif }: Props) {
                   : 'enter to cast · kept on this device for now'
               : composer.mode === 'note'
                 ? 'sealed · no name is kept · only the maker reads it'
-                : composer.mode === 'spark'
+                : composer.mode === 'answer'
+                  ? 'enter to answer · shared with everyone, under your first name'
+                  : composer.mode === 'spark'
                   ? 'enter to keep · yours, private until you share it'
                   : 'enter to keep'}
           </span>

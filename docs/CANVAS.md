@@ -108,6 +108,11 @@ into a preview card drawn in ink (`/canvas/og`). "build on it" makes your own
 Shadow from someone's shared one; it says what it was built on and whose it was,
 and a rose thread joins them in the flight.
 
+### Today's word
+One word a day for everyone (`src/lib/shadowfield/prompts.ts`, changing at
+midnight UTC). Its ring is the newest thing on the Canvas; "today's word: …"
+answers it, and answers are shared under the maker's first name.
+
 ### Story time
 Signed-in people tell true stories of making do ("tell a story"), shown to
 everyone in the ring "story time" with no name at all (the teller's account id is

@@ -185,3 +185,16 @@ describe('pictures and films', () => {
     expect('films' in gone && gone.films).toHaveLength(6);
   });
 });
+
+describe('today’s word', () => {
+  it('an answer is shared with the others and remembers its day', async () => {
+    const r = (await createShadow(q, ana, { title: 'a hinge for a door that is not there', answer: true })).shadow!;
+    expect(r.public).toBe(true);
+    expect(r.day).toBe(new Date().toISOString().slice(0, 10));
+    const plain = (await createShadow(q, ana, { title: 'just a thought' })).shadow!;
+    expect(plain.day).toBeNull();
+    // a story is never an answer
+    const story = (await createShadow(q, ana, { kind: 'story', body: 'A story told on the day of the word, not an answer.', answer: true })).shadow!;
+    expect(story.day).toBeNull();
+  });
+});

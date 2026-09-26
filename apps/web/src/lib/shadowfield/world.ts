@@ -25,7 +25,7 @@ let dance: IdeaNode | null = null;
 let moments: IdeaNode | null = null;
 let current: IdeaNode | null = null;
 
-export function buildWorld(local: LocalShadow[], posted?: { public: Posted[]; mine: Posted[] }): IdeaNode {
+export function buildWorld(local: LocalShadow[], posted?: { public: Posted[]; mine: Posted[]; today?: boolean }): IdeaNode {
   twinthink ??= buildTwinThinkTwin();
   throwaways ??= buildThrowaways();
   starters ??= buildStarters();
@@ -43,7 +43,7 @@ export function buildWorld(local: LocalShadow[], posted?: { public: Posted[]; mi
     dance,
     moments,
     throwaways,
-    ...(posted ? buildPosted(posted.public, posted.mine) : []),
+    ...(posted ? buildPosted(posted.public, posted.mine, posted.today) : []),
     ...local.map(localShadowNode),
   ];
   const world = rootNode('canvas', children);

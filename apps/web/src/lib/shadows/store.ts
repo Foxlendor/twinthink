@@ -1,3 +1,4 @@
+import { dayOf } from '../shadowfield/prompts';
 // Shadows people post, kept in Postgres. Plain SQL behind a tiny query
 // interface, so the same code runs on Neon (production) and PGlite (tests).
 //
@@ -37,6 +38,8 @@ export interface ServerShadow {
   parent: { title: string; kind: Kind; by: string } | null;
   /** Pictures and films its maker added, in order. */
   media: PostMedia[];
+  /** For an answer to the day's word: that day (YYYY-MM-DD). */
+  day: string | null;
 }
 
 /** A picture (kept here, served from /api/media) or a film (in the file store), height over width. */
@@ -138,6 +141,7 @@ export function forViewer(s: ServerShadow, viewerSub: string | undefined) {
     from: s.from,
     parent: s.parent,
     media: s.media,
+    day: s.day,
     sparks: s.sparks,
     mine: s.owner === viewerSub,
     // only its maker is told it was taken down
@@ -198,6 +202,9 @@ const SCHEMA = [
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
   `CREATE INDEX IF NOT EXISTS tt_media_shadow ON tt_media (shadow_id)`,
+  // an answer to the day's word remembers the day
+  `ALTER TABLE tt_shadows ADD COLUMN IF NOT EXISTS prompt_day TEXT`,
+  `CREATE INDEX IF NOT EXISTS tt_shadows_prompt ON tt_shadows (prompt_day)`,
   // anonymous notes are limited per sender, who is kept only as a keyed hash, per hour
   `CREATE TABLE IF NOT EXISTS tt_limits (
     k TEXT NOT NULL,
@@ -208,7 +215,7 @@ const SCHEMA = [
 ];
 
 /** Bumped whenever SCHEMA changes, so a database already up to date is not locked for nothing. */
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 // every read counts what grew from each, and names what each grew from (never who told a story)
 const SELECT = `SELECT s.*,
@@ -276,6 +283,7 @@ function row(r: Record<string, unknown>): ServerShadow {
     sparks: Number(r.sparks ?? 0),
     hidden: r.hidden === true,
     media: parseMedia(r.media),
+    day: r.prompt_day ? String(r.prompt_day) : null,
   };
 }
 
@@ -296,9 +304,10 @@ export function storyTitle(text: string) {
 export async function createShadow(
   q: Query,
   who: Author,
-  input: { title?: unknown; body?: unknown; public?: unknown; kind?: unknown; from?: unknown }
+  input: { title?: unknown; body?: unknown; public?: unknown; kind?: unknown; from?: unknown; answer?: unknown }
 ) {
   const story = input.kind === 'story';
+  const answer = !story && input.answer === true;
   let title: string | null;
   let body: string | null;
   if (story) {
@@ -327,8 +336,9 @@ export async function createShadow(
   if (!claimed.length) return { error: 'That is enough for today; come back tomorrow.' } as const;
   // stories are told to everyone; a Shadow stays private until its maker shares it
   const rows = await q(
-    `INSERT INTO tt_shadows (id, owner_sub, owner_name, title, body, is_public, kind, sparked_from) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-    [newId(), who.sub, story ? '' : firstName(who.name), title, body, story || input.public === true, story ? 'story' : 'shadow', from]
+    `INSERT INTO tt_shadows (id, owner_sub, owner_name, title, body, is_public, kind, sparked_from, prompt_day) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+    // an answer to today's word is made to be seen with the others
+    [newId(), who.sub, story ? '' : firstName(who.name), title, body, story || answer || input.public === true, story ? 'story' : 'shadow', from, answer ? dayOf() : null]
   );
   return { shadow: (await getShadow(q, String(rows[0].id)))! } as const;
 }

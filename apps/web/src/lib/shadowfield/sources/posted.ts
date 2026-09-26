@@ -3,6 +3,7 @@
 
 import { IdeaNode, Media } from '../model';
 import { hashString } from '../rng';
+import { dayOf, wordFor } from '../prompts';
 
 export interface Posted {
   id: string;
@@ -17,6 +18,8 @@ export interface Posted {
   kind?: 'shadow' | 'story';
   from?: string | null;
   sparks?: number;
+  /** For an answer to the day's word: that day. */
+  day?: string | null;
   /** Pictures and films its maker added (height over width). */
   media?: ({ kind: 'image'; src: string; aspect: number } | { kind: 'video'; src: string; poster?: string; aspect: number })[];
   /** What it was built on (a story or someone's Shadow), while that is shared. */
@@ -109,9 +112,23 @@ function ring(id: string, title: string, line: string, kids: IdeaNode[], x: numb
   };
 }
 
-/** The rings for posted work: everyone's public Shadows, and (signed in) your own. */
-export function buildPosted(pub: Posted[], mine: Posted[]): IdeaNode[] {
+/**
+ * The rings for posted work: today's word and its answers (when posting is
+ * on), everyone's public Shadows, and (signed in) your own.
+ */
+export function buildPosted(pub: Posted[], mine: Posted[], today = false): IdeaNode[] {
   const out: IdeaNode[] = [];
+  const day = dayOf();
+  const isToday = (p: Posted) => p.day === day;
+  if (today) {
+    const answers = [...mine.filter(isToday), ...pub.filter((p) => isToday(p) && !p.mine)].sort((a, b) => b.created - a.created);
+    const r = ring('today', wordFor(day), 'today’s word. make something of it.', answers.map(node), -0.1, -0.7);
+    // it begins with the day, so it is always the newest thing on the Canvas
+    r.began = Math.max(r.began, Date.parse(`${day}T00:00:00Z`));
+    out.push(r);
+    pub = pub.filter((p) => !isToday(p));
+    mine = mine.filter((p) => !isToday(p));
+  }
   const isStory = (p: Posted) => p.kind === 'story';
   const stories = [...mine.filter(isStory), ...pub.filter((p) => isStory(p) && !p.mine)].sort((a, b) => b.created - a.created);
   const others = pub.filter((p) => !p.mine && !isStory(p));
