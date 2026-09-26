@@ -45,6 +45,7 @@ export const THROWAWAYS: Throwaway[] = [
     line: 'share an idea and keep the credit',
     what: 'A place to put an idea out into the world and still be known as the person who had it.',
     why: 'Ideas are easy to take and hard to attribute, so most people keep theirs to themselves.',
+    roots: 'A WordPress site he made for a science fair in 2016, and used only there.',
     became: 'TwinThink grew out of the same problem, much further along.',
   },
   {
@@ -71,7 +72,7 @@ export const THROWAWAYS: Throwaway[] = [
     line: 'a straw that warms your drink as you sip',
     what: 'A reusable straw that warms a drink as you sip it, with no cord and no battery.',
     why: 'A drink goes cold long before you finish it.',
-    roots: 'It grew out of ReSip, a heated straw first built for a science fair in 2016.',
+    roots: 'It grew out of ReSip, a heated straw he first put on the about me page of CoinCeit, for a science fair in 2016.',
     became: 'The same warmth moved into a bigger vessel: Smholder.',
   },
   {
