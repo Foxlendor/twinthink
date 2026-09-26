@@ -10,7 +10,7 @@
 
 import { IdeaNode, LifeEvent, lastActivity, rippleReach } from './model';
 import { ScreenTransform } from './camera';
-import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, flightScale, project, travelled, viewOf } from './flight';
+import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, flightScale, leanAt, project, travelled, viewOf } from './flight';
 import { Hit, INK, PAPER, ROSE, TINT_COOL, TINT_WARM, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
 import { AUTHOR } from './sources/author';
 import { getImage } from './media';
@@ -129,27 +129,44 @@ function liveness(node: IdeaNode, now: number) {
 // ---------------------------------------------------------------------------
 
 /**
- * The tunnel you fall through: an ink wall around the whole way, drawn as
- * rings that come out of the vanishing point and open past you, laced by
- * strands that spiral with the clock. Faint, so what is in it stays clear;
- * at speed its dots stream into lines, like falling.
+ * The tunnel you fall through. Its axis follows the way the flight leans, so
+ * it winds toward whatever comes next; its rings come out of the vanishing
+ * point and open past you, laced by strands that spiral. At rest it fades to
+ * a whisper, so what is in front of you is what you see; moving, it returns,
+ * and at speed its dots stream into lines. While a song or a film is heard,
+ * waves travel down its walls toward you with the sound.
  */
-function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink) {
+function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink, stream: Stream, skip: (s: Station) => boolean) {
   const STEP = 0.7;
   const RADIUS = 1.3;
   const DOTS = 64;
   const STRANDS = 18;
   const TWIST = 0.22;
+  const speed = Math.abs(cam.shown);
+  // how much of the wall is there: a whisper at rest, whole when moving
+  const presence = 0.3 + 0.7 * smoothstep(0.15, 3, speed);
   const fast = st.reduced ? 0 : clamp(cam.shown * 0.035, -1.1, 1.1);
-  const ox = (dz: number) => {
-    const k = v.F / dz;
-    return [v.cx + (-v.x * v.rc + v.y * v.rs) * k, v.cy + (-v.x * v.rs - v.y * v.rc) * k, k] as const;
+  const level = st.audio?.level ?? 0;
+  const clock = st.reduced ? 0 : st.clock ?? 0;
+  // the axis at a place along the way: where the flight leans when it gets there
+  const axes = new Map<number, [number, number]>();
+  const axisAt = (zAbs: number): [number, number] => {
+    const key = Math.round(zAbs * 100);
+    let a = axes.get(key);
+    if (!a) {
+      a = leanAt(stream, zAbs - FOCUS, skip);
+      axes.set(key, a);
+    }
+    return a;
   };
-  const at = (zAbs: number, ang: number, dz: number): [number, number] => {
-    const [cx, cy, k] = ox(dz);
-    // the wall is hand-drawn: it breathes a little along its length and around
-    const r = RADIUS * (1 + 0.06 * noise1(zAbs * 0.35, 11) + 0.035 * noise1(ang * 2 + zAbs * 0.2, 7)) * k;
-    return [cx + Math.cos(ang + v.roll) * r, cy + Math.sin(ang + v.roll) * r];
+  const wall = (zAbs: number, ang: number, dz: number): [number, number] => {
+    const [ax, ay] = axisAt(zAbs);
+    // hand-drawn: it breathes a little along its length and around
+    let r = RADIUS * (1 + 0.06 * noise1(zAbs * 0.35, 11) + 0.035 * noise1(ang * 2 + zAbs * 0.2, 7));
+    // sound: a wave travels from the vanishing point toward you
+    if (level > 0.02) r *= 1 + 0.07 * level * Math.max(0, Math.sin(zAbs * 2.2 + clock * 7));
+    const [x, y] = project(v, ax + Math.cos(ang) * r, ay + Math.sin(ang) * r, dz);
+    return [x, y];
   };
   const onScreen = (x: number, y: number) => x > -6 && y > -6 && x < st.w + 6 && y < st.h + 6;
 
@@ -159,17 +176,17 @@ function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink) {
   for (let m = m0; m <= m1; m++) {
     const zAbs = m * STEP;
     const dz = zAbs - v.z;
-    const a = 0.24 * (1 - smoothstep(8, FAR, dz)) * smoothstep(0.35, 1.4, dz) * (m % 3 === 0 ? 1.3 : 0.75);
+    const pulse = level > 0.02 ? 1 + 1.4 * level * Math.max(0, Math.sin(zAbs * 2.2 + clock * 7)) : 1;
+    const a = 0.24 * presence * pulse * (1 - smoothstep(8, FAR, dz)) * smoothstep(0.35, 1.4, dz) * (m % 3 === 0 ? 1.3 : 0.75);
     if (a < 0.012) continue;
     const size = clamp(0.011 * (v.F / dz), 0.9, 2.6);
     const twist = zAbs * TWIST;
     for (let i = 0; i < DOTS; i++) {
       const ang = twist + (i / DOTS) * Math.PI * 2 + 0.03 * noise1(i + m * 13, 5);
-      const [x, y] = at(zAbs, ang, dz);
+      const [x, y] = wall(zAbs, ang, dz);
       if (!onScreen(x, y)) continue;
       if (Math.abs(fast) > 0.05) {
-        const dz2 = Math.max(NEAR + 0.05, dz + fast);
-        let [tx, ty] = at(zAbs, ang, dz2);
+        let [tx, ty] = wall(zAbs, ang, Math.max(NEAR + 0.05, dz + fast));
         const len = Math.hypot(tx - x, ty - y);
         const cap = st.M * 0.16;
         if (len > cap) {
@@ -190,9 +207,9 @@ function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink) {
     for (let n = n0; n <= n1; n++) {
       const zAbs = n * SP;
       const dz = zAbs - v.z;
-      const a = 0.12 * (1 - smoothstep(8, FAR, dz)) * smoothstep(0.5, 2, dz);
+      const a = 0.12 * presence * (1 - smoothstep(8, FAR, dz)) * smoothstep(0.5, 2, dz);
       if (a < 0.012) continue;
-      const [x, y] = at(zAbs, base + zAbs * TWIST, dz);
+      const [x, y] = wall(zAbs, base + zAbs * TWIST, dz);
       if (!onScreen(x, y)) continue;
       ink.dot(x, y, clamp(0.008 * (v.F / dz), 0.75, 2), a);
     }
@@ -678,7 +695,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   const born = (s: Station) => st.cut === null || s.depth === 0 || s.node.began <= st.cut;
   const gone = (s: Station) => !born(s) || fs.hidden(s);
 
-  drawTunnel(st, v, cam, ink);
+  drawTunnel(st, v, cam, ink, stream, fs.hidden);
   drawSpecks(st, v, cam, ink);
   for (const s of stream.stations) if (s.gate && !gone(s)) drawTube(st, v, s, L, ink);
   drawThread(st, v, stream, ink, cam, gone);

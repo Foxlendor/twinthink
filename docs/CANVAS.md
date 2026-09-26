@@ -120,7 +120,7 @@ film's sound on keeps films heard: each film you arrive at speaks and the last
 falls quiet, until you turn a film's sound off.
 
 ### The tunnel
-The flight runs inside an ink tunnel (`drawTunnel` in flightRender.ts): rings
+The flight runs inside an ink tunnel (`drawTunnel` in flightRender.ts) that winds toward what comes next, fades to a whisper at rest, and carries waves toward you while a song or film is heard: rings
 from the vanishing point, strands that spiral with the clock, dots that stream
 into lines at speed.
 
