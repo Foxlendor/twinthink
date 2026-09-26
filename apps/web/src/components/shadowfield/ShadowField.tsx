@@ -1438,7 +1438,7 @@ export default function ShadowField({ serif }: Props) {
     a.download = `proof-${shadowId}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    setNotice('sealed — your proof is saved');
+    setNotice('sealed, your proof is saved');
   };
 
   const toggleSketch = () => {
@@ -1757,7 +1757,7 @@ export default function ShadowField({ serif }: Props) {
             onClick={() => toggleFollow(top)}
             aria-pressed={isFollowed}
           >
-            {isFollowed ? 'following — you can go a little further' : 'I want to see what happens next'}
+            {isFollowed ? 'following, you can go a little further' : 'I want to see what happens next'}
           </button>
         )}
         {ownedHere && current && (
@@ -1885,7 +1885,7 @@ export default function ShadowField({ serif }: Props) {
       {news && path.length <= 1 && (
         <div className={styles.news} role="status">
           <button type="button" className={styles.quiet} onClick={() => { flyToIds(news.ids); setNews(null); }}>
-            {news.title} — go see
+            {news.title}: go see
           </button>
           <button type="button" className={styles.newsClose} aria-label="Dismiss" onClick={() => setNews(null)}>
             ×

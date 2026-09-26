@@ -360,7 +360,7 @@ export default function BomTab({ twin }: TabProps) {
               gap: '0.35rem'
             }}>
               <ShieldCheck size={12} />
-              Milestone M3 — Cryptographic Rights
+              Milestone M3: Cryptographic Rights
             </span>
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.35rem' }}>
@@ -575,7 +575,7 @@ export default function BomTab({ twin }: TabProps) {
                           )}
                         </div>
                       ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        <span style={{ color: 'var(--text-muted)' }}>-</span>
                       )}
                     </td>
 
@@ -587,7 +587,7 @@ export default function BomTab({ twin }: TabProps) {
                           {item.finish && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.finish}</div>}
                         </div>
                       ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        <span style={{ color: 'var(--text-muted)' }}>-</span>
                       )}
                     </td>
 
@@ -615,7 +615,7 @@ export default function BomTab({ twin }: TabProps) {
                       {item.extendedCost !== null && item.extendedCost !== undefined ? (
                         `$${Number(item.extendedCost).toFixed(2)}`
                       ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>—</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>-</span>
                       )}
                     </td>
 
@@ -634,7 +634,7 @@ export default function BomTab({ twin }: TabProps) {
                           DPP: {item.dppId}
                         </div>
                       ) : (
-                        !item.supplier && <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        !item.supplier && <span style={{ color: 'var(--text-muted)' }}>-</span>
                       )}
                     </td>
                   </tr>
@@ -837,7 +837,7 @@ export default function BomTab({ twin }: TabProps) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.35rem', fontWeight: 700 }}>
                   <span style={{ color: 'var(--accent-primary)' }}>Extended Cost:</span>
                   <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-primary)' }}>
-                    {selectedNode.extendedCost !== null && selectedNode.extendedCost !== undefined ? `$${Number(selectedNode.extendedCost).toFixed(2)} ${selectedNode.currency || 'USD'}` : '—'}
+                    {selectedNode.extendedCost !== null && selectedNode.extendedCost !== undefined ? `$${Number(selectedNode.extendedCost).toFixed(2)} ${selectedNode.currency || 'USD'}` : '-'}
                   </span>
                 </div>
               </div>
@@ -946,7 +946,7 @@ export default function BomTab({ twin }: TabProps) {
                     fontWeight: 700,
                     letterSpacing: '0.04em'
                   }}>
-                    PROJECTION PREVIEW — NON-CERTIFIED
+                    PROJECTION PREVIEW: NON-CERTIFIED
                   </span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     EU Regulation 2023/1542 / ESPR Projected View
@@ -1119,11 +1119,11 @@ export default function BomTab({ twin }: TabProps) {
                         <tr key={item.id}>
                           <td style={{ fontWeight: 600 }}>{item.name}</td>
                           <td>{item.material} {item.materialGrade && `(${item.materialGrade})`}</td>
-                          <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{item.materialStandard || '—'}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{item.materialStandard || '-'}</td>
                           <td style={{ color: item.recycledContentPct ? '#059669' : 'var(--text-muted)' }}>
-                            {item.recycledContentPct ? `${item.recycledContentPct}%` : '—'}
+                            {item.recycledContentPct ? `${item.recycledContentPct}%` : '-'}
                           </td>
-                          <td>{item.process || '—'}</td>
+                          <td>{item.process || '-'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1175,9 +1175,9 @@ export default function BomTab({ twin }: TabProps) {
                         <tr key={r.id}>
                           <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{r.id}</td>
                           <td>{r.name}</td>
-                          <td>{r.supplier || '—'}</td>
-                          <td style={{ fontFamily: 'var(--font-mono)' }}>{r.unitCost !== null && r.unitCost !== undefined ? `$${Number(r.unitCost).toFixed(2)}` : '—'}</td>
-                          <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{r.extendedCost !== null && r.extendedCost !== undefined ? `$${Number(r.extendedCost).toFixed(2)}` : '—'}</td>
+                          <td>{r.supplier || '-'}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)' }}>{r.unitCost !== null && r.unitCost !== undefined ? `$${Number(r.unitCost).toFixed(2)}` : '-'}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{r.extendedCost !== null && r.extendedCost !== undefined ? `$${Number(r.extendedCost).toFixed(2)}` : '-'}</td>
                           <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                             {r.provenance && r.provenance.length > 0 ? `${r.provenance.length} signature(s)` : 'Direct'}
                           </td>

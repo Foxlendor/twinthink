@@ -441,7 +441,7 @@ export default function TwinTabs({ twin }: TwinTabsProps) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }}>
                 <Unlock size={15} color="#059669" />
                 <span>
-                  Pitch &amp; Vault Access Active {activeCode ? `(${activeCode})` : ''} — Private Engineering Disclosed
+                  Pitch &amp; Vault Access Active {activeCode ? `(${activeCode})` : ''}: Private Engineering Disclosed
                 </span>
               </div>
               <button

@@ -69,7 +69,7 @@ export default function HomePage() {
             maxWidth: '700px'
           }}
         >
-          TwinThink is the bridge between imagination and physics. We provide the infrastructure to test, simulate, and prove your inventions—empowering you to preserve your ideas, generate insight, and turn concepts into valuable, real-world assets.
+          TwinThink is the bridge between imagination and physics. We provide the infrastructure to test, simulate, and prove your inventions, empowering you to preserve your ideas, generate insight, and turn concepts into valuable, real-world assets.
         </p>
         <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
           <Link

@@ -592,7 +592,7 @@ export default function TestsTab({ twin }: TabProps) {
               </div>
               
               <div style={{ fontSize: '0.75rem', color: '#6B7280', textAlign: 'center', marginTop: '0.5rem' }}>
-                Hover over points to inspect exact temperature readings. Notice the steady 14–18°C warming delta maintained by latent phase-change heat.
+                Hover over points to inspect exact temperature readings. Notice the steady 14-18°C warming delta maintained by latent phase-change heat.
               </div>
             </div>
           )}

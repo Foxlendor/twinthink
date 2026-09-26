@@ -190,7 +190,7 @@ export default function RoundUpPage() {
           </div>
 
           <div style={{ fontSize: '1.05rem', fontStyle: 'italic', lineHeight: 1.6, color: '#E2E8F0', marginBottom: '1.25rem' }}>
-            &ldquo;Any money you put in to fund a prototype is intended to equal that exact same money coming back to your wallet whenever the product ships—if not more. Everyone is empowered, and good ideas actually get built.&rdquo;
+            &ldquo;Any money you put in to fund a prototype is intended to equal that exact same money coming back to your wallet whenever the product ships, if not more. Everyone is empowered, and good ideas actually get built.&rdquo;
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.12)', paddingTop: '1rem' }}>
@@ -372,7 +372,7 @@ export default function RoundUpPage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem', fontWeight: 800, color: '#059669' }}>
               <span>Projected Batch #1 Kickback to Wallet:</span>
-              <span>${projectedKickbackMin} – ${projectedKickbackMax}</span>
+              <span>${projectedKickbackMin} to ${projectedKickbackMax}</span>
             </div>
             <div style={{ fontSize: '0.68rem', color: '#94A3B8', marginTop: '0.4rem', lineHeight: 1.4 }}>
               * Kickback dividend calculated from 85% creator / 10% prototype royalty pool distribution upon first manufacturing batch shipment.

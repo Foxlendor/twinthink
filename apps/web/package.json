@@ -4,10 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/no-dashes.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:dashes": "node scripts/no-dashes.mjs"
   },
   "dependencies": {
     "@google/model-viewer": "^4.3.1",

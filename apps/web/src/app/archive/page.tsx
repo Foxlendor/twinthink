@@ -267,7 +267,7 @@ export default function ArchivePage() {
                 Pencils imply that mistakes can be erased, hidden, or undone. <strong>Ink demands commitment.</strong>
               </p>
               <p style={{ marginBottom: '1.25rem' }}>
-                If a line is wrong or a mechanism fails, you don't rub it out; you turn the page, draw it again, and leave the earlier version intact. This became the foundational philosophy of TwinThink. In science and engineering, failed attempts aren't erased—they are documentation. As Thomas Edison famously proved with his ten thousand failed filaments, true innovation is built on a massive foundation of documented trial and error.
+                If a line is wrong or a mechanism fails, you don't rub it out; you turn the page, draw it again, and leave the earlier version intact. This became the foundational philosophy of TwinThink. In science and engineering, failed attempts aren't erased. They are documentation. As Thomas Edison famously proved with his ten thousand failed filaments, true innovation is built on a massive foundation of documented trial and error.
               </p>
               <p style={{ margin: 0, fontStyle: 'italic', color: '#9CA3AF' }}>
                 "When I write my will, am I lying there in the coffin pale? Will I plant the seed and see how big it grew from sticks to leaves to me and you?"
@@ -284,7 +284,7 @@ export default function ArchivePage() {
             A Priori Ideation: The Shadow of My Mind
           </h2>
           <p style={{ fontSize: '0.9rem', color: '#4B5563', maxWidth: '720px', lineHeight: 1.6, marginBottom: '2rem' }}>
-            These are raw, unrefined, and completely <em>a priori</em> ideas that have been documented over time. They aren't finished products—they are given out as pure inspiration to anyone who wants to see where the shadows start. By keeping them unvarnished and captured in permanent ink, we preserve the authentic chain of provenance.
+            These are raw, unrefined, and completely <em>a priori</em> ideas that have been documented over time. They aren't finished products. They are given out as pure inspiration to anyone who wants to see where the shadows start. By keeping them unvarnished and captured in permanent ink, we preserve the authentic chain of provenance.
           </p>
 
         {entries.length === 0 ? (

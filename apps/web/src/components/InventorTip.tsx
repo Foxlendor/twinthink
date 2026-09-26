@@ -14,7 +14,7 @@ interface TipData {
 const TIPS: TipData[] = [
   // Founder & Benchtop Engineering Lore
   { type: 'founder', content: "As a kid in 2015, I used to sign, date, and time all my logs. A habit that ensures your thoughts are eternally anchored." },
-  { type: 'founder', content: "When people asked what I'd invent as an inventor, I thought: First, why would I tell you? Second, I don't know yet. Third, if I have a good idea, I want to see it exist—not just look at it in my head." },
+  { type: 'founder', content: "When people asked what I'd invent as an inventor, I thought: First, why would I tell you? Second, I don't know yet. Third, if I have a good idea, I want to see it exist, not just look at it in my head." },
   { type: 'founder', content: "i th.ink there for i am? An idea without a compiled digital twin is just a ghost in the machine." },
   { type: 'founder', content: "Build it. Test it. Twin it." },
   { type: 'founder', content: "The physical world is just a rendering engine for your mind." },
@@ -23,7 +23,7 @@ const TIPS: TipData[] = [
   { type: 'founder', content: "Latent heat is nature's solid-state battery: Sodium acetate releases 12.05 kJ of phase-change warmth without a single wire or lithium cell." },
   { type: 'founder', content: "Never hide an unknown quote behind a fake estimate. An honest null with a pending vendor RFQ builds far more market trust." },
   { type: 'founder', content: "Keep your unit cost and extended cost strictly distinct: assembly labor, scrap rates, and tooling amortization make or break your BOM." },
-  { type: 'founder', content: "Honest profits must flow back to the inventor who spent the midnight hours drafting and building—not lost in corporate overhead." },
+  { type: 'founder', content: "Honest profits must flow back to the inventor who spent the midnight hours drafting and building, not lost in corporate overhead." },
 
   // A Priori & Philosophical Quotes
   { type: 'quote', content: "Divide each difficulty into as many parts as is feasible and necessary to resolve it.", author: "René Descartes" },
@@ -37,12 +37,12 @@ const TIPS: TipData[] = [
   
   // Historical Fun Facts
   { type: 'fact', content: "Leonardo da Vinci wrote all of his notebooks in reverse mirror-image cursive, a rudimentary form of physical cryptography to protect his earliest twins." },
-  { type: 'fact', content: "Nikola Tesla visualized his inventions in 3D in his mind before ever drawing them, claiming he could test for physical wear and tear entirely within his imagination—an early human physics engine." },
+  { type: 'fact', content: "Nikola Tesla visualized his inventions in 3D in his mind before ever drawing them, claiming he could test for physical wear and tear entirely within his imagination: an early human physics engine." },
   { type: 'fact', content: "Ada Lovelace conceptualized the idea of a machine manipulating symbols rather than just numbers in 1843, pre-dating the modern digital computer by a full century." },
   { type: 'fact', content: "Johannes Gutenberg repurposed an agricultural wine press to invent the printing press. Breakthroughs often come from looking at an old tool from a new angle." },
   { type: 'fact', content: "Philo Farnsworth conceived the core concept for the electronic television while looking at the parallel lines of dirt he was plowing in a potato field." },
   { type: 'fact', content: "Archimedes discovered the principle of fluid displacement while taking a bath. True insight often strikes when the mind is at rest, but only if you are ready to document it." },
-  { type: 'fact', content: "The Wright Brothers funded their wind tunnel experiments with revenues from their Dayton bicycle repair shop—true benchtop bootstrapping." }
+  { type: 'fact', content: "The Wright Brothers funded their wind tunnel experiments with revenues from their Dayton bicycle repair shop. True benchtop bootstrapping." }
 ];
 
 interface InventorTipProps {
@@ -105,7 +105,7 @@ export default function InventorTip({ style }: InventorTipProps) {
           "{tipData.content}"
           {tipData.author && (
             <span style={{ display: 'block', marginTop: '0.4rem', fontSize: '0.8rem', color: '#6B7280', fontWeight: 600, fontStyle: 'normal' }}>
-              — {tipData.author}
+              {tipData.author}
             </span>
           )}
         </div>

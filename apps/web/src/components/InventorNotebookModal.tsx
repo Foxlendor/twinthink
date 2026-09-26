@@ -156,7 +156,7 @@ export default function InventorNotebookModal({ isOpen, onClose }: InventorNoteb
         }}>
           &ldquo;i th.ink there for i am?&rdquo;
           <span style={{ display: 'block', fontStyle: 'normal', fontSize: '0.78rem', color: '#64748B', marginTop: '0.35rem', fontWeight: 500 }}>
-            — johne.boi (JB), Creator &amp; Founder · Signed in permanent ink
+            johne.boi (JB), Creator &amp; Founder · Signed in permanent ink
           </span>
         </div>
 

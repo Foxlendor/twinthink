@@ -378,7 +378,7 @@ export default function CreateTwinModal({ onClose }: CreateTwinModalProps) {
                   boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                 }}
               >
-                Done — Keep Private
+                Done: Keep Private
               </button>
             </div>
           )

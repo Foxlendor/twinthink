@@ -116,7 +116,7 @@ export default function OverviewTab({ twin }: TabProps) {
             <div>
               <strong style={{ color: 'var(--text-primary)', fontSize: '0.875rem', display: 'block' }}>3. Camp Stove Boil Reset</strong>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.4, display: 'block', marginTop: '0.2rem' }}>
-                Submerge in boiling water over a Jetboil or campfire for 8–10 minutes to melt the crystal matrix back to a liquid state with infinite recharge cycles.
+                Submerge in boiling water over a Jetboil or campfire for 8-10 minutes to melt the crystal matrix back to a liquid state with infinite recharge cycles.
               </span>
             </div>
           </div>

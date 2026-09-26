@@ -67,7 +67,7 @@ export default function BountiesPage() {
       problemStatement: 'Current generation mobile compute envelopes require dissipating 120W+ heat flux from monolithic silicon dies without active fans or noisy pumps. Traditional sintered copper heat pipes exceed our 0.8mm z-height budget.',
       specifications: [
         'Z-Height thickness < 0.60mm across active contact plane',
-        'Effective thermal conductivity > 4,500 W/m·K under 45°C–85°C delta',
+        'Effective thermal conductivity > 4,500 W/m·K under 45°C-85°C delta',
         'Proof of hermetic seal reliability under 5,000 thermal cycles (-20°C to 110°C)',
         'Parametric 3D CAD (.STEP) and calibrated thermal simulation twin required'
       ],
@@ -106,7 +106,7 @@ export default function BountiesPage() {
       title: 'Food-Safe Thermally Reversible Adhesive for Closed-Loop Beverage Vessels',
       problemStatement: 'Circular economy beverage containers require hermetic seals that remain impermeable to carbonated beverages during consumer use, yet completely debond on demand at 65°C in municipal washing facilities without toxic solvent residues.',
       specifications: [
-        'Burst pressure resistance > 4.5 bar at 20°C–40°C ambient temperatures',
+        'Burst pressure resistance > 4.5 bar at 20°C-40°C ambient temperatures',
         'Complete clean-peel debonding within 15 seconds at 65°C water bath immersion',
         'FDA 21 CFR 175.105 and EU 10/2011 food contact compliance verified',
         'Material specification sheet and cost model for high-speed continuous roll application'
@@ -254,7 +254,7 @@ export default function BountiesPage() {
                 <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>Direct Crowdfunding</span>
               </div>
               <p style={{ fontSize: '0.8rem', color: '#9CA3AF', margin: 0, lineHeight: 1.5 }}>
-                Peer-to-peer micro-backing and the <strong>Goldilocks Zone</strong>. Backers pledge $5–$25 towards prototype tooling and receive pro-rata retail royalty kickbacks back into their wallet when products ship.
+                Peer-to-peer micro-backing and the <strong>Goldilocks Zone</strong>. Backers pledge $5-$25 towards prototype tooling and receive pro-rata retail royalty kickbacks back into their wallet when products ship.
               </p>
               <div style={{ marginTop: '0.75rem', fontSize: '0.72rem', color: '#60A5FA', fontWeight: 700 }}>
                 100% Free Public Viewing · Goldilocks Kickbacks
@@ -291,7 +291,7 @@ export default function BountiesPage() {
                 Enterprises post high-stakes engineering bottlenecks instead of hiring costly internal R&amp;D divisions. Multidisciplinary think tanks submit digital twins. Winner takes the escrowed funding.
               </p>
               <div style={{ marginTop: '0.75rem', fontSize: '0.72rem', color: '#34D399', fontWeight: 700 }}>
-                $30k – $100k Bounties · Think-Tank Collaboration
+                $30k to $100k Bounties · Think-Tank Collaboration
               </div>
             </div>
 
@@ -770,7 +770,7 @@ export default function BountiesPage() {
                 Post an Engineering Challenge
               </h2>
               <p style={{ fontSize: '0.85rem', color: '#4B5563', lineHeight: 1.5, marginBottom: '1.25rem' }}>
-                Hiring full-time R&amp;D engineers costs $250k+/year with uncertain outcomes. Post your bottleneck on TwinThink, escrow a targeted bounty ($10k–$250k), and let specialized independent think tanks deliver working physical digital twins.
+                Hiring full-time R&amp;D engineers costs $250k+/year with uncertain outcomes. Post your bottleneck on TwinThink, escrow a targeted bounty ($10k-$250k), and let specialized independent think tanks deliver working physical digital twins.
               </p>
 
               <div style={{

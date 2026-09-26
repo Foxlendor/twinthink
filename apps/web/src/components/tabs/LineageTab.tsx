@@ -182,7 +182,7 @@ export default function LineageTab({ twin }: LineageTabProps) {
         }}>
           <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#059669', letterSpacing: '0.5px' }}>CURRENT CANONICAL SPECIMEN</div>
           <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0.25rem 0' }}>
-            {twin.current_version.title} — Twin #{twin.id}
+            {twin.current_version.title}, Twin #{twin.id}
           </div>
           <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
             {twin.domain} • Status: {twin.status}

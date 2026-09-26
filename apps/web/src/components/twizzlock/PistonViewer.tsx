@@ -35,7 +35,7 @@ export default function PistonViewer({ onUnlockRequest }: PistonViewerProps) {
     return defaultState;
   });
 
-  const [lastStrokeStyle, setLastStrokeStyle] = useState('—');
+  const [lastStrokeStyle, setLastStrokeStyle] = useState('-');
   const [lastAgitationLoss, setLastAgitationLoss] = useState(0);
 
   // Sync with localStorage
@@ -104,7 +104,7 @@ export default function PistonViewer({ onUnlockRequest }: PistonViewerProps) {
 
   const resetTwin = () => {
     setState(defaultState);
-    setLastStrokeStyle('—');
+    setLastStrokeStyle('-');
     setLastAgitationLoss(0);
   };
 
@@ -686,7 +686,7 @@ export default function PistonViewer({ onUnlockRequest }: PistonViewerProps) {
               <tr style={{ background: '#F8FAFC', borderTop: '2px solid #E2E8F0', fontWeight: 800 }}>
                 <td colSpan={3} style={{ padding: '0.65rem 0.85rem' }}>Target Total Landed Unit COGS</td>
                 <td style={{ padding: '0.65rem 0.85rem', color: '#059669', fontFamily: 'var(--font-mono)' }}>$2.10</td>
-                <td style={{ padding: '0.65rem 0.85rem', color: '#64748B', fontWeight: 500 }}>Target Retail MSRP: $14.99–$18.99</td>
+                <td style={{ padding: '0.65rem 0.85rem', color: '#64748B', fontWeight: 500 }}>Target Retail MSRP: $14.99-$18.99</td>
               </tr>
             </tfoot>
           </table>

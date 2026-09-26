@@ -81,7 +81,7 @@ const PARAMETER_PROVENANCE = [
   { key: "c_sa", label: "Specific Heat - Liquid (c_pcm)", value: "3,000 J/(kg·K)", status: "LITERATURE", source: "Thermophysical Property Tables", uncertainty: "±5%" },
   { key: "m_wall", label: "Conduit Wall Mass (m_wall)", value: "0.015 kg", status: "MEASURED", source: "316L Stainless Tube Weight", uncertainty: "±2%" },
   { key: "c_bev", label: "Fluid Specific Heat (c_fluid)", value: "4,184 J/(kg·K)", status: "STANDARD", source: "IAPWS-95 Pure Water Standard", uncertainty: "±1%" },
-  { key: "R_wall", label: "Conduction Resistance (R_wall)", value: "0.45 K/W", status: "CALIBRATED", source: "Test #001–#003 Flow Bench", uncertainty: "±8%" },
+  { key: "R_wall", label: "Conduction Resistance (R_wall)", value: "0.45 K/W", status: "CALIBRATED", source: "Test #001-#003 Flow Bench", uncertainty: "±8%" },
   { key: "R_env", label: "Ambient Dissipation Res. (R_env)", value: "2.20 K/W", status: "CALIBRATED", source: "Calorimetric Cooling Test #002", uncertainty: "±12%" }
 ];
 
@@ -501,7 +501,7 @@ function ThermalSolver({ twin }: TabProps) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Activity size={17} color="#059669" />
-            Synchronized Thermal Transient Trajectory (0–300s)
+            Synchronized Thermal Transient Trajectory (0-300s)
           </div>
 
           <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', flexWrap: 'wrap' }}>

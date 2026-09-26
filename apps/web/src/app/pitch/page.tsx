@@ -113,7 +113,7 @@ export default function PitchAccessPage() {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.12)', paddingTop: '1rem' }}>
             <div style={{ fontSize: '0.85rem', color: '#94A3B8' }}>
-              <strong style={{ color: '#FFFFFF' }}>johne.boi (JB)</strong> — Founder &amp; Inventor · Albuquerque, NM
+              <strong style={{ color: '#FFFFFF' }}>johne.boi (JB)</strong>, Founder &amp; Inventor · Albuquerque, NM
             </div>
             <div style={{ fontSize: '0.8rem', color: '#60A5FA', fontWeight: 600 }}>
               TwinThink binds unshared ideas into cryptographically protected, living digital twins.

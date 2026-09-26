@@ -422,7 +422,7 @@ export default function RedrinkViewer({ onUnlockRequest }: RedrinkViewerProps) {
         </div>
         <ul style={{ margin: '0.5rem 0 0 1.25rem', padding: 0 }}>
           <li><strong>Modular Snap-In Slug:</strong> The user boils only the removable 25g cartridge to reset, keeping the drinking straw permanent and dishwasher safe.</li>
-          <li><strong>Progressive Crystallization Geometry:</strong> Internal micro-baffles meter the crystallization speed across 8–12 sips rather than an immediate solid plug.</li>
+          <li><strong>Progressive Crystallization Geometry:</strong> Internal micro-baffles meter the crystallization speed across 8-12 sips rather than an immediate solid plug.</li>
           <li><strong>Passive Mouth-Temp Limiter:</strong> A calibrated silicone buffer zone limits mouth contact liquid to 41°C max, preventing lip and throat burns.</li>
         </ul>
       </div>

@@ -88,7 +88,7 @@ export default function BrandLogo({
         userSelect: 'none',
         lineHeight: 1
       }}
-      title="Twinth.ink — Build it. Test it. Twin it."
+      title="Twinth.ink: Build it. Test it. Twin it."
     >
       <img
         src="/logo.png"

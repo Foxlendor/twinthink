@@ -823,7 +823,7 @@ cryptographic license envelope.
                 cursor: 'pointer'
               }}
             >
-              Done — Return to Twin Viewer
+              Done: Return to Twin Viewer
             </button>
           </div>
         )}
