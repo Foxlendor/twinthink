@@ -9,7 +9,7 @@ import { IdeaNode } from './model';
 import { topologyOf } from './layout';
 
 /** Enter a child once its radius covers this fraction of the shorter screen side. */
-export const ENTER = 0.5;
+export const ENTER = 0.42;
 /** Leave a frame when its own radius shrinks below this fraction. */
 export const EXIT = 0.28;
 /** In blank space, open an empty frame once zoomed this far, so depth stays precise forever. */
