@@ -13,6 +13,7 @@ import { getImage, getVideo, startedByHand } from './media';
 import { getPeaks } from './audio';
 import { PLOT, Plot } from './plots';
 import { clamp, hash01, noise1, smoothstep } from './rng';
+import { semanticVisibilityAt, SemanticVisibility, applyFocus } from './visibility';
 
 export const PAPER = '#fbfaf7';
 export const INK = '30,28,36';
@@ -71,6 +72,8 @@ export interface RenderState {
   dots?: (Path2D | undefined)[];
   /** Films drawn this frame (they play; the rest rest). */
   videos?: Set<string>;
+  /** Semantic visibility orchestration for this frame's Z progress. */
+  visibility?: SemanticVisibility;
 }
 
 const DOT_BUCKETS = 12;
@@ -1032,20 +1035,26 @@ export function drawNode(
     drawPortal(st, node, T, alpha, path);
     return;
   }
+
+  // Apply semantic visibility multipliers
+  const vis = st.visibility || semanticVisibilityAt(0);
+  const parentMult = isRoot ? 1 : vis.parentWorld;
+  const childMult = vis.childShadow;
+
   const outerFade = isRoot ? 1 - smoothstep(30 * M, 400 * M, R) : 1 - smoothstep(9 * M, 45 * M, R);
 
-  if (!isRoot) drawMark(st, node, T, alpha * (1 - smoothstep(6 * M, 20 * M, R)), false);
+  if (!isRoot) drawMark(st, node, T, alpha * (1 - smoothstep(6 * M, 20 * M, R)) * childMult, false);
 
   const inner = isRoot ? 1 : smoothstep(16, 150, R);
-  const ia = alpha * inner * outerFade;
+  const ia = alpha * inner * outerFade * childMult;
 
   if (ia > 0.004) {
     if (isRoot) {
-      if (!node.portal) drawLattice(st, T, ia * 0.2, 400, false);
+      if (!node.portal) drawLattice(st, T, ia * 0.2 * vis.environmentalFilaments, 400, false);
     }
     else {
-      drawWash(st, node, T, alpha * (1 - smoothstep(12 * M, 60 * M, R)));
-      drawLattice(st, T, ia * (node.artifact ? 0.08 : 0.2) * smoothstep(0.6 * M, 2.6 * M, R), 1.2, true);
+      drawWash(st, node, T, alpha * (1 - smoothstep(12 * M, 60 * M, R)) * vis.childStructure);
+      drawLattice(st, T, ia * (node.artifact ? 0.08 : 0.2) * smoothstep(0.6 * M, 2.6 * M, R) * vis.childStructure, 1.2, true);
     }
   }
 
@@ -1072,14 +1081,14 @@ export function drawNode(
 
   if (!isRoot && ia > 0.004) {
     for (const l of topo.links) {
-      drawStrand(st, l.strand, T, ia * smoothstep(40, 160, R) * (l.kind === 'grew-from' ? 0.95 : l.kind === 'resolves' ? 0.9 : 0.75), path);
+      drawStrand(st, l.strand, T, ia * smoothstep(40, 160, R) * (l.kind === 'grew-from' ? 0.95 : l.kind === 'resolves' ? 0.9 : 0.75) * vis.childStructure, path);
     }
   }
 
-  if (node.artifact && !isRoot) drawArtifact(st, node, T, alpha * outerFade);
-  if (!isRoot) drawMedia(st, node, T, alpha * outerFade, p);
+  if (node.artifact && !isRoot) drawArtifact(st, node, T, alpha * outerFade * vis.childDetail);
+  if (!isRoot) drawMedia(st, node, T, alpha * outerFade * vis.childDetail, p);
   if (!isRoot && !node.artifact && !node.media?.length && node.children.every((c) => c.portal)) {
-    drawRhythm(st, node, T, alpha * outerFade);
+    drawRhythm(st, node, T, alpha * outerFade * vis.childStructure);
   }
 
   // large fields: only visit children near the viewport
@@ -1105,7 +1114,7 @@ export function drawNode(
     if (crowded && cs < 1.2 && !sealed) {
       // fast path: sub-pixel marks are batched by ink density
       const life = lifeOf(c);
-      const a = ca * (0.35 + 0.45 * life) * smoothstep(0.02, 0.6, cs + 0.3);
+      const a = ca * (0.35 + 0.45 * life) * smoothstep(0.02, 0.6, cs + 0.3) * vis.childNodes;
       const b = Math.min(DOT_BUCKETS - 1, Math.floor(a * DOT_BUCKETS));
       const size = Math.max(0.7, cs * 0.9);
       (st.dots![b] ??= new Path2D()).rect(cx - size / 2, cy - size / 2, size, size);
@@ -1240,6 +1249,14 @@ export function render(st: RenderState, start: IdeaNode, startPath: IdeaNode[], 
   st.dots = [];
   st.models = [];
   st.videos = new Set();
+
+  // Compute semantic visibility based on current zoom level
+  // Use the screen radius to determine how far "zoomed in" we are
+  // Scale from 0 (far away) to 1 (fully inside the idea)
+  const R = T.s;
+  const zoomProgress = smoothstep(16, 150, R); // same thresholds as drawNode's "inner"
+  st.visibility = semanticVisibilityAt(zoomProgress);
+
   drawNode(st, start, T, 1, p, startPath, isRoot);
   st.dots.forEach((path, b) => {
     if (!path) return;
