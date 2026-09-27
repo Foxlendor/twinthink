@@ -19,7 +19,7 @@ export async function GET() {
     const keeps = user ? await myKeeps(q, user.sub) : [];
     return NextResponse.json({ enabled: true, signedIn: !!user, films: !!process.env.BLOB_READ_WRITE_TOKEN, public: pub, mine, keeps }, { headers: { 'cache-control': 'no-store' } });
   } catch {
-    return NextResponse.json({ enabled: false, public: [], mine: [], error: 'The Canvas could not be read just now.' }, { status: 502 });
+    return NextResponse.json({ enabled: false, public: [], mine: [], error: 'The Slate could not be read just now.' }, { status: 502 });
   }
 }
 

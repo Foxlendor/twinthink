@@ -144,7 +144,7 @@ export function buildPosted(pub: Posted[], mine: Posted[], today = false): IdeaN
       byMaker.set(k, [...(byMaker.get(k) ?? []), p]);
     }
     const makers = [...byMaker.entries()].map(([k, list], i) => {
-      const r = ring(`maker/${k}`, list[0].by || 'someone', list.length > 1 ? 'what they have shared.' : 'what they shared.', list.map(node), 0, 0);
+      const r = ring(`maker/${k}`, list[0].by || 'someone', list.length > 1 ? 'their whoeuvre: what they have shared.' : 'their whoeuvre: what they shared.', list.map(node), 0, 0);
       r.fixed = false;
       r.r = 0.05;
       r.x = Math.cos(i * 2.39996) * 0.5;
@@ -155,6 +155,6 @@ export function buildPosted(pub: Posted[], mine: Posted[], today = false): IdeaN
     });
     out.push(ring('people', 'from everyone', 'shared by the people who made them.', makers, 0.6, -0.1));
   }
-  if (mine.length) out.push(ring('yours', 'yours', 'what you have made here.', mine.map(node), -0.6, -0.2));
+  if (mine.length) out.push(ring('yours', 'your whoeuvre', 'what you have left here.', mine.map(node), -0.6, -0.2));
   return out;
 }

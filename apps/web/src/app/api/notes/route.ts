@@ -13,7 +13,7 @@ import { addNote as addNoteDb, allowSender, getShadow, notesFor } from '@/lib/sh
 // the moment is kept.
 
 /**
- * The maker of a note's target: 'owner' for the Canvas's own ideas, else the
+ * The maker of a note's target: 'owner' for the Slate's own ideas, else the
  * poster's id. Notes are left only at what is shared; its maker reads them always.
  */
 async function targetMaker(id: string, reading = false): Promise<{ maker: string } | null> {
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   const target = typeof body.target === 'string' ? body.target : '';
   const text = cleanNote(body.text);
   try {
-    if (!target || !(await targetMaker(target))) return NextResponse.json({ error: 'That idea is not on the Canvas.' }, { status: 404 });
+    if (!target || !(await targetMaker(target))) return NextResponse.json({ error: 'That idea is not on the Slate.' }, { status: 404 });
     if (!text) return NextResponse.json({ error: 'A note is 1 to 500 characters.' }, { status: 400 });
     const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'unknown';
     const allowed = useDb ? await allowSender(await db(), ip) : await allowFrom(ip);

@@ -10,7 +10,7 @@
 // construction (a test guards the words). Only the inventor can open that.
 //
 // History rule: nothing is invented. Each record begins on the day it was
-// added to the Canvas; earlier history exists but has not been recorded yet.
+// added to the Slate; earlier history exists but has not been recorded yet.
 
 import { IdeaNode, Media } from '../model';
 import { hashString } from '../rng';
@@ -170,7 +170,7 @@ function facets(t: Throwaway): IdeaNode[] {
     kind: 'writing' as const,
     origin: 'real' as const,
     began: ADDED,
-    events: [{ t: ADDED, kind: 'begin' as const, note: 'written for the Canvas' }],
+    events: [{ t: ADDED, kind: 'begin' as const, note: 'written for the Slate' }],
     state: 'alive' as const,
     disclosure: 0,
     artifact: { type: 'text' as const, body: t[f.key]! },
@@ -193,7 +193,7 @@ export function buildThrowaways(): IdeaNode {
     origin: 'real',
     began: ADDED,
     events: [
-      { t: ADDED, kind: 'begin', note: 'added to the Canvas; earlier history not recorded yet' },
+      { t: ADDED, kind: 'begin', note: 'added to the Slate; earlier history not recorded yet' },
       ...(SHOWN[t.id] ? [{ t: SHOWN[t.id].t, kind: 'evidence' as const, note: 'a version of it, shown' }] : []),
     ],
     media: SHOWN[t.id]?.media,
@@ -215,7 +215,7 @@ export function buildThrowaways(): IdeaNode {
     kind: 'physical',
     origin: 'real',
     began: ADDED,
-    events: [{ t: ADDED, kind: 'begin', note: 'added to the Canvas; earlier history not recorded yet' }],
+    events: [{ t: ADDED, kind: 'begin', note: 'added to the Slate; earlier history not recorded yet' }],
     state: 'alive',
     disclosure: 0,
     free: true,

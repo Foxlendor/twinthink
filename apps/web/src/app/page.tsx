@@ -46,7 +46,7 @@ export default function HomePage() {
           songs, dances, drawings and inventions, kept by the people who made them, given away, and built on.
         </p>
         <Link
-          href="/canvas"
+          href="/slate"
           style={{ fontFamily: font, fontStyle: 'italic', fontSize: '1.5rem', color: 'var(--text-primary)', textDecoration: 'none', borderBottom: '1px solid currentColor', paddingBottom: 2 }}
         >
           fall in

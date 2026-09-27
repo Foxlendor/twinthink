@@ -28,8 +28,8 @@ export default function Navbar() {
     }
   };
 
-  // The Canvas has its own quiet chrome.
-  if (pathname?.startsWith('/canvas')) return null;
+  // The Slate has its own quiet chrome.
+  if (pathname?.startsWith('/slate')) return null;
 
   const word: React.CSSProperties = {
     fontFamily: 'Cormorant Garamond, Georgia, serif',
@@ -48,8 +48,8 @@ export default function Navbar() {
         <BrandLogo height={32} />
       </Link>
       <nav style={{ display: 'flex', gap: 22, alignItems: 'baseline' }}>
-        <Link href="/canvas" style={word}>
-          canvas
+        <Link href="/slate" style={word}>
+          slate
         </Link>
         <Link href="/support" style={word}>
           support

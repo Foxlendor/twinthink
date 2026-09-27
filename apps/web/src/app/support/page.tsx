@@ -43,8 +43,8 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
         </p>
         {!thanks && <Donate />}
         <p style={{ marginTop: 36 }}>
-          <Link href="/canvas" style={{ fontFamily: 'var(--font-serif), Georgia, serif', fontStyle: 'italic', color: 'var(--text-secondary)' }}>
-            back to the Canvas
+          <Link href="/slate" style={{ fontFamily: 'var(--font-serif), Georgia, serif', fontStyle: 'italic', color: 'var(--text-secondary)' }}>
+            back to the Slate
           </Link>
         </p>
       </div>

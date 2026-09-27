@@ -24,6 +24,34 @@ let music: IdeaNode | null = null;
 let dance: IdeaNode | null = null;
 let moments: IdeaNode | null = null;
 let current: IdeaNode | null = null;
+let hexLab: IdeaNode | null = null;
+
+/**
+ * The HEX (Human EXperience) Lab: his inventions and experiments aimed at
+ * everyday human experience, the ones he gives away and the ones he is
+ * building, in one ring of his Whoeuvre.
+ */
+function buildHexLab(throwaways: IdeaNode, starters: IdeaNode[]): IdeaNode {
+  const kids = [throwaways, ...starters];
+  const first = Math.min(...kids.map((k) => k.began));
+  return {
+    id: 'hex-lab',
+    title: 'HEX Lab',
+    line: 'experiments in human experience.',
+    kind: 'physical',
+    origin: 'real',
+    began: first,
+    events: [{ t: first, kind: 'begin', note: 'the first experiment' }],
+    state: 'alive',
+    disclosure: 0,
+    children: kids,
+    x: throwaways.x,
+    y: throwaways.y,
+    r: 0.0025,
+    fixed: true,
+    seed: 4391,
+  };
+}
 
 export function buildWorld(local: LocalShadow[], posted?: { public: Posted[]; mine: Posted[]; today?: boolean; keeps?: string[] }): IdeaNode {
   twinthink ??= buildTwinThinkTwin();
@@ -36,13 +64,13 @@ export function buildWorld(local: LocalShadow[], posted?: { public: Posted[]; mi
     weaveTraces([music, dance]);
   }
   moments ??= buildMoments();
+  hexLab ??= buildHexLab(throwaways, starters);
   const children = [
     twinthink,
-    ...starters,
     music,
     dance,
     moments,
-    throwaways,
+    hexLab,
     ...(posted ? buildPosted(posted.public, posted.mine, posted.today) : []),
     ...local.map(localShadowNode),
   ];
@@ -115,7 +143,7 @@ function attachPortals(node: IdeaNode) {
     if (node.children.some((c) => c.portal)) return;
     const portal: IdeaNode = {
       id: `${node.id}/again`,
-      title: 'the canvas',
+      title: 'the slate',
       kind: 'unknown',
       origin: 'real',
       began: node.began,

@@ -18,9 +18,9 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const at = (await searchParams).at;
   const one = typeof at === 'string' ? at : undefined;
   const d = one ? await describeShared(one) : null;
-  const title = d ? `${d.title} · TwinThink` : 'TwinThink Canvas';
+  const title = d ? `${d.title} · TwinThink` : 'TwinThink Slate';
   const description = d?.line ?? 'Songs, dances, animation and inventions by johne.boi.';
-  const image = `/canvas/og${d && one ? `?at=${encodeURIComponent(one)}` : ''}`;
+  const image = `/slate/og${d && one ? `?at=${encodeURIComponent(one)}` : ''}`;
   return {
     title,
     description,

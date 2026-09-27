@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 
-// Makers live on the Canvas now.
+// Makers live on the Slate now.
 export default function Page() {
-  redirect('/canvas');
+  redirect('/slate');
 }

@@ -1,4 +1,4 @@
-// Who made what is on this Canvas today, in the fewest true words, drawn into
+// Who made what is on this Slate today, in the fewest true words, drawn into
 // the paper at arrival (not a logo in a corner). Each verb leads to its
 // evidence: his songs, him dancing, the film he animated, the ideas he gives away.
 
@@ -8,7 +8,7 @@ export const AUTHOR = {
   go: {
     songs: ['music'],
     dances: ['dance'],
-    animates: ['throwaways', 'archive/bubbleblock'],
-    invents: ['throwaways'],
+    animates: ['hex-lab', 'throwaways', 'archive/bubbleblock'],
+    invents: ['hex-lab'],
   } as Record<string, string[]>,
 };

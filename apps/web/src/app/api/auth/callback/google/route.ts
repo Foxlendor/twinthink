@@ -21,7 +21,7 @@ export async function GET(req: Request) {
   }
   const next = safeNext(saved.next);
   const fail = (why: string) => {
-    const res = NextResponse.redirect(new URL(`/canvas?signin=${why}`, url.origin));
+    const res = NextResponse.redirect(new URL(`/slate?signin=${why}`, url.origin));
     res.cookies.delete({ name: 'tt_oauth', path: '/api/auth' });
     return res;
   };

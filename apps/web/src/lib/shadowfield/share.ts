@@ -14,7 +14,7 @@ export interface Shared {
   still?: string;
 }
 
-/** `at` is a path of ids joined by ~, as in /canvas?at=moments~moment/abc */
+/** `at` is a path of ids joined by ~, as in /slate?at=moments~moment/abc */
 export async function describeShared(at: string | undefined): Promise<Shared | null> {
   if (!at || at.length > 600) return null;
   const ids = at.split('~').filter(Boolean);
@@ -36,5 +36,5 @@ export async function describeShared(at: string | undefined): Promise<Shared | n
   const node = path[path.length - 1];
   const film = node.media?.find((m) => m.kind === 'video');
   const still = film && film.kind === 'video' ? film.poster : undefined;
-  return { title: node.title ?? 'the Canvas', line: node.line ?? 'on the Canvas', ...(still ? { still } : {}) };
+  return { title: node.title ?? 'the Slate', line: node.line ?? 'on the Slate', ...(still ? { still } : {}) };
 }

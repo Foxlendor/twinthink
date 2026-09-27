@@ -25,7 +25,7 @@ function loadSerif() {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const at = url.searchParams.get('at') ?? undefined;
-  const d = (await describeShared(at)) ?? { title: 'the Canvas', line: 'songs, dances, animation and inventions' };
+  const d = (await describeShared(at)) ?? { title: 'the Slate', line: 'songs, dances, animation and inventions' };
   const font = await loadSerif();
   // a still is only ever one of the site's own files, fetched from the site itself
   const still = d.still && d.still.startsWith('/') && !d.still.startsWith('//') ? new URL(d.still, 'https://twinth.ink').toString() : null;

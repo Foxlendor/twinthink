@@ -11,6 +11,7 @@ import {
   beginPush,
   nearestFocus,
   newFlightCam,
+  settle,
   panBy,
   restingPlace,
   silence,
@@ -293,7 +294,7 @@ describe('nothing ends', () => {
 describe('throwaways', () => {
   it('his ideas, given away in one ring, each with something inside and no invented history', () => {
     const world = buildWorld([]);
-    const ring = world.children.find((c) => c.id === 'throwaways')!;
+    const ring = findPath(world, 'throwaways')!.at(-1)!;
     expect(ring.title).toBe('throwaways');
     expect(ring.free).toBe(true);
     const archived = ring.children.filter((c) => c.id.startsWith('archive/'));
@@ -324,7 +325,7 @@ describe('throwaways', () => {
 
   it('lineage runs between the ones that grew out of each other', () => {
     const world = buildWorld([]);
-    const ring = world.children.find((c) => c.id === 'throwaways')!;
+    const ring = findPath(world, 'throwaways')!.at(-1)!;
     const byId = new Map(ring.children.map((c) => [c.id, c]));
     const grew = (id: string) => (byId.get(id)?.links ?? []).filter((l) => l.kind === 'grew-from').map((l) => l.to);
     expect(grew('archive/u3dpen')).toEqual(['archive/ferropen']);
@@ -342,7 +343,7 @@ describe('throwaways', () => {
     for (const text of texts) expect(forbidden.test(text), text).toBe(false);
     // and the old links to them still land
     const world = buildWorld([]);
-    expect(resolvePath(world, ['archive/bubbleblock']).map((n) => n.id)).toEqual(['canvas', 'throwaways', 'archive/bubbleblock']);
+    expect(resolvePath(world, ['archive/bubbleblock']).map((n) => n.id)).toEqual(['canvas', 'hex-lab', 'throwaways', 'archive/bubbleblock']);
   });
 
   it('a taken throwaway is the visitor’s own, and still credits who gave it', () => {
@@ -522,6 +523,9 @@ describe('the flight', () => {
     for (; t < 20; t += 1 / 60) stepFlightCam(cam, stream, 1 / 60);
     expect(cam.z).toBeGreaterThan(8);
     expect(cam.v).toBe(0);
+    // let go, it always comes to rest on something (even after coasting into a silence)
+    settle(cam, stream);
+    for (let i = 0; i < 600 && cam.hop; i++) stepFlightCam(cam, stream, 1 / 60);
     const f = nearestFocus(stream, cam.z)!;
     expect(Math.abs(f - cam.z)).toBeLessThan(0.01);
     const here = focusOf(stream, cam.z);
@@ -674,7 +678,7 @@ describe('ripples', () => {
 describe('free starters', () => {
   it('are on the Canvas, marked free, with no descriptive text', () => {
     const world = buildWorld([]);
-    const starters = world.children.filter((c) => c.id.startsWith('starter/'));
+    const starters = world.children.find((c) => c.id === 'hex-lab')!.children.filter((c) => c.id.startsWith('starter/'));
     expect(starters.map((c) => c.title)).toEqual(['redr.ink', 'TwizzLock']);
     for (const s of starters) {
       expect(s.free).toBe(true);
@@ -731,15 +735,15 @@ describe('signing in', () => {
 
   it('after signing in, only ever returns to a page on this site', () => {
     expect(safeNext('/canvas#path=dance')).toBe('/canvas#path=dance');
-    expect(safeNext('https://evil.example')).toBe('/canvas');
+    expect(safeNext('https://evil.example')).toBe('/slate');
     // browsers drop tabs and line breaks, and read a backslash as a slash
     for (const bad of ['/\t/evil.example', '/\n/evil.example', '/\r\\evil.example', '/\\evil.example', '//evil.example', '/%09/x'.replace('%09', '\t')]) {
-      expect(safeNext(bad)).toBe('/canvas');
+      expect(safeNext(bad)).toBe('/slate');
     }
     expect(safeNext('/canvas?x=1')).toBe('/canvas?x=1');
-    expect(safeNext('//evil.example')).toBe('/canvas');
-    expect(safeNext('/\\evil.example')).toBe('/canvas');
-    expect(safeNext(null)).toBe('/canvas');
+    expect(safeNext('//evil.example')).toBe('/slate');
+    expect(safeNext('/\\evil.example')).toBe('/slate');
+    expect(safeNext(null)).toBe('/slate');
   });
 });
 

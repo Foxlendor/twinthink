@@ -12,17 +12,17 @@ export function isOwner(email: string | undefined, verified: boolean | undefined
 
 /** Where to go after signing in: only a path on this site, never another site. */
 export function safeNext(next: string | null | undefined): string {
-  if (!next || !next.startsWith('/') || next.length > 500) return '/canvas';
+  if (!next || !next.startsWith('/') || next.length > 500) return '/slate';
   // browsers drop tabs and line breaks and read \\ as /, so none of those are allowed at all
-  if (/[\u0000-\u001f\u007f\\]/.test(next)) return '/canvas';
+  if (/[\u0000-\u001f\u007f\\]/.test(next)) return '/slate';
   let u: URL;
   try {
     u = new URL(next, 'https://here.invalid');
   } catch {
-    return '/canvas';
+    return '/slate';
   }
   // and whatever it resolves to must still be this site
-  if (u.origin !== 'https://here.invalid') return '/canvas';
+  if (u.origin !== 'https://here.invalid') return '/slate';
   return u.pathname + u.search + u.hash;
 }
 

@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   }
   const shadow = shadowId === undefined ? null : publicShadow(shadowId);
   if (shadowId !== undefined && !shadow) {
-    return NextResponse.json({ error: 'That idea is not on the Canvas.' }, { status: 404 });
+    return NextResponse.json({ error: 'That idea is not on the Slate.' }, { status: 404 });
   }
   if (!Number.isFinite(cents) || cents < MIN_CENTS || cents > MAX_CENTS) {
     return NextResponse.json({ error: 'Choose an amount between $1 and $1,000.' }, { status: 400 });
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   }
   const origin = new URL(req.url).origin;
   const back = shadow
-    ? `${origin}/canvas?supported=${encodeURIComponent(shadow.id)}#path=${shadow.path.map(encodeURIComponent).join('~')}`
+    ? `${origin}/slate?supported=${encodeURIComponent(shadow.id)}#path=${shadow.path.map(encodeURIComponent).join('~')}`
     : `${origin}/support?thanks=1`;
   try {
     const session = await stripe.checkout.sessions.create({
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
       ],
       metadata: shadow ? { shadowId: shadow.id, shadowTitle: shadow.title } : { purpose: 'twinthink' },
       success_url: back,
-      cancel_url: shadow ? `${origin}/canvas#path=${shadow.path.map(encodeURIComponent).join('~')}` : `${origin}/support`,
+      cancel_url: shadow ? `${origin}/slate#path=${shadow.path.map(encodeURIComponent).join('~')}` : `${origin}/support`,
     });
     return NextResponse.json({ url: session.url });
   } catch (err) {

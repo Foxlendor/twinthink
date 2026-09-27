@@ -381,6 +381,7 @@ export default function ShadowField({ serif }: Props) {
   const [keeps, setKeeps] = useState<string[]>([]);
   // a shared link to posted work waits for it to arrive from the server
   const pendingAtRef = useRef<string[] | null>(null);
+  const pendingWhoRef = useRef<string | null>(null);
   const [posting, setPosting] = useState(false);
   const [posted, setPostedList] = useState<Posted[]>([]);
   // films can be added once the site has a file store for them
@@ -662,7 +663,7 @@ export default function ShadowField({ serif }: Props) {
     cam.resize(rect.width, rect.height);
     cam.s = Math.min(rect.width, rect.height) * 0.45;
 
-    // a shared link (/canvas?at=a~b) arrives at what it points to
+    // a shared link (/slate?at=a~b) arrives at what it points to
     try {
       const url = new URL(window.location.href);
       const at = url.searchParams.get('at');
@@ -670,6 +671,13 @@ export default function ShadowField({ serif }: Props) {
         url.searchParams.delete('at');
         history.replaceState(null, '', `${url.pathname}${url.search}#path=${at.split('~').map(encodeURIComponent).join('~')}`);
         if (at.includes('p/')) pendingAtRef.current = at.split('~').filter(Boolean);
+      }
+      // a Whoeuvre link (/whoeuvre/name): their ring, once their work arrives
+      const who = url.searchParams.get('who');
+      if (who) {
+        url.searchParams.delete('who');
+        history.replaceState(null, '', `${url.pathname}${url.search}${window.location.hash}`);
+        pendingWhoRef.current = who.toLowerCase();
       }
     } catch {
       // ignore malformed links
@@ -929,6 +937,14 @@ export default function ShadowField({ serif }: Props) {
     setPosting(!!d.enabled);
     setPostedList([...(d.mine ?? []), ...(d.public ?? []).filter((p) => !p.mine)]);
     if (storeRef.current) rebuild();
+    const who = pendingWhoRef.current;
+    if (who && worldRef.current) {
+      pendingWhoRef.current = null;
+      const people = worldRef.current.children.find((n) => n.id === 'people');
+      const ring = people?.children.find((n) => (n.title ?? '').toLowerCase() === who);
+      if (people && ring) flyTo([worldRef.current, people, ring]);
+      else setNotice('their whoeuvre is not shared here yet');
+    }
     const at = pendingAtRef.current;
     if (at && worldRef.current) {
       pendingAtRef.current = null;
@@ -965,15 +981,15 @@ export default function ShadowField({ serif }: Props) {
 
   const signIn = () => {
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a route handler that redirects to Google needs a full page load
-    window.location.assign('/api/auth/google?next=/canvas');
+    window.location.assign('/api/auth/google?next=/slate');
   };
 
   /** A link to the thing in front of you, which unfolds into its own card wherever it is sent. */
   const shareHere = async (path: IdeaNode[]) => {
     const ids = path.slice(1).filter((n) => !n.void && !n.portal).map((n) => n.id);
     if (!ids.length) return;
-    const url = `${window.location.origin}/canvas?at=${ids.map(encodeURIComponent).join('~')}`;
-    const title = path[path.length - 1]?.title ?? 'the Canvas';
+    const url = `${window.location.origin}/slate?at=${ids.map(encodeURIComponent).join('~')}`;
+    const title = path[path.length - 1]?.title ?? 'the Slate';
     try {
       if (navigator.share) {
         await navigator.share({ title, url });
@@ -1143,7 +1159,7 @@ export default function ShadowField({ serif }: Props) {
     const res = await fetch(`/api/shadows/${encodeURIComponent(id)}/report`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ reason: 'reported from the Canvas' }),
+      body: JSON.stringify({ reason: 'reported from the Slate' }),
     }).catch(() => null);
     if (res?.status === 401) setNotice('sign in to report');
     else setNotice(res?.ok ? 'thank you, it will be looked at' : 'that could not be sent');
@@ -2624,7 +2640,7 @@ export default function ShadowField({ serif }: Props) {
     [...path]
       .slice(1)
       .reverse()
-      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/') && !n.id.startsWith('p/') && n.id !== 'people' && n.id !== 'yours' && n.id !== 'stories' && n.id !== 'today' && n.id !== 'sketchbook' && !n.id.startsWith('k/') && !n.id.startsWith('maker/')) ?? null;
+      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/') && !n.id.startsWith('p/') && n.id !== 'people' && n.id !== 'yours' && n.id !== 'stories' && n.id !== 'today' && n.id !== 'sketchbook' && n.id !== 'hex-lab' && !n.id.startsWith('k/') && !n.id.startsWith('maker/')) ?? null;
   // an idea given away is never followed by an ask for money, nor is a song while it plays
   // nothing given away (songs, starters, throwaways) is ever followed by an ask
   const asking = supportTarget && !path.some((n) => n.free) && playingId !== current?.id ? supportTarget : null;
@@ -2652,8 +2668,8 @@ export default function ShadowField({ serif }: Props) {
         className={styles.canvas}
         aria-label={
           mode === 'flight'
-            ? 'TwinThink Canvas. Scroll, or swipe up, to move through ideas; tap one to go to it.'
-            : 'TwinThink Canvas. Scroll to move closer to an idea, drag to wander.'
+            ? 'TwinThink Slate. Scroll, or swipe up, to move through ideas; tap one to go to it.'
+            : 'TwinThink Slate. Scroll to move closer to an idea, drag to wander.'
         }
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -2759,7 +2775,7 @@ export default function ShadowField({ serif }: Props) {
         </button>
       ) : me?.enabled ? (
         // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a route handler that redirects to Google needs a full page load
-        <button type="button" className={styles.me} onClick={() => window.location.assign('/api/auth/google?next=/canvas')}>
+        <button type="button" className={styles.me} onClick={() => window.location.assign('/api/auth/google?next=/slate')}>
           sign in
         </button>
       ) : null}
@@ -2778,7 +2794,7 @@ export default function ShadowField({ serif }: Props) {
                 className={i === path.length - 1 ? styles.here : styles.crumb}
                 onClick={() => flyTo(path.slice(0, i + 1))}
               >
-                {i === 0 ? 'canvas' : n.portal ? 'the canvas, again' : n.title ?? 'untitled'}
+                {i === 0 ? 'slate' : n.portal ? 'the slate, again' : n.title ?? 'untitled'}
               </button>
             )}
           </React.Fragment>
@@ -3310,7 +3326,7 @@ export default function ShadowField({ serif }: Props) {
 
       <nav className={styles.srNav} aria-label="Ideas here">
         <p aria-live="polite">
-          {current ? (path.length > 1 ? `Inside ${current.title ?? 'an untitled idea'}.` : 'On the Canvas.') : ''}
+          {current ? (path.length > 1 ? `Inside ${current.title ?? 'an untitled idea'}.` : 'On the Slate.') : ''}
         </p>
         <ul>
           {nearby

@@ -1,4 +1,13 @@
-# The Canvas (twinth.ink/canvas)
+# The Slate
+
+Words (decided 2026-09-27): TwinThink is the world; the **Slate** is the place you
+enter (`/slate`; `/canvas` and old share links redirect there); the **ShadowField**
+is the machinery behind it (these files keep that name); a **Whoeuvre** is what one
+person has left behind (`/whoeuvre/<name>`: his is the Slate itself, anyone else's
+is their ring in "from everyone", and your own ring is "your whoeuvre"); the
+**HEX Lab** (Human EXperience) holds his inventions and experiments, the throwaways
+and the ones he is building (`/whoeuvre/johne.boi/hex-lab`). Older notes below say
+"Canvas": read it as Slate.
 
 The Canvas is TwinThink's spatial medium. Engine: `apps/web/src/lib/shadowfield`,
 UI: `apps/web/src/components/shadowfield`. Tests: `cd apps/web && npm test`.

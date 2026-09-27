@@ -13,7 +13,7 @@ export function buildDance(): IdeaNode {
     kind: 'visual',
     origin: 'real',
     began: ADDED,
-    events: [{ t: ADDED, kind: 'begin', note: 'added to the Canvas' }],
+    events: [{ t: ADDED, kind: 'begin', note: 'added to the Slate' }],
     state: 'alive',
     disclosure: 0,
     children: [],
