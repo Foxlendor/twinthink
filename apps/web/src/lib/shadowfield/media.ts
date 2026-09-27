@@ -109,3 +109,12 @@ export function restVideos() {
     v.muted = true;
   }
 }
+
+/** Pause a film and hold its current frame. */
+export function holdFilm(src: string) {
+  const v = videos.get(src);
+  if (v) {
+    v.pause();
+    v.muted = true;
+  }
+}
