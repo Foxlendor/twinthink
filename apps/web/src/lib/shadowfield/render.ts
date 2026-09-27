@@ -72,8 +72,6 @@ export interface RenderState {
   dots?: (Path2D | undefined)[];
   /** Films drawn this frame (they play; the rest rest). */
   videos?: Set<string>;
-  /** Semantic visibility orchestration for this frame's Z progress. */
-  visibility?: SemanticVisibility;
 }
 
 const DOT_BUCKETS = 12;
@@ -1036,9 +1034,13 @@ export function drawNode(
     return;
   }
 
-  // Apply semantic visibility multipliers
-  const vis = st.visibility || semanticVisibilityAt(0);
-  const parentMult = isRoot ? 1 : vis.parentWorld;
+  // Compute semantic visibility LOCAL to this node's current screen radius.
+  // Each level of recursion sees its own semantic phase, not inherited from root.
+  const zoomProgress = smoothstep(16, 150, R);
+  const vis = semanticVisibilityAt(zoomProgress);
+  // NOTE: parentWorld/Structure/Labels/Detail are defined in visibility model but not yet
+  // integrated into rendering. They describe intended parent fade behavior but require
+  // coordinated multi-level rendering. Deferred to future refinement.
   const childMult = vis.childShadow;
 
   const outerFade = isRoot ? 1 - smoothstep(30 * M, 400 * M, R) : 1 - smoothstep(9 * M, 45 * M, R);
@@ -1075,7 +1077,7 @@ export function drawNode(
         const [tx, ty] = strandAt(s, strandU(s, st.cut));
         tipOf.set(child, [tx, ty]);
       }
-      if (ia > 0.004) drawStrand(st, s, T, r * outerFade * (child && child.state === 'abandoned' ? 0.7 : 1), path);
+      if (ia > 0.004) drawStrand(st, s, T, r * outerFade * (child && child.state === 'abandoned' ? 0.7 : 1) * vis.childStructure, path);
     });
   }
 
@@ -1123,7 +1125,7 @@ export function drawNode(
     const CT = { ox: cx, oy: cy, s: cs };
     const cpath = [...path, c];
     if (sealed) drawMark(st, c, CT, ca, true);
-    else if (cs < 0.12) drawMark(st, c, CT, ca, false);
+    else if (cs < 0.12) drawMark(st, c, CT, ca * vis.childNodes, false);
     else drawNode(st, c, CT, ca, cp, cpath, false);
     if (cs >= 4) (st.labels ??= []).push({ node: c, x: cx, y: cy, cs, alpha: ca * vis.childLabels, sealed });
     if (cs < 0.5 * M) st.hits.push({ kind: 'node', node: c, path: cpath, sealed, x: cx, y: cy, r: Math.max(cs * 0.55, 12), size: cs });
@@ -1249,13 +1251,6 @@ export function render(st: RenderState, start: IdeaNode, startPath: IdeaNode[], 
   st.dots = [];
   st.models = [];
   st.videos = new Set();
-
-  // Compute semantic visibility based on current zoom level
-  // Use the screen radius to determine how far "zoomed in" we are
-  // Scale from 0 (far away) to 1 (fully inside the idea)
-  const R = T.s;
-  const zoomProgress = smoothstep(16, 150, R); // same thresholds as drawNode's "inner"
-  st.visibility = semanticVisibilityAt(zoomProgress);
 
   drawNode(st, start, T, 1, p, startPath, isRoot);
   st.dots.forEach((path, b) => {

@@ -76,6 +76,8 @@ export function semanticVisibilityAt(progress: number): SemanticVisibility {
 /**
  * Apply focus dampening: when a node is focused, emphasize it and quiet surroundings.
  * Subtle—not a spotlight—just a slight shift in attention.
+ *
+ * NOTE: Defined but not yet integrated into render path. Deferred pending focus system implementation.
  */
 export function applyFocus(base: SemanticVisibility, isFocused: boolean, isConnected: boolean, isNearby: boolean): SemanticVisibility {
   if (!isFocused && !isConnected && !isNearby) {
@@ -125,6 +127,10 @@ export function applyFocus(base: SemanticVisibility, isFocused: boolean, isConne
 /**
  * Classify information into attention tiers.
  * Used to determine what should be rendered prominently vs. suppressed.
+ *
+ * NOTE: Defined but not yet integrated into render path. Requires implementation of
+ * priority-based selection (focused, connected, topological weight, coherence).
+ * Deferred pending attention system design.
  */
 export type VisibilityTier = 'foreground' | 'environmental' | 'latent';
 
