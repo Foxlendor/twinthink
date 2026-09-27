@@ -55,6 +55,7 @@ import { founderPlots } from '@/lib/shadowfield/plots';
 import { buildWorld, resolvePath } from '@/lib/shadowfield/world';
 import type { Posted } from '@/lib/shadowfield/sources/posted';
 import { dayOf, wordFor } from '@/lib/shadowfield/prompts';
+import type { Phase } from '@/lib/shadowfield/phases';
 import { createLocalStore, LocalShadow, ShadowStore } from '@/lib/shadowfield/sources/local';
 import styles from './ShadowField.module.css';
 
@@ -296,6 +297,11 @@ export default function ShadowField({ serif }: Props) {
   const eatRef = useRef<{ id: string; t: number } | null>(null);
   const holdRef = useRef<{ timer: number; consumed: boolean }>({ timer: 0, consumed: false });
   const findFoodRef = useRef<() => void>(() => undefined);
+  // each thing's name phase, kept from frame to frame
+  const phasesRef = useRef(new Map<string, Phase>());
+  // resonance: how much things resonate (from the server), and what you stayed with this visit
+  const resonanceRef = useRef(new Map<string, number>());
+  const stayedRef = useRef(new Set<string>());
   const postedSigRef = useRef('');
   // the scroll gesture that carried you onto something waiting (it stops there until a new one begins)
   const foodGestureRef = useRef(-1);
@@ -377,7 +383,7 @@ export default function ShadowField({ serif }: Props) {
   const [notesView, setNotesView] = useState<{ title: string; notes: { t: number; text: string }[] } | null>(null);
   const [me, setMe] = useState<{ enabled: boolean; user: { name: string; owner: boolean } | null } | null>(null);
   // work people have posted, kept on the server (see /api/shadows)
-  const postedRef = useRef<{ public: Posted[]; mine: Posted[]; today?: boolean; keeps?: string[] }>({ public: [], mine: [] });
+  const postedRef = useRef<{ public: Posted[]; mine: Posted[]; today?: boolean; keeps?: string[]; linked?: Posted[] }>({ public: [], mine: [] });
   const [keeps, setKeeps] = useState<string[]>([]);
   // a shared link to posted work waits for it to arrive from the server
   const pendingAtRef = useRef<string[] | null>(null);
@@ -932,7 +938,7 @@ export default function ShadowField({ serif }: Props) {
     if (quiet && sig === postedSigRef.current) return;
     postedSigRef.current = sig;
     setFilmsOn(!!d.films);
-    postedRef.current = { public: d.public ?? [], mine: d.mine ?? [], today: !!d.enabled, keeps: d.keeps ?? [] };
+    postedRef.current = { public: d.public ?? [], mine: d.mine ?? [], today: !!d.enabled, keeps: d.keeps ?? [], linked: postedRef.current.linked ?? [] };
     setKeeps(d.keeps ?? []);
     setPosting(!!d.enabled);
     setPostedList([...(d.mine ?? []), ...(d.public ?? []).filter((p) => !p.mine)]);
@@ -948,9 +954,30 @@ export default function ShadowField({ serif }: Props) {
     const at = pendingAtRef.current;
     if (at && worldRef.current) {
       pendingAtRef.current = null;
-      // found wherever it lives now (links outlive how the Canvas is arranged)
-      const p = findPath(worldRef.current, at[at.length - 1]) ?? resolvePath(worldRef.current, at);
-      if (p.length > 1) flyTo(p);
+      // found wherever it lives now (links outlive how the Slate is arranged)
+      const last = at[at.length - 1];
+      const found = findPath(worldRef.current, last);
+      if (found) flyTo(found);
+      else if (last.startsWith('p/')) {
+        // shared only by its link: ask for it, and it joins "sent to you" for this visit
+        void fetch(`/api/shadows/${encodeURIComponent(last.slice(2))}`, { cache: 'no-store' })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d2: { shadow?: Posted } | null) => {
+            if (!d2?.shadow || !worldRef.current) {
+              setNotice('that is not shared any more');
+              return;
+            }
+            postedRef.current = { ...postedRef.current, linked: [...(postedRef.current.linked ?? []), d2.shadow] };
+            setPostedList((l) => [...l.filter((q) => q.id !== d2.shadow!.id), d2.shadow!]);
+            rebuild();
+            const p2 = worldRef.current && findPath(worldRef.current, last);
+            if (p2) flyTo(p2);
+          })
+          .catch(() => undefined);
+      } else {
+        const p = resolvePath(worldRef.current, at);
+        if (p.length > 1) flyTo(p);
+      }
     }
   }, [rebuild, flyTo]);
 
@@ -959,7 +986,7 @@ export default function ShadowField({ serif }: Props) {
   }, [loadPosted, me?.user]);
 
   /** Change one of your posted Shadows (share it, keep it to yourself) or let it go. */
-  const changePosted = async (id: string, change: { public?: boolean } | 'remove' | 'take down') => {
+  const changePosted = async (id: string, change: { visibility: 'private' | 'unlisted' | 'public' } | 'remove' | 'take down') => {
     const remove = change === 'remove' || change === 'take down';
     const res = await fetch(`/api/shadows/${encodeURIComponent(id)}`, {
       method: remove ? 'DELETE' : 'PATCH',
@@ -973,7 +1000,14 @@ export default function ShadowField({ serif }: Props) {
     }
     if (change === 'take down') setNotice('taken down');
     else if (change === 'remove') setNotice(id && posted.find((q) => q.id === id)?.kind === 'story' ? 'taken back' : 'let go');
-    else setNotice(change.public ? 'shared with everyone' : 'only you can see it now');
+    else
+      setNotice(
+        change.visibility === 'public'
+          ? 'shared with everyone'
+          : change.visibility === 'unlisted'
+            ? 'shared only by its link: send it to whoever you choose'
+            : 'only you can see it now'
+      );
     if (remove) flyTo(focusPath().slice(0, 1));
     await loadPosted();
     ripple(`p/${id}`);
@@ -1183,6 +1217,22 @@ export default function ShadowField({ serif }: Props) {
     setMe((m) => (m ? { ...m, user: null } : m));
     setNotice('signed out');
   };
+
+  // what resonates: read now and every ten minutes
+  useEffect(() => {
+    const read = () =>
+      fetch('/api/resonance')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: { levels?: Record<string, number> } | null) => {
+          if (d?.levels) resonanceRef.current = new Map(Object.entries(d.levels));
+        })
+        .catch(() => undefined);
+    void read();
+    const t = window.setInterval(() => {
+      if (!document.hidden) void read();
+    }, 600000);
+    return () => window.clearInterval(t);
+  }, []);
 
   // while you are here: remember that you were, and look for new work every two minutes
   useEffect(() => {
@@ -1421,6 +1471,22 @@ export default function ShadowField({ serif }: Props) {
             }
           }
         }
+        // staying with something a while is part of its resonance (once a visit; a mark of the day, nothing more)
+        if (
+          here &&
+          here.depth > 0 &&
+          !fc.hop &&
+          !fc.held &&
+          hereSinceRef.current.id === here.node.id &&
+          nowMs - Math.max(hereSinceRef.current.t, landedAtRef.current) > 3000 &&
+          !stayedRef.current.has(here.node.id)
+        ) {
+          stayedRef.current.add(here.node.id);
+          const id = here.node.id;
+          if (!id.startsWith('local/') && !id.startsWith('k/') && !here.path.some((n) => n.disclosure > 0)) {
+            void fetch('/api/resonance', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ target: id }) }).catch(() => undefined);
+          }
+        }
         // caught up: once everything that moved has been reached, the tunnel breathes out and goes still
         const calmTo = !foodRef.current.length && hadFoodRef.current ? 0.2 : 1;
         calmRef.current += (calmTo - calmRef.current) * (1 - Math.exp(-dt / 1));
@@ -1528,6 +1594,9 @@ export default function ShadowField({ serif }: Props) {
           here: here?.node.id,
           still,
           compass: undefined,
+          phases: phasesRef.current,
+          resonance: resonanceRef.current,
+          dt,
           web: {
             plucks: echoesRef.current.length ? [...plucksRef.current, ...echoesRef.current] : plucksRef.current,
             now: nowMs / 1000,
@@ -2640,7 +2709,7 @@ export default function ShadowField({ serif }: Props) {
     [...path]
       .slice(1)
       .reverse()
-      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/') && !n.id.startsWith('p/') && n.id !== 'people' && n.id !== 'yours' && n.id !== 'stories' && n.id !== 'today' && n.id !== 'sketchbook' && n.id !== 'hex-lab' && !n.id.startsWith('k/') && !n.id.startsWith('maker/')) ?? null;
+      .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/') && !n.id.startsWith('p/') && n.id !== 'people' && n.id !== 'yours' && n.id !== 'stories' && n.id !== 'today' && n.id !== 'sketchbook' && n.id !== 'hex-lab' && n.id !== 'linked' && !n.id.startsWith('k/') && !n.id.startsWith('maker/')) ?? null;
   // an idea given away is never followed by an ask for money, nor is a song while it plays
   // nothing given away (songs, starters, throwaways) is ever followed by an ask
   const asking = supportTarget && !path.some((n) => n.free) && playingId !== current?.id ? supportTarget : null;
@@ -2654,8 +2723,12 @@ export default function ShadowField({ serif }: Props) {
     !!current &&
     path.length > 1 &&
     !path.some((n) => n.id.startsWith('local/') || n.id === 'sketchbook' || n.disclosure > 0) &&
-    (!current.id.startsWith('p/') || !!posted.find((q) => `p/${q.id}` === current.id && q.public && !q.hidden));
+    (!current.id.startsWith('p/') || !!posted.find((q) => `p/${q.id}` === current.id && (q.public || q.visibility === 'unlisted') && !q.hidden));
   const postedHere = current?.id.startsWith('p/') ? posted.find((q) => `p/${q.id}` === current.id) ?? null : null;
+  const widen = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const v = e.currentTarget.dataset.v;
+    if (postedHere && (v === 'private' || v === 'unlisted' || v === 'public')) changePosted(postedHere.id, { visibility: v });
+  };
   const ownedHere = current ? localIds(current) : null;
   const isFollowed = top ? followed.has(top.id) : false;
   const nearby = current ? (topologyOf(current), current.children) : [];
@@ -2919,7 +2992,7 @@ export default function ShadowField({ serif }: Props) {
             tell a story
           </button>
         )}
-        {postedHere && !postedHere.mine && (
+        {postedHere && !postedHere.mine && postedHere.public && (
           <button type="button" className={styles.quiet} onClick={() => sparkFrom(postedHere.id)}>
             {postedHere.kind === 'story' ? 'there’s an idea in this' : 'build on it'}
           </button>
@@ -2952,11 +3025,15 @@ export default function ShadowField({ serif }: Props) {
         )}
         {postedHere?.mine && (
           <>
-            {postedHere.kind !== 'story' && (
-              <button type="button" className={postedHere.public ? styles.following : styles.quiet} onClick={() => changePosted(postedHere.id, { public: !postedHere.public })}>
-                {postedHere.public ? 'shared, keep it to myself' : 'share it with everyone'}
-              </button>
-            )}
+            {postedHere.kind !== 'story' &&
+              // how far it goes, widened on purpose: only you, whoever has its link, everyone
+              (['private', 'unlisted', 'public'] as const)
+                .filter((v) => v !== (postedHere.visibility ?? (postedHere.public ? 'public' : 'private')))
+                .map((v) => (
+                  <button key={v} type="button" className={styles.quiet} data-v={v} onClick={widen}>
+                    {v === 'public' ? 'share it with everyone' : v === 'unlisted' ? 'share it by link' : 'keep it to myself'}
+                  </button>
+                ))}
             <button type="button" className={styles.quiet} onClick={() => current && readNotes(current)}>
               notes
             </button>

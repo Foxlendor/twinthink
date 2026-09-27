@@ -21,7 +21,7 @@ async function targetMaker(id: string, reading = false): Promise<{ maker: string
     if (!dbConfigured()) return null;
     const s = await getShadow(await db(), id.slice(2));
     if (!s) return null;
-    return reading || (s.public && !s.hidden) ? { maker: s.owner } : null;
+    return reading || ((s.public || s.unlisted) && !s.hidden) ? { maker: s.owner } : null;
   }
   if (id.length > 200 || id.startsWith('local/')) return null;
   return findPath(buildWorld([]), id) ? { maker: 'owner' } : null;

@@ -2,10 +2,24 @@ import { NextResponse } from 'next/server';
 import { del } from '@vercel/blob';
 import { currentUser } from '@/lib/auth/session';
 import { db, dbConfigured } from '@/lib/shadows/db';
-import { forViewer, removeShadow, updateShadow } from '@/lib/shadows/store';
+import { forViewer, removeShadow, shadowFor, updateShadow } from '@/lib/shadows/store';
 
 // Only a Shadow's maker changes it or lets it go; the Canvas's owner may take
 // a public one down (it is hidden, not deleted, and stays its maker's).
+
+/** One Shadow by its link: shared ones (even only by link) for anyone, and yours for you. */
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  if (!dbConfigured()) return NextResponse.json({ error: 'Not switched on yet.' }, { status: 503 });
+  try {
+    const user = await currentUser();
+    const s = await shadowFor(await db(), id, user?.sub);
+    if (!s) return NextResponse.json({ error: 'Not here.' }, { status: 404 });
+    return NextResponse.json({ shadow: forViewer(s, user?.sub) }, { headers: { 'cache-control': 'no-store' } });
+  } catch {
+    return NextResponse.json({ error: 'That could not be read.' }, { status: 502 });
+  }
+}
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

@@ -53,7 +53,10 @@ function buildHexLab(throwaways: IdeaNode, starters: IdeaNode[]): IdeaNode {
   };
 }
 
-export function buildWorld(local: LocalShadow[], posted?: { public: Posted[]; mine: Posted[]; today?: boolean; keeps?: string[] }): IdeaNode {
+export function buildWorld(
+  local: LocalShadow[],
+  posted?: { public: Posted[]; mine: Posted[]; today?: boolean; keeps?: string[]; linked?: Posted[] }
+): IdeaNode {
   twinthink ??= buildTwinThinkTwin();
   throwaways ??= buildThrowaways();
   starters ??= buildStarters();
@@ -71,7 +74,7 @@ export function buildWorld(local: LocalShadow[], posted?: { public: Posted[]; mi
     dance,
     moments,
     hexLab,
-    ...(posted ? buildPosted(posted.public, posted.mine, posted.today) : []),
+    ...(posted ? buildPosted(posted.public, posted.mine, posted.today, posted.linked) : []),
     ...local.map(localShadowNode),
   ];
   // your sketchbook: what you kept of others' work, while it is still there to be seen

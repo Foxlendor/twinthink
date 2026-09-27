@@ -34,6 +34,8 @@ export interface ServerShadow {
   /** For a story: how many Shadows it has sparked. */
   sparks: number;
   /** Taken down by the Canvas's owner (or by reports): seen only by its maker. */
+  /** Seen by whoever has its link (and not shown to anyone else). */
+  unlisted: boolean;
   hidden: boolean;
   /** What it was built on, as anyone may see it. */
   parent: { title: string; kind: Kind; by: string } | null;
@@ -167,6 +169,8 @@ export function forViewer(s: ServerShadow, viewerSub: string | undefined) {
     title: s.title,
     body: s.body,
     public: s.public,
+    // private, only with its link, or everyone's
+    visibility: s.public ? ('public' as const) : s.unlisted ? ('unlisted' as const) : ('private' as const),
     created: s.created,
     updated: s.updated,
     kind: s.kind,
@@ -247,6 +251,15 @@ const SCHEMA = [
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (owner_sub, target)
   )`,
+  // unlisted: seen by whoever has its link, and by no one who does not
+  `ALTER TABLE tt_shadows ADD COLUMN IF NOT EXISTS unlisted BOOLEAN NOT NULL DEFAULT FALSE`,
+  // resonance: that someone (a keyed one-way mark) stayed with something on a day
+  `CREATE TABLE IF NOT EXISTS tt_resonance (
+    target TEXT NOT NULL,
+    day TEXT NOT NULL,
+    visitor TEXT NOT NULL,
+    PRIMARY KEY (target, day, visitor)
+  )`,
   // anonymous notes are limited per sender, who is kept only as a keyed hash, per hour
   `CREATE TABLE IF NOT EXISTS tt_limits (
     k TEXT NOT NULL,
@@ -257,7 +270,7 @@ const SCHEMA = [
 ];
 
 /** Bumped whenever SCHEMA changes, so a database already up to date is not locked for nothing. */
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 8;
 
 // every read counts what grew from each, and names what each grew from (never who told a story)
 const SELECT = `SELECT s.*,
@@ -314,6 +327,7 @@ function row(r: Record<string, unknown>): ServerShadow {
     title: String(r.title),
     body: String(r.body ?? ''),
     public: r.is_public === true,
+    unlisted: r.is_public !== true && r.unlisted === true,
     created: new Date(r.created_at as string).getTime(),
     updated: new Date(r.updated_at as string).getTime(),
     kind: r.kind === 'story' ? 'story' : 'shadow',
@@ -403,7 +417,12 @@ export async function getShadow(q: Query, id: string): Promise<ServerShadow | nu
 }
 
 /** Only its maker changes a Shadow. */
-export async function updateShadow(q: Query, who: Author, id: string, input: { title?: unknown; body?: unknown; public?: unknown }) {
+export async function updateShadow(
+  q: Query,
+  who: Author,
+  id: string,
+  input: { title?: unknown; body?: unknown; public?: unknown; visibility?: unknown }
+) {
   const s = await getShadow(q, id);
   if (!s || s.owner !== who.sub) return { error: 'Not yours to change.' } as const;
   const title = input.title === undefined ? s.title : clean(input.title, TITLE_MAX);
@@ -411,8 +430,11 @@ export async function updateShadow(q: Query, who: Author, id: string, input: { t
   if (!title || body === null) return { error: 'A Shadow needs a name (up to 120 characters) and at most 2000 characters inside.' } as const;
   // a story is told once: its teller may take it back, not rewrite it
   if (s.kind === 'story') return { error: 'A story stays as it was told.' } as const;
-  const pub = input.public === undefined ? s.public : input.public === true;
-  await q(`UPDATE tt_shadows SET title = $2, body = $3, is_public = $4, updated_at = NOW() WHERE id = $1`, [id, title, body, pub]);
+  // how far it is shared: private, only by its link, or with everyone (a maker widens it on purpose)
+  const v = input.visibility;
+  const pub = v === 'public' ? true : v === 'private' || v === 'unlisted' ? false : input.public === undefined ? s.public : input.public === true;
+  const unlisted = v === 'unlisted' ? true : v === 'private' || v === 'public' || input.public !== undefined ? false : s.unlisted;
+  await q(`UPDATE tt_shadows SET title = $2, body = $3, is_public = $4, unlisted = $5, updated_at = NOW() WHERE id = $1`, [id, title, body, pub, unlisted]);
   return { shadow: (await getShadow(q, id))! } as const;
 }
 
@@ -489,4 +511,43 @@ export async function unkeep(q: Query, sub: string, target: unknown) {
 export async function myKeeps(q: Query, sub: string): Promise<string[]> {
   const rows = await q(`SELECT target FROM tt_keeps WHERE owner_sub = $1 ORDER BY created_at DESC LIMIT $2`, [sub, KEEPS_MAX]);
   return rows.map((r) => String(r.target));
+}
+
+/**
+ * Resonance: continued human return. Someone staying with something is
+ * recorded once a day, as a keyed one-way mark of them; nothing else. Only
+ * people who come back to it on different days make it resonate: a crowd
+ * passing once does nothing. Views and popularity never count.
+ */
+export async function resonate(q: Query, target: string, visitor: string, day = new Date().toISOString().slice(0, 10)) {
+  const who = (await mark(`resonance|${visitor}`)).slice(0, 32);
+  await q(`INSERT INTO tt_resonance (target, day, visitor) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, [target, day, who]);
+  // what is older than a season is let go now and then
+  if (Math.random() < 0.01) await q(`DELETE FROM tt_resonance WHERE day < $1`, [dayBefore(day, 90)]);
+}
+
+function dayBefore(day: string, n: number) {
+  return new Date(Date.parse(`${day}T00:00:00Z`) - n * 86400000).toISOString().slice(0, 10);
+}
+
+/** How much each thing resonates (0..1): from the people who came back to it on another day, in the last season. */
+export async function resonance(q: Query, today = new Date().toISOString().slice(0, 10)): Promise<Record<string, number>> {
+  const rows = await q(
+    `SELECT target, COUNT(*)::int AS returning FROM (
+       SELECT target, visitor FROM tt_resonance WHERE day >= $1 GROUP BY target, visitor HAVING COUNT(DISTINCT day) >= 2
+     ) r GROUP BY target`,
+    [dayBefore(today, 90)]
+  );
+  const out: Record<string, number> = {};
+  for (const r of rows) out[String(r.target)] = +(1 - Math.exp(-Number(r.returning) / 6)).toFixed(3);
+  return out;
+}
+
+
+/** One Shadow for whoever asked: anyone, if it is shared (even only by link); its maker, always. */
+export async function shadowFor(q: Query, id: string, viewerSub: string | undefined) {
+  const s = await getShadow(q, id);
+  if (!s) return null;
+  if (s.owner === viewerSub) return s;
+  return (s.public || s.unlisted) && !s.hidden ? s : null;
 }

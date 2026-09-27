@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { Query, REPORTS_TO_HIDE, addMedia, keep, myKeeps, unkeep, allowSender, getPicture, addNote, forViewer, getShadow, createShadow, migrate, myShadows, notesFor, publicShadows, removeShadow, report, updateShadow } from './store';
+import { Query, REPORTS_TO_HIDE, shadowFor, resonance, resonate, addMedia, keep, myKeeps, unkeep, allowSender, getPicture, addNote, forViewer, getShadow, createShadow, migrate, myShadows, notesFor, publicShadows, removeShadow, report, updateShadow } from './store';
 
 let q: Query;
 const ana = { sub: 'g-ana', name: 'Ana Maria Lopez' };
@@ -155,6 +155,34 @@ describe('build on it', () => {
   });
 });
 
+describe('shared by link', () => {
+  it('is seen by whoever has its link, and never shown on the Slate', async () => {
+    const s = (await createShadow(q, ana, { title: 'a note for a friend' })).shadow!;
+    expect(await shadowFor(q, s.id, ben.sub)).toBeNull();
+    const u = await updateShadow(q, ana, s.id, { visibility: 'unlisted' });
+    expect(u.shadow!.public).toBe(false);
+    expect(u.shadow!.unlisted).toBe(true);
+    expect(forViewer(u.shadow!, ana.sub).visibility).toBe('unlisted');
+    expect((await shadowFor(q, s.id, ben.sub))!.title).toBe('a note for a friend');
+    expect(await shadowFor(q, s.id, undefined)).not.toBeNull();
+    expect(await publicShadows(q)).toHaveLength(0);
+    // it cannot be built on until it is shared with everyone
+    expect('error' in (await createShadow(q, ben, { title: 'x', from: s.id }))).toBe(true);
+    // shared with everyone, then kept again: no link opens it
+    expect((await updateShadow(q, ana, s.id, { visibility: 'public' })).shadow!.unlisted).toBe(false);
+    await updateShadow(q, ana, s.id, { visibility: 'private' });
+    expect(await shadowFor(q, s.id, ben.sub)).toBeNull();
+    expect(await shadowFor(q, s.id, ana.sub)).not.toBeNull();
+  });
+
+  it('closes when taken down, even to those with the link', async () => {
+    const s = (await createShadow(q, ana, { title: 'by link' })).shadow!;
+    await updateShadow(q, ana, s.id, { visibility: 'unlisted' });
+    await removeShadow(q, ben, s.id, true);
+    expect(await shadowFor(q, s.id, ben.sub)).toBeNull();
+  });
+});
+
 describe('pictures and films', () => {
   const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
   const HOST = 'abc123.public.blob.vercel-storage.com';
@@ -230,5 +258,30 @@ describe('sketchbooks', () => {
     expect('error' in (await keep(q, ana.sub, 'local/xyz'))).toBe(true);
     expect('error' in (await keep(q, ana.sub, 'k/music'))).toBe(true);
     expect('error' in (await keep(q, ana.sub, '<script>'))).toBe(true);
+  });
+});
+
+describe('resonance', () => {
+  it('comes only from people who return on another day; a crowd passing once does nothing', async () => {
+    for (let i = 0; i < 30; i++) await resonate(q, 'music/a', `once${i}`, '2026-09-20');
+    expect(await resonance(q, '2026-09-27')).toEqual({});
+    await resonate(q, 'music/a', 'ana', '2026-09-20');
+    await resonate(q, 'music/a', 'ana', '2026-09-20');
+    expect(await resonance(q, '2026-09-27')).toEqual({});
+    await resonate(q, 'music/a', 'ana', '2026-09-24');
+    const one = (await resonance(q, '2026-09-27'))['music/a'];
+    expect(one).toBeGreaterThan(0);
+    await resonate(q, 'music/a', 'ben', '2026-09-21');
+    await resonate(q, 'music/a', 'ben', '2026-09-26');
+    expect((await resonance(q, '2026-09-27'))['music/a']).toBeGreaterThan(one);
+    expect((await resonance(q, '2026-09-27'))['music/a']).toBeLessThan(1);
+  });
+
+  it('keeps only a one-way mark of who, and lets go after a season', async () => {
+    await resonate(q, 'x', 'g-secret-account', '2026-01-01');
+    const rows = await q(`SELECT * FROM tt_resonance`);
+    expect(JSON.stringify(rows)).not.toContain('g-secret-account');
+    await resonate(q, 'x', 'g-secret-account', '2026-01-05');
+    expect(await resonance(q, '2026-09-27')).toEqual({});
   });
 });

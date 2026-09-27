@@ -18,6 +18,8 @@ export interface Posted {
   kind?: 'shadow' | 'story';
   from?: string | null;
   sparks?: number;
+  /** How far it is shared: only its maker, whoever has its link, or everyone. */
+  visibility?: 'private' | 'unlisted' | 'public';
   /** Gathers one maker's work (a key that never leads back to them); empty for stories. */
   maker?: string;
   /** For an answer to the day's word: that day. */
@@ -39,7 +41,13 @@ function lineFor(p: Posted) {
     // what grew from it is told, never counted
     return (p.sparks ?? 0) > 0 ? 'told without a name. others have built on it.' : 'told without a name.';
   }
-  const who = p.mine ? (p.public ? 'yours, shared with everyone.' : 'yours, only you can see it.') : `by ${p.by}.`;
+  const who = p.mine
+    ? p.public
+      ? 'yours, shared with everyone.'
+      : p.visibility === 'unlisted'
+        ? 'yours, shared only by its link.'
+        : 'yours, only you can see it.'
+    : `by ${p.by}.`;
   // credit runs back along the chain: what it was built on, and who made that
   const on = p.parent
     ? p.parent.kind === 'story'
@@ -118,8 +126,12 @@ function ring(id: string, title: string, line: string, kids: IdeaNode[], x: numb
  * The rings for posted work: today's word and its answers (when posting is
  * on), everyone's public Shadows, and (signed in) your own.
  */
-export function buildPosted(pub: Posted[], mine: Posted[], today = false): IdeaNode[] {
+export function buildPosted(pub: Posted[], mine: Posted[], today = false, linked: Posted[] = []): IdeaNode[] {
   const out: IdeaNode[] = [];
+  // what someone sent you by its link (shared only that way): here for this visit, in its own ring
+  const known = new Set([...pub, ...mine].map((p) => p.id));
+  const sent = linked.filter((p) => !known.has(p.id));
+  if (sent.length) out.push(ring('linked', 'sent to you', 'shared with you by its link.', sent.map(node), 0.35, 0.7));
   const day = dayOf();
   const isToday = (p: Posted) => p.day === day;
   if (today) {

@@ -14,6 +14,7 @@ import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, flight
 import { Hit, INK, PAPER, ROSE, TINT_COOL, TINT_WARM, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
 import { AUTHOR } from './sources/author';
 import { Pluck, trembleAt } from './web';
+import { Phase, stepPhase, withinBudget } from './phases';
 import { getImage } from './media';
 import { clamp, hash01, noise1, smoothstep } from './rng';
 
@@ -96,6 +97,11 @@ export interface FlightState {
    * ever; less once everything that moved has been reached).
    */
   web?: { plucks: Pluck[]; now: number; food: Set<string>; calm: number };
+  /** Each thing's name phase, kept from frame to frame (see phases.ts), and the seconds since the last frame. */
+  phases?: Map<string, Phase>;
+  dt?: number;
+  /** How much things resonate (0..1): people keep coming back to them. Drawn as dew catching light. */
+  resonance?: Map<string, number>;
 }
 
 /**
@@ -134,6 +140,28 @@ function liveness(node: IdeaNode, now: number) {
 }
 
 // ---------------------------------------------------------------------------
+
+/**
+ * Resonance: dew on the web around a thing people keep coming back to. The
+ * more who return, the more beads; each catches the light now and then. Never
+ * a number, and nothing a crowd passing once can make.
+ */
+function drawDew(st: RenderState, s: Station, x: number, y: number, R: number, alpha: number, level: number, ink: Ink) {
+  if (R < 6) return;
+  const n = 3 + Math.round(level * 15);
+  const clock = st.reduced ? 0 : st.clock ?? 0;
+  const ring = (s.gate ? 1.02 : 1.2) * R;
+  for (let i = 0; i < n; i++) {
+    const ang = hash01(s.node.seed, 40 + i) * Math.PI * 2;
+    const rr = ring * (0.96 + 0.08 * hash01(s.node.seed, 80 + i));
+    const bx = x + Math.cos(ang) * rr;
+    const by = y + Math.sin(ang) * rr;
+    // it glints: a slow swell of light, each bead in its own time
+    const glint = Math.max(0, Math.sin(clock * 0.9 + hash01(s.node.seed, 120 + i) * 6.283));
+    const size = clamp(R * 0.012, 1, 2.6) * (1 + 0.4 * glint);
+    ink.dot(bx, by, size, alpha * (0.22 + 0.4 * level) * (0.5 + 0.5 * glint), glint > 0.85);
+  }
+}
 
 /**
  * The tunnel you fall through. Its axis follows the way the flight leans, so
@@ -663,6 +691,7 @@ interface Title {
   /** The one line under it, and how present it is. */
   sub?: string;
   subA?: number;
+  here?: boolean;
 }
 
 /** First time the arrival was seen (clock seconds): the name writes itself on once. */
@@ -780,6 +809,8 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     if (s.gate) drawGate(st, s, x, y, R, alpha, ink, sealed);
     else drawThing(st, s, x, y, R, alpha, speed, ink, sealed, p);
     if (s.depth === 0) drawAuthor(st, stream, x, y, R, alpha, ink);
+    const res = fs.resonance?.get(s.node.id);
+    if (res && !sealed) drawDew(st, s, x, y, R, alpha, res, ink);
     ink.flush(ctx);
     if (!fs.frames.has(s.node.id) || dz < FOCUS * 2) fs.frames.set(s.node.id, { ox: x, oy: y, s: R });
     if (!sealed) seen.set(s.node.id, [x, y, alpha]);
@@ -807,7 +838,14 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
         st.hits.push({ kind: 'node', node: s.node, path: s.path, sealed, x, y, r: Math.max(R * 0.9, 16), size: R * 1.5 });
       }
       // very little text: a name, only while it is near enough to read and you are not rushing
-      const win = smoothstep(0.035 * M, 0.09 * M, R) * (1 - smoothstep(s.gate ? 0.55 * M : 0.42 * M, s.gate ? 0.95 * M : 0.75 * M, R));
+      // (it comes in once near enough and goes only once clearly behind that: see phases.ts)
+      let nearIn = smoothstep(0.035 * M, 0.09 * M, R);
+      if (fs.phases) {
+        const ph = stepPhase(fs.phases.get(s.node.id), Math.min(1, R / (0.09 * M)), fs.dt ?? 1 / 60);
+        fs.phases.set(s.node.id, ph);
+        nearIn = ph.a;
+      }
+      const win = nearIn * (1 - smoothstep(s.gate ? 0.55 * M : 0.42 * M, s.gate ? 0.95 * M : 0.75 * M, R));
       const ta = alpha * win * quiet;
       if (ta > 0.02 && s.node.title && !sealed) {
         // sizes in half-pixel steps, so the font is not rebuilt every frame
@@ -828,7 +866,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
         }
         // and the one line, only for the thing in front of you, only while you are still
         const sub = fs.here === s.node.id ? fs.lineFor?.(s) : undefined;
-        titles.push({ text: s.node.title, x, y: ty, size, a: ta, near: 1 / dz, sub, subA: sub ? ta * (fs.still ?? 0) : 0 });
+        titles.push({ text: s.node.title, x, y: ty, size, a: ta, near: 1 / dz, sub, subA: sub ? ta * (fs.still ?? 0) : 0, here: fs.here === s.node.id });
       }
     }
   }
@@ -888,7 +926,8 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   const setFont = (f: string) => {
     if (f !== font) ctx.font = font = f;
   };
-  for (const t of titles) {
+  // only a few names at once: the nearest, and always the one in front of you
+  for (const t of withinBudget(titles)) {
     setFont(`italic ${t.size}px ${st.serif}`);
     // a long name wraps to the screen (a narrow phone included) instead of running off it
     const names = wrapTwo(ctx, t.text, st.w - 32);

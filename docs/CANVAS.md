@@ -66,6 +66,16 @@ out past the edges, behind you.
   ("all through the night"), never by dates.
 - Gifts never sit next to an ask for money; nothing is counted.
 - Private by default. Nothing a visitor makes is published.
+- Sharing widens on purpose, one step at a time: keep it to myself, share it by
+  link (anyone with the link sees it; it is never shown on the Slate and cannot
+  be built on), share it with everyone. A link someone sends you opens in
+  "sent to you".
+- Names come in as you near them and go as you leave (they appear at 0.42 of
+  the way in and fade at 0.28, so they never flicker), and only a few at a time.
+- Resonance is presence from people returning, not from crowds: someone coming
+  back on another day counts; passing through once does nothing. It shows as
+  dew on the web, never as a number. Only a one-way mark of who is kept, and
+  only for a season.
 
 ## Settings (Vercel → Project → Settings → Environment Variables)
 | Variable | Purpose |

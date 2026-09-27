@@ -24,7 +24,8 @@ export async function describeShared(at: string | undefined): Promise<Shared | n
     if (!dbConfigured()) return null;
     try {
       const s = await getShadow(await db(), last.slice(2));
-      if (!s || !s.public || s.hidden) return null;
+      // a link someone chose to send describes what it points to (shared with everyone, or only by link)
+      if (!s || !(s.public || s.unlisted) || s.hidden) return null;
       return { title: s.title, line: s.kind === 'story' ? 'a story, told without a name' : `by ${s.by}` };
     } catch {
       return null;
