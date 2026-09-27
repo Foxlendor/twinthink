@@ -92,7 +92,10 @@ export function placeChildren(node: IdeaNode) {
 
   sorted.forEach((c, i) => {
     const weight = Math.log1p(countEvents(c) + c.children.length * 2);
-    if (!c.fixed) c.r = clamp(0.03 + 0.012 * weight, 0.03, 0.068);
+    let r = 0.03 + 0.012 * weight;
+    // Resonance makes shadows grow: the more people return, the bigger it gets
+    if (c.signals?.resonance) r += 0.01 * Math.sqrt(c.signals.resonance);
+    if (!c.fixed) c.r = clamp(r, 0.03, 0.1);
     if (c.fixed) return;
     const tf = clamp((c.began - t0) / (t1 - t0), 0, 1);
     const rho = 0.3 + 0.5 * tf + (hash01(c.seed, 1) - 0.5) * 0.12;

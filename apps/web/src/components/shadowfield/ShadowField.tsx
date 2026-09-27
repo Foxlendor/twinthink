@@ -3,11 +3,27 @@
 import Link from 'next/link';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, ScreenTransform } from '@/lib/shadowfield/camera';
-import { IdeaNode, LifeEvent, SEAL_MARGIN, findPath, lastActivity } from '@/lib/shadowfield/model';
+import { IdeaNode, LifeEvent, SEAL_MARGIN, findPath, lastActivity, filterByVisibility } from '@/lib/shadowfield/model';
 import { topologyOf } from '@/lib/shadowfield/layout';
 import { Access, Flight, pan as panCam, stepFlight, transformOfPath, zoomAt } from '@/lib/shadowfield/navigate';
-import { Hit, Lens, RenderState, drawSketch, lifeWord, drawVoidLattice, pulseChain, render, shortDate } from '@/lib/shadowfield/render';
-import { restVideos, setFilmRate, setMediaReadyCallback, settleVideos, toggleVideoSound } from '@/lib/shadowfield/media';
+import { Hit, INK, Lens, RenderState, drawSketch, lifeWord, drawVoidLattice, pulseChain, render, shortDate } from '@/lib/shadowfield/render';
+import { paperTile, seedOf, tintOf } from '@/lib/people/share';
+import { getVideo, holdFilm, restVideos, setFilmRate, setMediaReadyCallback, settleVideos, toggleVideoSound } from '@/lib/shadowfield/media';
+import {
+  ScrubRange,
+  Scrubber,
+  dragFraction,
+  formatTime,
+  nearCentre,
+  onScrubber,
+  pointFraction,
+  reachOf,
+  seekTime,
+  stepSeek,
+  timeAt,
+  trimRange,
+  unwrapDrag,
+} from '@/lib/shadowfield/scrub';
 import {
   ARRIVE,
   FOCUS,
@@ -33,6 +49,8 @@ import styles from './ShadowField.module.css';
 
 interface Props {
   serif: string;
+  username?: string;
+  showPrivate?: boolean;
 }
 
 interface Composer {
@@ -201,12 +219,64 @@ function eventLabel(ev: LifeEvent) {
   return `${shortDate(ev.t)}, ${time}`;
 }
 
+/** This device's share until the person signs in (kept on the device only). */
+function deviceShare(): string {
+  try {
+    let v = localStorage.getItem('tt-share');
+    if (!v) {
+      const bytes = crypto.getRandomValues(new Uint8Array(16));
+      v = Array.from(bytes, (x) => x.toString(16).padStart(2, '0')).join('');
+      localStorage.setItem('tt-share', v);
+    }
+    return v;
+  } catch {
+    return 'this-visit';
+  }
+}
+
+/** The repeating paper tile for a share, as a canvas pattern. */
+function paperPattern(share: string): CanvasPattern | null {
+  const size = 192;
+  const tile = document.createElement('canvas');
+  tile.width = size;
+  tile.height = size;
+  const g = tile.getContext('2d');
+  if (!g) return null;
+  const { fibers, specks, appearance } = paperTile(seedOf(share), size);
+  g.fillStyle = tintOf(appearance);
+  g.fillRect(0, 0, size, size);
+  g.lineCap = 'round';
+  for (const f of fibers) {
+    g.strokeStyle = `rgba(${INK},${f.alpha})`;
+    g.lineWidth = 0.6;
+    g.beginPath();
+    for (const dx of [0, -size, size]) {
+      for (const dy of [0, -size, size]) {
+        const x = f.x + dx;
+        const y = f.y + dy;
+        const ex = x + Math.cos(f.angle) * f.length;
+        const ey = y + Math.sin(f.angle) * f.length;
+        g.moveTo(x, y);
+        g.quadraticCurveTo((x + ex) / 2 - Math.sin(f.angle) * f.bend * f.length, (y + ey) / 2 + Math.cos(f.angle) * f.bend * f.length, ex, ey);
+      }
+    }
+    g.stroke();
+  }
+  for (const sp of specks) {
+    g.fillStyle = `rgba(${INK},${sp.alpha})`;
+    g.fillRect(sp.x, sp.y, sp.size, sp.size);
+  }
+  return g.createPattern(tile, 'repeat');
+}
+
 export default function ShadowField({ serif }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const storeRef = useRef<ShadowStore | null>(null);
   const worldRef = useRef<IdeaNode | null>(null);
   const camRef = useRef<Camera | null>(null);
   const lensRef = useRef<Lens>({ closeness: () => 0.5, visited: new Set(), followed: new Set() });
+  // your share: the paper you see the Canvas through (lib/people/share.ts)
+  const paperRef = useRef<CanvasPattern | null>(null);
   const hitsRef = useRef<Hit[]>([]);
   const flightRef = useRef<Flight | null>(null);
   const pointerRef = useRef({ x: -1, y: -1, inside: false, t: 0 });
@@ -255,6 +325,18 @@ export default function ShadowField({ serif }: Props) {
   const handRef = useRef(0);
   const flowRef = useRef({ value: '', movingUntil: 0 });
   const uiBusyRef = useRef(false);
+  // scrubbing: the song rings and film scrubbers drawn last frame, and a hand choosing a moment on one
+  const scrubsRef = useRef<Scrubber[]>([]);
+  const scrubRef = useRef<{
+    pointerId: number;
+    target: Scrubber;
+    /** Unwrapped position: past the top of a ring it runs on, and the moment holds at the end. */
+    u: number;
+    f: number;
+    wasPlaying: boolean;
+  } | null>(null);
+  // other fingers that land while a hand is scrubbing are ignored until they lift
+  const ignoredRef = useRef(new Set<number>());
 
   const [path, setPath] = useState<IdeaNode[]>([]);
   const [view, setView] = useState({ w: 800, h: 600 });
@@ -274,6 +356,10 @@ export default function ShadowField({ serif }: Props) {
   const [mode, setMode] = useState<'flight' | 'map'>('flight');
   // who is looking (Google sign-in, when switched on)
   const [me, setMe] = useState<{ enabled: boolean; user: { name: string; owner: boolean } | null } | null>(null);
+  // the moment of the song or film in front of you (whole seconds into its shown range), for assistive technology
+  const [moment, setMoment] = useState<{ id: string; title: string; t: number; dur: number } | null>(null);
+  // said once after a seek, in the live region
+  const [said, setSaid] = useState<{ id: string; text: string } | null>(null);
 
   const access: Access = useMemo(
     () => ({
@@ -456,6 +542,88 @@ export default function ShadowField({ serif }: Props) {
     [flyTo]
   );
 
+  // ---------------------------------------------------------------- scrubbing
+  /** The element a scrubber moves and the range it covers (null until a song is loaded and its length known). */
+  const scrubMedia = useCallback((sc: Scrubber): { el: HTMLMediaElement; range: ScrubRange } | null => {
+    if (sc.kind === 'video') {
+      const v = getVideo(sc.src, sc.webm);
+      return v && sc.range ? { el: v, range: sc.range } : null;
+    }
+    const a = audioRef.current;
+    if (!a || playingRef.current?.src !== sc.src) return null;
+    const range = trimRange(0, undefined, a.el.duration);
+    return range ? { el: a.el, range } : null;
+  }, []);
+
+  /** The scrubber under a point: only for what is in front of you, or the song playing. Nearest first. */
+  const scrubberAt = useCallback(
+    (x: number, y: number, pointerType: string): Scrubber | null => {
+      const fp = focusPath();
+      const focused = fp[fp.length - 1]?.id;
+      const playing = playingRef.current?.src;
+      const tol = reachOf(pointerType);
+      const list = scrubsRef.current;
+      for (let i = list.length - 1; i >= 0; i--) {
+        const sc = list[i];
+        if (sc.nodeId !== focused && !(sc.kind === 'audio' && sc.src === playing)) continue;
+        if (onScrubber(sc.shape, x, y, tol)) return sc;
+      }
+      return null;
+    },
+    [focusPath]
+  );
+
+  /** The song or film playing in front of you, with the range its scrubber covers. */
+  const focusedMedia = useCallback(() => {
+    const fp = focusPath();
+    const node = fp[fp.length - 1];
+    if (!node) return null;
+    const a = audioRef.current;
+    const pl = playingRef.current;
+    if (a && pl && pl.path[pl.path.length - 1]?.id === node.id) {
+      const range = trimRange(0, undefined, a.el.duration);
+      return range ? { nodeId: node.id, title: node.title ?? 'this song', el: a.el as HTMLMediaElement, range } : null;
+    }
+    const sc = scrubsRef.current.find((q) => q.kind === 'video' && q.nodeId === node.id);
+    const v = sc?.range ? getVideo(sc.src, sc.webm) : null;
+    return sc?.range && v ? { nodeId: node.id, title: node.title ?? 'this film', el: v as HTMLMediaElement, range: sc.range } : null;
+  }, [focusPath]);
+
+  /** Keeps the moment shown to assistive technology in step (re-renders only when a whole second changes). */
+  const syncMoment = useCallback(() => {
+    const fm = focusedMedia();
+    const next = fm
+      ? {
+          id: fm.nodeId,
+          title: fm.title,
+          t: Math.max(0, Math.floor(fm.el.currentTime - fm.range.from)),
+          dur: Math.floor(fm.range.to - fm.range.from),
+        }
+      : null;
+    setMoment((prev) =>
+      prev?.id === next?.id && prev?.t === next?.t && prev?.dur === next?.dur && prev?.title === next?.title ? prev : next
+    );
+  }, [focusedMedia]);
+
+  /** Where a seek landed, said once in the live region. */
+  const say = useCallback((id: string, t: number, dur: number) => {
+    setSaid({ id, text: `At ${formatTime(t)} of ${formatTime(dur)}.` });
+  }, []);
+
+  /** Seconds on (or back) in the song or film playing in front of you. */
+  const seekBy = useCallback(
+    (delta: number, announce: boolean) => {
+      const fm = focusedMedia();
+      if (!fm) return false;
+      const t = stepSeek(fm.el.currentTime, delta, fm.range);
+      fm.el.currentTime = t;
+      if (announce) say(fm.nodeId, t - fm.range.from, fm.range.to - fm.range.from);
+      syncMoment();
+      return true;
+    },
+    [focusedMedia, say, syncMoment]
+  );
+
   // ---------------------------------------------------------------- setup
   useEffect(() => {
     let storage: Storage | null = null;
@@ -603,14 +771,17 @@ export default function ShadowField({ serif }: Props) {
     };
   }, [access, flyToIds, ripple]);
 
-  // who is looking: signed in with Google, or nobody
+  // who is looking: signed in with Google, or nobody. Their paper follows
+  // their account once signed in; before that, this device.
   useEffect(() => {
     let live = true;
+    paperRef.current = paperPattern(deviceShare());
     fetch('/api/auth/me', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!live || !d) return;
         ownerSignedIn = !!d.user?.owner;
+        if (typeof d.user?.share === 'string') paperRef.current = paperPattern(d.user.share);
         setMe(d);
       })
       .catch(() => undefined);
@@ -786,6 +957,14 @@ export default function ShadowField({ serif }: Props) {
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+      // a hand on a scrubber: where it has put the song or film, and that moment in words
+      const sr = scrubRef.current;
+      let scrub: RenderState['scrub'] = null;
+      if (sr) {
+        const m = scrubMedia(sr.target);
+        scrub = { src: sr.target.src, f: sr.f, label: m ? formatTime(timeAt(sr.f, m.range) - m.range.from) : undefined };
+      }
+
       const st: RenderState = {
         ctx,
         w: rect.width,
@@ -804,7 +983,9 @@ export default function ShadowField({ serif }: Props) {
         clock: nowMs / 1000,
         pulses: pulsesRef.current,
         audio: audioState,
+        scrub,
         plots: plotsFor(worldRef.current),
+        paper: paperRef.current,
       };
       if (flying) {
         // stillness: the one line under a thing appears only once you have stopped
@@ -835,6 +1016,7 @@ export default function ShadowField({ serif }: Props) {
         }
       }
       settleVideos(st.videos ?? new Set());
+      scrubsRef.current = st.scrubs ?? [];
       // 3D objects: one live viewer, placed over the largest object in view
       const mv = modelRef.current;
       if (mv) {
@@ -871,7 +1053,7 @@ export default function ShadowField({ serif }: Props) {
       const ptr = pointerRef.current;
       let hover: Hit | null = null;
       // in the flight things pass under a resting pointer; only a moving hand is pointing
-      if (ptr.inside && !dragRef.current.active && (!flying || nowMs - ptr.t < 1500)) {
+      if (ptr.inside && !dragRef.current.active && !sr && (!flying || nowMs - ptr.t < 1500)) {
         if (flying) {
           // hits come nearest first: the thing in front covers what is behind it
           hover = hitsRef.current.find((h) => Math.hypot(h.x - ptr.x, h.y - ptr.y) < h.r) ?? null;
@@ -908,7 +1090,15 @@ export default function ShadowField({ serif }: Props) {
           } else setTip(null);
         }
       }
-      canvas.style.cursor = sketchRef.current ? 'crosshair' : dragRef.current.active ? 'grabbing' : hover ? 'pointer' : 'default';
+      // (a ring or line that can be scrubbed shows a hand, like anything else that can be touched)
+      const onScrub = !sr && !dragRef.current.active && ptr.inside && !!scrubberAt(ptr.x, ptr.y, 'mouse');
+      canvas.style.cursor = sketchRef.current
+        ? 'crosshair'
+        : sr || dragRef.current.active
+          ? 'grabbing'
+          : hover || onScrub
+            ? 'pointer'
+            : 'default';
 
       // state that the chrome needs (in flight, at most a few times a second)
       const curPath = here ? here.path : cam.path;
@@ -966,6 +1156,7 @@ export default function ShadowField({ serif }: Props) {
         setView((v) => (v.w === cam.w && v.h === cam.h ? v : { w: cam.w, h: cam.h }));
         const r = replayRef.current;
         if (r && cut !== null) setReplayView({ progress: r.progress, t: cut, playing: r.playing });
+        syncMoment();
       }
       if (nowMs - lastHash > 700 && (flying ? Math.abs(fc.shown) < 1 : !cam.node.void)) {
         lastHash = nowMs;
@@ -983,7 +1174,7 @@ export default function ShadowField({ serif }: Props) {
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [access, serif, hiddenStation, toggleSong]);
+  }, [access, serif, hiddenStation, toggleSong, scrubMedia, scrubberAt, syncMoment]);
 
   useEffect(() => {
     uiBusyRef.current = !!(composer || giving || givingTo || sketching || replayView || notice);
@@ -1005,6 +1196,8 @@ export default function ShadowField({ serif }: Props) {
     if (!canvas) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      // while a hand is choosing a moment, nothing moves
+      if (scrubRef.current) return;
       const cam = camRef.current;
       if (!cam) return;
       flightRef.current = null;
@@ -1136,7 +1329,135 @@ export default function ShadowField({ serif }: Props) {
     setMode('flight');
   };
 
+  /** Start the song a hand let go on (not the one playing), then go to that moment once its length is known. */
+  const startSongAt = (sc: Scrubber, f: number) => {
+    const world = worldRef.current;
+    const songPath = world ? findPath(world, sc.nodeId) : null;
+    if (!songPath) return;
+    let a = audioRef.current;
+    let rec = playingRef.current;
+    if (!a || !rec || rec.src !== sc.src) {
+      toggleSong(songPath);
+      a = audioRef.current;
+      rec = playingRef.current;
+      if (!a || !rec || rec.src !== sc.src) return;
+    } else void a.el.play().catch(() => undefined);
+    const el = a.el;
+    const started = rec;
+    const go = () => {
+      if (playingRef.current !== started) return; // another song has taken over
+      const range = trimRange(0, undefined, el.duration);
+      if (!range) return;
+      el.currentTime = seekTime(f, range);
+      say(sc.nodeId, el.currentTime, range.to);
+    };
+    if (el.readyState >= 1) go();
+    else el.addEventListener('loadedmetadata', go, { once: true });
+  };
+
+  /** A hand lands on a song's ring or a film's scrubber: nothing else moves until it lifts. */
+  const beginScrub = (e: React.PointerEvent<HTMLCanvasElement>, sc: Scrubber, x: number, y: number) => {
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    soundBlockedRef.current = false;
+    // a hand on it: passing never overrides it
+    hereSinceRef.current.tried = true;
+    flightRef.current = null;
+    velRef.current = { x: 0, y: 0 };
+    zoomVelRef.current.v = 0;
+    if (modeRef.current === 'flight') {
+      const fc = flightCamRef.current;
+      fc.held = true;
+      fc.target = null;
+      fc.v = 0;
+    }
+    let wasPlaying = false;
+    if (sc.kind === 'video') {
+      const v = getVideo(sc.src, sc.webm);
+      holdFilm(sc.src, true);
+      if (v) {
+        wasPlaying = !v.paused;
+        v.pause();
+      }
+    } else {
+      const a = audioRef.current;
+      if (a && playingRef.current?.src === sc.src) {
+        wasPlaying = !a.el.paused;
+        a.el.pause();
+      }
+    }
+    const u = pointFraction(sc.shape, x, y);
+    scrubRef.current = { pointerId: e.pointerId, target: sc, u, f: dragFraction(u), wasPlaying };
+    seekLive();
+    dismissHint();
+  };
+
+  /** While a hand drags, the film shows (and the song sits at) the moment under it. */
+  const seekLive = () => {
+    const s = scrubRef.current;
+    const m = s ? scrubMedia(s.target) : null;
+    if (!s || !m || m.el.seeking) return;
+    m.el.currentTime = seekTime(s.f, m.range);
+  };
+
+  const moveScrub = (x: number, y: number) => {
+    const s = scrubRef.current;
+    if (!s) return;
+    // follow the scrubber if the page has moved a little under the hand
+    const latest = scrubsRef.current.find((q) => q.src === s.target.src && q.nodeId === s.target.nodeId);
+    if (latest) s.target = latest;
+    const shape = s.target.shape;
+    if (shape.kind === 'ring') {
+      // through the middle the angle means nothing: wait for the hand to come out again
+      if (nearCentre(shape, x, y)) return;
+      s.u = unwrapDrag(s.u, pointFraction(shape, x, y));
+    } else s.u = pointFraction(shape, x, y);
+    s.f = dragFraction(s.u);
+    seekLive();
+  };
+
+  /** The hand lifts: the song or film carries on from the moment it chose (cancelled by the system, it just carries on). */
+  const endScrub = (commit: boolean) => {
+    const s = scrubRef.current;
+    if (!s) return;
+    scrubRef.current = null;
+    flightCamRef.current.held = false;
+    const sc = s.target;
+    if (sc.kind === 'video') {
+      holdFilm(sc.src, false);
+      const v = getVideo(sc.src, sc.webm);
+      if (!v) return;
+      if (commit && sc.range) {
+        v.currentTime = seekTime(s.f, sc.range);
+        say(sc.nodeId, v.currentTime - sc.range.from, sc.range.to - sc.range.from);
+      }
+      void v.play().catch(() => undefined);
+      return;
+    }
+    const cur = scrubMedia(sc);
+    if (!commit) {
+      if (cur && s.wasPlaying) void cur.el.play().catch(() => undefined);
+      return;
+    }
+    autoplayRef.current = true;
+    if (cur) {
+      cur.el.currentTime = seekTime(s.f, cur.range);
+      void cur.el.play().catch(() => undefined);
+      say(sc.nodeId, cur.el.currentTime, cur.range.to);
+      return;
+    }
+    startSongAt(sc, s.f);
+  };
+
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (scrubRef.current) {
+      // one hand chooses the moment; other fingers do nothing until it lifts
+      ignoredRef.current.add(e.pointerId);
+      e.currentTarget.setPointerCapture(e.pointerId);
+      e.stopPropagation();
+      return;
+    }
+    ignoredRef.current.delete(e.pointerId);
     if (sketchRef.current && e.isPrimary) {
       const rect = e.currentTarget.getBoundingClientRect();
       const pt = sketchPoint(e.clientX - rect.left, e.clientY - rect.top);
@@ -1148,6 +1469,15 @@ export default function ShadowField({ serif }: Props) {
       }
     }
     const rect = e.currentTarget.getBoundingClientRect();
+    if (e.isPrimary && pointersRef.current.size === 0) {
+      // on (or near) a song's ring, or a film's scrubber: the hand chooses the moment
+      const sc = scrubberAt(e.clientX - rect.left, e.clientY - rect.top, e.pointerType);
+      if (sc) {
+        handRef.current = performance.now();
+        beginScrub(e, sc, e.clientX - rect.left, e.clientY - rect.top);
+        return;
+      }
+    }
     pointersRef.current.set(e.pointerId, { x: e.clientX - rect.left, y: e.clientY - rect.top });
     e.currentTarget.setPointerCapture(e.pointerId);
     flightRef.current = null;
@@ -1177,6 +1507,13 @@ export default function ShadowField({ serif }: Props) {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    if (scrubRef.current && e.pointerId === scrubRef.current.pointerId) {
+      e.stopPropagation();
+      pointerRef.current = { x, y, inside: true, t: performance.now() };
+      handRef.current = performance.now();
+      moveScrub(x, y);
+      return;
+    }
     const sk = sketchRef.current;
     if (sk?.stroke && e.pointerId === sk.pointerId) {
       const pt = sketchPoint(x, y);
@@ -1243,6 +1580,13 @@ export default function ShadowField({ serif }: Props) {
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (scrubRef.current && e.pointerId === scrubRef.current.pointerId) {
+      // a tap on the ring goes to that moment; a drag, to where it was let go
+      e.stopPropagation();
+      endScrub(true);
+      return;
+    }
+    if (ignoredRef.current.delete(e.pointerId)) return;
     const sk = sketchRef.current;
     if (sk?.stroke && e.pointerId === sk.pointerId) {
       const stroke = sk.stroke;
@@ -1322,6 +1666,12 @@ export default function ShadowField({ serif }: Props) {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
       handRef.current = performance.now();
+      // [ and ]: five seconds back or on in the song or film playing in front of you
+      // (the arrows already move you through the Canvas)
+      if ((e.key === '[' || e.key === ']') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (seekBy(e.key === ']' ? 5 : -5, true)) e.preventDefault();
+        return;
+      }
       const cam = camRef.current;
       if (!cam) return;
       if (modeRef.current === 'flight') {
@@ -1361,7 +1711,7 @@ export default function ShadowField({ serif }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [composer, dismissHint, flyTo, focusPath, hiddenStation]);
+  }, [composer, dismissHint, flyTo, focusPath, hiddenStation, seekBy]);
 
   // ---------------------------------------------------------------- actions
   const wander = () => {
@@ -1632,6 +1982,11 @@ export default function ShadowField({ serif }: Props) {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={(e) => {
+          if (scrubRef.current?.pointerId === e.pointerId) {
+            endScrub(false);
+            return;
+          }
+          if (ignoredRef.current.delete(e.pointerId)) return;
           pointersRef.current.delete(e.pointerId);
           pinchRef.current = null;
           dragRef.current.active = false;
@@ -1999,7 +2354,43 @@ export default function ShadowField({ serif }: Props) {
       <nav className={styles.srNav} aria-label="Ideas here">
         <p aria-live="polite">
           {current ? (path.length > 1 ? `Inside ${current.title ?? 'an untitled idea'}.` : 'On the Canvas.') : ''}
+          {said && said.id === current?.id ? ` ${said.text}` : ''}
         </p>
+        {moment && moment.id === current?.id && (
+          <div
+            role="slider"
+            tabIndex={0}
+            aria-label={`Moment in ${moment.title}`}
+            aria-valuemin={0}
+            aria-valuemax={moment.dur}
+            aria-valuenow={Math.min(moment.t, moment.dur)}
+            aria-valuetext={`${formatTime(moment.t)} of ${formatTime(moment.dur)}`}
+            onKeyDown={(e) => {
+              const k = e.key;
+              const step =
+                k === 'ArrowRight' || k === 'ArrowUp' || k === ']'
+                  ? 5
+                  : k === 'ArrowLeft' || k === 'ArrowDown' || k === '['
+                    ? -5
+                    : k === 'PageUp'
+                      ? 30
+                      : k === 'PageDown'
+                        ? -30
+                        : k === 'Home'
+                          ? -Infinity
+                          : k === 'End'
+                            ? Infinity
+                            : 0;
+              if (!step) return;
+              // the slider's own keys: they choose the moment here, never move the Canvas
+              e.preventDefault();
+              e.stopPropagation();
+              seekBy(step, false);
+            }}
+          >
+            {moment.title}: {formatTime(moment.t)} of {formatTime(moment.dur)}
+          </div>
+        )}
         <ul>
           {nearby
             .filter((c) => path.length <= 1 || c.disclosure <= p + SEAL_MARGIN)

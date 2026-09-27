@@ -40,6 +40,9 @@ export type Artifact =
   | { type: 'text'; body: string }
   | { type: 'story'; lines: { t: number; text: string }[] };
 
+/** Who can see this idea on the Canvas. */
+export type Visibility = 'private' | 'public';
+
 /**
  * Content that lives inside an idea, placed in its frame (units of the idea's
  * radius). It is what zooming is *for*: far away it is a near-white shadow of
@@ -122,6 +125,37 @@ export interface IdeaNode {
   signals?: {
     returns?: number;
     followers?: number;
+    /** How many people keep coming back (lib/people/resonance.ts). Widens ripples. */
+    resonance?: number;
+  };
+  /** Who can see this idea: private (owner only) or public (anyone). Defaults to private. */
+  visibility?: Visibility;
+  /** Whose Canvas this idea belongs to (e.g. 'johne.boi'). If absent, belongs to TwinThink itself. */
+  canvasOwner?: string;
+  /** Layer responses: people adding their own ideas that link back to this one without editing. */
+  responses?: IdeaNode[];
+  /** Score tracking how much founder/early-believer attention this has. Used for visual scaling. */
+  founderMarks?: number;
+  /** True when this is a response to another idea (not editable, layered on top). */
+  isResponse?: boolean;
+  /** What this response links back to (parent idea id). */
+  respondingTo?: string;
+}
+
+/** Filter a tree of ideas to show only those visible to the given viewer. */
+export function filterByVisibility(node: IdeaNode, canvasOwner: string, viewerIsOwner: boolean): IdeaNode | null {
+  const isVisible =
+    !node.visibility || // public by default if not specified
+    node.visibility === 'public' ||
+    (node.visibility === 'private' && viewerIsOwner && node.canvasOwner === canvasOwner);
+
+  if (!isVisible) return null;
+
+  return {
+    ...node,
+    children: node.children
+      .map((c) => filterByVisibility(c, canvasOwner, viewerIsOwner))
+      .filter((c): c is IdeaNode => c !== null),
   };
 }
 
@@ -168,11 +202,14 @@ export function webSize(node: IdeaNode): number {
 
 /**
  * How far (in Canvas units) a change in this Shadow ripples across the Canvas.
- * A bigger web reaches further. Position on the Canvas is closeness of topic,
+ * A bigger web reaches further, and so does a Shadow people keep returning to
+ * (resonance). Position on the Canvas is closeness of topic,
  * so the ripple touches the ideas nearest to it first.
  */
 export function rippleReach(node: IdeaNode): number {
-  return Math.min(0.9, 0.08 + 0.035 * Math.sqrt(webSize(node)));
+  // a bigger web, and more people who keep coming back, carry a change further
+  const resonance = Math.max(0, node.signals?.resonance ?? 0);
+  return Math.min(0.9, 0.08 + 0.035 * Math.sqrt(webSize(node)) + 0.05 * Math.min(resonance, 8));
 }
 
 /** Other Shadows a ripple from `source` reaches, nearest first. */
