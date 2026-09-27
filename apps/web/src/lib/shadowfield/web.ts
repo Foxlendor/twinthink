@@ -149,7 +149,7 @@ export function findFood(input: {
   if (memory.since > 0) {
     const byRing = new Map<string, string[]>();
     for (const f of input.fresh ?? []) {
-      if (f.began <= memory.since) continue;
+      if (f.began <= memory.since || !input.open(f.id)) continue;
       const k = f.ring ?? f.id;
       byRing.set(k, [...(byRing.get(k) ?? []), f.id]);
     }
@@ -244,4 +244,18 @@ export function trembleAt(plucks: Pluck[], z: number, camZ: number, now: number)
     }
   }
   return { T, rose };
+}
+
+/** The latest pluck time at or before `now` for a food found at `found` (undefined before the first). */
+export function lastPluck(id: string, found: number, now: number): number | undefined {
+  const off = hash01(hashId(id), 3) * 1.5;
+  const since = now - (found + off);
+  if (since < 0) return undefined;
+  const last = PLUCKS[PLUCKS.length - 1];
+  if (since < last) {
+    let t = 0;
+    for (const p of PLUCKS) if (p <= since) t = p;
+    return found + off + t;
+  }
+  return found + off + last + Math.floor((since - last) / HUM) * HUM;
 }

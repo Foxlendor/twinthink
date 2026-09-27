@@ -15,6 +15,8 @@ export class WheelHops {
   private hops = 0;
   private dir = 0;
   private tail = false;
+  /** Counts gestures: a new one begins at every pause, turn or notch. */
+  gesture = 0;
 
   /**
    * One wheel event: `d` its delta in pixels (positive is forward), `t` its
@@ -26,7 +28,9 @@ export class WheelHops {
     const dt = t - this.last;
     const a = Math.abs(d);
     const sign = d > 0 ? 1 : -1;
-    const notched = lineMode || (Number.isInteger(d) && a >= 50 && dt > 60);
+    // a wheel's notch: reported in lines, or a large delta that arrives alone or repeats the last one
+    // (spun fast, a wheel sends the same size again and again; a trackpad's never repeat exactly)
+    const notched = lineMode || (a >= 50 && (dt > 60 || Math.abs(a - this.prev) <= 0.02 * this.prev));
     const decaying = !notched && dt <= 140 && sign === this.dir && a < 0.97 * this.prev;
     // a new gesture: a pause, a turn, a notch, or a fresh swell after a tail
     const fresh = dt > 140 || sign !== this.dir || notched || (this.tail && a > 1.6 * this.prev);
@@ -37,6 +41,7 @@ export class WheelHops {
       this.acc = 0;
       this.hops = 0;
       this.dir = sign;
+      this.gesture++;
     }
     if (decaying) return 0;
     this.acc += a;
@@ -99,6 +104,7 @@ export function pxPerStop(h: number) {
  * stop it began from, never more: speed is felt, not skipped through.
  */
 export function landing(u: number, vpx: number, px: number): number {
+  // (u is measured from a stop the camera was at, or had just passed in the finger's direction)
   const reached = u >= 0 ? Math.floor(u + 0.78) : Math.ceil(u - 0.78);
   const flick = Math.abs(vpx) >= 350 && Math.abs(px) >= 24;
   if (flick) {
@@ -108,4 +114,21 @@ export function landing(u: number, vpx: number, px: number): number {
     return further;
   }
   return reached;
+}
+
+/**
+ * Where a released drag lands, as an index into its run of stops. `u0` is
+ * where the camera was when the finger caught it (it may be between stops,
+ * caught mid-hop), `u` where the finger carried it. It never lands on the far
+ * side of u0 from the way the finger moved.
+ */
+export function landingIndex(u0: number, u: number, vpx: number, px: number, count: number): number {
+  const eps = 1e-6;
+  const forward = u > u0 || (u === u0 && vpx < 0);
+  // the stop the camera had reached or passed, in the finger's direction
+  const start = forward ? Math.floor(u0 + eps) : Math.ceil(u0 - eps);
+  let idx = start + landing(u - start, vpx, px);
+  if (forward) idx = Math.max(idx, start);
+  else idx = Math.min(idx, start);
+  return Math.max(0, Math.min(count - 1, idx));
 }

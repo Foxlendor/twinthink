@@ -61,3 +61,20 @@ describe('letting go of a swipe', () => {
     expect(v.velocity(120)).toBe(0);
   });
 });
+
+describe('the review’s cases', () => {
+  it('a fast-spun wheel, and one with fractional deltas, hop once per notch', async () => {
+    expect(run(Array(10).fill(100), 30)).toBe(10);
+    expect(run(Array(5).fill(106.67), 100)).toBe(5);
+  });
+
+  it('a slow drag caught mid-hop never lands against the finger', async () => {
+    const { landingIndex } = await import('./gesture');
+    // caught at 3.4, dragged back a little: lands behind, never ahead
+    expect(landingIndex(3.4, 3.29, 20, 30, 10)).toBeLessThanOrEqual(3);
+    // caught at 3.6, dragged forward a little: lands ahead, never behind
+    expect(landingIndex(3.6, 3.75, -20, -40, 10)).toBeGreaterThanOrEqual(4);
+    // resting on a stop, a slow long drag lands where it was carried
+    expect(landingIndex(2, 4.6, -40, -700, 10)).toBe(5);
+  });
+});

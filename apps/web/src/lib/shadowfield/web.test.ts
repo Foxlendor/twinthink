@@ -138,3 +138,25 @@ describe('the web that moves: what the device remembers', () => {
     }
   });
 });
+
+describe('the review’s cases (web)', () => {
+  it('the last pluck is known without listing them all', async () => {
+    const { lastPluck } = await import('./web');
+    for (const now of [100, 101, 103, 107, 141.9, 200, 5000]) {
+      const all = plucksFor('p/a', 100, now);
+      expect(lastPluck('p/a', 100, now)).toBe(all[all.length - 1]);
+    }
+  });
+
+  it('a ring with a lot new trembles only for what may be seen', () => {
+    const f = findFood({
+      posted: [],
+      keeps: [],
+      memory: { ...emptyMemory(), since: 10 },
+      today: DAY,
+      fresh: ['1', '2', '3', '4'].map((k) => ({ id: `sealed/${k}`, began: 50, ring: 'twinthink' })),
+      open: (id) => !id.startsWith('sealed/'),
+    });
+    expect(f).toEqual([]);
+  });
+});

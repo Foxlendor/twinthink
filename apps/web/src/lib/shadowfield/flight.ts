@@ -397,6 +397,9 @@ export function stopZ(stream: Stream, s: Station, camZ: number) {
  */
 export function settle(cam: FlightCam, stream: Stream, skip?: (s: Station) => boolean) {
   if (cam.hop) return;
+  // resting where the Canvas itself is met is resting
+  const root = stream.stations.find((s) => s.depth === 0);
+  if (root && Math.abs(stopZ(stream, root, cam.z) - cam.z) < 1e-3) return;
   const [back, ahead] = focusAround(stream, cam.z, skip);
   if (back === null && ahead === null) return;
   if (back !== null && Math.abs(back - cam.z) < 1e-4) return;

@@ -73,8 +73,10 @@ export function getVideo(src: string, webm?: string): HTMLVideoElement | null {
     // make room: the resting film used longest ago lets go of what it loaded
     while (videos.size >= LIVE_FILMS) {
       let oldest: string | null = null;
+      const now = performance.now();
       for (const [k, o] of videos) {
-        if (!o.paused) continue;
+        // playing, drawn or readied in the last second: kept
+        if (!o.paused || now - (usedAt.get(k) ?? 0) < 1000) continue;
         if (oldest === null || (usedAt.get(k) ?? 0) < (usedAt.get(oldest) ?? 0)) oldest = k;
       }
       if (oldest === null) break;
