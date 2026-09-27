@@ -935,28 +935,36 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     const tx = w < st.w - 32 && names.length > 1 ? clamp(t.x, 16 + w / 2, st.w - 16 - w / 2) : t.x;
     const lastY = t.y + (names.length - 1) * t.size * 1.2;
     const r: [number, number, number, number] = [tx - w / 2 - 4, t.y - t.size, tx + w / 2 + 4, lastY + t.size * 0.35];
+    // the room its one line would take is measured now, before deciding: it must never print over
+    // a name already placed, even one placed after this title's own name was checked
+    const hasSub = t.sub && (t.subA ?? 0) > 0.01;
+    let subLines: string[] = [];
+    let ss = 0;
+    if (hasSub) {
+      ss = Math.max(13, Math.round(t.size * 0.78));
+      setFont(`italic ${ss}px ${st.serif}`);
+      subLines = wrapTwo(ctx, t.sub!, Math.min(360, st.w - 32));
+      let widest = w;
+      for (const line of subLines) widest = Math.max(widest, ctx.measureText(line).width);
+      r[0] = Math.min(r[0], tx - widest / 2 - 4);
+      r[2] = Math.max(r[2], tx + widest / 2 + 4);
+      r[3] = lastY + t.size * 1.35 + subLines.length * ss * 1.3;
+    }
     if (placed.some((q) => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1])) continue;
-    const q0 = r;
-    if (covers.some((c) => c.near > t.near * 1.02 && q0[0] < c.r[2] && q0[2] > c.r[0] && q0[1] < c.r[3] && q0[3] > c.r[1])) continue;
+    if (covers.some((c) => c.near > t.near * 1.02 && r[0] < c.r[2] && r[2] > c.r[0] && r[1] < c.r[3] && r[3] > c.r[1])) continue;
+    setFont(`italic ${t.size}px ${st.serif}`);
     ctx.fillStyle = `rgba(${INK},${t.a * 0.78})`;
     names.forEach((n, i) => inkText(ctx, n, tx, t.y + i * t.size * 1.2));
-    if (t.sub && (t.subA ?? 0) > 0.01) {
-      const ss = Math.max(13, Math.round(t.size * 0.78));
+    if (hasSub) {
       setFont(`italic ${ss}px ${st.serif}`);
-      const lines = wrapTwo(ctx, t.sub, Math.min(360, st.w - 32));
-      let yy = lastY + t.size * 1.35;
       ctx.fillStyle = `rgba(${INK},${(t.subA ?? 0) * 0.62})`;
-      let widest = w;
-      for (const line of lines) {
+      let yy = lastY + t.size * 1.35;
+      for (const line of subLines) {
         const lw = ctx.measureText(line).width;
-        widest = Math.max(widest, lw);
         const lx = clamp(t.x, 16 + lw / 2, st.w - 16 - lw / 2);
         ctx.fillText(line, lx, yy);
         yy += ss * 1.3;
       }
-      r[0] = Math.min(r[0], tx - widest / 2 - 4);
-      r[2] = Math.max(r[2], tx + widest / 2 + 4);
-      r[3] = yy;
     }
     placed.push(r);
   }

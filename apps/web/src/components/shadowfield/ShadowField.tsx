@@ -2133,7 +2133,8 @@ export default function ShadowField({ serif }: Props) {
         const [a, b] = [...pointersRef.current.values()];
         const d = Math.hypot(a.x - b.x, a.y - b.y);
         if (pinchRef.current.d > 10 && d > 10) {
-          const step = Math.log(d / pinchRef.current.d) * 1.8;
+          // a sudden snap of the fingers never throws you further than a thing or two: it stays a walk, not a leap
+          const step = Math.max(-1.5, Math.min(1.5, Math.log(d / pinchRef.current.d) * 1.8));
           fc.z += step;
           if (Math.abs(step) > 0.002) fc.dir = Math.sign(step);
         }
