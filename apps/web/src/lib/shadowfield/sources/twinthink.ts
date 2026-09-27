@@ -36,7 +36,7 @@ const FOLD: Record<string, string> = {};
 /** His art for the name and the logo, shown on its ring, signed by him. */
 const ART: Record<string, Media[]> = {
   mark: [
-    { kind: 'video', src: '/art/twinthink.mp4', poster: '/art/twinthink.jpg', x: 0, y: -0.14, w: 1.25, aspect: 540 / 960, by: 'made by johne.boi' },
+    { kind: 'video', src: '/art/twinthink.mp4', poster: '/art/twinthink.jpg', x: 0, y: -0.14, w: 1.25, aspect: 540 / 960, by: 'made by johne.boi', drawing: true },
     { kind: 'image', src: '/art/twinthink-logo.png', x: 0, y: 0.6, w: 0.42, aspect: 1 },
   ],
 };

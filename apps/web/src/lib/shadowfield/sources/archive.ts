@@ -148,6 +148,7 @@ const SHOWN: Record<string, { media: Media[]; t: number }> = {
         from: 0.2,
         to: 14.5,
         by: 'animated by johne.boi',
+        drawing: true,
       },
     ],
   },

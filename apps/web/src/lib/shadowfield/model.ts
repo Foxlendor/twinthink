@@ -70,6 +70,11 @@ export type Media =
       to?: number;
       /** Seen through a round window with a feathered paper edge, like an ink drop. */
       round?: boolean;
+      /**
+       * Ink drawn on white paper (an animation, a logo): at night it prints as
+       * its negative, pale lines on the dark page. Camera footage never does.
+       */
+      drawing?: boolean;
       /** Who made it, signed under it like a pencil signature under a print (only when true). */
       by?: string;
     };

@@ -757,7 +757,7 @@ export function drawVideo(
   if (!frame) {
     ctx.fillStyle = `rgba(${INK},0.05)`;
     ctx.fillRect(x0, y0, W, H);
-  } else if (NIGHT && !m.round) {
+  } else if (NIGHT && !m.round && m.drawing) {
     // at night a drawing is printed as its negative, pale lines on the dark page:
     // inverted whole on a sheet of its own, then only its light is laid down, so
     // its paper leaves the night's paper as it was (no pale box around it)
