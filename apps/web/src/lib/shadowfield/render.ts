@@ -1125,7 +1125,7 @@ export function drawNode(
     if (sealed) drawMark(st, c, CT, ca, true);
     else if (cs < 0.12) drawMark(st, c, CT, ca, false);
     else drawNode(st, c, CT, ca, cp, cpath, false);
-    if (cs >= 4) (st.labels ??= []).push({ node: c, x: cx, y: cy, cs, alpha: ca, sealed });
+    if (cs >= 4) (st.labels ??= []).push({ node: c, x: cx, y: cy, cs, alpha: ca * vis.childLabels, sealed });
     if (cs < 0.5 * M) st.hits.push({ kind: 'node', node: c, path: cpath, sealed, x: cx, y: cy, r: Math.max(cs * 0.55, 12), size: cs });
   }
 }
