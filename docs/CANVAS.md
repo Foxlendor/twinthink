@@ -9,6 +9,13 @@ is their ring in "from everyone", and your own ring is "your whoeuvre"); the
 and the ones he is building (`/whoeuvre/johne.boi/hex-lab`). Older notes below say
 "Canvas": read it as Slate.
 
+Whoeuvre is not a rebrand of "profile": there is no profile concept here (no
+page for who someone is, only for what they've made), and if one is ever
+built it stays a plain word. Whoeuvre earns its name because it names a real,
+different thing: a body of work, accumulating over a whole life, not an
+identity page. Nothing invented replaces an ordinary noun; Whoeuvre is kept
+because ordinary nouns don't have one for this.
+
 The Canvas is TwinThink's spatial medium. Engine: `apps/web/src/lib/shadowfield`,
 UI: `apps/web/src/components/shadowfield`. Tests: `cd apps/web && npm test`.
 
