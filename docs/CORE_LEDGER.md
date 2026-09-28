@@ -49,8 +49,10 @@ Last updated: 28 September 2026.
 
 ## Next, in order
 
-1. John tries steering, openings, Time / Topic, Dew/Drop, "goes with" and "your Fall", and says how they feel (experience acceptance, spec 16).
-2. The recap's song: the confirmed recording and the cue point for "shoulda done lean" (RECAP-03).
-3. Two-account live checks: switch lead, and a disclosure-gated leader (AT-12 to AT-15).
-4. VIS-07 fixed (labels keep clear of notices, the compass and each other; notices no longer stack) and VIS-08 steering handled; John to judge both on his own screens.
-5. Creator co-op rights (COOP-02), once D-09 is decided.
+Hold (28 Sep): no new features until John has done these three checks by hand. Judge by feel, not numbers.
+
+1. Steering in the hand: touch and tilt feel like one motion, sitting up, lying down, and with the phone turned sideways. If you catch yourself thinking "tilt 10 degrees more", it is wrong.
+2. The Slate on real screens: the enlarged 6, notices at the top, long group names, crowded places.
+3. Fall with me into somewhere private, with two real accounts: the follower stays where they are and learns only that "X moved into a path you can't enter", never what or why. (`beyond` means exactly that and nothing more.)
+
+After those: the one open device question is the iPhone motion permission prompt; then the recap's song (RECAP-03); then creator co-op (COOP-02) once D-09 is decided.
