@@ -1,8 +1,10 @@
 # TwinThink: core specification and implementation handoff
 
-> Canonical copy in the repository, supplied by John on 28 September 2026. Implementation status lives in `docs/CORE_LEDGER.md`, not here; this document is the intent.
+> Canonical copy in the repository, supplied by John on 28 September 2026 (version 1.1 replaces 1.0). Implementation status lives in `docs/CORE_LEDGER.md`, not here; this document is the intent.
 
-Version 1.0 | 28 September 2026 | Prepared for John and the implementing agent
+Version 1.1 | 28 September 2026 | Prepared for John and the implementing agent
+
+Revision 1.1 incorporates the later monochrome/multidimensional direction, restores the theme-song Fall recap requirement, and records the implementation report for `9efe44c` against the newly read core ledger. The original audit remains a dated baseline, not a current claim that subsequently reported features are absent. Section 20 contains the latest reconciliation.
 
 **Purpose:** reconcile the product John described with the smaller features implemented or reported so far, and define a shared foundation that can deliver the complete experience without removing existing functionality.
 
@@ -12,7 +14,7 @@ Version 1.0 | 28 September 2026 | Prepared for John and the implementing agent
 
 John has described a spatial medium for ideas, creative work, and their history. People enter the Slate and experience it through movement: approach, fall, turn, choose, enter, return, remember, and sometimes travel together. Creation and exploration happen in the same underlying world. A person's Whoeuvre accumulates what they make. Rabi helps shape the routes and usable space around that work.
 
-The latest navigation vision is a steerable time vortex. A centered pointer occupies the position of the police box in John's Doctor Who reference. The surrounding space moves around the visitor. A clock arrangement provides orientation: green at twelve, blue at three, orange/red at six, purple at nine. Facing six allows the visitor to enter a stream of work associated with six o'clock and continue inward through it. Branches must be encountered as visible, navigable openings in that space.
+The navigation vision is a steerable, multidimensional vortex with a unified, mostly monochrome aesthetic. A centered pointer occupies the position of the police box in John's Doctor Who reference. The surrounding space moves around the visitor. In the time lens, a clock arrangement provides orientation: twelve at the top, three at the right, six at the bottom, nine at the left. Facing six allows the visitor to enter a stream of work associated with six o'clock and continue inward through it. Branches must be encountered as visible, navigable openings in that space. The earlier drawing's four colors identified positions; the later minimal/no-color direction supersedes mandatory color coding. A proposed topic lens reorganizes the same permitted work while preserving its identity and the visitor's orientation.
 
 The clock position, depth, content structure, and chosen route must work together. A sequential feed arranged decoratively around a clock does not, by itself, meet that requirement. A blurred sidebar that jumps to a sibling is useful prior work, but it does not, by itself, deliver the intended branching flight.
 
@@ -61,7 +63,7 @@ Current explicit instructions take precedence over older proposals. Existing cod
 | Reports for `c501040`, `64db4df`, and `cfe841c` | REPORT: shared Fall, deployment repair, Lean edge previews | No fresh full production QA in this specification. |
 | Latest pasted core/teardrop work | REPORT: Claude has begun further changes | Current branch, diff, tests, and deployment were not inspected. |
 
-The four colored clock anchors come from John's drawing and description. The Doctor Who link is [the supplied movement reference](https://www.youtube.com/watch?v=DNEjx6XUbfQ). Video playback was not verified by ChatGPT; do not attribute precise camera choreography to an unseen video. The earlier [book transition reference](https://youtu.be/-1DvXSsWKLI?t=88) supplies John's description of peripheral blur, visual curiosity, and focus transfer.
+The four colored clock anchors come from John's earlier drawing and description; their colors are historical reference, superseded by the later monochrome direction. The Doctor Who link is [the supplied movement reference](https://www.youtube.com/watch?v=DNEjx6XUbfQ). Video playback was not verified by ChatGPT; do not attribute precise camera choreography to an unseen video. The earlier [book transition reference](https://youtu.be/-1DvXSsWKLI?t=88) supplies John's description of peripheral blur, visual curiosity, and focus transfer. The latest implementation record is separately identified in section 20; the source rows above describe the original audit.
 
 ### 2.3 Work ChatGPT actually contributed
 
@@ -95,7 +97,7 @@ John has objected to excessive invented terminology. These distinctions are for 
 
 ## 4. Requirements and implementation reconciliation
 
-This matrix states the audit baseline. The implementing agent must add its current branch/commit and new evidence before marking any row complete.
+This matrix preserves the original audit baseline. Several rows have subsequent implementation claims, reconciled in section 20. Read both before deciding what remains to build. The implementing agent must add its current branch/commit and new evidence before marking any row complete.
 
 | ID | Intended requirement | Baseline and gap |
 | --- | --- | --- |
@@ -129,7 +131,7 @@ The center acts as the visitor's aiming reference. On desktop, movement steers t
 
 ### 5.2 Turn into six
 
-The orange/red six-o'clock region is visibly associated with six. The visitor turns toward it, the route moves into alignment, and entering it selects a six-o'clock stream. Work encountered inside must actually match the chosen temporal policy. A six label placed over a mixed sequential feed fails this requirement.
+The six-o'clock region is visibly associated with six through position, text, and emphasis in the shared ink aesthetic. The visitor turns toward it, the route moves into alignment, and entering it selects a six-o'clock stream. Work encountered inside must actually match the chosen temporal policy. A six label placed over a mixed sequential feed fails this requirement.
 
 The next six could mean six on another day or more work within a selected day's six-o'clock period. John has not resolved that distinction in the available conversation. The core must keep date, time of day, and semantic nesting separate so this decision does not require another foundational rewrite.
 
@@ -219,14 +221,14 @@ Use existing project conventions where they already provide these boundaries. Ca
 
 ### 7.1 Fixed orientation requirements
 
-| Clock position | Color supplied by John | Screen reference when unrotated |
+| Clock position | Current visual rule | Screen reference when unrotated |
 | --- | --- | --- |
-| 12 | Green | Top |
-| 3 | Blue | Right |
-| 6 | Orange/red | Bottom |
-| 9 | Purple | Left |
+| 12 | Same ink palette; position and label | Top |
+| 3 | Same ink palette; position and label | Right |
+| 6 | Same ink palette; position and label | Bottom |
+| 9 | Same ink palette; position and label | Left |
 
-These are clock positions. Twelve is not automatically late and six is not automatically early. Color must be supported by position and accessible text/shape cues. Do not depend on color alone.
+These are clock positions. Twelve is not automatically late and six is not automatically early. The original green/blue/orange/purple mapping is no longer a required product palette. Use one coherent ink language with contrast, line treatment, shape, and accessible labels. Any retained minimal accent must remain optional to understanding or operating the space. See section 20.1 for the proposed lens transition and visual encoding rules.
 
 ### 7.2 Independent dimensions
 
@@ -478,7 +480,7 @@ Passing isolated helpers is necessary where appropriate but insufficient. Each s
 | Test | Scenario and expected outcome | Reject completion if |
 | --- | --- | --- |
 | AT-01 | Face six and enter its temporal scope; every presented work belongs to the documented scope | The label changes but the mixed sequential feed remains. |
-| AT-02 | Compare known times at 12, 3, 6, and 9; orientation and colors match the mapping | Colors or angles drift independently of the underlying time policy. |
+| AT-02 | Compare known times at 12, 3, 6, and 9; orientation, labels, and emphasis match the time policy in monochrome | Orientation is ambiguous without hue, or angles drift independently of the time policy. |
 | AT-03 | Test AM/PM, dates, timezone policy, and any daylight-saving boundary relevant to the selected policy | Different instants silently collapse or reorder without explanation. |
 | AT-04 | Move the mouse in immersive mode; the center reference stays stable and steering is controllable | The pointer drifts to the screen edge or menus trap input. |
 | AT-05 | Repeat core navigation on touch and keyboard | A required choice depends on hover or mouse-only input. |
@@ -583,3 +585,87 @@ This document is a reconciled starting point, not a claim to contain every priva
 For each added feature, identify its content, route, access, movement, persistence, and presentation effects. Some features fit existing contracts with little code; others legitimately require a new capability. The goal is coherent extension with explicit boundaries, not an arbitrary promise that every idea costs one row.
 
 No core implementation, repository write, PR merge, or deployment was performed as part of producing this handoff. Its immediate next use is to give the implementing agent the complete product intent and a testable definition of completion.
+
+## 20. Revision 1.1: multidimensional lenses, private recap, and later implementation
+
+### 20.1 One aesthetic, different primary lenses
+
+USER direction supplied at approximately 10:48 AM America/Denver on 28 September: multidimensional vortex; unified aesthetic; no or minimal color. Time, topics, projects, relationships, and other relevant dimensions should feel like aspects of one space. The suggested starting point is time by default, an explicit reorientation into topic, and secondary information emerging with depth. Exact switching controls and encoding choices remain PROPOSED.
+
+PROPOSED switching contract:
+
+1. Rotation explores the currently selected lens. Looking from six toward three does not implicitly change the organizing dimension from time to topic.
+2. A small, explicit Time / Topic control or equivalent accessible action changes the primary arrangement. A keyboard shortcut may duplicate the action, but cannot be its only discoverable input.
+3. Keep the focused work identifiable and visually anchored during reorientation. Rearrange its permitted neighbors coherently. A lens change alone records neither a Lean nor a new content visit.
+4. Preserve each lens's context, including time scope and current route, so returning to Time restores a meaningful location. If access or content changed, explain the nearest valid fallback.
+5. Topic labels replace hour labels when Topic is selected. Do not imply that a particular subject has an intrinsic three-o'clock meaning or create four arbitrary categories merely because the clock has four familiar anchors.
+6. Topic membership and the existence of related work respect the viewer's current access. A visual arrangement can change without rewriting authorship, canonical relationships, ownership, or contribution permissions.
+
+"All dimensions always present" means the underlying data can remain available to the view. It does not require every cue to be visually prominent at once. Preserve the attention budget and reveal secondary information only where it helps a choice.
+
+PROPOSED allocation of visual cues:
+
+| Cue | Default role | Guard against ambiguity |
+| --- | --- | --- |
+| Perspective scale | Physical approach and distance | Large must not ambiguously mean near, important, popular, and resonant at the same time. |
+| Bounded content scale/emphasis | Optional creator-assigned importance if that meaning is specified | No inferred universal importance score or popularity ranking. |
+| Opacity and sharpness | Visibility phase, distance, inspection, and focus | Keep text legible; use distinct marks for resonance and presence. |
+| Surface texture and local pattern | Project/group context | Texture is not proof of a topic boundary; give accessible labels. |
+| Position/radius | The active organizing lens | Explain the active lens; preserve coordinate and time policies. |
+| Filaments and proximity | Declared or clearly identified derived relationships | Nearness caused by layout is not automatically an authored relationship. |
+| Dew and other marks | Explicitly defined attention/presence/memory states | Keep states distinguishable in monochrome without turning every state into glow. |
+
+LENS-01 acceptance: switch Time -> Topic -> Time while focused on the same work. Its identity, permissions, and memory remain unchanged; its original temporal context is recoverable. LENS-02 acceptance: the full flow remains understandable without color or continuous animation.
+
+### 20.2 Restore the theme-song recap as an explicit requirement
+
+HISTORY recovered from the earlier September 27 conversation: John described a private Spotify Wrapped-style Fall recap with his own song, the hook "shoulda done lean," a view of the route chosen and alternatives passed, and a way to revisit missed branches. The current user recalls an additional phrase like "should have been more mean"; its exact wording is not confirmed. No specific song title or audio asset has been reliably matched to this request.
+
+This requirement was underrepresented in version 1.0. It belongs alongside local journey recovery, not inside aggregate Lean analytics. Spotify Wrapped is a reference for a personal musical retrospective; it does not imply Spotify integration, a yearly schedule, branding, or copying Spotify's visual design.
+
+PROPOSED first treatment: an optional "Your Fall" recap opened by the visitor. It shows a brief, local reconstruction of the actual route, then highlights an eligible opening that was encountered and not entered. John's hook can land at that turn as an affectionate callback. It must not label an unexplored route a failure, claim to know why the visitor passed it, or imply that its unseen content was better.
+
+The opening remains inspectable. Inspecting it inside a recap is not a Lean. Actual return into the live Slate requires current authorization and a deliberate navigation action. Shared Fall followers retain the existing rule that follower locations are not collected server-side.
+
+Music starts only after a deliberate play/replay action, respects mute and other media playback, and can be stopped. The confirmed recording and cue point are needed before claiming a working soundtrack. The first mockup is silent and uses clearly labeled sample content; it does not read browsing history, call a server, save a Fall, or navigate production.
+
+Suggested sequence: Your Fall -> replay the remembered route -> reveal a path left open with the hook -> inspect or return to that opening. Do not require scores, percentiles, streaks, annual waits, or public sharing. Any later export/sharing requires a separate deliberate action and a preview that excludes private content and other people's protected identities.
+
+### 20.3 Recap data contract and scope
+
+The later ledger reports sets of explored paths and turned hours. Such sets alone cannot reconstruct the sequence, timing, offered alternatives, or time-of-day context of an actual Fall. Do not invent a chronology from them.
+
+PROPOSED minimal local sequence, only if not already present in the actual implementation: local journey id, ordered semantic navigation events, stable location/route ids, lens/time context, deliberate-choice origin, and enough permitted branch context to identify genuinely encountered alternatives. Store optional elapsed intervals only when the recap needs them. No frame-by-frame camera recording, inferred emotion, raw audio capture, or new server telemetry is required.
+
+Derive a bounded recap from the actual sequence. Use the visitor's chosen data-retention policy and supply local deletion/reset. If only legacy explored sets are available, show an unordered exploration summary and state that an ordered replay is unavailable. Revalidate access at display and navigation time, including artwork/media used in a future exported recap.
+
+Recap feature status: requested; an illustrative interactive mockup accompanies this revision; actual "Save this Fall"/journey capture and soundtrack integration are not claimed implemented.
+
+| Test | Expected outcome |
+| --- | --- |
+| RECAP-01 | A known local sequence replays in its recorded order; older set-only data is not given fabricated order or timing. |
+| RECAP-02 | A missed alternative was actually available and encountered in that journey; restricted work is not revealed. |
+| RECAP-03 | The hook plays only on requested audio playback using the confirmed track and cue, with stop/mute and reduced-motion behavior. |
+| RECAP-04 | Opening a recap, replaying it, or inspecting an alternative does not count as a new Lean, reaction, or resonance contribution. |
+| RECAP-05 | Leaving the recap for a live route is explicit, access-checked, and does not modify the recorded journey retroactively. |
+| RECAP-06 | Recap history remains on-device; no public ranking, aggregate contribution, or sharing occurs implicitly. |
+
+### 20.4 Implementation update supplied at approximately 10:50 AM
+
+John supplied a REPORT of commits `709a447` and `9efe44c`. The latter was reported live. ChatGPT subsequently read [docs/CORE_LEDGER.md on main](https://github.com/Foxlendor/twinthink/blob/main/docs/CORE_LEDGER.md), blob SHA `6863f35fff9b1ee79d24fe4d50f7996d5a914b85`. This confirms the ledger's recorded state, not a new independent production test. The ledger still labels several newly live-reported behaviors as locally tested and lists deployment as a next step; the implementing agent should reconcile those labels with its actual deployment evidence.
+
+| Area | New DOC / REPORT evidence | Remaining distinction |
+| --- | --- | --- |
+| Core | Core rules and adapters reported built; eight regressions preserved | Ledger explicitly says space/connections and capacity are not yet core parts; openings are still tree children. |
+| Hour streams | Hour lens selects nearby-hour work; deeper is older across days in the prototype | Permanent depth, timezone, and AM/PM policies remain unresolved. |
+| Steering | Desktop pointer lock and centered hollow drop; touch drag/tap/pinch | Actual-phone check and reduced-motion evaluation remain outstanding. |
+| Openings ahead | Actual forthcoming objects are ringed at their hours; aiming records nothing, entering records Lean | Same-hour overlap, maximum displayed alternatives, and John's experience acceptance still matter. |
+| Memory | Every explored route per place and turned hour retained locally alongside last Lean | Not proof of an ordered Fall recording; Save this Fall remains unbuilt. |
+| Dew/Drop | Explicit mutually exclusive on-device reactions | Aggregate reaction behavior, audience, and a rendered mark remain open. |
+| Goes with | Cross-group name/tag link; reported bug fixed so following it is a plain trip | It is not a deliberate branch choice or general semantic/topic organization. |
+| Switch lead | Current leader can hand off; seat overwritten with no leadership history | Two-account live check still owed; viewer following is not creator co-op. |
+| Rabi | Proposal names a new space, who could post, and room used; maker applies through existing checks | No demonstrated material-informed architecture, in-flight route preview, or general connection proposals. |
+| Entitlements | Existing bounded room routed through a dormant hook | No purchase or new allocation effect; existing `FORK_ROOM_MAX` behavior remains. |
+| Founder allocation | 47/427/474 retained as dormant constants | No verification, access, perks, or rewards granted. |
+
+The report lists 159 passing unit tests and selected live browser checks. These are REPORT evidence until re-run or inspected directly. Preserve their stated gaps instead of upgrading all rows to fully accepted. Creator co-op rights, aggregate Lean protocol, pricing, and founder verification remain outside this reported batch. The new theme-song recap and the proposed Time/Topic lens transition are not established by it.

@@ -47,9 +47,12 @@ describe('the core: arriving and staying', () => {
     core.frame(thing, false, 2500); // still moving
     core.frame(thing, true, 2600); // stopped
     core.frame(thing, true, 5000);
-    expect(kept).toEqual(['live +station p/a']);
+    const shared = () => kept.filter((k) => !k.startsWith('device'));
+    expect(shared()).toEqual(['live +station p/a']);
     core.frame(thing, true, 5700);
-    expect(kept).toEqual(['live +station p/a', 'anonymous +resonance p/a']);
+    expect(shared()).toEqual(['live +station p/a', 'anonymous +resonance p/a']);
+    // and the stay itself is a step of your Fall, on this device
+    expect(kept).toContain('device +journey p/a');
   });
 
   it('leaves resonance once a visit, however often you come back', () => {
@@ -108,7 +111,7 @@ describe('the core: moves at a moment', () => {
     const { core, kept } = recorder();
     core.move({ kind: 'choose', from: ring, to: ring.children[1] });
     core.move({ kind: 'choose', from: node('lone', { children: [node('only')] }), to: node('only') });
-    expect(kept).toEqual(['device +leaned people\u0000p/b', 'device +explored people\u0001p/b']);
+    expect(kept).toEqual(['device +leaned people\u0000p/b', 'device +explored people\u0001p/b', 'device +journey p/b', 'device +journey only']);
   });
 
   it('turning back out of a fork is pressure, once a visit for each fork', () => {
@@ -127,6 +130,7 @@ describe('the core: moves at a moment', () => {
       'dew',
       'drop',
       'explored',
+      'journey',
       'leaned',
       'makers',
       'passed',

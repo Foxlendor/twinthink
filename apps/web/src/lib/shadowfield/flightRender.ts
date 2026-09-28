@@ -131,6 +131,12 @@ export interface FlightState {
   steer?: { on: boolean; facing: Quarter | null; aim?: -1 | 0 | 1; turned?: Set<number> };
   /** The paths already taken from here (by id), on this device: an opening you have been through. */
   explored?: Set<string>;
+  /**
+   * The topic lens: the groups around the face (their names where the hours were), and the one
+   * turned into while steering. Absent: the time lens, and the hours.
+   */
+  topics?: { id: string; label: string; angle: number }[];
+  topicFacing?: string | null;
   /** At a branch, the ways on from here, waiting ahead; `aheadAim` the one aimed at, steering. */
   ahead?: AheadPath[];
   aheadAim?: string | null;
@@ -373,6 +379,36 @@ function drawHours(st: RenderState, v: View, facing: Quarter | null, before?: Se
       ctx.fill();
     }
   });
+  ctx.restore();
+}
+
+/**
+ * The topic lens: where the hours were, the names of the groups, each in its own direction (the
+ * same ink, the same size as the hours; the one turned into written darker and larger).
+ */
+function drawTopics(st: RenderState, v: View, topics: { id: string; label: string; angle: number }[], facing: string | null) {
+  const { ctx } = st;
+  const phone = st.w < 640;
+  const size = phone ? 15 : 18;
+  const top = 34;
+  const bottom = st.h - (phone ? 160 : 90);
+  const side = 18;
+  const right = st.w >= 640 ? st.w - 76 : st.w - side;
+  ctx.save();
+  ctx.textBaseline = 'middle';
+  for (const t of topics) {
+    const turned = facing === t.id;
+    ctx.font = `italic ${turned ? size + 5 : size}px ${st.serif}`;
+    ctx.fillStyle = `rgba(${INK},${turned ? 0.92 : facing === null ? 0.55 : 0.3})`;
+    const label = t.label.length > 18 ? `${t.label.slice(0, 17)}…` : t.label;
+    const w = ctx.measureText(label).width;
+    const a = t.angle + v.roll;
+    // on an oval inside the edges, kept whole on the page
+    const x = clamp(v.cx + Math.cos(a) * (Math.min(v.cx - side, right - v.cx) - w * 0.2), side + w / 2, right - w / 2);
+    const y = clamp(v.cy + Math.sin(a) * Math.min(v.cy - top, bottom - v.cy), top, bottom);
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x, y);
+  }
   ctx.restore();
 }
 
@@ -1198,7 +1234,8 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     nextDz = dz;
   }
   drawClock(st, v, next, ink);
-  drawHours(st, v, fs.steer?.on ? fs.steer.facing : null, fs.steer?.turned);
+  if (fs.topics) drawTopics(st, v, fs.topics, fs.topicFacing ?? null);
+  else drawHours(st, v, fs.steer?.on ? fs.steer.facing : null, fs.steer?.turned);
   // where the nearest food ahead lies, for the compass's rose dot
   let food: number | null = null;
   if (fs.web?.food.size) {

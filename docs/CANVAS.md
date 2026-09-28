@@ -137,6 +137,19 @@ out past the edges, behind you.
 - "goes with": a thing offers what it goes with in other groups, found by a
   shared name or tag written on both (never an ordinary word), such as the
   #SIU3d dance and the song $IU3d (`relate.ts`).
+- By time, or by topic ("by time" / "by topic" among the actions, or the t
+  key): the same things, in the same order and depth, re-arranged around
+  you. By topic each group on the Slate has its own direction and its name
+  stands where the hours were; steering, leaning hard toward one goes into
+  it. What you are on stays in front of you, and switching keeps nothing.
+- Your Fall ("your Fall" among the actions): this visit's route, in order,
+  kept on this device only (`journey.ts`: places stayed with and paths
+  chosen, with the hour you had turned into and the other ways open there
+  then). It replays step by step, then shows a path left open on it (offered
+  then, open to you now, never reached) with "shoulda done lean." "go there"
+  is its own step, checked against what you may enter now. Opening,
+  replaying or looking records nothing. The last five Falls are kept; "forget
+  my Falls" clears them. Silent until the song and its cue are confirmed.
 - Dew and Drop: "carry it forward" or "let it drop", said of a thing, one or
   the other. Never inferred from passing, leaving or not choosing. On this
   device only for now: who else may see them is not yet decided.

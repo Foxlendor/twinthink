@@ -173,6 +173,24 @@ export const RULES: Rule[] = [
     key: (m) => (m.kind === 'turn' ? `${m.where ?? ''}\u0001${m.hour}` : ''),
     once: 'always',
   },
+  // your Fall, in order (journey.ts): a place stayed with, and a path chosen. On this device only;
+  // the page adds the hour you had turned into and the other ways open there, and nothing else
+  {
+    trace: 'journey',
+    keeper: 'device',
+    on: 'stay',
+    when: (m) => stayed(m, 1200) && at(m)!.depth > 0,
+    key: (m) => at(m)!.node.id,
+    once: 'arrival',
+  },
+  {
+    trace: 'journey',
+    keeper: 'device',
+    on: 'choose',
+    when: () => true,
+    key: (m) => (m.kind === 'choose' ? m.to.id : ''),
+    once: 'always',
+  },
   // Dew and Drop: said, never inferred from passing, leaving or not choosing. One or the other.
   // Kept on this device only for now: who else may see them is not yet decided (spec D-07).
   ...(['dew', 'drop'] as const).flatMap((trace): Rule[] => [

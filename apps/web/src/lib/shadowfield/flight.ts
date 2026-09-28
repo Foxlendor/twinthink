@@ -60,6 +60,11 @@ export function quarterOf(t: number): Quarter {
 }
 
 /** Which quarter a direction on screen faces (x right, y down; `roll` is the clock's own turn). */
+/** The topic lens: the groups on the Slate, evenly around the face from 12, in the Slate's own order. */
+export function topicAngles(groups: { id: string }[]): Map<string, number> {
+  return new Map(groups.map((g, i) => [g.id, -Math.PI / 2 + (i / groups.length) * Math.PI * 2]));
+}
+
 export function quarterFacing(x: number, y: number, roll = 0): Quarter {
   const a = Math.atan2(y, x) - roll + Math.PI / 2;
   return ((((Math.round(a / (Math.PI / 2)) % 4) + 4) % 4) as Quarter);
@@ -117,10 +122,17 @@ export function silence(a: IdeaNode, b: IdeaNode): number {
   return Math.max(0, Math.max(a.began, b.began) - Math.min(a1, b1));
 }
 
-const cache = new WeakMap<IdeaNode, Stream>();
+const cache = new WeakMap<IdeaNode, Map<string, Stream>>();
 
-export function buildStream(root: IdeaNode): Stream {
-  const hit = cache.get(root);
+/**
+ * The stream through everything, in order (newest first; order and depth never change). `topics`
+ * is the topic lens: each group's direction around the face (radians, 12 at the top), so the same
+ * things sit around you by what they belong to instead of the hour they were made. Without it,
+ * by the hour.
+ */
+export function buildStream(root: IdeaNode, topics?: Map<string, number> | null): Stream {
+  const key = topics ? `topic:${[...topics].map(([id, a]) => `${id}=${a.toFixed(3)}`).join(',')}` : 'time';
+  const hit = cache.get(root)?.get(key);
   if (hit) return hit;
   const stations: Station[] = [];
   const rootStation: Station = {
@@ -152,8 +164,10 @@ export function buildStream(root: IdeaNode): Stream {
       const gap = prev === null ? 0 : silence(prev, c);
       z += spacing(gap) + (k === 0 ? ENTER_GAP : 0);
       const gate = travelled(c).length > 0;
-      // around the stream, a thing sits at the hour it was made, like a clock face
-      const ang = clockAngle(c.began) + (k % 2 ? 0.08 : -0.08);
+      // around the stream, a thing sits at the hour it was made, like a clock face (or, by topic,
+      // in the direction of its group, spread a little so neighbours do not sit on each other)
+      const topic = topics?.get(path[1]?.id ?? c.id);
+      const ang = topic !== undefined ? topic + ((Math.abs(c.seed) % 1000) / 1000 - 0.5) * 0.5 : clockAngle(c.began) + (k % 2 ? 0.08 : -0.08);
       const s: Station = {
         i: stations.length,
         node: c,
@@ -183,7 +197,9 @@ export function buildStream(root: IdeaNode): Stream {
   const byId = new Map<string, number>();
   for (const s of stations) if (!byId.has(s.node.id)) byId.set(s.node.id, s.i);
   const stream = { stations, length, byId };
-  cache.set(root, stream);
+  const byKey = cache.get(root) ?? new Map<string, Stream>();
+  byKey.set(key, stream);
+  cache.set(root, byKey);
   return stream;
 }
 

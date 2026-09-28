@@ -32,6 +32,7 @@ import {
   settle,
   stopZ,
   quarterFacing,
+  topicAngles,
   type Quarter,
 } from '@/lib/shadowfield/flight';
 import { VelocityTracker, WheelHops, landingIndex, pxPerStop } from '@/lib/shadowfield/gesture';
@@ -56,7 +57,8 @@ import {
 } from '@/lib/shadowfield/web';
 import { aheadFacing, aheadPaths, edgePaths, renderFlight } from '@/lib/shadowfield/flightRender';
 import { relatedTo } from '@/lib/shadowfield/relate';
-import { createCore, groupLens, groupOf, hourLens, lensOf, replayLens, type Core, type Rule } from '@/lib/shadowfield/core';
+import { addStep, beginJourney, forgetJourneys, recapOf, writeJourneys, type Journeys, type Recap } from '@/lib/shadowfield/journey';
+import { createCore, groupLens, groupOf, hourLens, lensOf, replayLens, type Core, type Move, type Rule } from '@/lib/shadowfield/core';
 import { hash01, smoothstep } from '@/lib/shadowfield/rng';
 import Donate from '@/components/support/Donate';
 import { founderPlots } from '@/lib/shadowfield/plots';
@@ -89,6 +91,13 @@ interface Composer {
   forkId?: string;
   /** Set when this composer was opened from a Rabi notice's "open a path": which fork's notice sent us here. */
   fromNoticeForkId?: string;
+}
+
+/** The groups on the Slate this viewer may enter, around the face in the Slate's own order. */
+function topicsOf(world: IdeaNode, closeness: (top: IdeaNode) => number) {
+  const groups = world.children.filter((c) => !c.portal && !c.void && c.disclosure <= closeness(c));
+  const angles = topicAngles(groups);
+  return groups.map((g) => ({ id: g.id, label: g.title ?? 'untitled', angle: angles.get(g.id)! }));
 }
 
 /** The name Rabi suggests for a path opened from the end of a fork (the maker can change it). */
@@ -386,6 +395,16 @@ export default function ShadowField({ serif }: Props) {
   const [path, setPath] = useState<IdeaNode[]>([]);
   // what you have said of things on this device: carry it forward (Dew), or let it drop (Drop)
   const [said, setSaid] = useState<Record<string, 'dew' | 'drop'>>({});
+  // your Fall, in order, on this device (journey.ts), and the recap of it when asked for
+  const journeyRef = useRef<Journeys>({ current: { id: '', began: 0, steps: [] }, past: [] });
+  const [recap, setRecap] = useState<{
+    recap: Recap;
+    titles: Record<string, string>;
+    shown: number;
+    unordered?: string[];
+    /** Looking at the path left open: its own line (looking is not choosing, and keeps nothing). */
+    looking: string | null;
+  } | null>(null);
   const [view, setView] = useState({ w: 800, h: 600 });
   const [tip, setTip] = useState<Tip | null>(null);
   const [composer, setComposer] = useState<Composer | null>(null);
@@ -412,6 +431,12 @@ export default function ShadowField({ serif }: Props) {
   // the way ahead swings, and pushed far enough toward an hour you turn into it
   // the group you have gone into (null: on the Slate, among its groups)
   const insideRef = useRef<string | null>(null);
+  // the lens the face is read by: time (the hours) or topic (the groups, where the hours were).
+  // Changing it moves nothing you are on, keeps nothing, and each keeps its own place to return to.
+  const [byTopic, setByTopic] = useState(false);
+  const topicsRef = useRef<{ id: string; label: string; angle: number }[] | null>(null);
+  const topicTurnRef = useRef<string | null>(null);
+  const timeWellRef = useRef<Quarter | null>(null);
   const steerRef = useRef({ on: false, touch: false, x: 0, y: 0, endedAt: 0, well: null as Quarter | null, aim: 0 as -1 | 0 | 1 });
   // steering by touch: the finger's own run (a tap, or a drag that aims), and a pinch that carries you
   const steerTouchRef = useRef({ moved: 0, pinched: false, d0: 0, d: 0 });
@@ -506,7 +531,8 @@ export default function ShadowField({ serif }: Props) {
     // the flight keeps what is in front of you in front of you
     const oldStream = streamRef.current;
     const oldHere = hereRef.current;
-    const stream = buildStream(world);
+    if (topicsRef.current) topicsRef.current = topicsOf(world, (c) => lensRef.current.closeness(c));
+    const stream = buildStream(world, topicsRef.current ? topicAngles(topicsRef.current) : null);
     streamRef.current = stream;
     const fc = flightCamRef.current;
     // a flight under way keeps going to the same thing, wherever it now sits
@@ -690,6 +716,72 @@ export default function ShadowField({ serif }: Props) {
     if (path.length >= 2) coreRef.current?.move({ kind: 'choose', from: path[path.length - 2], to: path[path.length - 1] });
   }, []);
 
+  /** Time, or topic: the same things, re-arranged around you; what you are on stays in front of you. */
+  const toggleTopic = useCallback(() => {
+    const world = worldRef.current;
+    if (!world) return;
+    const steer = steerRef.current;
+    if (topicsRef.current) {
+      topicsRef.current = null;
+      topicTurnRef.current = null;
+      // back to time: the hour you had turned into, if you are still steering
+      if (steer.on) steer.well = timeWellRef.current;
+    } else {
+      timeWellRef.current = steer.well;
+      steer.well = null;
+      topicsRef.current = topicsOf(world, (c) => lensRef.current.closeness(c));
+    }
+    // the same things in the same order at the same depth: only where around you they sit changes
+    streamRef.current = buildStream(world, topicsRef.current ? topicAngles(topicsRef.current) : null);
+    setByTopic(!!topicsRef.current);
+    setNotice(topicsRef.current ? 'by topic: the same things, around you by what they belong to' : 'by time: around you by the hour they were made');
+  }, []);
+
+  /**
+   * Your Fall: a recap of this visit's route (or the last one's), in the order it happened, and a
+   * path left open along it. Opening, replaying or looking at it records nothing; going back to
+   * that path is its own deliberate step, checked against what you may enter now.
+   */
+  const mayEnter = useCallback((id: string) => {
+    const world = worldRef.current;
+    const p = world ? findPath(world, id) : null;
+    return !!p && p.length > 1 && !p.slice(2).some((n) => n.disclosure > lensRef.current.closeness(p[1]));
+  }, []);
+  const openRecap = () => {
+    const world = worldRef.current;
+    const j = journeyRef.current;
+    const journey = j.current.steps.length ? j.current : j.past[0];
+    const title = (id: string) => (world ? findPath(world, id)?.at(-1)?.title : undefined) ?? 'something';
+    if (!journey || !journey.steps.length) {
+      // only the older record, which has no order: say so, and show it unordered
+      const explored = [...new Set(webMemRef.current.explored.map((e) => e.split('\u0001')[1]))].filter(mayEnter).slice(-8);
+      setRecap({ recap: { route: [], leftOpen: null }, titles: Object.fromEntries(explored.map((id) => [id, title(id)])), shown: 0, unordered: explored, looking: null });
+      return;
+    }
+    const r = recapOf(journey, mayEnter);
+    // only what may still be entered is named (something since closed is left out of the route)
+    const route = r.route.filter((s) => mayEnter(s.at));
+    const ids = [...route.map((s) => s.at), ...(r.leftOpen ? [r.leftOpen.id, r.leftOpen.at] : [])];
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setRecap({ recap: { ...r, route }, titles: Object.fromEntries(ids.map((id) => [id, title(id)])), shown: still ? route.length : 0, looking: null });
+  };
+  // the replay: the route comes back one step at a time (all at once with reduced motion)
+  useEffect(() => {
+    if (!recap || recap.shown >= recap.recap.route.length) return;
+    const t = window.setTimeout(() => setRecap((r) => (r ? { ...r, shown: r.shown + 1 } : r)), 550);
+    return () => window.clearTimeout(t);
+  }, [recap]);
+  const forgetFalls = () => {
+    journeyRef.current = forgetJourneys(Date.now());
+    try {
+      writeJourneys(window.localStorage, journeyRef.current);
+    } catch {
+      // nothing kept to forget
+    }
+    setRecap(null);
+    setNotice('your Falls here are forgotten');
+  };
+
   /** Dew or Drop: said of a thing, by you, and kept on this device only (who else may see it is not yet decided). */
   const react = useCallback((n: IdeaNode, carry: boolean) => {
     coreRef.current?.move({ kind: 'react', at: n, carry });
@@ -752,6 +844,8 @@ export default function ShadowField({ serif }: Props) {
     setMediaReadyCallback(() => undefined); // the frame loop repaints continuously
     // the web remembers, on this device only, what you have found and when you were last here
     webMemRef.current = beginVisit(readMemory(storage), Date.now());
+    journeyRef.current = beginJourney(storage, Date.now());
+    writeJourneys(storage, journeyRef.current);
     setSaid(
       Object.fromEntries([...webMemRef.current.dew.map((id) => [id, 'dew'] as const), ...webMemRef.current.drop.map((id) => [id, 'drop'] as const)])
     );
@@ -765,6 +859,7 @@ export default function ShadowField({ serif }: Props) {
       here: () => hereRef.current?.node.id ?? null,
       steer: () => ({ ...steerRef.current }),
       ahead: () => ({ ways: aheadRef.current.map((p) => p.node.id), aimed: aheadAimRef.current }),
+      topic: () => ({ turned: topicTurnRef.current, inside: insideRef.current, topics: topicsRef.current?.map((t) => `${t.id}@${t.angle.toFixed(2)}`) }),
       flyTo: (ids: string[]) => flyToIds(ids),
       // recordings made frame by frame keep films and songs in time with the frames
       mediaRate: (r: number) => {
@@ -1631,7 +1726,25 @@ export default function ShadowField({ serif }: Props) {
     const reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
     // the keepers: where each trace the core's rules keep actually goes
-    const keep = (rule: Rule, key: string) => {
+    const keep = (rule: Rule, key: string, m: Move) => {
+      if (rule.keeper === 'device' && rule.trace === 'journey') {
+        // a step of your Fall, in order, with the other ways that were open to you right then
+        const other = [...edgesRef.current.map((e) => e.node.id), ...aheadRef.current.map((a) => a.node.id)].filter((id) => id !== key);
+        const hour = steerRef.current.well;
+        journeyRef.current = addStep(journeyRef.current, {
+          t: Date.now(),
+          at: key,
+          how: m.kind === 'choose' ? 'choose' : 'stay',
+          ...(hour !== null ? { hour } : {}),
+          ...(other.length ? { open: [...new Set(other)].slice(0, 12) } : {}),
+        });
+        try {
+          writeJourneys(window.localStorage, journeyRef.current);
+        } catch {
+          // remembered for this visit only
+        }
+        return;
+      }
       if (rule.keeper === 'device') {
         // finding what was waiting also settles the web
         if (rule.trace === 'seen') return eatFood(key);
@@ -1715,11 +1828,34 @@ export default function ShadowField({ serif }: Props) {
       if (!flying || !steer.on) {
         steer.well = null;
         steer.aim = 0;
+        topicTurnRef.current = null;
       }
       else {
         const m = Math.hypot(steer.x, steer.y);
         const q = quarterFacing(steer.x, steer.y, fc.spin);
-        if (steer.well === null) {
+        const topics = topicsRef.current;
+        if (topics) {
+          // by topic, leaning hard toward a group turns into it: the fall holds that group
+          let nearest: string | null = null;
+          let d = Infinity;
+          const a = Math.atan2(steer.y, steer.x) - fc.spin;
+          for (const t of topics) {
+            const dd = Math.abs(Math.atan2(Math.sin(a - t.angle), Math.cos(a - t.angle)));
+            if (dd < d) [nearest, d] = [t.id, dd];
+          }
+          const cur = topicTurnRef.current;
+          const next = m < 0.3 ? null : m > 0.5 && (cur === null || nearest !== cur) && d < Math.PI / topics.length + 0.1 ? nearest : cur;
+          if (next !== cur) {
+            topicTurnRef.current = next;
+            if (next) {
+              insideRef.current = next;
+              const idx = stream.byId.get(next);
+              const first = idx !== undefined ? stream.stations[idx + 1] : undefined;
+              const to = first && first.depth === 2 ? first : idx !== undefined ? stream.stations[idx] : null;
+              if (to) fc.target = focusZ(stream, to, fc.z);
+            }
+          }
+        } else if (steer.well === null) {
           if (m > 0.5) steer.well = q;
         } else if (m < 0.3) steer.well = null;
         else if (q !== steer.well) {
@@ -2011,6 +2147,8 @@ export default function ShadowField({ serif }: Props) {
           resonance: resonanceRef.current,
           presence: presenceRef.current,
           leaned: leanedRef.current,
+          topics: topicsRef.current ?? undefined,
+          topicFacing: topicTurnRef.current,
           steer: { on: steer.on, facing: steer.well, aim: steer.aim, turned: steer.on ? turnedIn(webMemRef.current, insideRef.current) : undefined },
           explored: here && here.path.length > 1 ? exploredFrom(webMemRef.current, here.path[here.path.length - 2].id) : undefined,
           ahead,
@@ -2939,6 +3077,7 @@ export default function ShadowField({ serif }: Props) {
         };
         const on = hereRef.current;
         if (e.key === ' ') pluckWeb();
+        else if (e.key === 't') toggleTopic();
         else if (e.key === 'Enter' && on?.depth === 1 && insideRef.current !== on.node.id) {
           // on the Slate, at a group: go into it
           goTo(on.path);
@@ -2970,7 +3109,7 @@ export default function ShadowField({ serif }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [composer, dismissHint, flyTo, focusPath, goTo, hiddenStation, hopFlight, goToFood, pluckWeb]);
+  }, [composer, dismissHint, flyTo, focusPath, goTo, hiddenStation, hopFlight, goToFood, pluckWeb, toggleTopic]);
 
   // ---------------------------------------------------------------- actions
   const wander = () => {
@@ -3628,6 +3767,16 @@ export default function ShadowField({ serif }: Props) {
             </button>
           </>
         )}
+        {mode === 'flight' && (
+          <button type="button" className={byTopic ? styles.following : styles.quiet} onClick={toggleTopic} aria-pressed={byTopic} title="arrange around you by time, or by topic">
+            {byTopic ? 'by topic' : 'by time'}
+          </button>
+        )}
+        {mode === 'flight' && (
+          <button type="button" className={recap ? styles.following : styles.quiet} onClick={recap ? () => setRecap(null) : openRecap}>
+            your Fall
+          </button>
+        )}
         {mode === 'flight' && canSteer && (
           <button type="button" className={steering ? styles.following : styles.quiet} onClick={steering ? stopSteering : startSteering}>
             {steering ? 'stop steering' : 'steer'}
@@ -4129,6 +4278,74 @@ export default function ShadowField({ serif }: Props) {
           </button>
           <button type="button" className={styles.quiet} onClick={leaveSharedFall}>
             never mind
+          </button>
+        </div>
+      )}
+
+      {recap && (
+        <div className={styles.give} role="dialog" aria-label="Your Fall">
+          <div className={styles.giveFor}>your Fall</div>
+          {recap.unordered ? (
+            <>
+              <p className={styles.quiet}>Nothing to replay in order yet: this device has only kept where you went, not when.</p>
+              {recap.unordered.length > 0 && <p className={styles.quiet}>{recap.unordered.map((id) => recap.titles[id]).join(' · ')}</p>}
+            </>
+          ) : (
+            <>
+              <p className={styles.quiet} aria-live="polite">
+                {recap.recap.route
+                  .slice(0, recap.shown)
+                  .map((st) => recap.titles[st.at])
+                  .join(' › ')}
+              </p>
+              {recap.shown >= recap.recap.route.length && recap.recap.leftOpen && (
+                <>
+                  <p className={styles.quiet}>
+                    <em>shoulda done lean.</em> At “{recap.titles[recap.recap.leftOpen.at]}”, a path was left open: “{recap.titles[recap.recap.leftOpen.id]}”.
+                  </p>
+                  {recap.looking !== null && <p className={styles.quiet}>{recap.looking}</p>}
+                  {recap.looking === null && (
+                    <button
+                      type="button"
+                      className={styles.quiet}
+                      onClick={() => {
+                        const world = worldRef.current;
+                        const id = recap.recap.leftOpen!.id;
+                        const line = (world && mayEnter(id) ? findPath(world, id)?.at(-1)?.line : null) ?? 'no words on it yet.';
+                        setRecap((r) => (r ? { ...r, looking: line } : r));
+                      }}
+                    >
+                      look at it
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.quiet}
+                    onClick={() => {
+                      const id = recap.recap.leftOpen!.id;
+                      const world = worldRef.current;
+                      const p = world && mayEnter(id) ? findPath(world, id) : null;
+                      setRecap(null);
+                      if (p) flyTo(p);
+                      else setNotice('that path is not open to you any more');
+                    }}
+                  >
+                    go there
+                  </button>
+                </>
+              )}
+              {recap.shown >= recap.recap.route.length && (
+                <button type="button" className={styles.quiet} onClick={() => setRecap((r) => (r ? { ...r, shown: 0, looking: null } : r))}>
+                  replay
+                </button>
+              )}
+            </>
+          )}
+          <button type="button" className={styles.quiet} onClick={forgetFalls} title="forget every Fall this device has kept">
+            forget my Falls
+          </button>
+          <button type="button" className={styles.quiet} onClick={() => setRecap(null)}>
+            close
           </button>
         </div>
       )}
