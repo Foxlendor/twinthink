@@ -54,7 +54,7 @@ import {
   exploredFrom,
   turnedIn,
 } from '@/lib/shadowfield/web';
-import { edgePaths, renderFlight } from '@/lib/shadowfield/flightRender';
+import { aheadFacing, aheadPaths, edgePaths, renderFlight } from '@/lib/shadowfield/flightRender';
 import { relatedTo } from '@/lib/shadowfield/relate';
 import { createCore, groupLens, groupOf, hourLens, lensOf, replayLens, type Core, type Rule } from '@/lib/shadowfield/core';
 import { hash01, smoothstep } from '@/lib/shadowfield/rng';
@@ -417,6 +417,9 @@ export default function ShadowField({ serif }: Props) {
   const steerTouchRef = useRef({ moved: 0, pinched: false, d0: 0, d: 0 });
   // the openings beside where you are (the other paths at a branch), as last drawn
   const edgesRef = useRef<ReturnType<typeof edgePaths>>([]);
+  // the ways on from a branch, waiting ahead, and the one aimed at while steering
+  const aheadRef = useRef<ReturnType<typeof aheadPaths>>([]);
+  const aheadAimRef = useRef<string | null>(null);
   const [steering, setSteering] = useState(false);
   // a mouse steers with the pointer held by the page; a finger steers by dragging (every screen can)
   const canSteer = useSyncExternalStore(
@@ -761,6 +764,7 @@ export default function ShadowField({ serif }: Props) {
       stream: () => streamRef.current,
       here: () => hereRef.current?.node.id ?? null,
       steer: () => ({ ...steerRef.current }),
+      ahead: () => ({ ways: aheadRef.current.map((p) => p.node.id), aimed: aheadAimRef.current }),
       flyTo: (ids: string[]) => flyToIds(ids),
       // recordings made frame by frame keep films and songs in time with the frames
       mediaRate: (r: number) => {
@@ -1986,6 +1990,16 @@ export default function ShadowField({ serif }: Props) {
               : Math.max(landedStill, smoothstep(1.6, 3, fc.idle)) * (1 - smoothstep(0.15, 0.4, Math.abs(fc.shown)));
         // the line writes itself at a reading pace after a landing
         const written = reducedQuery.matches || landedAtRef.current === 0 ? Infinity : Math.max(0, (sinceLanding - 0.35) * 45);
+        // at a branch, the ways on from here, waiting ahead at their hours (only ones this viewer may enter)
+        const ahead = (aheadRef.current = aheadPaths(here, (n, p) => {
+          const idx = stream.byId.get(n.id);
+          if (idx === undefined || skip(stream.stations[idx])) return false;
+          return n.disclosure <= lensRef.current.closeness(p[1]);
+        }));
+        // steering, a lean (not yet into an hour) toward one of them aims at it; the side openings wait
+        const aimed = steer.on && steer.well === null && Math.hypot(steer.x, steer.y) > 0.2 ? aheadFacing(ahead, steer.x, steer.y, fc.spin) : null;
+        aheadAimRef.current = aimed?.node.id ?? null;
+        if (aimed) steer.aim = 0;
         const fstate: Parameters<typeof renderFlight>[3] = {
           frames: framesRef.current,
           closeness: (s) => (s.depth === 0 ? 1 : lensRef.current.closeness(s.path[1])),
@@ -1999,6 +2013,10 @@ export default function ShadowField({ serif }: Props) {
           leaned: leanedRef.current,
           steer: { on: steer.on, facing: steer.well, aim: steer.aim, turned: steer.on ? turnedIn(webMemRef.current, insideRef.current) : undefined },
           explored: here && here.path.length > 1 ? exploredFrom(webMemRef.current, here.path[here.path.length - 2].id) : undefined,
+          ahead,
+          aheadAim: aheadAimRef.current,
+          leanedAhead: here ? leanedChildOf(webMemRef.current, here.node.id) : null,
+          exploredAhead: here ? exploredFrom(webMemRef.current, here.node.id) : undefined,
           // at a branch, the other paths beside this one: only ones this viewer may actually enter
           edges: (edgesRef.current = edgePaths(here, (n, p) => {
             const idx = stream.byId.get(n.id);
@@ -2556,8 +2574,10 @@ export default function ShadowField({ serif }: Props) {
     // about the thing you are on, never whatever happens to lie far behind it
     const on = hereRef.current;
     const hit = hitsRef.current.find((h) => h.kind === 'node' && h.node.id === on?.node.id) ?? null;
-    // the opening you are leaning toward is gone into (a Lean: chosen, not passed)
-    const opening = steerRef.current.aim ? edgesRef.current.find((x) => x.side === steerRef.current.aim) : undefined;
+    // the opening you are leaning toward is gone into (a Lean: chosen, not passed): a way on, ahead,
+    // or one of the paths beside this one
+    const onward = aheadAimRef.current ? aheadRef.current.find((x) => x.node.id === aheadAimRef.current) : undefined;
+    const opening = onward ?? (steerRef.current.aim ? edgesRef.current.find((x) => x.side === steerRef.current.aim) : undefined);
     if (opening) goTo(opening.path);
     else if (!hit && on?.depth === 1 && on.gate && insideRef.current !== on.node.id) goTo(on.path);
     else if (c) tapAt(c.w / 2, c.h * 0.47, hit);

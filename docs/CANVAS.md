@@ -115,7 +115,10 @@ out past the edges, behind you.
   holding work from around that hour; inside a group, only its things from
   around that hour. Back toward the middle, the whole fall again; a little
   past the line between two hours before it gives way, so it never flickers.
-  At a branch, the other paths are openings at the sides, and while steering
+  At a branch, the ways on from where you are wait ahead in the tunnel, each at
+  its own hour, ringed in dots: lean toward one to aim at it (its ring darkens;
+  nothing is kept), click to go in (a Lean); a tap on one works without
+  steering. The paths beside you are openings at the sides, and while steering
   they stay in view: lean a little toward one to look at it (it comes clearer;
   nothing is kept), click to go into it (that is the Lean). A click otherwise
   acts on the thing you are on (never whatever lies far behind it), and goes

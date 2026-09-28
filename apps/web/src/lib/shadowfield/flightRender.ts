@@ -10,7 +10,7 @@
 
 import { IdeaNode, LifeEvent, lastActivity, rippleReach } from './model';
 import { ScreenTransform } from './camera';
-import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, flightScale, project, travelled, viewOf, type Quarter } from './flight';
+import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, clockAngle, flightScale, project, travelled, viewOf, type Quarter } from './flight';
 import { Hit, INK, PAPER, PAPER_RGB, PRESENCE, ROSE, TINT_COOL, TINT_WARM, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
 import { AUTHOR } from './sources/author';
 import { Pluck, trembleAt } from './web';
@@ -131,6 +131,12 @@ export interface FlightState {
   steer?: { on: boolean; facing: Quarter | null; aim?: -1 | 0 | 1; turned?: Set<number> };
   /** The paths already taken from here (by id), on this device: an opening you have been through. */
   explored?: Set<string>;
+  /** At a branch, the ways on from here, waiting ahead; `aheadAim` the one aimed at, steering. */
+  ahead?: AheadPath[];
+  aheadAim?: string | null;
+  /** The ways on from the thing you are on, as last taken from here (for the ahead openings' rose). */
+  leanedAhead?: string | null;
+  exploredAhead?: Set<string>;
 }
 
 /** A path you could take instead, from where you are: a sibling of the thing in front of you. */
@@ -162,6 +168,78 @@ export function edgePaths(here: Station | null | undefined, open: (n: IdeaNode, 
   pick(i - 1, -1);
   pick(i + 1, 1);
   return out;
+}
+
+/** A path you could take next from here, waiting ahead in the tunnel at the hour it was made. */
+export interface AheadPath {
+  node: IdeaNode;
+  path: IdeaNode[];
+  /** Where on the face it waits (radians, 12 at the top), kept apart from its neighbours. */
+  angle: number;
+}
+
+/**
+ * At a branch (a thing holding two or more paths), the paths on from it: seen ahead, each at its
+ * own hour, before you pass into any of them. Only ones this viewer may actually enter.
+ */
+export function aheadPaths(here: Station | null | undefined, open: (n: IdeaNode, path: IdeaNode[]) => boolean): AheadPath[] {
+  if (!here || here.depth < 1) return [];
+  const kids = here.node.children.filter((c) => !c.portal && !c.void && open(c, [...here.path, c]));
+  if (kids.length < 2) return [];
+  const out = kids.map((c) => ({ node: c, path: [...here.path, c], angle: clockAngle(c.began) })).sort((a, b) => a.angle - b.angle);
+  // never on top of each other: at least a little apart around the face
+  const gap = Math.min(0.55, (Math.PI * 2) / out.length);
+  for (let i = 1; i < out.length; i++) if (out[i].angle - out[i - 1].angle < gap) out[i].angle = out[i - 1].angle + gap;
+  return out.slice(0, 8);
+}
+
+/** The ahead path nearest a heading (x right, y down), or null. */
+export function aheadFacing(ahead: AheadPath[], x: number, y: number, roll: number): AheadPath | null {
+  if (!ahead.length) return null;
+  const a = Math.atan2(y, x) - roll;
+  let best: AheadPath | null = null;
+  let d = Infinity;
+  for (const p of ahead) {
+    const dd = Math.abs(Math.atan2(Math.sin(a - p.angle), Math.cos(a - p.angle)));
+    if (dd < d) [best, d] = [p, dd];
+  }
+  return d < 0.6 ? best : null;
+}
+
+/**
+ * A way on, waiting ahead: the thing itself, ringed in dots where the tunnel draws it (or, still too
+ * far to draw, a soft mark at its hour). Aimed at, the ring darkens. Tapped or clicked, it is a Lean.
+ */
+function drawAhead(st: RenderState, v: View, p: AheadPath, a: number, aimed: boolean, leaned: boolean, been: boolean, ink: Ink) {
+  const { ctx } = st;
+  // the way on is the thing itself, already waiting ahead in the tunnel: ring it where it is drawn;
+  // only when it is still too far to be drawn is it marked at its hour instead
+  const drawn = st.hits.find((h) => h.kind === 'node' && h.node.id === p.node.id && h.size < 1e9);
+  const R = st.M * 0.36;
+  const x = drawn ? drawn.x : v.cx + Math.cos(p.angle + v.roll) * R;
+  const y = drawn ? drawn.y : v.cy + Math.sin(p.angle + v.roll) * R;
+  const r = Math.max(st.M * (aimed ? 0.06 : 0.045), drawn ? drawn.r * 1.15 : 0);
+  if (!drawn) {
+    const g = ctx.createRadialGradient(x, y, 1, x, y, r);
+    g.addColorStop(0, `rgba(${INK},${a * (aimed ? 0.32 : 0.18)})`);
+    g.addColorStop(1, `rgba(${INK},0)`);
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  const n = Math.max(14, Math.floor((2 * Math.PI * r) / 6));
+  for (let k = 0; k < n; k++) {
+    const t = (k / n) * Math.PI * 2;
+    ink.dot(x + Math.cos(t) * r, y + Math.sin(t) * r, aimed ? 1.8 : been ? 1.6 : 1.2, a * (aimed ? 0.85 : been ? 0.55 : 0.35), leaned);
+  }
+  // a name only when it is not yet drawn with its own, and aimed at: what it is, before going in
+  if (aimed && !drawn && p.node.title) {
+    ctx.font = `italic ${Math.round(clamp(st.M * 0.024, 13, 18))}px ${st.serif}`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(${INK},${0.8 * a})`;
+    ctx.fillText(p.node.title.slice(0, 40), x, y + r + 18);
+    ctx.textAlign = 'left';
+  }
+  if (!drawn) st.hits.push({ kind: 'node', node: p.node, path: p.path, x, y, r: r * 1.1, size: 1e9 });
 }
 
 /**
@@ -1203,6 +1281,12 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     placed.push(r);
   }
   ctx.textAlign = 'left';
+  if (fs.ahead?.length) {
+    const a = Math.max(fs.steer?.on ? 0.65 : 0, 0.3 + 0.6 * (fs.still ?? 0));
+    for (const p of fs.ahead)
+      drawAhead(st, v, p, a, fs.aheadAim === p.node.id || st.hoverId === p.node.id, fs.leanedAhead === p.node.id, !!fs.exploredAhead?.has(p.node.id), ink);
+  }
+  ink.flush(st.ctx);
   if (fs.steer?.on) drawDrop(st, v);
 }
 
