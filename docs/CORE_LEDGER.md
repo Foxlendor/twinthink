@@ -47,12 +47,30 @@ Last updated: 28 September 2026.
 | COOP-02 | specified | | | | Creator co-op rights not built (D-09). |
 | FOUNDER-01 | preserved, dormant (John, 28 Sep) | 47 unverified, 427 verified, 474 in all, as `FOUNDER_ALLOCATION`. Read by nothing that decides anything. | `lib/entitlements.ts` | `entitlements.test.ts` | Verification and what founders receive are OPEN (D-10). Nothing is granted from these numbers. |
 
+## Decided 28 Sep: the mobile direction (from John's mockup review)
+
+The central mobile requirement: **you are not browsing down a hallway; you are falling through a space with lateral choices.** Not "straight tunnel, keep scrolling, more tunnel", but: fall, drift, openings peel away around you, another branch catches your trajectory, the whole space bends and spirals around the clock. One thumb, one joystick, one falling field, several visibly diverging directions; the words and controls sit quietly around that.
+
+| Part | Decided |
+| --- | --- |
+| Steering on a phone | **Thumb controls movement; the phone stays still.** A thumb joystick is the primary mobile steering: direction and strength. Tilt is not a steering method: it made the screen itself harder to look at. (Tilt is live since bdd255e; it is the first thing switched off when the freeze lifts.) |
+| Drift | How you steer and fall: the joystick's direction and strength. |
+| Dew / Drop | Judgment words only (carry it forward / let it drop). Never used for navigation: "Drop" never means "go into this". |
+| Openings | Real pieces of the person's work, visible ahead and around, never generic portals or illustrations. |
+| By Time / By Topic | Two lenses over the same Slate (by topic = the groups already made). |
+| Your Fall | Private recap, with no dashboard statistics (no depth, path or topic counts). |
+| Beyond | Only the follower's message. No portal, mark or "?" showing where something inaccessible is. |
+| Clock positions | Keep their meaning (the hour a thing was made) unless the clock is deliberately redesigned later (D-04). The mockup's "12 further ahead, 6 deeper within, 9 different time, 3 new connections" is not adopted. |
+| Look | Ink, paper, monochrome. Icons in place of walls of explanatory text. |
+
+When the freeze lifts, the order is: the motion model and composition first (the falling field with diverging directions, the joystick), then controls and words around it. Not button polish first.
+
 ## Next, in order
 
-Hold (28 Sep): no new features until John has done these three checks by hand. Judge by feel, not numbers.
+Hold (28 Sep): no code changes until John brings back one of these results. Judge by feel, not numbers.
 
-1. Steering in the hand: touch and tilt feel like one motion, sitting up, lying down, and with the phone turned sideways. If you catch yourself thinking "tilt 10 degrees more", it is wrong.
+1. Steering by thumb (touch drag today; the joystick later), sitting up and lying down. If you catch yourself aiming by degrees, it is wrong. (Tilt is no longer the thing being judged: it is decided against.)
 2. The Slate on real screens: the enlarged 6, notices at the top, long group names, crowded places.
 3. Fall with me into somewhere private, with two real accounts: the follower stays where they are and learns only that "X moved into a path you can't enter", never what or why. (`beyond` means exactly that and nothing more.)
 
-After those: the one open device question is the iPhone motion permission prompt; then the recap's song (RECAP-03); then creator co-op (COOP-02) once D-09 is decided.
+After those: switch tilt off; the motion model and joystick (above); the recap's song (RECAP-03); creator co-op (COOP-02) once D-09 is decided. The iPhone motion permission question goes away with tilt.
