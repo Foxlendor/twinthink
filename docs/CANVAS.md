@@ -40,10 +40,11 @@ out past the edges, behind you.
   for the maker, anonymous (no name, account or address is kept; only the
   owner reads notes, from "notes" on the thing in front of them).
 - The stream is a clock: each thing sits around it at the hour it was made
-  (on his clock), and the view turns once every 12 units of travel and slowly
-  by itself, so it spirals. A dotted hand points at what comes next. The
-  compass (right edge) shows world-up, where you are in the lap, and the next
-  thing's direction; tap it to stop or start the turning.
+  (on his clock). Travel never turns the view (turning while moving forward was
+  nauseating); the clock can still turn slowly by itself, but only once asked
+  (tap the compass in the middle; tap again to stop it). A dotted hand points
+  at what comes next. The compass (right edge) shows world-up, where you are in
+  the lap, and the next thing's direction.
 - Night: pale ink on dark paper (the visitor's choice, or their system's).
   At thin places in the web (some rings), passing through drops you back
   into day, opening from the middle like falling through the ink.

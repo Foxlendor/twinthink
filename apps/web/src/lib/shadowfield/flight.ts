@@ -50,9 +50,6 @@ export function clockAngle(t: number): number {
   return (hours / 12) * Math.PI * 2 - Math.PI / 2;
 }
 
-/** Travelling this far turns the view once around: the stream is a spiral, a clock you fall through. */
-export const TURN = 12;
-
 export interface Station {
   i: number;
   node: IdeaNode;
@@ -604,9 +601,13 @@ export interface View {
   rs: number;
 }
 
-/** How far the view has turned at track position z: a full turn every TURN units, plus the live spin. */
-export function rollAt(z: number, spin: number) {
-  return (z / TURN) * Math.PI * 2 + spin;
+/**
+ * How far the view has turned: only the clock's own slow turning, when it is on. Travel never
+ * turns the view (rotation tied to moving forward is what makes a fall nauseating), so `z` is
+ * kept only so callers need not change.
+ */
+export function rollAt(_z: number, spin: number) {
+  return spin;
 }
 
 /**

@@ -396,8 +396,8 @@ export default function ShadowField({ serif }: Props) {
   const [night, setNightState] = useState(false);
   const fallRef = useRef<number | null>(null);
   const prevZRef = useRef<number | null>(null);
-  // the clock turns slowly by itself; the compass stops or starts it
-  const spinRef = useRef(true);
+  // the clock can turn slowly by itself, but only if asked: tapping the compass starts or stops it
+  const spinRef = useRef(false);
   const needleRef = useRef<SVGGElement | null>(null);
   const nextDotRef = useRef<SVGCircleElement | null>(null);
   const lapDotRef = useRef<SVGCircleElement | null>(null);
