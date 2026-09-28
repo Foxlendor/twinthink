@@ -936,8 +936,13 @@ export interface SharedFallView {
   hostName: string;
   /** Whether this viewer is the one leading it. */
   hosting: boolean;
-  /** A plain content id (the same ids `findPath` already resolves), null until the leader first moves. */
+  /**
+   * A plain content id (the same ids `findPath` already resolves), null until the leader first
+   * moves. A follower is only ever sent a place they could see themselves; otherwise null, with
+   * `beyond` set, so they are told the leader went somewhere they cannot follow, and nothing else.
+   */
   stationId: string | null;
+  beyond?: boolean;
   ended: boolean;
   /** Only ever sent to its own leader: the link that lets one other account join. */
   inviteLink?: string;
@@ -947,6 +952,22 @@ export interface SharedFallView {
 async function getSharedFallRaw(q: Query, id: string) {
   const [r] = await q(`SELECT * FROM tt_shared_fall WHERE id = $1`, [id]);
   return r ?? null;
+}
+
+/**
+ * Whether a viewer could see a place themselves: someone's posted work (or a fork inside it) only
+ * if it is shared with everyone and not taken down, or it is their own; never anything that lives
+ * only on the leader's device or in their sketchbook; the Slate's own content always.
+ */
+async function placeVisibleTo(q: Query, stationId: string, viewerSub: string): Promise<boolean> {
+  const seen = (s: ServerShadow | null) => !!s && (s.owner === viewerSub || (s.public && !s.hidden));
+  if (stationId.startsWith('local/') || stationId.startsWith('k/')) return false;
+  if (stationId.startsWith('p/')) return seen(await getShadow(q, stationId.slice(2).split('/')[0]));
+  if (stationId.startsWith('fork/')) {
+    const f = await getForkRaw(q, stationId.slice(5));
+    return !!f && seen(await getShadow(q, String(f.host_shadow_id)));
+  }
+  return true;
 }
 
 /** One shared Fall, as one of its own participants sees it: null if it does not exist, or they are not in it. */
@@ -963,11 +984,15 @@ export async function sharedFallFor(q: Query, id: string, viewerSub: string): Pr
   }
   const hosting = f.host_sub === viewerSub;
   const ended = f.ended_at !== null;
+  const at = f.station_id ? String(f.station_id) : null;
+  // a follower never learns even the id of a place they could not see themselves
+  const beyond = !!at && !hosting && !(await placeVisibleTo(q, at, viewerSub));
   return {
     id,
     hostName: String(f.host_name),
     hosting,
-    stationId: f.station_id ? String(f.station_id) : null,
+    stationId: beyond ? null : at,
+    ...(beyond ? { beyond: true } : {}),
     ended,
     ...(hosting && !ended ? { inviteLink: String(f.invite_token) } : {}),
     participants,

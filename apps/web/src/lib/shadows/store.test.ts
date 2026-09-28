@@ -594,9 +594,9 @@ describe('a shared Fall', () => {
   it('is only ever moved by its own leader, never a follower, and never a follower\'s own position at all', async () => {
     const f = (await createSharedFall(q, ana)).sharedFall;
     await joinSharedFall(q, f.id, f.inviteLink!, ben);
-    expect('error' in (await setSharedFallStation(q, f.id, ben.sub, 'p/somewhere'))).toBe(true);
-    expect('ok' in (await setSharedFallStation(q, f.id, ana.sub, 'p/somewhere'))).toBe(true);
-    expect((await sharedFallFor(q, f.id, ben.sub))!.stationId).toBe('p/somewhere');
+    expect('error' in (await setSharedFallStation(q, f.id, ben.sub, 'music/dust'))).toBe(true);
+    expect('ok' in (await setSharedFallStation(q, f.id, ana.sub, 'music/dust'))).toBe(true);
+    expect((await sharedFallFor(q, f.id, ben.sub))!.stationId).toBe('music/dust');
   });
 
   it('a follower leaving keeps it open; the leader leaving ends it for everyone, touching nothing else', async () => {
@@ -609,6 +609,28 @@ describe('a shared Fall', () => {
     // no one else to hand it to yet: once ended, it takes no further moves or joins
     expect('error' in (await setSharedFallStation(q, f.id, ana.sub, 'p/late'))).toBe(true);
     expect('error' in (await joinSharedFall(q, f.id, f.inviteLink!, ben))).toBe(true);
+  });
+
+  it('a follower is only ever sent a place they could see themselves; otherwise only that it is beyond them', async () => {
+    const f = (await createSharedFall(q, ana)).sharedFall;
+    await joinSharedFall(q, f.id, f.inviteLink!, ben);
+    const open = (await createShadow(q, ana, { title: 'out in the open', public: true })) as { shadow: { id: string } };
+    const secret = (await createShadow(q, ana, { title: 'only hers' })) as { shadow: { id: string } };
+    await setSharedFallStation(q, f.id, ana.sub, `p/${open.shadow.id}`);
+    expect((await sharedFallFor(q, f.id, ben.sub))!.stationId).toBe(`p/${open.shadow.id}`);
+    await setSharedFallStation(q, f.id, ana.sub, `p/${secret.shadow.id}`);
+    const seen = (await sharedFallFor(q, f.id, ben.sub))!;
+    // not even its id: only that it is somewhere he cannot follow
+    expect(seen.stationId).toBeNull();
+    expect(seen.beyond).toBe(true);
+    expect(JSON.stringify(seen)).not.toContain(secret.shadow.id);
+    // the leader still sees her own place; what lives only on her device is never sent either
+    expect((await sharedFallFor(q, f.id, ana.sub))!.stationId).toBe(`p/${secret.shadow.id}`);
+    await setSharedFallStation(q, f.id, ana.sub, 'local/abc/1');
+    expect((await sharedFallFor(q, f.id, ben.sub))!.beyond).toBe(true);
+    // the Slate's own content is shared by everyone
+    await setSharedFallStation(q, f.id, ana.sub, 'music/iu3d');
+    expect((await sharedFallFor(q, f.id, ben.sub))!.stationId).toBe('music/iu3d');
   });
 
   it('switch lead: only the leader hands it on, only to someone still in it, and then only they move it', async () => {

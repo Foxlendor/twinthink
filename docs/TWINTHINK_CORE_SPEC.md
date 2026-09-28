@@ -590,6 +590,8 @@ No core implementation, repository write, PR merge, or deployment was performed 
 
 ### 20.1 One aesthetic, different primary lenses
 
+> Repository note (28 September, agreed with John after 1.1): as built, **By Topic = view the Slate through the groups already made. It does not infer, classify, or rename content.** Where this section says "topic", read "group" until a separately decided feature says otherwise.
+
 USER direction supplied at approximately 10:48 AM America/Denver on 28 September: multidimensional vortex; unified aesthetic; no or minimal color. Time, topics, projects, relationships, and other relevant dimensions should feel like aspects of one space. The suggested starting point is time by default, an explicit reorientation into topic, and secondary information emerging with depth. Exact switching controls and encoding choices remain PROPOSED.
 
 PROPOSED switching contract:

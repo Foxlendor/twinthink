@@ -118,6 +118,8 @@ interface SharedFallState {
   hostName: string;
   hosting: boolean;
   stationId: string | null;
+  /** The leader is somewhere this viewer could not see themselves (the server says only that). */
+  beyond?: boolean;
   ended: boolean;
   inviteLink?: string;
   participants: { token: string; name: string; mine: boolean }[];
@@ -440,8 +442,13 @@ export default function ShadowField({ serif }: Props) {
   const steerRef = useRef({ on: false, touch: false, x: 0, y: 0, endedAt: 0, well: null as Quarter | null, aim: 0 as -1 | 0 | 1 });
   // steering by touch: the finger's own run (a tap, or a drag that aims), and a pinch that carries you
   const steerTouchRef = useRef({ moved: 0, pinched: false, d0: 0, d: 0 });
+  // steering by touch: where the finger has pushed the heading, and where tilting the phone has
+  // (on phones that report it, such as Android): the heading is the two together
+  const steerHandRef = useRef({ dx: 0, dy: 0, tx: 0, ty: 0, level: null as null | { beta: number; gamma: number }, tilting: false });
   // the openings beside where you are (the other paths at a branch), as last drawn
   const edgesRef = useRef<ReturnType<typeof edgePaths>>([]);
+  // whatever note is at the top of the page right now (a notice, or the ambient line): labels keep clear of it
+  const topNoteRef = useRef<HTMLDivElement | null>(null);
   // the ways on from a branch, waiting ahead, and the one aimed at while steering
   const aheadRef = useRef<ReturnType<typeof aheadPaths>>([]);
   const aheadAimRef = useRef<string | null>(null);
@@ -716,7 +723,11 @@ export default function ShadowField({ serif }: Props) {
     if (path.length >= 2) coreRef.current?.move({ kind: 'choose', from: path[path.length - 2], to: path[path.length - 1] });
   }, []);
 
-  /** Time, or topic: the same things, re-arranged around you; what you are on stays in front of you. */
+  /**
+   * Time, or topic: the same things, re-arranged around you; what you are on stays in front of you.
+   * "Topic" is the groups already on the Slate (your songs, TwinThink, a posted Twin). Nothing is
+   * inferred, classified or renamed: no subject is ever worked out from what things say.
+   */
   const toggleTopic = useCallback(() => {
     const world = worldRef.current;
     if (!world) return;
@@ -734,7 +745,7 @@ export default function ShadowField({ serif }: Props) {
     // the same things in the same order at the same depth: only where around you they sit changes
     streamRef.current = buildStream(world, topicsRef.current ? topicAngles(topicsRef.current) : null);
     setByTopic(!!topicsRef.current);
-    setNotice(topicsRef.current ? 'by topic: the same things, around you by what they belong to' : 'by time: around you by the hour they were made');
+    setNotice(topicsRef.current ? 'by topic: arranged by your groups' : 'by time: arranged by the hour things were made');
   }, []);
 
   /**
@@ -1368,6 +1379,12 @@ export default function ShadowField({ serif }: Props) {
             return;
           }
           if (hosting) return; // the leader's own place is never moved by this poll
+          // somewhere this viewer could not see themselves: the server sends only that, not where
+          if (d.sharedFall.beyond) {
+            if (sharedFallLastSeenRef.current !== '#beyond') setNotice(`${d.sharedFall.hostName} moved into a path you can't enter`);
+            sharedFallLastSeenRef.current = '#beyond';
+            return;
+          }
           const station = d.sharedFall.stationId;
           if (!station || station === sharedFallLastSeenRef.current) return;
           sharedFallLastSeenRef.current = station;
@@ -1816,8 +1833,11 @@ export default function ShadowField({ serif }: Props) {
       const steer = steerRef.current;
       const wasWell = steer.well;
       const ease = 1 - Math.exp(-dt * 5);
-      fc.bx += ((flying && steer.on ? steer.x : 0) - fc.bx) * ease;
-      fc.by += ((flying && steer.on ? steer.y : 0) - fc.by) * ease;
+      // with reduced motion the way ahead never swings: the drop's tail, the hour written darker and
+      // the rings of the openings still say where you are heading
+      const swing = flying && steer.on && !reducedQuery.matches;
+      fc.bx += ((swing ? steer.x : 0) - fc.bx) * ease;
+      fc.by += ((swing ? steer.y : 0) - fc.by) * ease;
       if (!flying && steer.on) {
         if (!steer.touch) document.exitPointerLock();
         else {
@@ -2148,6 +2168,10 @@ export default function ShadowField({ serif }: Props) {
           presence: presenceRef.current,
           leaned: leanedRef.current,
           topics: topicsRef.current ?? undefined,
+          avoid: (() => {
+            const r = topNoteRef.current?.getBoundingClientRect();
+            return r && r.width > 0 ? { x0: r.left - rect.left, y0: r.top - rect.top, x1: r.right - rect.left, y1: r.bottom - rect.top } : undefined;
+          })(),
           topicFacing: topicTurnRef.current,
           steer: { on: steer.on, facing: steer.well, aim: steer.aim, turned: steer.on ? turnedIn(webMemRef.current, insideRef.current) : undefined },
           explored: here && here.path.length > 1 ? exploredFrom(webMemRef.current, here.path[here.path.length - 2].id) : undefined,
@@ -2679,9 +2703,53 @@ export default function ShadowField({ serif }: Props) {
     document.addEventListener('pointerlockchange', onChange);
     return () => document.removeEventListener('pointerlockchange', onChange);
   }, []);
+  /** The heading, by touch: the finger's push and the phone's tilt together, within reach. */
+  const composeSteer = () => {
+    const s = steerRef.current;
+    const h = steerHandRef.current;
+    let x = h.dx + h.tx;
+    let y = h.dy + h.ty;
+    const m = Math.hypot(x, y);
+    if (m > 1) [x, y] = [x / m, y / m];
+    s.x = x;
+    s.y = y;
+  };
+  // tilting the phone steers (while steering by touch): level is however it was held when steering
+  // began; tipping it about 30 degrees is all the way. Only the angle is read, never kept or sent.
+  useEffect(() => {
+    if (!steering) return;
+    const onTilt = (e: DeviceOrientationEvent) => {
+      const s = steerRef.current;
+      const h = steerHandRef.current;
+      if (!s.touch || e.beta === null || e.gamma === null) return;
+      if (!h.level) h.level = { beta: e.beta, gamma: e.gamma };
+      let gx = e.gamma - h.level.gamma;
+      let gy = e.beta - h.level.beta;
+      // turned sideways, the phone's own axes turn with it
+      const turn = (screen.orientation?.angle ?? 0) % 360;
+      if (turn === 90) [gx, gy] = [gy, -gx];
+      else if (turn === 270) [gx, gy] = [-gy, gx];
+      else if (turn === 180) [gx, gy] = [-gx, -gy];
+      // a little give, so holding it still is still
+      const give = (v: number) => (Math.abs(v) < 3 ? 0 : Math.max(-1, Math.min(1, (v - Math.sign(v) * 3) / 27)));
+      h.tx = give(gx);
+      h.ty = give(gy);
+      if (!h.tilting && (h.tx || h.ty)) {
+        h.tilting = true;
+        setNotice('tilt or drag to steer, tap to go in');
+      }
+      composeSteer();
+    };
+    window.addEventListener('deviceorientation', onTilt);
+    return () => window.removeEventListener('deviceorientation', onTilt);
+  }, [steering]);
   const startTouchSteering = () => {
     const s = steerRef.current;
     Object.assign(s, { on: true, touch: true, x: 0, y: 0, well: null, aim: 0 });
+    steerHandRef.current = { dx: 0, dy: 0, tx: 0, ty: 0, level: null, tilting: false };
+    // some phones ask first before telling a page how they are held (iPhone); Android simply tells
+    const ask = (window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> } | undefined)?.requestPermission;
+    if (ask) void ask().catch(() => undefined);
     setSteering(true);
     setNotice('drag to steer, tap to go in, pinch to move');
   };
@@ -2702,6 +2770,7 @@ export default function ShadowField({ serif }: Props) {
     const s = steerRef.current;
     if (document.pointerLockElement) return document.exitPointerLock();
     Object.assign(s, { on: false, touch: false, x: 0, y: 0, well: null, aim: 0, endedAt: performance.now() });
+    steerHandRef.current = { dx: 0, dy: 0, tx: 0, ty: 0, level: null, tilting: false };
     pointersRef.current.clear();
     pinchRef.current = null;
     setSteering(false);
@@ -2833,13 +2902,10 @@ export default function ShadowField({ serif }: Props) {
         return;
       }
       // the finger pushes the heading about, and it stays where the finger leaves it
-      steer.x += (x - prev.x) / reach;
-      steer.y += (y - prev.y) / reach;
-      const m = Math.hypot(steer.x, steer.y);
-      if (m > 1) {
-        steer.x /= m;
-        steer.y /= m;
-      }
+      const hand = steerHandRef.current;
+      hand.dx = Math.max(-1, Math.min(1, hand.dx + (x - prev.x) / reach));
+      hand.dy = Math.max(-1, Math.min(1, hand.dy + (y - prev.y) / reach));
+      composeSteer();
       steerTouchRef.current.moved += Math.abs(x - prev.x) + Math.abs(y - prev.y);
       return;
     }
@@ -4139,8 +4205,9 @@ export default function ShadowField({ serif }: Props) {
         </div>
       )}
 
-      {news && path.length <= 1 && (
-        <div className={styles.news} role="status">
+      {/* the ambient line steps aside while a notice is saying something (they share the top) */}
+      {news && !notice && path.length <= 1 && (
+        <div className={styles.news} role="status" ref={topNoteRef}>
           <button type="button" className={styles.quiet} onClick={() => { flyToIds(news.ids); setNews(null); }}>
             {news.title}: go see
           </button>
@@ -4203,7 +4270,7 @@ export default function ShadowField({ serif }: Props) {
 
       {sketching && <div className={styles.hint}>draw with your finger or mouse · scroll still moves you in and out</div>}
       {notice && (
-        <div className={styles.news} role="status">
+        <div className={styles.news} role="status" ref={topNoteRef}>
           <span className={styles.quiet}>{notice}</span>
           <button type="button" className={styles.newsClose} aria-label="Dismiss" onClick={() => setNotice(null)}>
             ×

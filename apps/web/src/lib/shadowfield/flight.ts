@@ -60,7 +60,10 @@ export function quarterOf(t: number): Quarter {
 }
 
 /** Which quarter a direction on screen faces (x right, y down; `roll` is the clock's own turn). */
-/** The topic lens: the groups on the Slate, evenly around the face from 12, in the Slate's own order. */
+/**
+ * The topic lens: the groups already on the Slate (as made), evenly around the face from 12, in the
+ * Slate's own order. It infers, classifies and renames nothing.
+ */
 export function topicAngles(groups: { id: string }[]): Map<string, number> {
   return new Map(groups.map((g, i) => [g.id, -Math.PI / 2 + (i / groups.length) * Math.PI * 2]));
 }

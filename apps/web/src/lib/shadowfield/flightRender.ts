@@ -137,6 +137,8 @@ export interface FlightState {
    */
   topics?: { id: string; label: string; angle: number }[];
   topicFacing?: string | null;
+  /** A note at the top of the page (screen box): the face's labels keep clear of it. */
+  avoid?: { x0: number; y0: number; x1: number; y1: number };
   /** At a branch, the ways on from here, waiting ahead; `aheadAim` the one aimed at, steering. */
   ahead?: AheadPath[];
   aheadAim?: string | null;
@@ -342,7 +344,28 @@ function drawClock(st: RenderState, v: View, next: [number, number] | null, ink:
  * from the bottom of the screen. Fixed to the page (they turn only with the clock's own spin,
  * when that has been asked for), clear of the header, the trail and the compass.
  */
-function drawHours(st: RenderState, v: View, facing: Quarter | null, before?: Set<number>) {
+/** A label on the face, with a thin rim of paper, so it reads even where it crosses a thing's own words. */
+function haloText(ctx: CanvasRenderingContext2D, label: string, x: number, y: number) {
+  ctx.save();
+  ctx.strokeStyle = PAPER;
+  ctx.lineWidth = 5;
+  ctx.lineJoin = 'round';
+  ctx.strokeText(label, x, y);
+  ctx.restore();
+  ctx.fillText(label, x, y);
+}
+
+/** Where a label may sit: moved beside a note it would be under (right of it if it fits, else left). */
+function clearOf(avoid: FlightState['avoid'], x: number, y: number, w: number, h: number, pageW: number): [number, number] {
+  if (!avoid || y + h / 2 < avoid.y0 - 4 || y - h / 2 > avoid.y1 + 4 || x + w / 2 < avoid.x0 - 8 || x - w / 2 > avoid.x1 + 8) return [x, y];
+  const right = avoid.x1 + 14 + w / 2;
+  if (right + w / 2 < pageW - 8) return [right, y];
+  const left = avoid.x0 - 14 - w / 2;
+  if (left - w / 2 > 8) return [left, y];
+  return [x, avoid.y1 + 6 + h / 2];
+}
+
+function drawHours(st: RenderState, v: View, facing: Quarter | null, before?: Set<number>, avoid?: FlightState['avoid']) {
   const { ctx } = st;
   const phone = st.w < 640;
   const size = phone ? 19 : 22;
@@ -355,7 +378,8 @@ function drawHours(st: RenderState, v: View, facing: Quarter | null, before?: Se
   const top = 30;
   const bottom = st.h - (phone ? 160 : 90);
   const side = 18;
-  const right = st.w >= 640 ? st.w - 76 : st.w - side;
+  // clear of the compass at the right edge (a phone's is narrower, but there all the same)
+  const right = st.w >= 640 ? st.w - 76 : st.w - 58;
   const rx = Math.min(v.cx - side, right - v.cx);
   const ry = Math.min(v.cy - top, bottom - v.cy);
   const hours: [string, number, number, number][] = [
@@ -370,8 +394,9 @@ function drawHours(st: RenderState, v: View, facing: Quarter | null, before?: Se
     ctx.font = `italic ${turned ? size + 6 : size}px ${st.serif}`;
     ctx.fillStyle = `rgba(${INK},${turned ? 0.92 : facing === null ? 0.55 : 0.3})`;
     // with the clock's own spin on, the numbers go round with it, on an oval inside those edges
-    const [lx, ly] = v.roll === 0 ? [x, y] : [v.cx + Math.cos(a + v.roll) * rx, v.cy + Math.sin(a + v.roll) * ry];
-    ctx.fillText(label, lx, ly);
+    const [px, py] = v.roll === 0 ? [x, y] : [v.cx + Math.cos(a + v.roll) * rx, v.cy + Math.sin(a + v.roll) * ry];
+    const [lx, ly] = clearOf(avoid, px, py, ctx.measureText(label).width, size + 6, st.w);
+    haloText(ctx, label, lx, ly);
     // turned into here before: a small dot beside it, a way back (and the hours not yet taken)
     if (before?.has(q) && !turned) {
       ctx.beginPath();
@@ -386,28 +411,50 @@ function drawHours(st: RenderState, v: View, facing: Quarter | null, before?: Se
  * The topic lens: where the hours were, the names of the groups, each in its own direction (the
  * same ink, the same size as the hours; the one turned into written darker and larger).
  */
-function drawTopics(st: RenderState, v: View, topics: { id: string; label: string; angle: number }[], facing: string | null) {
+function drawTopics(
+  st: RenderState,
+  v: View,
+  topics: { id: string; label: string; angle: number }[],
+  facing: string | null,
+  avoid?: FlightState['avoid']
+) {
   const { ctx } = st;
   const phone = st.w < 640;
   const size = phone ? 15 : 18;
   const top = 34;
   const bottom = st.h - (phone ? 160 : 90);
   const side = 18;
-  const right = st.w >= 640 ? st.w - 76 : st.w - side;
+  // clear of the compass at the right edge (a phone's is narrower, but there all the same)
+  const right = st.w >= 640 ? st.w - 76 : st.w - 58;
   ctx.save();
   ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+  const placed: [number, number, number, number][] = [];
+  const hits = (x: number, y: number, w: number, h: number) =>
+    placed.some(([px, py, pw, ph]) => Math.abs(px - x) < (pw + w) / 2 + 6 && Math.abs(py - y) < (ph + h) / 2 + 2);
   for (const t of topics) {
     const turned = facing === t.id;
-    ctx.font = `italic ${turned ? size + 5 : size}px ${st.serif}`;
+    const fs = turned ? size + 5 : size;
+    ctx.font = `italic ${fs}px ${st.serif}`;
     ctx.fillStyle = `rgba(${INK},${turned ? 0.92 : facing === null ? 0.55 : 0.3})`;
-    const label = t.label.length > 18 ? `${t.label.slice(0, 17)}…` : t.label;
-    const w = ctx.measureText(label).width;
+    // a long name is shortened on a narrow page, never overlapped
+    const max = phone ? 12 : 18;
+    let label = t.label.length > max ? `${t.label.slice(0, max - 1)}…` : t.label;
+    let w = ctx.measureText(label).width;
     const a = t.angle + v.roll;
     // on an oval inside the edges, kept whole on the page
-    const x = clamp(v.cx + Math.cos(a) * (Math.min(v.cx - side, right - v.cx) - w * 0.2), side + w / 2, right - w / 2);
-    const y = clamp(v.cy + Math.sin(a) * Math.min(v.cy - top, bottom - v.cy), top, bottom);
-    ctx.textAlign = 'center';
-    ctx.fillText(label, x, y);
+    let x = clamp(v.cx + Math.cos(a) * (Math.min(v.cx - side, right - v.cx) - w * 0.2), side + w / 2, right - w / 2);
+    let y = clamp(v.cy + Math.sin(a) * Math.min(v.cy - top, bottom - v.cy), top, bottom);
+    [x, y] = clearOf(avoid, x, y, w, fs + 6, st.w);
+    if (hits(x, y, w, fs)) {
+      // crowded: shorter, then moved along its own side, away from the middle, until it is clear
+      label = t.label.length > 8 ? `${t.label.slice(0, 7)}…` : t.label;
+      w = ctx.measureText(label).width;
+      const away = Math.sign(y - v.cy) || 1;
+      for (let k = 1; k < 6 && hits(x, y, w, fs); k++) y = clamp(y + away * (fs + 6), top, bottom);
+    }
+    placed.push([x, y, w, fs]);
+    haloText(ctx, label, x, y);
   }
   ctx.restore();
 }
@@ -1234,8 +1281,8 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     nextDz = dz;
   }
   drawClock(st, v, next, ink);
-  if (fs.topics) drawTopics(st, v, fs.topics, fs.topicFacing ?? null);
-  else drawHours(st, v, fs.steer?.on ? fs.steer.facing : null, fs.steer?.turned);
+  if (fs.topics) drawTopics(st, v, fs.topics, fs.topicFacing ?? null, fs.avoid);
+  else drawHours(st, v, fs.steer?.on ? fs.steer.facing : null, fs.steer?.turned, fs.avoid);
   // where the nearest food ahead lies, for the compass's rose dot
   let food: number | null = null;
   if (fs.web?.food.size) {

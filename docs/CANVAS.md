@@ -124,6 +124,13 @@ out past the edges, behind you.
   acts on the thing you are on (never whatever lies far behind it), and goes
   into a group you are facing. Esc lets go (and is only that). No
   colors: the hours are ink, like everything else.
+  On a phone that reports how it is held (Android does; an iPhone asks
+  first), tilting it steers too, while steering: however it was held when
+  steering began is level, a small tremble is nothing, and tipping it about
+  30 degrees is all the way. The finger's push and the tilt add together.
+  Only the angle is read, never kept or sent. With reduced motion the way
+  ahead never swings; the drop's tail, the darker hour and the openings'
+  rings still show where you are heading.
   On a phone (or anywhere without a mouse), "steer" works by touch: a finger
   drags the heading about and it stays where the finger leaves it, a tap goes
   in (as a click does), a pinch is one step on (spread) or back (squeeze), and
@@ -139,8 +146,10 @@ out past the edges, behind you.
   #SIU3d dance and the song $IU3d (`relate.ts`).
 - By time, or by topic ("by time" / "by topic" among the actions, or the t
   key): the same things, in the same order and depth, re-arranged around
-  you. By topic each group on the Slate has its own direction and its name
-  stands where the hours were; steering, leaning hard toward one goes into
+  you. By topic = view the Slate through the groups already made (your
+  songs, TwinThink, a posted Twin); it does not infer, classify, or rename
+  anything. Each group has its own direction and its name stands where the
+  hours were; steering, leaning hard toward one goes into
   it. What you are on stays in front of you, and switching keeps nothing.
 - Your Fall ("your Fall" among the actions): this visit's route, in order,
   kept on this device only (`journey.ts`: places stayed with and paths
@@ -153,6 +162,10 @@ out past the edges, behind you.
 - Dew and Drop: "carry it forward" or "let it drop", said of a thing, one or
   the other. Never inferred from passing, leaving or not choosing. On this
   device only for now: who else may see them is not yet decided.
+- The face's labels (hours, or groups) keep clear of a notice at the top of
+  the page, of the compass, and of each other (crowded group names shorten
+  and step apart), with a thin rim of paper so they read over a thing's own
+  words. The ambient line at the top steps aside while a notice is showing.
 - Night: pale ink on dark paper (the visitor's choice, or their system's).
   At thin places in the web (some rings), passing through drops you back
   into day, opening from the middle like falling through the ink.
