@@ -303,10 +303,22 @@ const SCHEMA = [
     visitor TEXT NOT NULL,
     PRIMARY KEY (target, day, visitor)
   )`,
+  // Rabi noticing pressure, and what a maker decides about it: never an action on its own.
+  // Observing, explaining and asking, nothing more; the fork system stays the only thing that changes.
+  `CREATE TABLE IF NOT EXISTS tt_rabi_log (
+    id TEXT PRIMARY KEY,
+    fork_id TEXT NOT NULL,
+    owner_sub TEXT NOT NULL,
+    event TEXT NOT NULL,
+    pressure_state TEXT,
+    action TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS tt_rabi_log_fork ON tt_rabi_log (fork_id, created_at)`,
 ];
 
 /** Bumped whenever SCHEMA changes, so a database already up to date is not locked for nothing. */
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 // every read counts what grew from each, and names what each grew from (never who told a story)
 const SELECT = `SELECT s.*,
@@ -613,6 +625,52 @@ export async function pressure(q: Query, today = new Date().toISOString().slice(
   return out;
 }
 
+/** Past this, pressure is not just felt, it is worth a maker's own decision. */
+export const ROUTE_CANDIDATE = 0.75;
+
+/** The exact, recent reach for one wall: never shown to anyone but whoever it is pressing on. */
+async function reachCount(q: Query, target: string, today = new Date().toISOString().slice(0, 10)): Promise<number> {
+  const [r] = await q(`SELECT COUNT(DISTINCT visitor)::int AS n FROM tt_pressure WHERE target = $1 AND day >= $2`, [target, dayBefore(today, 14)]);
+  return Number(r?.n ?? 0);
+}
+
+/**
+ * Rabi noticing: whether a fork's own maker should be shown that real
+ * pressure has gathered at it, and how many separate falls (never anyone
+ * else's business, and never anyone's own count) that actually is right
+ * now. Shown again after any decision only once a cooldown has passed;
+ * this never changes the fork itself.
+ */
+export async function noticeFor(q: Query, forkId: string, ownerSub: string): Promise<{ show: boolean; reached: number } | null> {
+  const f = await getForkRaw(q, forkId);
+  if (!f || f.owner_sub !== ownerSub) return null;
+  const reached = await reachCount(q, `fork/${forkId}`);
+  const level = 1 - Math.exp(-reached / 8);
+  if (level < ROUTE_CANDIDATE) return { show: false, reached };
+  const [last] = await q(`SELECT created_at FROM tt_rabi_log WHERE fork_id = $1 AND event = 'notice_action' ORDER BY created_at DESC LIMIT 1`, [forkId]);
+  if (last && Date.now() - new Date(last.created_at as string).getTime() < 7 * 86400000) return { show: false, reached };
+  return { show: true, reached };
+}
+
+/** That the notice was actually shown: once a day is enough to say so, however often it is checked. */
+export async function logNoticeShown(q: Query, forkId: string, ownerSub: string, pressureState: 'gathering' | 'route_candidate') {
+  const f = await getForkRaw(q, forkId);
+  if (!f || f.owner_sub !== ownerSub) return { error: 'Not yours.' } as const;
+  const today = new Date().toISOString().slice(0, 10);
+  const [already] = await q(`SELECT 1 FROM tt_rabi_log WHERE fork_id = $1 AND event = 'notice_shown' AND created_at::date = $2::date`, [forkId, today]);
+  if (!already) await q(`INSERT INTO tt_rabi_log (id, fork_id, owner_sub, event, pressure_state) VALUES ($1, $2, $3, 'notice_shown', $4)`, [newId(), forkId, ownerSub, pressureState]);
+  return { ok: true } as const;
+}
+
+export type NoticeAction = 'open_path' | 'leave' | 'watch';
+
+/** What a maker decided, once, plainly: the only thing that can ever follow from pressure is a choice they made. */
+export async function logNoticeAction(q: Query, forkId: string, ownerSub: string, action: NoticeAction) {
+  const f = await getForkRaw(q, forkId);
+  if (!f || f.owner_sub !== ownerSub) return { error: 'Not yours.' } as const;
+  await q(`INSERT INTO tt_rabi_log (id, fork_id, owner_sub, event, action) VALUES ($1, $2, $3, 'notice_action', $4)`, [newId(), forkId, ownerSub, action]);
+  return { ok: true } as const;
+}
 
 /** One Shadow for whoever asked: anyone, if it is shared (even only by link); its maker, always. */
 export async function shadowFor(q: Query, id: string, viewerSub: string | undefined) {

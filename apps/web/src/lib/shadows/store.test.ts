@@ -35,6 +35,10 @@ import {
   markReached,
   pressure,
   GATHERING,
+  noticeFor,
+  logNoticeShown,
+  logNoticeAction,
+  ROUTE_CANDIDATE,
 } from './store';
 
 let q: Query;
@@ -428,5 +432,55 @@ describe('pressure', () => {
     expect(JSON.stringify(rows)).not.toContain('g-secret-account');
     await markReached(q, 'fork/x', 'g-secret-account', '2026-01-05');
     expect(await pressure(q, '2026-01-20')).toEqual({});
+  });
+});
+
+describe('Rabi noticing pressure', () => {
+  const reach = async (forkId: string, from: number, to: number, day = '2026-09-20') => {
+    for (let i = from; i < to; i++) await markReached(q, `fork/${forkId}`, `visitor${i}`, day);
+  };
+
+  it('only tells a fork’s own maker, and only once it is more than merely gathering', async () => {
+    const home = (await createShadow(q, ana, { title: 'a lamp that listens' })).shadow!;
+    const f = (await createFork(q, ana, home.id, { title: 'wiring' })).fork!;
+    expect(await noticeFor(q, f.id, ben.sub)).toBeNull();
+    await reach(f.id, 0, 5);
+    const early = await noticeFor(q, f.id, ana.sub);
+    expect(early!.show).toBe(false);
+    expect(early!.reached).toBe(5);
+    await reach(f.id, 5, 13); // 13 distinct falls now: past ROUTE_CANDIDATE
+    const now = await noticeFor(q, f.id, ana.sub);
+    expect(now!.show).toBe(true);
+    expect(now!.reached).toBe(13);
+    expect(1 - Math.exp(-now!.reached / 8)).toBeGreaterThan(ROUTE_CANDIDATE);
+  });
+
+  it('logs that it was shown only once a day, however often it is checked', async () => {
+    const home = (await createShadow(q, ana, { title: 'a lamp' })).shadow!;
+    const f = (await createFork(q, ana, home.id, { title: 'wiring' })).fork!;
+    await reach(f.id, 0, 13);
+    await logNoticeShown(q, f.id, ana.sub, 'route_candidate');
+    await logNoticeShown(q, f.id, ana.sub, 'route_candidate');
+    await logNoticeShown(q, f.id, ana.sub, 'route_candidate');
+    const rows = await q(`SELECT * FROM tt_rabi_log WHERE fork_id = $1 AND event = 'notice_shown'`, [f.id]);
+    expect(rows.length).toBe(1);
+    expect('error' in (await logNoticeShown(q, f.id, ben.sub, 'route_candidate'))).toBe(true);
+  });
+
+  it('a decision quiets the notice for a while, but never changes the fork itself', async () => {
+    const home = (await createShadow(q, ana, { title: 'a lamp' })).shadow!;
+    const f = (await createFork(q, ana, home.id, { title: 'wiring' })).fork!;
+    await reach(f.id, 0, 13);
+    expect((await noticeFor(q, f.id, ana.sub))!.show).toBe(true);
+    expect('error' in (await logNoticeAction(q, f.id, ben.sub, 'watch'))).toBe(true);
+    expect('ok' in (await logNoticeAction(q, f.id, ana.sub, 'watch'))).toBe(true);
+    expect((await noticeFor(q, f.id, ana.sub))!.show).toBe(false);
+    // the fork itself is untouched by any of this
+    const still = await forksIn(q, home.id, ana.sub);
+    expect(still).toHaveLength(1);
+    expect(still[0].closed).toBe(false);
+    const rows = await q(`SELECT event, action, pressure_state FROM tt_rabi_log WHERE fork_id = $1 ORDER BY created_at`, [f.id]);
+    expect(rows.map((r) => r.event)).toEqual(['notice_action']);
+    expect(rows[0].action).toBe('watch');
   });
 });

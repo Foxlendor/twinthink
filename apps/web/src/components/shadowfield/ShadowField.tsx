@@ -405,6 +405,9 @@ export default function ShadowField({ serif }: Props) {
   const [refreshTick, setRefreshTick] = useState(0);
   // shown once, right after opening a fork: the link that lets someone else post inside it
   const [forkInvite, setForkInvite] = useState<{ forkId: string; title: string; link: string } | null>(null);
+  // Rabi noticing pressure: shown only to the fork's own maker, never acted on by anything but them
+  const [rabiNotice, setRabiNotice] = useState<{ forkId: string; title: string; reached: number } | null>(null);
+  const noticeCheckedRef = useRef(new Set<string>());
   // films can be added once the site has a file store for them
   const [filmsOn, setFilmsOn] = useState(false);
   const postPicRef = useRef<HTMLInputElement | null>(null);
@@ -2914,6 +2917,43 @@ export default function ShadowField({ serif }: Props) {
     !path.some((n) => n.id.startsWith('local/') || n.id === 'sketchbook' || n.disclosure > 0) &&
     (!current.id.startsWith('p/') || !!posted.find((q) => `p/${q.id}` === current.id && (q.public || q.visibility === 'unlisted') && !q.hidden));
   const postedHere = current?.id.startsWith('p/') ? posted.find((q) => `p/${q.id}` === current.id) ?? null : null;
+  // Rabi noticing: whenever a maker looks at a Shadow of their own, ask once per fork whether
+  // real pressure has gathered at it. Only ever tells them; the fork itself is never touched here.
+  useEffect(() => {
+    for (const f of postedHere?.mine ? (postedHere.forks ?? []) : []) {
+      if (!f.mine || noticeCheckedRef.current.has(f.id)) continue;
+      noticeCheckedRef.current.add(f.id);
+      fetch(`/api/forks/${encodeURIComponent(f.id)}/notice`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: { show?: boolean; reached?: number } | null) => {
+          if (d?.show) setRabiNotice({ forkId: f.id, title: f.title, reached: d.reached ?? 0 });
+        })
+        .catch(() => undefined);
+    }
+  }, [postedHere?.id, postedHere?.mine, postedHere?.forks]);
+  const actOnNotice = (action: 'open_path' | 'leave' | 'watch') => {
+    const notice = rabiNotice;
+    if (!notice) return;
+    setRabiNotice(null);
+    void fetch(`/api/forks/${encodeURIComponent(notice.forkId)}/notice`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action }),
+    }).catch(() => undefined);
+    if (action !== 'open_path') return;
+    // the current end of that fork: opening a path starts a new fork from there
+    const world = worldRef.current;
+    const forkPath = world && findPath(world, `fork/${notice.forkId}`);
+    const forkStation = forkPath?.[forkPath.length - 1];
+    const last = forkStation?.children[forkStation.children.length - 1];
+    if (!last) return;
+    const path = findPath(world!, last.id);
+    if (path) flyTo(path);
+    const cam = camRef.current;
+    if (cam && last.id.startsWith('p/')) {
+      setComposer({ mode: 'fork', x: cam.w / 2 - 140, y: cam.h - 150, lx: 0, ly: 0, shadowId: last.id.slice(2) });
+    }
+  };
   const widen = (e: React.MouseEvent<HTMLButtonElement>) => {
     const v = e.currentTarget.dataset.v;
     if (postedHere && (v === 'private' || v === 'unlisted' || v === 'public')) changePosted(postedHere.id, { visibility: v });
@@ -3523,6 +3563,31 @@ export default function ShadowField({ serif }: Props) {
           </button>
           <button type="button" className={styles.quiet} onClick={() => setForkInvite(null)}>
             done
+          </button>
+        </div>
+      )}
+
+      {rabiNotice && (
+        <div className={styles.give}>
+          <div className={styles.giveFor}>a path may be wanted here</div>
+          <p className={styles.quiet}>
+            {rabiNotice.reached} recent falls reached “{rabiNotice.title}” and continued elsewhere.
+          </p>
+          <details>
+            <summary className={styles.quiet}>why am I seeing this?</summary>
+            <p className={styles.quiet}>
+              many different visits, not one person returning, have reached the end of this fork lately and turned
+              back rather than staying. that is the whole of it: nothing changes here unless you decide something.
+            </p>
+          </details>
+          <button type="button" className={styles.quiet} onClick={() => actOnNotice('open_path')}>
+            open a path
+          </button>
+          <button type="button" className={styles.quiet} onClick={() => actOnNotice('leave')}>
+            leave it
+          </button>
+          <button type="button" className={styles.quiet} onClick={() => actOnNotice('watch')}>
+            watch
           </button>
         </div>
       )}

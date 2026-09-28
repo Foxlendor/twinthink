@@ -266,14 +266,26 @@ moves on its own. Dew ("carry this forward") and Drop ("I wouldn't carry
 this forward") are a different question entirely (an idea signal, not a
 navigation one) and stay out of this layer.
 
-What's still open: moving/closing controls beyond the single maker who
-opened a fork (co-op rights for other creators), and Rabi itself, which
-should only ever act on the fork system that already exists, never invent
-a parallel one.
+## Rabi, noticing (not yet acting)
+The first, deliberately small step: once pressure at a fork passes
+`ROUTE_CANDIDATE` (a stronger bar than the ambient "gathering" line),
+its own maker, and only them, may be shown a plain notice: how many
+separate falls reached it lately, an honest "why am I seeing this?",
+and three choices, nothing more — **open a path** (starts a new fork
+from that fork's current end, using the same manual tools as ever),
+**leave it**, or **watch**. Any decision quiets the notice for a week;
+none of the three ever changes the fork itself (`tt_rabi_log`,
+`noticeFor()`/`logNoticeShown()`/`logNoticeAction()` in `store.ts`;
+`/api/forks/[id]/notice`). Every showing and every decision is logged
+(`notice_shown`, `notice_action`), so whether pressure is actually
+useful to a maker (do they choose to open a path, or mostly leave it?)
+is a real, answerable question before anything is asked to act on its
+own. Other people's attention can gather around someone's work; it
+never earns them the right to change it just by accumulating there.
 
 ## Next
 1. Co-op rights: someone besides a fork's own maker managing it.
 2. Plot claims + earning rules above (still planned, not built).
-3. Rabi: once forks can be made and moved by hand, give the same creation
-   tools a guided, preview-and-approve AI layer. Not before the manual
-   version is real and lived-in.
+3. Rabi proposing (not just noticing): only once makers show, in the
+   logs above, that they actually want this. Still never autonomous,
+   still only ever through the fork system that already exists.
