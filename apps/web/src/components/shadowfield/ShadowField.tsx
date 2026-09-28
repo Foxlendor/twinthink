@@ -442,9 +442,9 @@ export default function ShadowField({ serif }: Props) {
   const steerRef = useRef({ on: false, touch: false, x: 0, y: 0, endedAt: 0, well: null as Quarter | null, aim: 0 as -1 | 0 | 1 });
   // steering by touch: the finger's own run (a tap, or a drag that aims), and a pinch that carries you
   const steerTouchRef = useRef({ moved: 0, pinched: false, d0: 0, d: 0 });
-  // steering by touch: where the finger has pushed the heading, and where tilting the phone has
-  // (on phones that report it, such as Android): the heading is the two together
-  const steerHandRef = useRef({ dx: 0, dy: 0, tx: 0, ty: 0, level: null as null | { beta: number; gamma: number }, tilting: false });
+  // steering by touch: where the thumb has pushed the heading (the phone itself stays still: how it
+  // is held never steers)
+  const steerHandRef = useRef({ dx: 0, dy: 0 });
   // the openings beside where you are (the other paths at a branch), as last drawn
   const edgesRef = useRef<ReturnType<typeof edgePaths>>([]);
   // whatever note is at the top of the page right now (a notice, or the ambient line): labels keep clear of it
@@ -2703,53 +2703,21 @@ export default function ShadowField({ serif }: Props) {
     document.addEventListener('pointerlockchange', onChange);
     return () => document.removeEventListener('pointerlockchange', onChange);
   }, []);
-  /** The heading, by touch: the finger's push and the phone's tilt together, within reach. */
+  /** The heading, by touch: where the thumb has pushed it, within reach. */
   const composeSteer = () => {
     const s = steerRef.current;
     const h = steerHandRef.current;
-    let x = h.dx + h.tx;
-    let y = h.dy + h.ty;
+    let x = h.dx;
+    let y = h.dy;
     const m = Math.hypot(x, y);
     if (m > 1) [x, y] = [x / m, y / m];
     s.x = x;
     s.y = y;
   };
-  // tilting the phone steers (while steering by touch): level is however it was held when steering
-  // began; tipping it about 30 degrees is all the way. Only the angle is read, never kept or sent.
-  useEffect(() => {
-    if (!steering) return;
-    const onTilt = (e: DeviceOrientationEvent) => {
-      const s = steerRef.current;
-      const h = steerHandRef.current;
-      if (!s.touch || e.beta === null || e.gamma === null) return;
-      if (!h.level) h.level = { beta: e.beta, gamma: e.gamma };
-      let gx = e.gamma - h.level.gamma;
-      let gy = e.beta - h.level.beta;
-      // turned sideways, the phone's own axes turn with it
-      const turn = (screen.orientation?.angle ?? 0) % 360;
-      if (turn === 90) [gx, gy] = [gy, -gx];
-      else if (turn === 270) [gx, gy] = [-gy, gx];
-      else if (turn === 180) [gx, gy] = [-gx, -gy];
-      // a little give, so holding it still is still
-      const give = (v: number) => (Math.abs(v) < 3 ? 0 : Math.max(-1, Math.min(1, (v - Math.sign(v) * 3) / 27)));
-      h.tx = give(gx);
-      h.ty = give(gy);
-      if (!h.tilting && (h.tx || h.ty)) {
-        h.tilting = true;
-        setNotice('tilt or drag to steer, tap to go in');
-      }
-      composeSteer();
-    };
-    window.addEventListener('deviceorientation', onTilt);
-    return () => window.removeEventListener('deviceorientation', onTilt);
-  }, [steering]);
   const startTouchSteering = () => {
     const s = steerRef.current;
     Object.assign(s, { on: true, touch: true, x: 0, y: 0, well: null, aim: 0 });
-    steerHandRef.current = { dx: 0, dy: 0, tx: 0, ty: 0, level: null, tilting: false };
-    // some phones ask first before telling a page how they are held (iPhone); Android simply tells
-    const ask = (window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> } | undefined)?.requestPermission;
-    if (ask) void ask().catch(() => undefined);
+    steerHandRef.current = { dx: 0, dy: 0 };
     setSteering(true);
     setNotice('drag to steer, tap to go in, pinch to move');
   };
@@ -2770,7 +2738,7 @@ export default function ShadowField({ serif }: Props) {
     const s = steerRef.current;
     if (document.pointerLockElement) return document.exitPointerLock();
     Object.assign(s, { on: false, touch: false, x: 0, y: 0, well: null, aim: 0, endedAt: performance.now() });
-    steerHandRef.current = { dx: 0, dy: 0, tx: 0, ty: 0, level: null, tilting: false };
+    steerHandRef.current = { dx: 0, dy: 0 };
     pointersRef.current.clear();
     pinchRef.current = null;
     setSteering(false);

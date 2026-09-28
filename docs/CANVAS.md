@@ -124,11 +124,9 @@ out past the edges, behind you.
   acts on the thing you are on (never whatever lies far behind it), and goes
   into a group you are facing. Esc lets go (and is only that). No
   colors: the hours are ink, like everything else.
-  On a phone that reports how it is held (Android does; an iPhone asks
-  first), tilting it steers too, while steering: however it was held when
-  steering began is level, a small tremble is nothing, and tipping it about
-  30 degrees is all the way. The finger's push and the tilt add together.
-  Only the angle is read, never kept or sent. With reduced motion the way
+  The phone itself never steers: how it is held is not read at all (tilt
+  was tried and removed, 28 September: moving the phone made the screen
+  harder to look at; the thumb steers). With reduced motion the way
   ahead never swings; the drop's tail, the darker hour and the openings'
   rings still show where you are heading.
   On a phone (or anywhere without a mouse), "steer" works by touch: a finger
