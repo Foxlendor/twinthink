@@ -24,7 +24,7 @@ Last updated: 28 September 2026, the commit that adds this file.
 | TIME-01 | tested | A thing sits at its hour on the face; 12 top, 3 right, 6 bottom, 9 left. | `clockAngle`, `quarterOf` in `flight.ts` | `core.test.ts` | Fixed UTC-6 (D-02 open); 12-hour face merges a.m. and p.m. (D-02). |
 | TIME-02 | tested locally | Turned into an hour, the fall holds only work from around it and carries you on, deeper (older), through it. | `hourLens` in `core.ts`; wells in the frame loop | Browser: turned into 6, every thing passed was from around 6; turning to 3 switched streams; on the Slate only groups holding 6 work stayed. | Depth policy is the prototype's (newest first, across days), labeled, not settled (D-01). Honest empty: "nothing here from around N yet". |
 | MOVE-01 | tested locally | Desktop steering with pointer lock; drop at the middle; the way ahead bends toward the hand; click acts on the thing you are on or goes into the group you face. | `steerRef`, pointer handlers, `drawDrop`, `BEND` | Browser: locked, steered into 6 and 3, click entered TwinThink, Esc released. | Phone steering not built (AT-05). Reduced motion not yet evaluated with steering (VIS-08). |
-| MOVE-02 | partial | Lean (a tap among several paths) and blurred edge previews of the other paths. | `RULES` leaned row; `edgePaths` | Lean and edge regressions | Navigable openings inside the vortex are not built (5.3, AT-07). |
+| MOVE-02 | tested locally | At a branch, the other paths are openings at the sides. Steering, they stay in view as you move; leaning a little toward one looks at it (it comes clearer, nothing is kept); a click goes into it, which is the Lean. Leaning hard turns into an hour instead. | `steer.aim`, `edgesRef` in `ShadowField.tsx`; `drawEdge` | Browser (two sibling Twins): looked right, nothing kept; clicked, on the other Twin, Lean kept; looked left, clicked, back, Lean replaced (AT-06, AT-07, AT-08). | Openings are at the sides of the view, not yet places ahead in the tunnel that grow as you fall toward them (5.3). Only the nearest path on each side. |
 | MEMORY-01 | partial | Passed fork gates; last choice per branch. | `web.ts` | `web.test.ts` | No explored history, no turn breadcrumb (D-05). |
 | MEMORY-02, SIGNAL-01 | specified | | | | No aggregate Lean, no time-to-choice; needs its own privacy design first (D-06). |
 | SIGNAL-02 | deployed | Resonance dew from staying. | `RULES` resonance row | existing | |
@@ -39,7 +39,7 @@ Last updated: 28 September 2026, the commit that adds this file.
 
 ## Next, in order
 
-1. Deploy and verify this commit live (grouped fall, steering).
-2. Openings in the vortex: the other paths at a branch as places you can see ahead and steer into (MOVE-02, AT-06 to AT-08), built on the existing Lean.
+1. Openings ahead in the tunnel, not only at the sides (MOVE-02 gap).
+2. The steering notice sits over the 12 while it shows (VIS-07).
 3. Relevance inside the Slate: related things linked across groups (ORGANIZE gap).
 4. Phone steering (AT-05).

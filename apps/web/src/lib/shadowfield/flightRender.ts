@@ -124,8 +124,11 @@ export interface FlightState {
   leaned?: Set<string>;
   /** At a branch: the neighbouring paths, glimpsed at the edges of the view (their shape, never their words). */
   edges?: EdgePath[];
-  /** Steering through the vortex: you are the drop at the middle; `facing` is the hour you have turned into. */
-  steer?: { on: boolean; facing: Quarter | null };
+  /**
+   * Steering through the vortex: you are the drop at the middle; `facing` is the hour you have
+   * turned into; `aim` the side opening you are leaning toward (looked at, not yet gone into).
+   */
+  steer?: { on: boolean; facing: Quarter | null; aim?: -1 | 0 | 1 };
 }
 
 /** A path you could take instead, from where you are: a sibling of the thing in front of you. */
@@ -1128,9 +1131,11 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   // at a branch, the other paths wait at the edges: faint while falling, fuller once still
   if (fs.edges?.length) {
     const before = st.hits.length;
-    const a = (0.35 + 0.55 * (fs.still ?? 0)) * quiet;
+    // steering, the openings stay in view while you move, so they are seen before they are passed
+    const a = Math.max(fs.steer?.on ? 0.6 : 0, 0.35 + 0.55 * (fs.still ?? 0)) * quiet;
     if (a > 0.03) {
-      for (const e of fs.edges) drawEdge(st, e, a, st.hoverId === e.node.id, !!fs.leaned?.has(e.node.id), ink);
+      for (const e of fs.edges)
+        drawEdge(st, e, a, st.hoverId === e.node.id || (!!fs.steer?.aim && fs.steer.aim === e.side), !!fs.leaned?.has(e.node.id), ink);
       ink.flush(ctx);
       // drawn over everything else, so they are what a finger at the edge means
       st.hits.unshift(...st.hits.splice(before));

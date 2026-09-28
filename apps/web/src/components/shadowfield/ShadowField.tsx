@@ -402,7 +402,9 @@ export default function ShadowField({ serif }: Props) {
   // the way ahead swings, and pushed far enough toward an hour you turn into it
   // the group you have gone into (null: on the Slate, among its groups)
   const insideRef = useRef<string | null>(null);
-  const steerRef = useRef({ on: false, x: 0, y: 0, endedAt: 0, well: null as Quarter | null });
+  const steerRef = useRef({ on: false, x: 0, y: 0, endedAt: 0, well: null as Quarter | null, aim: 0 as -1 | 0 | 1 });
+  // the openings beside where you are (the other paths at a branch), as last drawn
+  const edgesRef = useRef<ReturnType<typeof edgePaths>>([]);
   const [steering, setSteering] = useState(false);
   const canSteer = useSyncExternalStore(
     () => () => undefined,
@@ -1650,7 +1652,10 @@ export default function ShadowField({ serif }: Props) {
       fc.bx += ((flying && steer.on ? steer.x : 0) - fc.bx) * ease;
       fc.by += ((flying && steer.on ? steer.y : 0) - fc.by) * ease;
       if (!flying && steer.on) document.exitPointerLock();
-      if (!flying || !steer.on) steer.well = null;
+      if (!flying || !steer.on) {
+        steer.well = null;
+        steer.aim = 0;
+      }
       else {
         const m = Math.hypot(steer.x, steer.y);
         const q = quarterFacing(steer.x, steer.y, fc.spin);
@@ -1663,6 +1668,8 @@ export default function ShadowField({ serif }: Props) {
           const off = Math.abs(mod(Math.atan2(steer.y, steer.x) - mid + Math.PI, Math.PI * 2) - Math.PI);
           if (off > Math.PI / 4 + 0.14) steer.well = q;
         }
+        // leaning a little to one side (not yet into an hour) looks at the opening there
+        steer.aim = steer.well === null && Math.abs(steer.x) > 0.2 && Math.abs(steer.x) > Math.abs(steer.y) ? (steer.x > 0 ? 1 : -1) : 0;
         // held by the page, the pointer is the drop: whatever is at the middle is what it points at
         pointerRef.current = { x: cam.w / 2, y: cam.h * 0.47, inside: true, t: nowMs };
       }
@@ -1934,13 +1941,13 @@ export default function ShadowField({ serif }: Props) {
           resonance: resonanceRef.current,
           presence: presenceRef.current,
           leaned: leanedRef.current,
-          steer: { on: steer.on, facing: steer.well },
+          steer: { on: steer.on, facing: steer.well, aim: steer.aim },
           // at a branch, the other paths beside this one: only ones this viewer may actually enter
-          edges: edgePaths(here, (n, p) => {
+          edges: (edgesRef.current = edgePaths(here, (n, p) => {
             const idx = stream.byId.get(n.id);
             if (idx === undefined || skip(stream.stations[idx])) return false;
             return n.disclosure <= lensRef.current.closeness(p[1]);
-          }),
+          })),
           dt,
           web: {
             plucks: echoesRef.current.length ? [...plucksRef.current, ...echoesRef.current] : plucksRef.current,
@@ -2672,8 +2679,11 @@ export default function ShadowField({ serif }: Props) {
       // steering, a click is about the thing you are on, never whatever happens to lie far behind it
       const on = hereRef.current;
       const hit = hitsRef.current.find((h) => h.kind === 'node' && h.node.id === on?.node.id) ?? null;
+      // the opening you are leaning toward is gone into (a Lean: chosen, not passed)
+      const opening = steerRef.current.aim ? edgesRef.current.find((x) => x.side === steerRef.current.aim) : undefined;
+      if (opening) goTo(opening.path);
       // a group on the Slate is gone into
-      if (!hit && on?.depth === 1 && on.gate && insideRef.current !== on.node.id) goTo(on.path);
+      else if (!hit && on?.depth === 1 && on.gate && insideRef.current !== on.node.id) goTo(on.path);
       else if (c) tapAt(c.w / 2, c.h * 0.47, hit);
       return;
     }

@@ -115,8 +115,11 @@ out past the edges, behind you.
   holding work from around that hour; inside a group, only its things from
   around that hour. Back toward the middle, the whole fall again; a little
   past the line between two hours before it gives way, so it never flickers.
-  A click acts on the thing you are on (never whatever lies far behind it),
-  and goes into a group you are facing. Esc lets go (and is only that). No
+  At a branch, the other paths are openings at the sides, and while steering
+  they stay in view: lean a little toward one to look at it (it comes clearer;
+  nothing is kept), click to go into it (that is the Lean). A click otherwise
+  acts on the thing you are on (never whatever lies far behind it), and goes
+  into a group you are facing. Esc lets go (and is only that). No
   colors: the hours are ink, like everything else.
   Not yet: steering on a phone; a breadcrumb where you turned; the prototype's
   time policy is labeled, not settled: an hour is a quarter of a 12-hour face
