@@ -1,6 +1,37 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { Query, REPORTS_TO_HIDE, shadowFor, resonance, resonate, addMedia, keep, myKeeps, unkeep, allowSender, getPicture, addNote, forViewer, getShadow, createShadow, migrate, myShadows, notesFor, publicShadows, removeShadow, report, updateShadow } from './store';
+import {
+  Query,
+  REPORTS_TO_HIDE,
+  shadowFor,
+  resonance,
+  resonate,
+  addMedia,
+  keep,
+  myKeeps,
+  unkeep,
+  allowSender,
+  getPicture,
+  addNote,
+  forViewer,
+  getShadow,
+  createShadow,
+  migrate,
+  myShadows,
+  notesFor,
+  publicShadows,
+  removeShadow,
+  report,
+  updateShadow,
+  createFork,
+  forksIn,
+  moveFork,
+  setForkClosed,
+  canPostInFork,
+  joinFork,
+  roomFor,
+  FORK_ROOM_MAX,
+} from './store';
 
 let q: Query;
 const ana = { sub: 'g-ana', name: 'Ana Maria Lopez' };
@@ -283,5 +314,71 @@ describe('resonance', () => {
     expect(JSON.stringify(rows)).not.toContain('g-secret-account');
     await resonate(q, 'x', 'g-secret-account', '2026-01-05');
     expect(await resonance(q, '2026-09-27')).toEqual({});
+  });
+});
+
+describe('forks', () => {
+  it('only its maker opens one, and it is seen by whoever may see the Shadow it is in', async () => {
+    const home = (await createShadow(q, ana, { title: 'a lamp that listens' })).shadow!;
+    expect('error' in (await createFork(q, ben, home.id, { title: 'wiring' }))).toBe(true);
+    const f = (await createFork(q, ana, home.id, { title: 'wiring', postAccess: 'anyone' })).fork!;
+    expect(f.mine).toBe(true);
+    const seenByOther = (await forksIn(q, home.id, ben.sub))[0];
+    expect(seenByOther.mine).toBe(false);
+    expect(seenByOther.inviteLink).toBeUndefined();
+    expect(seenByOther.title).toBe('wiring');
+  });
+
+  it('an invite-only fork opens to no one until let in, and its link never leaves its maker', async () => {
+    const home = (await createShadow(q, ana, { title: 'a lamp that listens' })).shadow!;
+    const f = (await createFork(q, ana, home.id, { title: 'just us' })).fork!;
+    expect(f.postAccess).toBe('invite');
+    expect(f.inviteLink).toBeTruthy();
+    expect((await forksIn(q, home.id, ben.sub))[0].inviteLink).toBeUndefined();
+    expect(await canPostInFork(q, f.id, ben.sub)).toBe(false);
+    expect('error' in (await joinFork(q, f.id, 'wrong-token', ben.sub))).toBe(true);
+    expect('ok' in (await joinFork(q, f.id, f.inviteLink!, ben.sub))).toBe(true);
+    expect(await canPostInFork(q, f.id, ben.sub)).toBe(true);
+    // its own maker may always post inside it, invited or not
+    expect(await canPostInFork(q, f.id, ana.sub)).toBe(true);
+  });
+
+  it('a post made inside a fork still starts private, the same as anywhere else', async () => {
+    const home = (await createShadow(q, ana, { title: 'a lamp that listens' })).shadow!;
+    const f = (await createFork(q, ana, home.id, { title: 'just us' })).fork!;
+    await joinFork(q, f.id, f.inviteLink!, ben.sub);
+    const posted = await createShadow(q, ben, { title: 'a wire I tried', forkId: f.id });
+    expect(posted.shadow!.public).toBe(false);
+    expect(posted.shadow!.forkId).toBe(f.id);
+    expect(forViewer(posted.shadow!, ben.sub).forkId).toBe(f.id);
+    // ana cannot post there simply by being told the fork's id without the link
+    const stranger = { sub: 'g-carl', name: 'Carl' };
+    expect('error' in (await createShadow(q, stranger, { title: 'butting in', forkId: f.id }))).toBe(true);
+  });
+
+  it('closing keeps what is inside; moving carries it, untouched, to another Shadow of the same maker', async () => {
+    const homeA = (await createShadow(q, ana, { title: 'lamp A' })).shadow!;
+    const homeB = (await createShadow(q, ana, { title: 'lamp B' })).shadow!;
+    const f = (await createFork(q, ana, homeA.id, { title: 'notes', postAccess: 'anyone' })).fork!;
+    await createShadow(q, ben, { title: 'a note left inside', forkId: f.id });
+    expect('error' in (await setForkClosed(q, ben, f.id, true))).toBe(true);
+    const closed = (await setForkClosed(q, ana, f.id, true)).fork!;
+    expect(closed.closed).toBe(true);
+    // closed: no new posts, but what is already there is untouched
+    expect('error' in (await createShadow(q, ben, { title: 'too late', forkId: f.id }))).toBe(true);
+    const bensOwn = (await createShadow(q, ben, { title: 'a Shadow of ben’s' })).shadow!;
+    expect('error' in (await moveFork(q, ben, f.id, homeB.id))).toBe(true);
+    expect('error' in (await moveFork(q, ana, f.id, bensOwn.id))).toBe(true);
+    const moved = (await moveFork(q, ana, f.id, homeB.id)).fork!;
+    expect(moved.hostShadowId).toBe(homeB.id);
+    expect((await forksIn(q, homeA.id, ana.sub)).length).toBe(0);
+    expect((await forksIn(q, homeB.id, ana.sub))[0].title).toBe('notes');
+  });
+
+  it('never opens past its maker’s room', async () => {
+    const home = (await createShadow(q, ana, { title: 'a lamp that listens' })).shadow!;
+    for (let i = 0; i < FORK_ROOM_MAX; i++) expect('fork' in (await createFork(q, ana, home.id, { title: `t${i}` }))).toBe(true);
+    expect('error' in (await createFork(q, ana, home.id, { title: 'one too many' }))).toBe(true);
+    expect((await roomFor(q, ana.sub)).room).toBe(0);
   });
 });

@@ -43,6 +43,8 @@ export interface ServerShadow {
   media: PostMedia[];
   /** For an answer to the day's word: that day (YYYY-MM-DD). */
   day: string | null;
+  /** The fork it was posted inside, if any (sharing still follows the usual rule). */
+  forkId: string | null;
 }
 
 /** A picture (kept here, served from /api/media) or a film (in the file store), height over width. */
@@ -180,6 +182,7 @@ export function forViewer(s: ServerShadow, viewerSub: string | undefined) {
     media: s.media,
     day: s.day,
     sparks: s.sparks,
+    forkId: s.forkId,
     // the same maker's work can be gathered by this key, which never leads back to their account
     maker: s.kind === 'story' ? '' : makerKey(s.owner),
     mine: s.owner === viewerSub,
@@ -267,10 +270,34 @@ const SCHEMA = [
     n INT NOT NULL DEFAULT 0,
     PRIMARY KEY (k, hour)
   )`,
+  // a fork: a named space a maker opens inside their own Shadow, for others to travel into
+  // (and, by its own rule, post inside). Closing one stops new posts; it and its history stay.
+  `CREATE TABLE IF NOT EXISTS tt_forks (
+    id TEXT PRIMARY KEY,
+    host_shadow_id TEXT NOT NULL,
+    owner_sub TEXT NOT NULL,
+    title TEXT NOT NULL,
+    post_access TEXT NOT NULL DEFAULT 'invite',
+    invite_token TEXT,
+    closed BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS tt_forks_host ON tt_forks (host_shadow_id)`,
+  // whoever a fork has let in, when its rule is 'invite': a one-way key, like a maker's
+  `CREATE TABLE IF NOT EXISTS tt_fork_access (
+    fork_id TEXT NOT NULL,
+    poster_key TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (fork_id, poster_key)
+  )`,
+  // a Shadow posted inside a fork, rather than loose on the Slate (sharing still follows it)
+  `ALTER TABLE tt_shadows ADD COLUMN IF NOT EXISTS fork_id TEXT`,
+  `CREATE INDEX IF NOT EXISTS tt_shadows_fork ON tt_shadows (fork_id)`,
 ];
 
 /** Bumped whenever SCHEMA changes, so a database already up to date is not locked for nothing. */
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 // every read counts what grew from each, and names what each grew from (never who told a story)
 const SELECT = `SELECT s.*,
@@ -340,6 +367,7 @@ function row(r: Record<string, unknown>): ServerShadow {
     hidden: r.hidden === true,
     media: parseMedia(r.media),
     day: r.prompt_day ? String(r.prompt_day) : null,
+    forkId: r.fork_id ? String(r.fork_id) : null,
   };
 }
 
@@ -360,7 +388,7 @@ export function storyTitle(text: string) {
 export async function createShadow(
   q: Query,
   who: Author,
-  input: { title?: unknown; body?: unknown; public?: unknown; kind?: unknown; from?: unknown; answer?: unknown }
+  input: { title?: unknown; body?: unknown; public?: unknown; kind?: unknown; from?: unknown; answer?: unknown; forkId?: unknown }
 ) {
   const story = input.kind === 'story';
   const answer = !story && input.answer === true;
@@ -384,6 +412,12 @@ export async function createShadow(
     if (!src || !src.public || src.hidden) return { error: 'That is not here any more.' } as const;
     from = src.id;
   }
+  let forkId: string | null = null;
+  if (!story && typeof input.forkId === 'string') {
+    // a story stands alone; only a Shadow is ever posted inside a fork
+    if (!(await canPostInFork(q, input.forkId, who.sub))) return { error: 'You may not post there.' } as const;
+    forkId = input.forkId;
+  }
   // counted and claimed in one statement, so a burst of posts cannot slip past the limit together
   const claimed = await q(
     `INSERT INTO tt_post_log (owner_sub) SELECT $1 WHERE (SELECT COUNT(*) FROM tt_post_log WHERE owner_sub = $1 AND created_at > NOW() - INTERVAL '1 day') < $2 RETURNING 1`,
@@ -392,9 +426,9 @@ export async function createShadow(
   if (!claimed.length) return { error: 'That is enough for today; come back tomorrow.' } as const;
   // stories are told to everyone; a Shadow stays private until its maker shares it
   const rows = await q(
-    `INSERT INTO tt_shadows (id, owner_sub, owner_name, title, body, is_public, kind, sparked_from, prompt_day) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+    `INSERT INTO tt_shadows (id, owner_sub, owner_name, title, body, is_public, kind, sparked_from, prompt_day, fork_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
     // an answer to today's word is made to be seen with the others
-    [newId(), who.sub, story ? '' : firstName(who.name), title, body, story || answer || input.public === true, story ? 'story' : 'shadow', from, answer ? dayOf() : null]
+    [newId(), who.sub, story ? '' : firstName(who.name), title, body, story || answer || input.public === true, story ? 'story' : 'shadow', from, answer ? dayOf() : null, forkId]
   );
   return { shadow: (await getShadow(q, String(rows[0].id)))! } as const;
 }
@@ -550,4 +584,116 @@ export async function shadowFor(q: Query, id: string, viewerSub: string | undefi
   if (!s) return null;
   if (s.owner === viewerSub) return s;
   return (s.public || s.unlisted) && !s.hidden ? s : null;
+}
+
+// ---------------------------------------------------------------------------
+// Forks: a named space a maker opens inside their own Shadow, for others to
+// travel into (and, by its own rule, post inside). Moving or closing a fork
+// never touches what is already inside it: only where it sits, or whether it
+// takes anything new.
+
+export type PostAccess = 'anyone' | 'invite';
+
+export const FORK_TITLE_MAX = 80;
+/** How many forks one person may hold at once, closed ones too: what a fork holds keeps taking room even quiet. */
+export const FORK_ROOM_MAX = 12;
+
+export interface ForkView {
+  id: string;
+  hostShadowId: string;
+  title: string;
+  postAccess: PostAccess;
+  closed: boolean;
+  created: number;
+  /** True for whoever opened it. */
+  mine: boolean;
+  /** Only ever sent to its own maker: the link that lets someone else post inside it. */
+  inviteLink?: string;
+}
+
+function forkRow(r: Record<string, unknown>, viewerSub: string | undefined): ForkView {
+  const mine = r.owner_sub === viewerSub;
+  return {
+    id: String(r.id),
+    hostShadowId: String(r.host_shadow_id),
+    title: String(r.title),
+    postAccess: r.post_access === 'anyone' ? 'anyone' : 'invite',
+    closed: r.closed === true,
+    created: new Date(r.created_at as string).getTime(),
+    mine,
+    ...(mine && r.post_access !== 'anyone' && r.invite_token ? { inviteLink: String(r.invite_token) } : {}),
+  };
+}
+
+/** How much room one person has left for forks (closed ones still hold their place: what is inside them is still there). */
+export async function roomFor(q: Query, ownerSub: string): Promise<{ used: number; room: number }> {
+  const [r] = await q(`SELECT COUNT(*)::int AS n FROM tt_forks WHERE owner_sub = $1`, [ownerSub]);
+  const used = Number(r?.n ?? 0);
+  return { used, room: Math.max(0, FORK_ROOM_MAX - used) };
+}
+
+async function getForkRaw(q: Query, id: string) {
+  const [r] = await q(`SELECT * FROM tt_forks WHERE id = $1`, [id]);
+  return r ?? null;
+}
+
+/** Only a Shadow's own maker opens a fork inside it. */
+export async function createFork(q: Query, who: Author, hostShadowId: string, input: { title?: unknown; postAccess?: unknown }) {
+  const host = await getShadow(q, hostShadowId);
+  if (!host || host.owner !== who.sub) return { error: 'Only its maker can open a fork here.' } as const;
+  const title = clean(input.title, FORK_TITLE_MAX);
+  if (!title) return { error: 'A fork needs a name (up to 80 characters).' } as const;
+  const postAccess: PostAccess = input.postAccess === 'anyone' ? 'anyone' : 'invite';
+  const id = newId();
+  const inviteToken = postAccess === 'invite' ? newId() : null;
+  // counted and claimed in one statement, so a burst of openings cannot slip past the room together
+  const claimed = await q(
+    `INSERT INTO tt_forks (id, host_shadow_id, owner_sub, title, post_access, invite_token)
+     SELECT $1, $2, $3, $4, $5, $6 WHERE (SELECT COUNT(*) FROM tt_forks WHERE owner_sub = $3) < $7 RETURNING id`,
+    [id, hostShadowId, who.sub, title, postAccess, inviteToken, FORK_ROOM_MAX]
+  );
+  if (!claimed.length) return { error: 'That is as much room as you have for now.' } as const;
+  return { fork: forkRow((await getForkRaw(q, id))!, who.sub) } as const;
+}
+
+/** The forks open inside one Shadow, for whoever may see it (an invite link is sent only to its own maker). */
+export async function forksIn(q: Query, hostShadowId: string, viewerSub: string | undefined): Promise<ForkView[]> {
+  const rows = await q(`SELECT * FROM tt_forks WHERE host_shadow_id = $1 ORDER BY created_at ASC`, [hostShadowId]);
+  return rows.map((r) => forkRow(r, viewerSub));
+}
+
+/** Moves a fork to another Shadow of the same maker's: its history travels with it, untouched. */
+export async function moveFork(q: Query, who: Author, forkId: string, newHostShadowId: string) {
+  const f = await getForkRaw(q, forkId);
+  if (!f || f.owner_sub !== who.sub) return { error: 'Not yours to move.' } as const;
+  const host = await getShadow(q, newHostShadowId);
+  if (!host || host.owner !== who.sub) return { error: 'Only into a Shadow of your own.' } as const;
+  await q(`UPDATE tt_forks SET host_shadow_id = $2, updated_at = NOW() WHERE id = $1`, [forkId, newHostShadowId]);
+  return { fork: forkRow({ ...f, host_shadow_id: newHostShadowId }, who.sub) } as const;
+}
+
+/** Closes (or reopens) a fork: closed, it takes no new posts, but it and what is already inside it stay. */
+export async function setForkClosed(q: Query, who: Author, forkId: string, closed: boolean) {
+  const f = await getForkRaw(q, forkId);
+  if (!f || f.owner_sub !== who.sub) return { error: 'Not yours to change.' } as const;
+  await q(`UPDATE tt_forks SET closed = $2, updated_at = NOW() WHERE id = $1`, [forkId, closed]);
+  return { fork: forkRow({ ...f, closed }, who.sub) } as const;
+}
+
+/** Whether this person may post inside a fork right now. */
+export async function canPostInFork(q: Query, forkId: string, viewerSub: string | undefined): Promise<boolean> {
+  const f = await getForkRaw(q, forkId);
+  if (!f || f.closed || !viewerSub) return false;
+  if (f.owner_sub === viewerSub) return true;
+  if (f.post_access === 'anyone') return true;
+  const [r] = await q(`SELECT 1 FROM tt_fork_access WHERE fork_id = $1 AND poster_key = $2`, [forkId, makerKey(viewerSub)]);
+  return !!r;
+}
+
+/** Opening someone's invite link lets that account post inside the fork from then on. */
+export async function joinFork(q: Query, forkId: string, inviteToken: string, viewerSub: string) {
+  const f = await getForkRaw(q, forkId);
+  if (!f || f.closed || !f.invite_token || f.invite_token !== inviteToken) return { error: 'That invitation is not open.' } as const;
+  await q(`INSERT INTO tt_fork_access (fork_id, poster_key) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [forkId, makerKey(viewerSub)]);
+  return { ok: true } as const;
 }

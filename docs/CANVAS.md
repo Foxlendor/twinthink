@@ -212,7 +212,36 @@ Planned, not built:
   antithesis -> synthesis), not a like.
 - Plots show only ideas or real R&D bounties, never logo banners.
 
+## Forks
+A fork is a named space a maker opens inside their own Shadow, for others to
+travel into, and, by its own rule, post inside (`tt_forks`, `tt_fork_access`
+in `store.ts`; `/api/forks`). Only its own maker opens one, moves it to
+another Shadow of theirs, or closes it. A fork's own rule decides who may
+post there: anyone signed in, or only whoever has followed its invite link
+(kept only as a one-way key, the same shape as a maker's own). Closing a fork
+takes no new posts, but it and everything already inside it stay exactly as
+they were; moving it carries its history with it, untouched. A post made
+inside a fork still starts private and is shared the same way as anywhere
+else: being inside a fork is only where something sits, never whether it is
+seen. Each maker has room for a bounded number of forks at once
+(`FORK_ROOM_MAX`), closed ones included, since what a fork holds keeps taking
+real room even while quiet.
+
+Built so far: the data layer only (schema, `store.ts`, `/api/forks` routes,
+tests). Not yet built: showing a fork as a real gate in the flight itself (so
+travelling into one feels like passing through a ring, the way HEX Lab or a
+Whoeuvre already do), the compose UI for opening/moving/closing a fork and
+sharing its invite link, and on-device breadcrumbs (which fork someone
+approached but did not enter, so they can find their way back to it later,
+kept the same way `web.ts` already keeps its memory: on the device, ids and
+times only). Any shared, aggregate sense of "others paused here" at a fork
+should reuse resonance exactly as it already works: an anonymous, one-way
+mark, shown as a felt quality, never a number, never an individual's trail.
+
 ## Next
-1. Connect Shadows to the server log so visitors can opt in to share (private stays default).
-2. Accounts + plot claims + earning rules above.
-3. Server-side disclosure: send each viewer only what their closeness allows.
+1. Wire forks into the flight itself: a fork as a travelable gate, its
+   compose UI, and on-device breadcrumbs.
+2. Plot claims + earning rules above (still planned, not built).
+3. Rabi: once forks can be made and moved by hand, give the same creation
+   tools a guided, preview-and-approve AI layer. Not before the manual
+   version is real and lived-in.
