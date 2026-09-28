@@ -10,7 +10,7 @@
 
 import { IdeaNode, LifeEvent, lastActivity, rippleReach } from './model';
 import { ScreenTransform } from './camera';
-import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, flightScale, leanAt, project, travelled, viewOf } from './flight';
+import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, flightScale, project, travelled, viewOf } from './flight';
 import { Hit, INK, PAPER, PAPER_RGB, PRESENCE, ROSE, TINT_COOL, TINT_WARM, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
 import { AUTHOR } from './sources/author';
 import { Pluck, trembleAt } from './web';
@@ -220,11 +220,8 @@ function drawEdge(st: RenderState, e: EdgePath, a: number, hovered: boolean, lea
 }
 
 /**
- * The tunnel you fall through.
-
-/**
- * The clock at the centre of the flight: twelve faint ticks that turn with the
- * stream, and a dotted hand that always points at what comes next.
+ * The clock at the centre of the flight: twelve faint ticks (turning only if the clock's own
+ * spin has been asked for), and a dotted hand that always points at what comes next.
  */
 function drawClock(st: RenderState, v: View, next: [number, number] | null, ink: Ink) {
   const M = st.M;
@@ -245,6 +242,43 @@ function drawClock(st: RenderState, v: View, next: [number, number] | null, ink:
     ink.dot(v.cx + dx * f, v.cy + dy * f, 1.4, 0.3 * (1 - (i / n) * 0.4));
   }
   ink.dot(v.cx + (dx / d) * len, v.cy + (dy / d) * len, 3.2, 0.7, true);
+}
+
+/**
+ * The page is the clock face you fall through: 12 at the top, 3 at the right, 6 at the bottom,
+ * 9 at the left. Things already sit at the hour they were made, so something from 6 comes up
+ * from the bottom of the screen. Fixed to the page (they turn only with the clock's own spin,
+ * when that has been asked for), clear of the header, the trail and the compass.
+ */
+function drawHours(st: RenderState, v: View) {
+  const { ctx } = st;
+  const phone = st.w < 640;
+  const size = phone ? 19 : 22;
+  ctx.save();
+  ctx.font = `italic ${size}px ${st.serif}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = `rgba(${INK},0.55)`;
+  // the room each edge leaves: the header's row at the top, the trail and actions at the bottom
+  // (on a phone the trail can wrap to two lines), the compass on the right (at the middle on a
+  // wide screen, above it on a phone)
+  const top = 30;
+  const bottom = st.h - (phone ? 160 : 90);
+  const side = 18;
+  const right = st.w >= 640 ? st.w - 76 : st.w - side;
+  if (v.roll === 0) {
+    ctx.fillText('12', v.cx, top);
+    ctx.fillText('3', right, v.cy);
+    ctx.fillText('6', v.cx, bottom);
+    ctx.fillText('9', side, v.cy);
+  } else {
+    // with the clock's own spin on, the numbers go round with it, on an oval inside those edges
+    const rx = Math.min(v.cx - side, right - v.cx);
+    const ry = Math.min(v.cy - top, bottom - v.cy);
+    const hours: [string, number][] = [['12', -Math.PI / 2], ['3', 0], ['6', Math.PI / 2], ['9', Math.PI]];
+    for (const [label, a] of hours) ctx.fillText(label, v.cx + Math.cos(a + v.roll) * rx, v.cy + Math.sin(a + v.roll) * ry);
+  }
+  ctx.restore();
 }
 
 function fogOf(dz: number) {
@@ -311,22 +345,14 @@ function drawLeaned(x: number, y: number, R: number, alpha: number, ink: Ink) {
 }
 
 /**
- * The tunnel you fall through. Its axis follows the way the flight leans, so
- * it winds toward whatever comes next; its rings come out of the vanishing
- * point and open past you, laced by strands that spiral. At rest it fades to
+ * The tunnel you fall through: a straight shaft, looking straight down. Its
+ * rings come out of the vanishing point and open past you, laced by strands
+ * running straight to that one point. At rest it fades to
  * a whisper, so what is in front of you is what you see; moving, it returns,
  * and at speed its dots stream into lines. While a song or a film is heard,
  * waves travel down its walls toward you with the sound.
  */
-function drawTunnel(
-  st: RenderState,
-  v: View,
-  cam: FlightCam,
-  ink: Ink,
-  stream: Stream,
-  skip: (s: Station) => boolean,
-  web?: FlightState['web']
-) {
+function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink, web?: FlightState['web']) {
   const plucks = web?.plucks.length && !st.reduced ? web.plucks : null;
   // the walls tremble where a pluck is passing (worked out once per slice of the tunnel)
   const trem = new Map<number, number>();
@@ -344,7 +370,6 @@ function drawTunnel(
   const RADIUS = 1.3;
   const DOTS = 64;
   const STRANDS = 18;
-  const TWIST = 0.22;
   const speed = Math.abs(cam.shown);
   // how much of the wall is there: a whisper at rest, whole when moving
   const presence = (0.3 + 0.7 * smoothstep(0.15, 3, speed)) * (web?.calm ?? 1);
@@ -352,19 +377,9 @@ function drawTunnel(
   const fast = st.reduced ? 0 : clamp(cam.shown * 0.035, -1.1, 1.1) * smoothstep(3, 10, Math.abs(cam.shown));
   const level = st.audio?.level ?? 0;
   const clock = st.reduced ? 0 : st.clock ?? 0;
-  // the axis at a place along the way: where the flight leans when it gets there
-  const axes = new Map<number, [number, number]>();
-  const axisAt = (zAbs: number): [number, number] => {
-    const key = Math.round(zAbs * 100);
-    let a = axes.get(key);
-    if (!a) {
-      a = leanAt(stream, zAbs - FOCUS, skip);
-      axes.set(key, a);
-    }
-    return a;
-  };
+  // a straight shaft: it never bends to meet what comes next. You drift inside it, toward the hour
+  // of whatever you are nearing, the way a fall drifts toward one wall, not a track that turns.
   const wall = (zAbs: number, ang: number, dz: number): [number, number] => {
-    const [ax, ay] = axisAt(zAbs);
     // hand-drawn: it breathes a little along its length and around
     let r = RADIUS * (1 + 0.06 * noise1(zAbs * 0.35, 11) + 0.035 * noise1(ang * 2 + zAbs * 0.2, 7));
     // sound: a wave travels from the vanishing point toward you
@@ -372,7 +387,7 @@ function drawTunnel(
     // food: the wall ripples as a pluck runs past
     const T = trembleOf(zAbs);
     if (T !== 0) r *= 1 + 0.045 * T * Math.sin(6 * ang + 1.7);
-    const [x, y] = project(v, ax + Math.cos(ang) * r, ay + Math.sin(ang) * r, dz);
+    const [x, y] = project(v, Math.cos(ang) * r, Math.sin(ang) * r, dz);
     return [x, y];
   };
   const onScreen = (x: number, y: number) => x > -6 && y > -6 && x < st.w + 6 && y < st.h + 6;
@@ -387,9 +402,8 @@ function drawTunnel(
     const a = 0.24 * presence * pulse * (1 - smoothstep(8, FAR, dz)) * smoothstep(0.35, 1.4, dz) * (m % 3 === 0 ? 1.3 : 0.75);
     if (a < 0.012) continue;
     const size = clamp(0.011 * (v.F / dz), 0.9, 2.6);
-    const twist = zAbs * TWIST;
     for (let i = 0; i < DOTS; i++) {
-      const ang = twist + (i / DOTS) * Math.PI * 2 + 0.03 * noise1(i + m * 13, 5);
+      const ang = (i / DOTS) * Math.PI * 2 + 0.03 * noise1(i + m * 13, 5);
       const [x, y] = wall(zAbs, ang, dz);
       if (!onScreen(x, y)) continue;
       if (Math.abs(fast) > 0.05) {
@@ -405,7 +419,7 @@ function drawTunnel(
     }
   }
 
-  // strands along the wall, spiralling as the tunnel turns
+  // strands straight down the wall, all running to the one vanishing point below you
   const SP = 0.16;
   const n0 = Math.ceil((v.z + 0.5) / SP);
   const n1 = Math.floor((v.z + FAR) / SP);
@@ -416,7 +430,7 @@ function drawTunnel(
       const dz = zAbs - v.z;
       const a = 0.12 * presence * (1 - smoothstep(8, FAR, dz)) * smoothstep(0.5, 2, dz);
       if (a < 0.012) continue;
-      const [x, y] = wall(zAbs, base + zAbs * TWIST, dz);
+      const [x, y] = wall(zAbs, base, dz);
       if (!onScreen(x, y)) continue;
       ink.dot(x, y, clamp(0.008 * (v.F / dz), 0.75, 2), a);
     }
@@ -924,7 +938,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   const born = (s: Station) => st.cut === null || s.depth === 0 || s.node.began <= st.cut;
   const gone = (s: Station) => !born(s) || fs.hidden(s);
 
-  drawTunnel(st, v, cam, ink, stream, fs.hidden, fs.web);
+  drawTunnel(st, v, cam, ink, fs.web);
   drawSpecks(st, v, cam, ink);
   for (const s of stream.stations) if (s.gate && !gone(s)) drawTube(st, v, s, L, ink);
   drawThread(st, v, stream, ink, cam, gone, fs.web);
@@ -1051,6 +1065,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     nextDz = dz;
   }
   drawClock(st, v, next, ink);
+  drawHours(st, v);
   // where the nearest food ahead lies, for the compass's rose dot
   let food: number | null = null;
   if (fs.web?.food.size) {

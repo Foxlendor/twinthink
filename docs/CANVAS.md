@@ -42,7 +42,9 @@ out past the edges, behind you.
 - The stream is a clock: each thing sits around it at the hour it was made
   (on his clock). Travel never turns the view (turning while moving forward was
   nauseating); the clock can still turn slowly by itself, but only once asked
-  (tap the compass in the middle; tap again to stop it). A dotted hand points
+  (tap the compass in the middle; tap again to stop it). The page itself is the
+  clock face: 12 at the top, 3 at the right, 6 at the bottom, 9 at the left, so
+  something made at 6 comes up from the bottom of the screen. A dotted hand points
   at what comes next. The compass (right edge) shows world-up, where you are in
   the lap, and the next thing's direction.
 - Night: pale ink on dark paper (the visitor's choice, or their system's).
@@ -180,8 +182,8 @@ with no words or numbers. What you found, and which makers you stayed with, is k
 only on your device (`twinthink.web.v1`: ids and times).
 
 ### The tunnel
-The flight runs inside an ink tunnel (`drawTunnel` in flightRender.ts) that winds toward what comes next, fades to a whisper at rest, and carries waves toward you while a song or film is heard: rings
-from the vanishing point, strands that spiral with the clock, dots that stream
+The flight runs inside an ink tunnel (`drawTunnel` in flightRender.ts) that is a straight shaft, looked straight down (it never bends to meet what comes next: you drift inside it toward the hour of whatever you are nearing), fades to a whisper at rest, and carries waves toward you while a song or film is heard: rings
+from the vanishing point, strands running straight down to that one point, dots that stream
 into lines at speed.
 
 ### Sketchbooks
