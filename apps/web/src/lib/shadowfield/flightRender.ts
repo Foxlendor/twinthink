@@ -183,7 +183,7 @@ function drawDew(st: RenderState, s: Station, x: number, y: number, R: number, a
 
 /**
  * Presence: in a shared Fall, another person catching the same light you are,
- * right now, at this one thing — never a trail of where they have been. Close
+ * right now, at this one thing, never a trail of where they have been. Close
  * to the thing itself, its own cool tone, so it is never mistaken for dew.
  */
 function drawPresence(st: RenderState, s: Station, x: number, y: number, R: number, alpha: number, n: number, ink: Ink) {

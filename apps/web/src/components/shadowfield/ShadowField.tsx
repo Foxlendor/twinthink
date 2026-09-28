@@ -1192,7 +1192,8 @@ export default function ShadowField({ serif }: Props) {
               break;
             }
           }
-          flyTo(target);
+          // never fly past the permitted ancestor: shared reference never overrides this viewer's own disclosure
+          flyTo(target.slice(0, open));
           if (open < target.length) setNotice(`${d.sharedFall.hostName} moved into a path you can't enter`);
         })
         .catch(() => undefined);
@@ -3801,13 +3802,13 @@ export default function ShadowField({ serif }: Props) {
               back rather than staying. that is the whole of it: nothing changes here unless you decide something.
             </p>
           </details>
-          <button type="button" className={styles.quiet} onClick={() => actOnNotice('open_path')} title="look into it — only actually making a fork counts as agreeing">
+          <button type="button" className={styles.quiet} onClick={() => actOnNotice('open_path')} title="look into it, only actually making a fork counts as agreeing">
             open a path
           </button>
-          <button type="button" className={styles.quiet} onClick={() => actOnNotice('leave')} title="I mean this dead end — don't ask again unless it grows much stronger">
+          <button type="button" className={styles.quiet} onClick={() => actOnNotice('leave')} title="I mean this dead end, don't ask again unless it grows much stronger">
             leave it
           </button>
-          <button type="button" className={styles.quiet} onClick={() => actOnNotice('watch')} title="don't change anything — tell me if this becomes meaningfully stronger">
+          <button type="button" className={styles.quiet} onClick={() => actOnNotice('watch')} title="don't change anything, tell me if this becomes meaningfully stronger">
             watch
           </button>
         </div>

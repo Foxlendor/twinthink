@@ -590,7 +590,7 @@ describe('a shared Fall', () => {
     expect(t1).not.toBe(t2);
   });
 
-  it('is only ever moved by its own leader, never a follower — and never a follower\'s own position at all', async () => {
+  it('is only ever moved by its own leader, never a follower, and never a follower\'s own position at all', async () => {
     const f = (await createSharedFall(q, ana)).sharedFall;
     await joinSharedFall(q, f.id, f.inviteLink!, ben);
     expect('error' in (await setSharedFallStation(q, f.id, ben.sub, 'p/somewhere'))).toBe(true);
