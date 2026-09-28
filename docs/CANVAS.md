@@ -76,6 +76,22 @@ out past the edges, behind you.
   back on another day counts; passing through once does nothing. It shows as
   dew on the web, never as a number. Only a one-way mark of who is kept, and
   only for a season.
+- What leaving the device is even for is decided on purpose, not by what
+  happens to be easy to collect. Ordinary browsing needs nothing richer than
+  what already leaves it today: a one-way mark, ids and times, nothing that
+  reveals what was seen. A separate, plainly-worded, explicitly agreed-to
+  research participation could one day ask more of someone, for a stated
+  study, never as a quiet upgrade of data already being kept for another
+  reason.
+- Anything shown that a maker did not make is what it is, in the structure
+  itself, not just in a label: a Shadow is a person's own work; a thing built
+  with AI's help says so; a path, a bridge, or a way of arriving that the
+  system drew is never credited as anyone's Shadow, never enters a Whoeuvre,
+  never sparks. AI may build the roads between ideas; it may not stand in
+  for one.
+- Nothing shown is ever a random draw standing in for the real thing. Motion
+  can feel like more than it is; what a hand's release settles on is always
+  whatever is truly nearest, never a roll made to look like a find.
 
 ## Settings (Vercel → Project → Settings → Environment Variables)
 | Variable | Purpose |
