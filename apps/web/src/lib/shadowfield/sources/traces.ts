@@ -37,11 +37,12 @@ export interface Trace {
 }
 
 // Checked 2026-09-25: owner read from each post's public page; time decoded from its id.
+// 2026-09-28: "lol" (2025-01-21) and "terrified" are his dancing (seen in the films), so they live there.
 export const TRACES: Trace[] = [
   { id: 'ChFx8JwpSC3', platform: 'instagram', owner: 'johne.boi', at: '2022-08-10T19:14:04Z', words: 'GMFB' },
   { id: 'C8ot6S0RsGg', platform: 'instagram', owner: 'johne.boi', at: '2024-06-25T10:59:55Z', words: 'ıuɐp #SIU3d', belongsTo: 'dance' },
-  { id: 'DFE84eyO5xA', platform: 'instagram', owner: 'johne.boi', at: '2025-01-21T06:20:38Z', words: 'lol' },
-  { id: 'DFtuMlmO3se', platform: 'instagram', owner: 'johne.boi', at: '2025-02-06T02:21:10Z', words: 'terrified' },
+  { id: 'DFE84eyO5xA', platform: 'instagram', owner: 'johne.boi', at: '2025-01-21T06:20:38Z', words: 'lol', belongsTo: 'dance' },
+  { id: 'DFtuMlmO3se', platform: 'instagram', owner: 'johne.boi', at: '2025-02-06T02:21:10Z', words: 'terrified', belongsTo: 'dance' },
   { id: 'DGCl2kyOAL-', platform: 'instagram', owner: 'johne.boi', at: '2025-02-14T04:52:18Z', words: 'lol\n#meme' },
   { id: 'DGEkNcCyNTR', platform: 'instagram', owner: 'johne.boi', at: '2025-02-14T23:16:26Z', words: '', belongsTo: 'dance' },
   { id: 'DIXiYV3uwx8', platform: 'instagram', owner: 'johne.boi', at: '2025-04-13T01:08:48Z', words: 'crazy April 11th' },
