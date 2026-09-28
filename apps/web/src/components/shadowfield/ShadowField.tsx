@@ -1098,7 +1098,10 @@ export default function ShadowField({ serif }: Props) {
         }
         const dr = await fetch(`/api/shared-falls/${encodeURIComponent(invite.id)}`, { cache: 'no-store' });
         const d = (await dr.json().catch(() => ({}))) as { sharedFall?: SharedFallState };
-        if (d.sharedFall) setSharedFall(d.sharedFall);
+        if (d.sharedFall) {
+          setSharedFall(d.sharedFall);
+          setNotice(`joined ${d.sharedFall.hostName}'s Fall`);
+        }
       })
       .catch(() => setNotice('that invitation is not open'));
   }, [me?.user]);
@@ -1168,6 +1171,10 @@ export default function ShadowField({ serif }: Props) {
             prev.participants.length !== d.sharedFall.participants.length
           ) {
             setSharedFall(d.sharedFall);
+            if (hosting && prev && d.sharedFall.participants.length > prev.participants.length) {
+              const joined = d.sharedFall.participants.find((p) => !p.mine && !prev.participants.some((old) => old.token === p.token));
+              if (joined) setNotice(`${joined.name} joined your Fall`);
+            }
           }
           if (hosting) return; // the leader's own place is never moved by this poll
           const station = d.sharedFall.stationId;
