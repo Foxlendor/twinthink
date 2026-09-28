@@ -5,8 +5,12 @@ enter (`/slate`; `/canvas` and old share links redirect there); the **ShadowFiel
 is the machinery behind it (these files keep that name); a **Whoeuvre** is what one
 person has left behind (`/whoeuvre/<name>`: his is the Slate itself, anyone else's
 is their ring in "from everyone", and your own ring is "your whoeuvre"); the
-**HEX Lab** (Human EXperience) holds his inventions and experiments, the throwaways
-and the ones he is building (`/whoeuvre/johne.boi/hex-lab`). Older notes below say
+**HEX Lab** (Human EXperience) holds everything he invents: what he is building
+(TwinThink, moved inside it on 28 September; it was a ring of its own), what is
+free to build on (redr.ink, TwizzLock) and what he gives away (the throwaways)
+(`/whoeuvre/johne.boi/hex-lab`). His Whoeuvre is four groups: HEX Lab, his
+songs, his dancing, and moments (his life, as he shared it). Old links to
+TwinThink still arrive: ids never change when something moves. Older notes below say
 "Canvas": read it as Slate.
 
 Whoeuvre is not a rebrand of "profile": there is no profile concept here (no
@@ -82,7 +86,7 @@ out past the edges, behind you.
   things is the time between them (a long silence is a long empty stretch,
   where the thread thins).
 - Things stay with what they belong to (`groupLens` in `core.ts`). On the
-  Slate you fall past its groups (HEX Lab, the songs, TwinThink, the dancing,
+  Slate you fall past its groups (HEX Lab, the songs, the dancing,
   moments, each posted Twin), never into something inside one by chance; each
   says "tap to go in." Tap one (or Enter, or a click while steering) and you
   are carried to the first thing in it, and the fall holds only that group.

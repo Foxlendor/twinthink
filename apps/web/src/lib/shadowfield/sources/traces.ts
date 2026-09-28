@@ -176,7 +176,7 @@ export function buildMoments(): IdeaNode {
   return {
     id: 'moments',
     title: 'moments',
-    line: 'what he shared, as he said it.',
+    line: 'his life, as he shared it.',
     kind: 'visual',
     origin: 'real',
     began: first,

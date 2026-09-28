@@ -27,17 +27,20 @@ let current: IdeaNode | null = null;
 let hexLab: IdeaNode | null = null;
 
 /**
- * The HEX (Human EXperience) Lab: his inventions and experiments aimed at
- * everyday human experience, the ones he gives away and the ones he is
- * building, in one ring of his Whoeuvre.
+ * The HEX (Human EXperience) Lab: everything he invents, in one ring of his
+ * Whoeuvre: what he is building (TwinThink), what is free to build on
+ * (redr.ink, TwizzLock), and what he gives away (the throwaways).
  */
-function buildHexLab(throwaways: IdeaNode, starters: IdeaNode[]): IdeaNode {
-  const kids = [throwaways, ...starters];
+function buildHexLab(twinthink: IdeaNode, throwaways: IdeaNode, starters: IdeaNode[]): IdeaNode {
+  // inside the Lab's own frame, beside the others (it was a ring of its own on the Slate)
+  twinthink.x = -0.34;
+  twinthink.y = -0.22;
+  const kids = [twinthink, throwaways, ...starters];
   const first = Math.min(...kids.map((k) => k.began));
   return {
     id: 'hex-lab',
     title: 'HEX Lab',
-    line: 'experiments in human experience.',
+    line: 'his inventions: what he is building, and what he gives away.',
     kind: 'physical',
     origin: 'real',
     began: first,
@@ -67,9 +70,9 @@ export function buildWorld(
     weaveTraces([music, dance]);
   }
   moments ??= buildMoments();
-  hexLab ??= buildHexLab(throwaways, starters);
+  hexLab ??= buildHexLab(twinthink, throwaways, starters);
+  // his Whoeuvre: what he invents, his songs, his dancing, and moments of his life
   const children = [
-    twinthink,
     music,
     dance,
     moments,

@@ -120,9 +120,10 @@ function flightStep(cam: Camera, f: Flight, access: Access, dt: number): boolean
   const dy = cam.h / 2 - T.oy;
   const lz = Math.log(wantR / T.s);
   if (Math.abs(dx) < 0.6 && Math.abs(dy) < 0.6 && Math.abs(lz) < 0.004) return true;
-  // pan first when far off-centre, so the journey reads as travel then descent
+  // pan first when far off-centre, so the journey reads as travel then descent (and so a deep
+  // target never runs away: zooming in faster than the pan closes the gap would never arrive)
   const off = Math.hypot(dx, dy) / M;
-  const zk = off > 0.25 && lz > 0 ? k * 0.25 : k;
+  const zk = off > 0.25 && lz > 0 ? 0 : k;
   cam.pan(dx * k, dy * k, access.canEnter);
   cam.zoomAt(cam.w / 2, cam.h / 2, Math.exp(clamp(lz * zk, -0.35, 0.35)), access.canEnter);
   return false;

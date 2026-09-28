@@ -183,7 +183,7 @@ describe('TwinThink continuity record', () => {
   });
 
   it('counts each real change once', () => {
-    const tw = buildWorld([]).children[0];
+    const tw = findPath(buildWorld([]), 'twinthink')!.at(-1)!;
     expect(countEvents(tw)).toBe(continuity.commits.length + 1);
   });
 });
@@ -256,9 +256,11 @@ describe('nothing ends', () => {
     const cam = new Camera(world);
     cam.resize(1440, 900);
     cam.s = 400;
-    // walk to a leaf, then into its portal, then into TwinThink again
-    let node = world.children[0];
-    const target = [world, node];
+    // walk to a leaf of TwinThink (inside HEX Lab), then into its portal, then into the Slate's first group again
+    const into = findPath(world, 'twinthink')!;
+    for (const n of into) topologyOf(n);
+    let node = into.at(-1)!;
+    const target = [...into];
     for (let d = 0; d < 6; d++) {
       topologyOf(node);
       const next = node.children.find((c) => !c.portal) ?? node.children.find((c) => c.portal);
@@ -273,7 +275,7 @@ describe('nothing ends', () => {
     let arrived = false;
     for (let i = 0; i < 12000 && !arrived; i++) arrived = stepFlight(cam, { target, radius: 0.53 }, open, 1 / 60);
     expect(arrived).toBe(true);
-    expect(cam.node.id).toBe('twinthink');
+    expect(cam.node.id).toBe(world.children[0].id);
     expect(cam.depth).toBeGreaterThan(4);
   });
 
@@ -411,7 +413,7 @@ describe('traces: what he shared elsewhere', () => {
 
 describe('ethos, not logos', () => {
   it('sessions are named by the hours he worked, never by dates; his name-and-logo work carries his art', () => {
-    const tw = buildWorld([]).children.find((c) => c.id === 'twinthink')!;
+    const tw = findPath(buildWorld([]), 'twinthink')!.at(-1)!;
     // logos meaning his marks are welcome: the ring for them shows his film and his logo
     const mark = tw.children.find((b) => b.id === 'twinthink/mark')!;
     expect(mark.title).toBe('the name, the logo, the look');
@@ -589,7 +591,7 @@ describe('the flight', () => {
   });
 
   it('a silence is only real time with nothing happening', () => {
-    const tw = world.children.find((c) => c.id === 'twinthink')!;
+    const tw = findPath(world, 'twinthink')!.at(-1)!;
     const canvas = tw.children.find((c) => c.id === 'twinthink/canvas')!;
     // TwinThink was being worked on when its newest branch began: no silence
     expect(silence(tw, canvas)).toBe(0);
@@ -649,7 +651,7 @@ describe('the flight', () => {
 describe('ripples', () => {
   it('finds paths without falling into portals', () => {
     const world = buildWorld([]);
-    const tw = world.children[0];
+    const tw = findPath(world, 'twinthink')!.at(-1)!;
     // expand every leaf so portals exist
     const walk = (n: IdeaNode, d: number) => {
       if (d > 4) return;
@@ -658,7 +660,7 @@ describe('ripples', () => {
     };
     walk(tw, 0);
     const leaf = tw.children[0].children[0];
-    expect(findPath(world, leaf.id)?.map((n) => n.id)).toEqual(['canvas', 'twinthink', tw.children[0].id, leaf.id]);
+    expect(findPath(world, leaf.id)?.map((n) => n.id)).toEqual(['canvas', 'hex-lab', 'twinthink', tw.children[0].id, leaf.id]);
     expect(findPath(world, 'nope')).toBeNull();
   });
 
