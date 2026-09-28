@@ -47,28 +47,60 @@ Last updated: 28 September 2026.
 | COOP-02 | specified | | | | Creator co-op rights not built (D-09). |
 | FOUNDER-01 | preserved, dormant (John, 28 Sep) | 47 unverified, 427 verified, 474 in all, as `FOUNDER_ALLOCATION`. Read by nothing that decides anything. | `lib/entitlements.ts` | `entitlements.test.ts` | Verification and what founders receive are OPEN (D-10). Nothing is granted from these numbers. |
 
-## Decided 28 Sep (later): the Fall is a marble run, not a feed
+## Decided 28 Sep (latest): a Drop falls through a living web
 
-This replaces "falling through a space with sideways choices" as the central requirement:
+This is the central requirement. It replaces "falling through a space with sideways choices" and refines "a marble run":
 
-**The visitor is a falling body inside a living structure of ideas. They influence their trajectory; they do not browse a feed or select branches from a menu.**
+**A Drop falls through a living web of relationships. Gaps let it continue falling; strands catch and redirect it; Drift lets the visitor influence which tensions they follow.**
 
-Like a marble in a living Rube Goldberg machine: fall, tumble, get caught by a structure (a bowl, a rail, a helix, a funnel), circle it, meet work embedded in it, get released into another trajectory, spiral through another layer, fall again. Every piece of the machine is formed from people's work and the relationships between it. The Slate is not a feed; paths are not buttons; the clock is not a menu; drift is not scrolling; Rabi is not "recommended for you".
+### The Drop is the moving body
 
-- **The thumb gives influence, not control.** Push toward 6 and the tumble is biased down into that spiral, but momentum can carry you past something; lean toward 3 and you may catch the edge of another route; you may circle a structure before it lets you go. That small loss of perfect control is part of the feeling. Not a free-roaming game joystick.
-- **Rabi builds pieces of the machine.** What people tag, connect, keep, group and contribute becomes the ramps, funnels, junctions, catches and passages someone else later falls through. The collective structure is the routing.
+The visitor experiences the Slate through the Drop. The Drop can fall, rise, spiral, coast, get caught, accelerate, or be redirected by the structure around it. It is never an action button. (The hollow drop at the middle while steering, built already, is this body.)
 
-What exists today, honestly: the flight is a single sequence in depth with hops between things, plus lenses, openings and steering bolted on. It is the old locomotion metaphor ("tunnels on a feed"). The marble run needs a new core part the spec already said was missing (6.1: space and connections): structure pieces, generated from relationships, and a motion model with momentum through them.
+### The Fall is already happening; you interfere with it
 
-Open decisions this raises (not to be filled in by an implementation):
+Not swipe, next post, swipe, next post. The Drop is already moving, work passes through your view, currents and strands pull it toward different routes:
 
-| ID | Question |
+- **Let go:** the Drop keeps flowing.
+- **Touch or hold:** it slows and settles around what it is near (this is how you come to rest to read, watch or listen: part of the physics, never "physics stops, a page appears").
+- **Drift (the thumb):** influence over which current or strand you catch, not positional control. Momentum can carry you past something; you may circle before being released. That small loss of perfect control is part of the feeling.
+- **Release:** movement resumes naturally.
+
+The useful part of the loot-box reel is continuous automatic motion and catching or releasing; never its look, and never a reel that already knows where it will stop.
+
+### Three states of motion, and what Dew and Drop do to them
+
+| State | What happens |
 | --- | --- |
-| D-12 | Which relationships make which pieces: a group, a fork, "goes with", a build-on, a keep, the hours. And what a person or Rabi may shape by hand. |
-| D-13 | What counts as a Lean when choices are nudges: taking a diverter because you pushed toward it? Only a deliberate act? (Lean must stay intentional and private.) |
-| D-14 | How you come to rest to read or watch (a catch that holds you until you push on), and how long the machine keeps you moving without input. |
-| D-15 | The same destinations without physics: keyboard, screen reader, reduced motion (spec 8.1 and VIS-08 still apply). |
-| D-16 | How a shared Fall works when two falling bodies take different trajectories (the leader's place is a place, not a path). |
+| Free fall | The Drop moves through gaps in the web, missing strands. |
+| Caught | It hits a strand and travels with the web's tension, toward junctions, denser clusters, or a centre that the surrounding work keeps pulling toward (a core idea, project, person, or invention; not a literal spider). |
+| Dewing | You decide to carry something forward: the Drop gathers there, adheres, and leaves something behind; that thing gains persistence in the structure. |
+
+- **Dew** (carry this forward) makes the web accumulate.
+- **Drop** (do not carry this forward) lets go of the strand: the Drop falls through a gap or peels off the thread and gravity takes over again. It does not mean "go to the unrelated section": you might land on something deeply related two levels down, something unexpected, or miss several strands. You do not know in advance.
+- Dew and Drop are still said, never inferred; they now have visible physical consequences instead of being thumbs up and down. Whether the persistence Dew leaves is seen only by you or shapes the web for others is **still OPEN (D-07)**, and stays on this device until decided. Ambient resonance dew (from staying) remains a separate thing (spec 9.2).
+- Supersedes the earlier row "Dew / Drop: judgment words only": they remain judgments, and they are also what the liquid does. "Drop" still never means "go into this".
+
+### Rabi and the web
+
+What people tag, connect, keep, group and contribute becomes the strands, tensions, junctions and gaps that someone else later falls through. The collective structure is the routing. Rabi is not "recommended for you"; it shapes parts of the web.
+
+### The test for every future idea
+
+**Does this change the living structure the Drop moves through, or is it just another control pasted onto a feed?** If the second, it leads back to "TikTok with tunnels".
+
+What exists today, honestly: the flight is one sequence in depth with hops between things, plus lenses, openings and steering on top. The web (structure from relationships) and a motion model with momentum through it are the missing core part (spec 6.1: space and connections).
+
+### Open decisions, with the invariants already agreed
+
+| ID | Question | Already agreed |
+| --- | --- | --- |
+| D-12 | How do relationships between things shape the geometry, currents, attraction, resistance and possible trajectories of the Fall? What parts of that structure may a person or Rabi intentionally shape? | Not a literal mapping of relationships to parts ("goes with" = ramp, group = bowl): the structure emerges from relationships (strands, tension, density, attraction). |
+| D-13 | What counts as a Lean when choosing is a nudge? | Trajectory alone never implies a Lean. Being carried somewhere is never secretly an opinion. Lean stays deliberate and private. |
+| D-14 | How the Drop comes to rest, and how long the Fall carries you without input. | Rest is part of the physics (touch or hold settles; release resumes), never a modal. |
+| D-15 | Keyboard, screen reader, reduced motion. | They reach the same underlying structure, never a simplified second TwinThink. |
+| D-16 | A shared Fall when two Drops take different trajectories. | Two Drops together need not share a trajectory every second; Fall with me must never become one person remotely controlling the other. |
+| D-07 | Where Dew's persistence lives (you, or the shared web). | Open; on this device until decided. |
 
 ## Decided 28 Sep: the mobile direction (from John's mockup review)
 
@@ -77,8 +109,8 @@ The central mobile requirement: **you are not browsing down a hallway; you are f
 | Part | Decided |
 | --- | --- |
 | Steering on a phone | **Thumb controls movement; the phone stays still.** A thumb joystick is the primary mobile steering: direction and strength. Tilt is not a steering method: it made the screen itself harder to look at. (Tilt was live from bdd255e and is removed: a rejected control path taken out, not new work. The one exception made to the freeze, so the thumb check judges the right thing.) |
-| Drift | How you steer and fall: the joystick's direction and strength. |
-| Dew / Drop | Judgment words only (carry it forward / let it drop). Never used for navigation: "Drop" never means "go into this". |
+| Drift | Influence on the Drop's motion (which current or strand it catches), through the thumb's direction and strength. Not positional control. |
+| Dew / Drop | Superseded by the web section above: still judgments, now also what the liquid does (Dew adheres and accumulates; Drop lets go and falls). "Drop" never means "go into this". |
 | Openings | Real pieces of the person's work, visible ahead and around, never generic portals or illustrations. |
 | By Time / By Topic | Two lenses over the same Slate (by topic = the groups already made). |
 | Your Fall | Private recap, with no dashboard statistics (no depth, path or topic counts). |
@@ -86,7 +118,7 @@ The central mobile requirement: **you are not browsing down a hallway; you are f
 | Clock positions | Keep their meaning (the hour a thing was made) unless the clock is deliberately redesigned later (D-04). The mockup's "12 further ahead, 6 deeper within, 9 different time, 3 new connections" is not adopted. |
 | Look | Ink, paper, monochrome. Icons in place of walls of explanatory text. |
 
-When the freeze lifts, the order is: the motion model first (the marble run above: structure from relationships, momentum, thumb influence), then composition, then controls and words around it. Not button polish first. The joystick is its input, not a separate feature.
+When the freeze lifts, the order is: what the Drop physically is and what the web can do to it (above) first, then composition, then controls and words. Not JSX, typography, icons or animation first. The thumb is its input, not a separate feature.
 
 ## Next, in order
 
@@ -96,4 +128,4 @@ Hold (28 Sep): no code changes until John brings back one of these results. Judg
 2. The Slate on real screens: the enlarged 6, notices at the top, long group names, crowded places.
 3. Fall with me into somewhere private, with two real accounts: the follower stays where they are and learns only that "X moved into a path you can't enter", never what or why. (`beyond` means exactly that and nothing more.)
 
-After those: the marble-run motion model and its thumb influence (above), starting from decisions D-12 to D-16; the recap's song (RECAP-03); creator co-op (COOP-02) once D-09 is decided. The iPhone motion permission question goes away with tilt.
+After those: the Drop and the web (above), starting from decisions D-12 to D-16 and D-07; the recap's song (RECAP-03); creator co-op (COOP-02) once D-09 is decided. The iPhone motion permission question goes away with tilt.
