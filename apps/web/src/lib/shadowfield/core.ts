@@ -37,8 +37,10 @@ export type Move =
   | { kind: 'choose'; from: IdeaNode; to: IdeaNode }
   /** You reached the end of a fork and went back out of it. */
   | { kind: 'turnBack'; from: IdeaNode }
-  /** You turned toward an hour (null: back to the whole of the fall). */
-  | { kind: 'turn'; hour: Quarter | null };
+  /** You turned toward an hour (null: back to the whole of the fall), in a group (null: on the Slate). */
+  | { kind: 'turn'; hour: Quarter | null; where: string | null }
+  /** Said of a thing: I would carry this forward (Dew), or I would not (Drop). */
+  | { kind: 'react'; at: IdeaNode; carry: boolean };
 
 // ---------------------------------------------------------------------------
 // Keepers and rules.
@@ -153,6 +155,45 @@ export const RULES: Rule[] = [
     key: (m) => (m.kind === 'choose' ? `${m.from.id}\u0000${m.to.id}` : ''),
     once: 'always',
   },
+  {
+    // every path chosen at a branch, kept alongside the last one: a record of what you explored
+    trace: 'explored',
+    keeper: 'device',
+    on: 'choose',
+    when: (m) => m.kind === 'choose' && m.from.children.length >= 2,
+    key: (m) => (m.kind === 'choose' ? `${m.from.id}\u0001${m.to.id}` : ''),
+    once: 'always',
+  },
+  {
+    // an hour turned into, in a place: a way back to it, and to the hours not taken there
+    trace: 'turned',
+    keeper: 'device',
+    on: 'turn',
+    when: (m) => m.kind === 'turn' && m.hour !== null,
+    key: (m) => (m.kind === 'turn' ? `${m.where ?? ''}\u0001${m.hour}` : ''),
+    once: 'always',
+  },
+  // Dew and Drop: said, never inferred from passing, leaving or not choosing. One or the other.
+  // Kept on this device only for now: who else may see them is not yet decided (spec D-07).
+  ...(['dew', 'drop'] as const).flatMap((trace): Rule[] => [
+    {
+      trace,
+      keeper: 'device',
+      on: 'react',
+      when: (m) => m.kind === 'react' && m.carry === (trace === 'dew'),
+      key: (m) => (m.kind === 'react' ? m.at.id : ''),
+      once: 'always',
+    },
+    {
+      trace: trace === 'dew' ? 'drop' : 'dew',
+      keeper: 'device',
+      forget: true,
+      on: 'react',
+      when: (m) => m.kind === 'react' && m.carry === (trace === 'dew'),
+      key: (m) => (m.kind === 'react' ? m.at.id : ''),
+      once: 'always',
+    },
+  ]),
   {
     // in a shared Fall, where its leader has stopped is where the Fall is (kept only if leading)
     trace: 'station',

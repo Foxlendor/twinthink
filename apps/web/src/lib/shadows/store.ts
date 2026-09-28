@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import { allowanceFor } from '../entitlements';
 import { dayOf } from '../shadowfield/prompts';
 // Shadows people post, kept in Postgres. Plain SQL behind a tiny query
 // interface, so the same code runs on Neon (production) and PGlite (tests).
@@ -817,7 +818,7 @@ async function canPostGivenRow(f: Record<string, unknown> | null, q: Query, view
 export async function roomFor(q: Query, ownerSub: string): Promise<{ used: number; room: number }> {
   const [r] = await q(`SELECT COUNT(*)::int AS n FROM tt_forks WHERE owner_sub = $1`, [ownerSub]);
   const used = Number(r?.n ?? 0);
-  return { used, room: Math.max(0, FORK_ROOM_MAX - used) };
+  return { used, room: Math.max(0, allowanceFor(FORK_ROOM_MAX, []) - used) };
 }
 
 async function getForkRaw(q: Query, id: string) {
@@ -843,7 +844,7 @@ export async function createFork(q: Query, who: Author, hostShadowId: string, in
   const claimed = await q(
     `INSERT INTO tt_forks (id, host_shadow_id, owner_sub, title, post_access, invite_token)
      SELECT $1, $2, $3, $4, $5, $6 WHERE (SELECT COUNT(*) FROM tt_forks WHERE owner_sub = $3) < $7 RETURNING id`,
-    [id, hostShadowId, who.sub, title, postAccess, inviteToken, FORK_ROOM_MAX]
+    [id, hostShadowId, who.sub, title, postAccess, inviteToken, allowanceFor(FORK_ROOM_MAX, [])]
   );
   if (!claimed.length) return { error: 'That is as much room as you have for now.' } as const;
   // freshly opened, not closed: its own maker may always post there right away
@@ -1005,9 +1006,32 @@ export async function setSharedFallStation(q: Query, id: string, hostSub: string
 }
 
 /**
+ * Switch lead: only the one leading hands it on, and only to someone still in this shared Fall
+ * (named by their token for this Fall, never by account). The seat is overwritten in place, as
+ * the Fall's place is: no history of who led when. Following never grants anything to see.
+ */
+export async function passSharedFallLead(q: Query, id: string, hostSub: string, toToken: string) {
+  const f = await getSharedFallRaw(q, id);
+  if (!f || f.host_sub !== hostSub || f.ended_at) return { error: 'Not yours to hand on.' } as const;
+  const rows = await q(`SELECT sub, name FROM tt_shared_fall_participant WHERE shared_fall_id = $1 AND left_at IS NULL AND sub <> $2`, [id, hostSub]);
+  for (const r of rows) {
+    if ((await mark(`sharedFall|${id}|${r.sub}`)).slice(0, 16) !== toToken) continue;
+    // still led by the one handing it on, at the moment it changes (two quick taps cannot both win)
+    const done = await q(`UPDATE tt_shared_fall SET host_sub = $2, host_name = $3, updated_at = NOW() WHERE id = $1 AND host_sub = $4 AND ended_at IS NULL RETURNING id`, [
+      id,
+      r.sub,
+      r.name,
+      hostSub,
+    ]);
+    return done.length ? ({ ok: true } as const) : ({ error: 'Not yours to hand on.' } as const);
+  }
+  return { error: 'They are not in this Fall any more.' } as const;
+}
+
+/**
  * Leaving marks that seat empty; it never touches the leaver's own Fall or
- * history. There being no one else yet to hand it to (see: switch lead,
- * not built), the leader leaving ends the shared Fall itself.
+ * history. The leader leaving ends the shared Fall itself (hand the lead on
+ * first to keep it going).
  */
 export async function leaveSharedFall(q: Query, id: string, sub: string) {
   const f = await getSharedFallRaw(q, id);

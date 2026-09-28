@@ -108,7 +108,7 @@ describe('the core: moves at a moment', () => {
     const { core, kept } = recorder();
     core.move({ kind: 'choose', from: ring, to: ring.children[1] });
     core.move({ kind: 'choose', from: node('lone', { children: [node('only')] }), to: node('only') });
-    expect(kept).toEqual(['device +leaned people\u0000p/b']);
+    expect(kept).toEqual(['device +leaned people\u0000p/b', 'device +explored people\u0001p/b']);
   });
 
   it('turning back out of a fork is pressure, once a visit for each fork', () => {
@@ -123,7 +123,35 @@ describe('the core: moves at a moment', () => {
 
   it('every trace a fall leaves names its keeper, and is in this one table', () => {
     for (const r of RULES) expect(['device', 'anonymous', 'live']).toContain(r.keeper);
-    expect([...new Set(RULES.map((r) => r.trace))].sort()).toEqual(['leaned', 'makers', 'passed', 'pressure', 'resonance', 'seen', 'station']);
+    expect([...new Set(RULES.map((r) => r.trace))].sort()).toEqual([
+      'dew',
+      'drop',
+      'explored',
+      'leaned',
+      'makers',
+      'passed',
+      'pressure',
+      'resonance',
+      'seen',
+      'station',
+      'turned',
+    ]);
+  });
+
+  it('Dew and Drop are said, one or the other, and never leave this device', () => {
+    const { core, kept } = recorder();
+    const x = node('p/x');
+    core.move({ kind: 'react', at: x, carry: true });
+    core.move({ kind: 'react', at: x, carry: false });
+    expect(kept).toEqual(['device +dew p/x', 'device -drop p/x', 'device +drop p/x', 'device -dew p/x']);
+  });
+
+  it('an hour turned into is kept with where it was turned; turning back to the whole is not', () => {
+    const { core, kept } = recorder();
+    core.move({ kind: 'turn', hour: 2, where: 'music' });
+    core.move({ kind: 'turn', hour: null, where: 'music' });
+    core.move({ kind: 'turn', hour: 1, where: null });
+    expect(kept).toEqual(['device +turned music\u00012', 'device +turned \u00011']);
   });
 });
 

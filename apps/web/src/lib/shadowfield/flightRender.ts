@@ -128,7 +128,9 @@ export interface FlightState {
    * Steering through the vortex: you are the drop at the middle; `facing` is the hour you have
    * turned into; `aim` the side opening you are leaning toward (looked at, not yet gone into).
    */
-  steer?: { on: boolean; facing: Quarter | null; aim?: -1 | 0 | 1 };
+  steer?: { on: boolean; facing: Quarter | null; aim?: -1 | 0 | 1; turned?: Set<number> };
+  /** The paths already taken from here (by id), on this device: an opening you have been through. */
+  explored?: Set<string>;
 }
 
 /** A path you could take instead, from where you are: a sibling of the thing in front of you. */
@@ -168,7 +170,7 @@ export function edgePaths(here: Station | null | undefined, open: (n: IdeaNode, 
  * says "somewhere you can go", never its title. Pointed at, it comes a little clearer. Tapped,
  * it is a Lean. The one leaned before, here, is outlined in rose.
  */
-function drawEdge(st: RenderState, e: EdgePath, a: number, hovered: boolean, leaned: boolean, ink: Ink) {
+function drawEdge(st: RenderState, e: EdgePath, a: number, hovered: boolean, leaned: boolean, ink: Ink, been = false) {
   const { ctx } = st;
   const cw = clamp(st.w * 0.26, 64, 170);
   type Cover = Extract<NonNullable<IdeaNode['media']>[number], { kind: 'image' } | { kind: 'video' }>;
@@ -219,7 +221,8 @@ function drawEdge(st: RenderState, e: EdgePath, a: number, hovered: boolean, lea
     else if ((d -= ch) < cw) [px, py] = [x0 + cw - d, y0 + ch];
     else [px, py] = [x0, y0 + ch - (d - cw)];
     if (px < -2 || px > st.w + 2) continue;
-    ink.dot(px, py, 1.3, a * (0.35 + 0.3 * lit), leaned);
+    // been through it before: the outline is written a little heavier, like a path worn in
+    ink.dot(px, py, been ? 1.7 : 1.3, a * (been ? 0.6 : 0.35 + 0.3 * lit), leaned);
   }
   st.hits.push({ kind: 'node', node: e.node, path: e.path, x: cx, y: y0 + ch / 2, r: Math.max(cw * shown, ch) * 0.5, size: 1e9 });
 }
@@ -255,7 +258,7 @@ function drawClock(st: RenderState, v: View, next: [number, number] | null, ink:
  * from the bottom of the screen. Fixed to the page (they turn only with the clock's own spin,
  * when that has been asked for), clear of the header, the trail and the compass.
  */
-function drawHours(st: RenderState, v: View, facing: Quarter | null) {
+function drawHours(st: RenderState, v: View, facing: Quarter | null, before?: Set<number>) {
   const { ctx } = st;
   const phone = st.w < 640;
   const size = phone ? 19 : 22;
@@ -283,8 +286,14 @@ function drawHours(st: RenderState, v: View, facing: Quarter | null) {
     ctx.font = `italic ${turned ? size + 6 : size}px ${st.serif}`;
     ctx.fillStyle = `rgba(${INK},${turned ? 0.92 : facing === null ? 0.55 : 0.3})`;
     // with the clock's own spin on, the numbers go round with it, on an oval inside those edges
-    if (v.roll === 0) ctx.fillText(label, x, y);
-    else ctx.fillText(label, v.cx + Math.cos(a + v.roll) * rx, v.cy + Math.sin(a + v.roll) * ry);
+    const [lx, ly] = v.roll === 0 ? [x, y] : [v.cx + Math.cos(a + v.roll) * rx, v.cy + Math.sin(a + v.roll) * ry];
+    ctx.fillText(label, lx, ly);
+    // turned into here before: a small dot beside it, a way back (and the hours not yet taken)
+    if (before?.has(q) && !turned) {
+      ctx.beginPath();
+      ctx.arc(lx + (label.length > 1 ? 18 : 12), ly - 8, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
   });
   ctx.restore();
 }
@@ -1111,7 +1120,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     nextDz = dz;
   }
   drawClock(st, v, next, ink);
-  drawHours(st, v, fs.steer?.on ? fs.steer.facing : null);
+  drawHours(st, v, fs.steer?.on ? fs.steer.facing : null, fs.steer?.turned);
   // where the nearest food ahead lies, for the compass's rose dot
   let food: number | null = null;
   if (fs.web?.food.size) {
@@ -1135,7 +1144,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     const a = Math.max(fs.steer?.on ? 0.6 : 0, 0.35 + 0.55 * (fs.still ?? 0)) * quiet;
     if (a > 0.03) {
       for (const e of fs.edges)
-        drawEdge(st, e, a, st.hoverId === e.node.id || (!!fs.steer?.aim && fs.steer.aim === e.side), !!fs.leaned?.has(e.node.id), ink);
+        drawEdge(st, e, a, st.hoverId === e.node.id || (!!fs.steer?.aim && fs.steer.aim === e.side), !!fs.leaned?.has(e.node.id), ink, !!fs.explored?.has(e.node.id));
       ink.flush(ctx);
       // drawn over everything else, so they are what a finger at the edge means
       st.hits.unshift(...st.hits.splice(before));

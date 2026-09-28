@@ -6,12 +6,14 @@ import {
   beginVisit,
   emptyMemory,
   findFood,
+  exploredFrom,
   forgetOnDevice,
   keepOnDevice,
   leanedChildOf,
   plucksFor,
   readMemory,
   trembleAt,
+  turnedIn,
   wave,
   writeMemory,
 } from './web';
@@ -132,7 +134,7 @@ describe('the web that moves: what the device remembers', () => {
     const later = beginVisit(readMemory(storage), 1000 + 31 * 60 * 1000);
     expect(later.since).toBe(1000);
     const raw = JSON.parse([...mem.values()][0]);
-    expect(Object.keys(raw).sort()).toEqual(['leaned', 'left', 'makers', 'passed', 'seen', 'since']);
+    expect(Object.keys(raw).sort()).toEqual(['dew', 'drop', 'explored', 'leaned', 'left', 'makers', 'passed', 'seen', 'since', 'turned']);
     for (const v of Object.values(raw)) {
       if (Array.isArray(v)) for (const x of v) expect(typeof x).toBe('string');
       else expect(typeof v).toBe('number');
@@ -178,6 +180,20 @@ describe('the web that moves: what the device remembers', () => {
     expect(back.passed).toEqual([]);
     expect(back.leaned).toEqual([]);
     expect([back.since, back.left]).toEqual([5, 9]);
+  });
+});
+
+describe('the web that moves: every way explored', () => {
+  it('keeps every path taken from a place (not only the last) and every hour turned into', () => {
+    let m = emptyMemory();
+    m = keepOnDevice(m, 'explored', 'p/parent\u0001p/a');
+    m = keepOnDevice(m, 'explored', 'p/parent\u0001p/b');
+    m = keepOnDevice(m, 'explored', 'p/parent\u0001p/a');
+    expect([...exploredFrom(m, 'p/parent')].sort()).toEqual(['p/a', 'p/b']);
+    m = keepOnDevice(m, 'turned', 'music\u00012');
+    m = keepOnDevice(m, 'turned', '\u00011');
+    expect([...turnedIn(m, 'music')]).toEqual([2]);
+    expect([...turnedIn(m, null)]).toEqual([1]);
   });
 });
 

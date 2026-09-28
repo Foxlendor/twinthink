@@ -121,10 +121,22 @@ out past the edges, behind you.
   acts on the thing you are on (never whatever lies far behind it), and goes
   into a group you are facing. Esc lets go (and is only that). No
   colors: the hours are ink, like everything else.
-  Not yet: steering on a phone; a breadcrumb where you turned; the prototype's
+  On a phone (or anywhere without a mouse), "steer" works by touch: a finger
+  drags the heading about and it stays where the finger leaves it, a tap goes
+  in (as a click does), a pinch is one step on (spread) or back (squeeze), and
+  "stop steering" ends it. Hours you have turned into in a place get a small
+  dot beside them, a way back to them; openings you have been through have a
+  heavier outline. Both live on this device only.
+  Not yet: the prototype's
   time policy is labeled, not settled: an hour is a quarter of a 12-hour face
   on his clock (UTC-6), so 6 a.m. and 6 p.m. share the 6, and deeper is older
   across days (spec D-01, D-02).
+- "goes with": a thing offers what it goes with in other groups, found by a
+  shared name or tag written on both (never an ordinary word), such as the
+  #SIU3d dance and the song $IU3d (`relate.ts`).
+- Dew and Drop: "carry it forward" or "let it drop", said of a thing, one or
+  the other. Never inferred from passing, leaving or not choosing. On this
+  device only for now: who else may see them is not yet decided.
 - Night: pale ink on dark paper (the visitor's choice, or their system's).
   At thin places in the web (some rings), passing through drops you back
   into day, opening from the middle like falling through the ink.
@@ -487,11 +499,20 @@ on-device record, not even pseudonymous) and is a separate, later
 question from whether Lean itself is worth having at all.
 
 ## Next
-1. Switch lead: the first addition after V1, once "Fall with me" is shown
-   to actually feel better than sending a link or sharing a screen. This
-   is what turns "watch my Fall" into a genuine co-op Fall.
+1. Switch lead is built: "let X lead" hands the Fall to someone still in it;
+   the seat is overwritten in place, with no record of who led when.
 2. Co-op rights: someone besides a fork's own maker managing it.
 3. Plot claims + earning rules above (still planned, not built).
 4. Rabi proposing (not just noticing): only once makers show, in the
    logs above, that they actually want this. Still never autonomous,
    still only ever through the fork system that already exists.
+
+## Left at the boundary on purpose (John, 28 September)
+- Lean is private navigation state, on this device only. "Others leaned this
+  way too", server-side Lean collection and aggregate Lean statistics are not
+  built until a separate aggregate privacy protocol is designed.
+- Capacity: room is computed through `allowanceFor` (`lib/entitlements.ts`),
+  where an entitlement changes nothing yet. No unit, pricing, quota or
+  checkout.
+- Founders: 47 unverified, 427 verified, 474 in all, kept as dormant
+  metadata (`FOUNDER_ALLOCATION`). Nothing grants anything from it.

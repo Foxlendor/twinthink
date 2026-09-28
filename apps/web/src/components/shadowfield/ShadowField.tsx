@@ -51,8 +51,11 @@ import {
   readMemory,
   trembleAt,
   writeMemory,
+  exploredFrom,
+  turnedIn,
 } from '@/lib/shadowfield/web';
 import { edgePaths, renderFlight } from '@/lib/shadowfield/flightRender';
+import { relatedTo } from '@/lib/shadowfield/relate';
 import { createCore, groupLens, groupOf, hourLens, lensOf, replayLens, type Core, type Rule } from '@/lib/shadowfield/core';
 import { hash01, smoothstep } from '@/lib/shadowfield/rng';
 import Donate from '@/components/support/Donate';
@@ -86,6 +89,11 @@ interface Composer {
   forkId?: string;
   /** Set when this composer was opened from a Rabi notice's "open a path": which fork's notice sent us here. */
   fromNoticeForkId?: string;
+}
+
+/** The name Rabi suggests for a path opened from the end of a fork (the maker can change it). */
+function rabiProposalName(title: string) {
+  return `after ${title}`.slice(0, 80);
 }
 
 interface Tip {
@@ -376,6 +384,8 @@ export default function ShadowField({ serif }: Props) {
   const uiBusyRef = useRef(false);
 
   const [path, setPath] = useState<IdeaNode[]>([]);
+  // what you have said of things on this device: carry it forward (Dew), or let it drop (Drop)
+  const [said, setSaid] = useState<Record<string, 'dew' | 'drop'>>({});
   const [view, setView] = useState({ w: 800, h: 600 });
   const [tip, setTip] = useState<Tip | null>(null);
   const [composer, setComposer] = useState<Composer | null>(null);
@@ -402,13 +412,16 @@ export default function ShadowField({ serif }: Props) {
   // the way ahead swings, and pushed far enough toward an hour you turn into it
   // the group you have gone into (null: on the Slate, among its groups)
   const insideRef = useRef<string | null>(null);
-  const steerRef = useRef({ on: false, x: 0, y: 0, endedAt: 0, well: null as Quarter | null, aim: 0 as -1 | 0 | 1 });
+  const steerRef = useRef({ on: false, touch: false, x: 0, y: 0, endedAt: 0, well: null as Quarter | null, aim: 0 as -1 | 0 | 1 });
+  // steering by touch: the finger's own run (a tap, or a drag that aims), and a pinch that carries you
+  const steerTouchRef = useRef({ moved: 0, pinched: false, d0: 0, d: 0 });
   // the openings beside where you are (the other paths at a branch), as last drawn
   const edgesRef = useRef<ReturnType<typeof edgePaths>>([]);
   const [steering, setSteering] = useState(false);
+  // a mouse steers with the pointer held by the page; a finger steers by dragging (every screen can)
   const canSteer = useSyncExternalStore(
     () => () => undefined,
-    () => window.matchMedia('(pointer: fine)').matches && 'requestPointerLock' in HTMLElement.prototype,
+    () => true,
     () => false
   );
   const needleRef = useRef<SVGGElement | null>(null);
@@ -674,6 +687,12 @@ export default function ShadowField({ serif }: Props) {
     if (path.length >= 2) coreRef.current?.move({ kind: 'choose', from: path[path.length - 2], to: path[path.length - 1] });
   }, []);
 
+  /** Dew or Drop: said of a thing, by you, and kept on this device only (who else may see it is not yet decided). */
+  const react = useCallback((n: IdeaNode, carry: boolean) => {
+    coreRef.current?.move({ kind: 'react', at: n, carry });
+    setSaid((s) => ({ ...s, [n.id]: carry ? 'dew' : 'drop' }));
+  }, []);
+
   /** Going to something you picked; a group picked on the Slate is gone into, to the first thing in it. */
   const goTo = useCallback(
     (path: IdeaNode[], radius?: number) => {
@@ -730,6 +749,9 @@ export default function ShadowField({ serif }: Props) {
     setMediaReadyCallback(() => undefined); // the frame loop repaints continuously
     // the web remembers, on this device only, what you have found and when you were last here
     webMemRef.current = beginVisit(readMemory(storage), Date.now());
+    setSaid(
+      Object.fromEntries([...webMemRef.current.dew.map((id) => [id, 'dew'] as const), ...webMemRef.current.drop.map((id) => [id, 'drop'] as const)])
+    );
     writeMemory(storage, webMemRef.current);
     import('@google/model-viewer').catch(() => undefined);
     // exposed for scripted visual checks (e2e); read-only by convention
@@ -1180,6 +1202,21 @@ export default function ShadowField({ serif }: Props) {
   };
 
   /** Leaving never ends your own Fall or history; the leader leaving ends it for the other person too. */
+  /** Switch lead: hand the shared Fall to someone still in it (the poll brings back the change). */
+  const passLead = (token: string) => {
+    const id = sharedFall?.id;
+    if (!id) return;
+    void fetch(`/api/shared-falls/${encodeURIComponent(id)}/lead`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ to: token }),
+    })
+      .then((r) => {
+        if (!r.ok) setNotice('the lead could not be handed on; try again');
+      })
+      .catch(() => setNotice('the lead could not be handed on; try again'));
+  };
+
   const leaveSharedFall = () => {
     const id = sharedFall?.id;
     setSharedFall(null);
@@ -1214,9 +1251,22 @@ export default function ShadowField({ serif }: Props) {
             !prev ||
             prev.ended !== d.sharedFall.ended ||
             prev.stationId !== d.sharedFall.stationId ||
+            prev.hosting !== d.sharedFall.hosting ||
             prev.participants.length !== d.sharedFall.participants.length
           ) {
             setSharedFall(d.sharedFall);
+          }
+          // the lead has changed hands: say so, and a new leader's place is where the Fall is now
+          if (prev && prev.hosting !== d.sharedFall.hosting) {
+            setNotice(d.sharedFall.hosting ? 'you are leading now' : `${d.sharedFall.hostName} is leading now`);
+            const at = hereRef.current?.node.id;
+            if (d.sharedFall.hosting && at)
+              void fetch(`/api/shared-falls/${encodeURIComponent(id)}`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ stationId: at }),
+              }).catch(() => undefined);
+            return;
           }
           if (hosting) return; // the leader's own place is never moved by this poll
           const station = d.sharedFall.stationId;
@@ -1651,7 +1701,13 @@ export default function ShadowField({ serif }: Props) {
       const ease = 1 - Math.exp(-dt * 5);
       fc.bx += ((flying && steer.on ? steer.x : 0) - fc.bx) * ease;
       fc.by += ((flying && steer.on ? steer.y : 0) - fc.by) * ease;
-      if (!flying && steer.on) document.exitPointerLock();
+      if (!flying && steer.on) {
+        if (!steer.touch) document.exitPointerLock();
+        else {
+          Object.assign(steer, { on: false, touch: false, x: 0, y: 0 });
+          setSteering(false);
+        }
+      }
       if (!flying || !steer.on) {
         steer.well = null;
         steer.aim = 0;
@@ -1679,7 +1735,7 @@ export default function ShadowField({ serif }: Props) {
       const closed = (s: Station) => skip(s) || (s.depth > 1 && s.node.disclosure > lensRef.current.closeness(s.path[1]));
       skipRef.current = closed;
       if (steer.well !== wasWell) {
-        core.move({ kind: 'turn', hour: steer.well });
+        core.move({ kind: 'turn', hour: steer.well, where: insideRef.current });
         if (steer.well !== null) {
           // turned into an hour: on, deeper, to the next thing made around it
           const z = stream.stations.some((s) => s.depth > 0 && !closed(s)) ? stepFocus(stream, hopBase(fc), 1, closed) : null;
@@ -1941,7 +1997,8 @@ export default function ShadowField({ serif }: Props) {
           resonance: resonanceRef.current,
           presence: presenceRef.current,
           leaned: leanedRef.current,
-          steer: { on: steer.on, facing: steer.well, aim: steer.aim },
+          steer: { on: steer.on, facing: steer.well, aim: steer.aim, turned: steer.on ? turnedIn(webMemRef.current, insideRef.current) : undefined },
+          explored: here && here.path.length > 1 ? exploredFrom(webMemRef.current, here.path[here.path.length - 2].id) : undefined,
           // at a branch, the other paths beside this one: only ones this viewer may actually enter
           edges: (edgesRef.current = edgePaths(here, (n, p) => {
             const idx = stream.byId.get(n.id);
@@ -2454,6 +2511,7 @@ export default function ShadowField({ serif }: Props) {
   useEffect(() => {
     const onChange = () => {
       const s = steerRef.current;
+      if (s.touch) return;
       const on = !!canvasRef.current && document.pointerLockElement === canvasRef.current;
       if (s.on && !on) s.endedAt = performance.now();
       s.on = on;
@@ -2465,20 +2523,62 @@ export default function ShadowField({ serif }: Props) {
     document.addEventListener('pointerlockchange', onChange);
     return () => document.removeEventListener('pointerlockchange', onChange);
   }, []);
+  const startTouchSteering = () => {
+    const s = steerRef.current;
+    Object.assign(s, { on: true, touch: true, x: 0, y: 0, well: null, aim: 0 });
+    setSteering(true);
+    setNotice('drag to steer, tap to go in, pinch to move');
+  };
   const startSteering = () => {
     const c = canvasRef.current;
     if (!c) return;
     dismissHint();
+    const mouse = window.matchMedia('(pointer: fine)').matches && 'requestPointerLock' in HTMLElement.prototype;
+    if (!mouse) return startTouchSteering();
     setNotice('move to steer. esc to stop');
     try {
-      void Promise.resolve(c.requestPointerLock()).catch(() => setNotice('steering is not available here'));
+      void Promise.resolve(c.requestPointerLock()).catch(startTouchSteering);
     } catch {
-      setNotice('steering is not available here');
+      startTouchSteering();
     }
+  };
+  const stopSteering = () => {
+    const s = steerRef.current;
+    if (document.pointerLockElement) return document.exitPointerLock();
+    Object.assign(s, { on: false, touch: false, x: 0, y: 0, well: null, aim: 0, endedAt: performance.now() });
+    pointersRef.current.clear();
+    pinchRef.current = null;
+    setSteering(false);
+  };
+  /** Steering, a click or tap: into the opening you lean toward, a group you face, or the thing you are on. */
+  const steerTap = () => {
+    const c = camRef.current;
+    // about the thing you are on, never whatever happens to lie far behind it
+    const on = hereRef.current;
+    const hit = hitsRef.current.find((h) => h.kind === 'node' && h.node.id === on?.node.id) ?? null;
+    // the opening you are leaning toward is gone into (a Lean: chosen, not passed)
+    const opening = steerRef.current.aim ? edgesRef.current.find((x) => x.side === steerRef.current.aim) : undefined;
+    if (opening) goTo(opening.path);
+    else if (!hit && on?.depth === 1 && on.gate && insideRef.current !== on.node.id) goTo(on.path);
+    else if (c) tapAt(c.w / 2, c.h * 0.47, hit);
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     // steering: the button acts on release, at the middle
+    if (steerRef.current.on && steerRef.current.touch) {
+      // a finger aims; two fingers carry you, as a pinch always does
+      const rect = e.currentTarget.getBoundingClientRect();
+      pointersRef.current.set(e.pointerId, { x: e.clientX - rect.left, y: e.clientY - rect.top });
+      e.currentTarget.setPointerCapture(e.pointerId);
+      if (pointersRef.current.size === 1) steerTouchRef.current = { moved: 0, pinched: false, d0: 0, d: 0 };
+      if (pointersRef.current.size === 2) {
+        const [a, b] = [...pointersRef.current.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        pinchRef.current = { d, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        Object.assign(steerTouchRef.current, { pinched: true, d0: d, d });
+      }
+      return;
+    }
     if (steerRef.current.on) return;
     if (sketchRef.current && e.isPrimary) {
       const rect = e.currentTarget.getBoundingClientRect();
@@ -2560,6 +2660,31 @@ export default function ShadowField({ serif }: Props) {
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const steer = steerRef.current;
+    if (steer.on && steer.touch) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const prev = pointersRef.current.get(e.pointerId);
+      if (!prev) return;
+      pointersRef.current.set(e.pointerId, { x, y });
+      const reach = 0.35 * Math.min(camRef.current?.w ?? 400, camRef.current?.h ?? 400);
+      if (pointersRef.current.size >= 2 && pinchRef.current) {
+        // a pinch is one step, decided when it ends: spread, on; squeeze, back
+        const [a, b] = [...pointersRef.current.values()];
+        steerTouchRef.current.d = Math.hypot(a.x - b.x, a.y - b.y);
+        return;
+      }
+      // the finger pushes the heading about, and it stays where the finger leaves it
+      steer.x += (x - prev.x) / reach;
+      steer.y += (y - prev.y) / reach;
+      const m = Math.hypot(steer.x, steer.y);
+      if (m > 1) {
+        steer.x /= m;
+        steer.y /= m;
+      }
+      steerTouchRef.current.moved += Math.abs(x - prev.x) + Math.abs(y - prev.y);
+      return;
+    }
     if (steer.on) {
       // the hand pushes the heading about, within reach: a third of the screen is all the way
       const reach = 0.35 * Math.min(camRef.current?.w ?? 800, camRef.current?.h ?? 800);
@@ -2674,17 +2799,22 @@ export default function ShadowField({ serif }: Props) {
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (steerRef.current.on && steerRef.current.touch) {
+      pointersRef.current.delete(e.pointerId);
+      if (pointersRef.current.size < 2) pinchRef.current = null;
+      if (pointersRef.current.size > 0) return;
+      const t = steerTouchRef.current;
+      if (t.pinched) {
+        const stream = streamRef.current;
+        const ratio = t.d0 > 10 ? t.d / t.d0 : 1;
+        const dir = ratio > 1.25 ? 1 : ratio < 0.8 ? -1 : 0;
+        const z = stream && dir ? stepFocus(stream, hopBase(flightCamRef.current), dir, skipRef.current) : null;
+        if (z !== null) hopFlight(z, dir < 0 ? 'back' : 'step');
+      } else if (t.moved < 8) steerTap();
+      return;
+    }
     if (steerRef.current.on) {
-      const c = camRef.current;
-      // steering, a click is about the thing you are on, never whatever happens to lie far behind it
-      const on = hereRef.current;
-      const hit = hitsRef.current.find((h) => h.kind === 'node' && h.node.id === on?.node.id) ?? null;
-      // the opening you are leaning toward is gone into (a Lean: chosen, not passed)
-      const opening = steerRef.current.aim ? edgesRef.current.find((x) => x.side === steerRef.current.aim) : undefined;
-      if (opening) goTo(opening.path);
-      // a group on the Slate is gone into
-      else if (!hit && on?.depth === 1 && on.gate && insideRef.current !== on.node.id) goTo(on.path);
-      else if (c) tapAt(c.w / 2, c.h * 0.47, hit);
+      steerTap();
       return;
     }
     const sk = sketchRef.current;
@@ -3209,6 +3339,8 @@ export default function ShadowField({ serif }: Props) {
   const real = path.map((n, i) => ({ n, i })).filter(({ n }) => !n.void);
   const crumbs = real.length > 6 ? [real[0], { n: real[0].n, i: -1 }, ...real.slice(-4)] : real;
   const current = path[path.length - 1];
+  // what this goes with elsewhere on the Slate (a dance and the song it is danced to)
+  const goesWith = useMemo(() => (mode === 'flight' && path.length > 2 ? relatedTo(path[0], path) : []), [mode, path]);
   // the idea you are inside, if someone else's and public: what support goes toward
   const supportTarget =
     [...path]
@@ -3266,7 +3398,17 @@ export default function ShadowField({ serif }: Props) {
     if (path) flyTo(path);
     const cam = camRef.current;
     if (cam && last.id.startsWith('p/')) {
-      setComposer({ mode: 'fork', x: cam.w / 2 - 140, y: cam.h - 150, lx: 0, ly: 0, shadowId: last.id.slice(2), fromNoticeForkId: notice.forkId });
+      // Rabi's proposal, as a starting point: the maker still names it, chooses, and makes it (or not)
+      setComposer({
+        mode: 'fork',
+        x: cam.w / 2 - 140,
+        y: cam.h - 150,
+        lx: 0,
+        ly: 0,
+        shadowId: last.id.slice(2),
+        fromNoticeForkId: notice.forkId,
+        initial: rabiProposalName(notice.title),
+      });
       void fetch(`/api/forks/${encodeURIComponent(notice.forkId)}/notice`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -3466,9 +3608,9 @@ export default function ShadowField({ serif }: Props) {
             </button>
           </>
         )}
-        {mode === 'flight' && canSteer && !steering && (
-          <button type="button" className={styles.quiet} onClick={startSteering}>
-            steer
+        {mode === 'flight' && canSteer && (
+          <button type="button" className={steering ? styles.following : styles.quiet} onClick={steering ? stopSteering : startSteering}>
+            {steering ? 'stop steering' : 'steer'}
           </button>
         )}
         {shareable && (
@@ -3481,6 +3623,15 @@ export default function ShadowField({ serif }: Props) {
             Fall with me
           </button>
         )}
+        {sharedFall?.hosting &&
+          !sharedFall.ended &&
+          sharedFall.participants
+            .filter((p) => !p.mine)
+            .map((p) => (
+              <button key={p.token} type="button" className={styles.quiet} onClick={() => passLead(p.token)}>
+                let {p.name.split(' ')[0]} lead
+              </button>
+            ))}
         {sharedFall && !sharedFall.ended && (
           <button type="button" className={styles.quiet} onClick={leaveSharedFall}>
             {sharedFall.participants.length <= 1
@@ -3508,6 +3659,21 @@ export default function ShadowField({ serif }: Props) {
             </button>
             <button type="button" className={styles.quiet} onClick={() => toggleKeep(current.id.slice(2))}>
               let it go from here
+            </button>
+          </>
+        )}
+        {goesWith.map((g) => (
+          <button key={g.path[g.path.length - 1].id} type="button" className={styles.quiet} onClick={() => flyTo(g.path)}>
+            goes with {g.path[g.path.length - 1].title ?? g.word}
+          </button>
+        ))}
+        {current && path.length > 1 && current.origin !== 'local' && !current.id.startsWith('local/') && (
+          <>
+            <button type="button" className={said[current.id] === 'dew' ? styles.following : styles.quiet} aria-pressed={said[current.id] === 'dew'} onClick={() => react(current, true)}>
+              {said[current.id] === 'dew' ? 'carried forward' : 'carry it forward'}
+            </button>
+            <button type="button" className={said[current.id] === 'drop' ? styles.following : styles.quiet} aria-pressed={said[current.id] === 'drop'} onClick={() => react(current, false)}>
+              {said[current.id] === 'drop' ? 'let drop' : 'let it drop'}
             </button>
           </>
         )}
@@ -3951,6 +4117,12 @@ export default function ShadowField({ serif }: Props) {
         <div className={styles.give}>
           <div className={styles.giveFor}>a path may be wanted here</div>
           <p className={styles.quiet}>Several recent Falls reached “{rabiNotice.title}” and continued elsewhere.</p>
+          {/* Rabi's proposal: what the path would be, where, why, and what it takes. Nothing is made
+              until the maker makes it, through the same composer and checks as any fork. */}
+          <p className={styles.quiet}>
+            Rabi suggests a path from the end of it, called “{rabiProposalName(rabiNotice.title)}”: only you, and people you invite, could
+            post in it{forkRoom ? `. It would take one of your ${forkRoom.room} places for paths` : ''}. Nothing changes unless you make it.
+          </p>
           <details>
             <summary className={styles.quiet}>why am I seeing this?</summary>
             <p className={styles.quiet}>

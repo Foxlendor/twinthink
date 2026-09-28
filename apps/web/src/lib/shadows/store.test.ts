@@ -46,6 +46,7 @@ import {
   joinSharedFall,
   setSharedFallStation,
   leaveSharedFall,
+  passSharedFallLead,
 } from './store';
 
 let q: Query;
@@ -608,5 +609,27 @@ describe('a shared Fall', () => {
     // no one else to hand it to yet: once ended, it takes no further moves or joins
     expect('error' in (await setSharedFallStation(q, f.id, ana.sub, 'p/late'))).toBe(true);
     expect('error' in (await joinSharedFall(q, f.id, f.inviteLink!, ben))).toBe(true);
+  });
+
+  it('switch lead: only the leader hands it on, only to someone still in it, and then only they move it', async () => {
+    const f = (await createSharedFall(q, ana)).sharedFall;
+    await joinSharedFall(q, f.id, f.inviteLink!, ben);
+    const benToken = (await sharedFallFor(q, f.id, ana.sub))!.participants.find((p) => p.name === 'Ben')!.token;
+    const anaToken = (await sharedFallFor(q, f.id, ana.sub))!.participants.find((p) => p.mine)!.token;
+    // a follower cannot take it, and a made-up token hands it to no one
+    expect('error' in (await passSharedFallLead(q, f.id, ben.sub, anaToken))).toBe(true);
+    expect('error' in (await passSharedFallLead(q, f.id, ana.sub, 'nobody'))).toBe(true);
+    expect('ok' in (await passSharedFallLead(q, f.id, ana.sub, benToken))).toBe(true);
+    const now = await sharedFallFor(q, f.id, ben.sub);
+    expect(now!.hosting).toBe(true);
+    expect(now!.hostName).toBe('Ben');
+    expect((await sharedFallFor(q, f.id, ana.sub))!.hosting).toBe(false);
+    expect('error' in (await setSharedFallStation(q, f.id, ana.sub, 'p/x'))).toBe(true);
+    expect('ok' in (await setSharedFallStation(q, f.id, ben.sub, 'p/x'))).toBe(true);
+    // the one who handed it on can still leave without ending it
+    await leaveSharedFall(q, f.id, ana.sub);
+    expect((await sharedFallFor(q, f.id, ben.sub))!.ended).toBe(false);
+    // and someone who has left cannot be handed it
+    expect('error' in (await passSharedFallLead(q, f.id, ben.sub, anaToken))).toBe(true);
   });
 });

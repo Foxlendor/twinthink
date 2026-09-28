@@ -25,7 +25,7 @@ export const VISIT_GAP = 30 * 60 * 1000;
  *   leaned  a deliberate choice at a branch, as `parentId\u0000childId`: one per parent, a later
  *           choice there replaces it, and never made from simply passing through
  */
-export const DEVICE = { seen: 600, makers: 60, passed: 60, leaned: 60 } as const;
+export const DEVICE = { seen: 600, makers: 60, passed: 60, leaned: 60, explored: 300, turned: 120, dew: 400, drop: 400 } as const;
 export type DeviceTrace = keyof typeof DEVICE;
 const TRACES = Object.keys(DEVICE) as DeviceTrace[];
 
@@ -38,7 +38,7 @@ export type WebMemory = {
 } & Record<DeviceTrace, string[]>;
 
 export function emptyMemory(): WebMemory {
-  return { since: 0, left: 0, seen: [], makers: [], passed: [], leaned: [] };
+  return { since: 0, left: 0, ...(Object.fromEntries(TRACES.map((t) => [t, [] as string[]])) as Record<DeviceTrace, string[]>) };
 }
 
 export function readMemory(storage: Pick<Storage, 'getItem'> | null): WebMemory {
@@ -97,6 +97,18 @@ export function leanedChildOf(m: WebMemory, parentId: string): string | null {
   const prefix = parentId + '\u0000';
   const e = m.leaned.find((x) => x.startsWith(prefix));
   return e ? e.slice(prefix.length) : null;
+}
+
+/** Every path taken from a place, not only the last. */
+export function exploredFrom(m: WebMemory, parentId: string): Set<string> {
+  const prefix = parentId + '\u0001';
+  return new Set(m.explored.filter((x) => x.startsWith(prefix)).map((x) => x.slice(prefix.length)));
+}
+
+/** The hours turned into in a place (a group's id, or '' for the Slate). */
+export function turnedIn(m: WebMemory, where: string | null): Set<number> {
+  const prefix = (where ?? '') + '\u0001';
+  return new Set(m.turned.filter((x) => x.startsWith(prefix)).map((x) => Number(x.slice(prefix.length))));
 }
 
 /** Posted work, as the Canvas receives it (only what food needs). */
