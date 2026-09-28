@@ -315,10 +315,14 @@ const SCHEMA = [
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
   `CREATE INDEX IF NOT EXISTS tt_rabi_log_fork ON tt_rabi_log (fork_id, created_at)`,
+  // a decision's own baseline (to judge later growth against, never shown to anyone), and which
+  // fork, if any, a click actually led to being made: opening the composer is not yet agreement
+  `ALTER TABLE tt_rabi_log ADD COLUMN IF NOT EXISTS reached INT`,
+  `ALTER TABLE tt_rabi_log ADD COLUMN IF NOT EXISTS created_fork_id TEXT`,
 ];
 
 /** Bumped whenever SCHEMA changes, so a database already up to date is not locked for nothing. */
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 
 // every read counts what grew from each, and names what each grew from (never who told a story)
 const SELECT = `SELECT s.*,
@@ -634,22 +638,41 @@ async function reachCount(q: Query, target: string, today = new Date().toISOStri
   return Number(r?.n ?? 0);
 }
 
+/** How much further pressure has to grow before "watch" (curious) or "leave it" (intentional) asks again. */
+export const WATCH_GROWTH = 1.3;
+export const LEAVE_GROWTH = 2;
+/** "Open a path" is a maker looking into it, not a lasting decision either way: a plain, short cooldown. */
+const OPEN_PATH_COOLDOWN_DAYS = 7;
+
 /**
  * Rabi noticing: whether a fork's own maker should be shown that real
- * pressure has gathered at it, and how many separate falls (never anyone
- * else's business, and never anyone's own count) that actually is right
- * now. Shown again after any decision only once a cooldown has passed;
- * this never changes the fork itself.
+ * pressure has gathered at it. Never the exact count (sparse traffic can
+ * make one visitor guessable even to an owner); only whether it has
+ * crossed the bar. What re-shows it depends on what was last decided:
+ * "watch" wants to hear about real further growth; "leave it" means the
+ * dead end is wanted, and asks again only if pressure grows much more;
+ * "open a path" is a maker looking into it, and only pauses for a short
+ * while either way. Nothing here ever changes the fork itself.
  */
-export async function noticeFor(q: Query, forkId: string, ownerSub: string): Promise<{ show: boolean; reached: number } | null> {
+export async function noticeFor(q: Query, forkId: string, ownerSub: string): Promise<{ show: boolean } | null> {
   const f = await getForkRaw(q, forkId);
   if (!f || f.owner_sub !== ownerSub) return null;
   const reached = await reachCount(q, `fork/${forkId}`);
   const level = 1 - Math.exp(-reached / 8);
-  if (level < ROUTE_CANDIDATE) return { show: false, reached };
-  const [last] = await q(`SELECT created_at FROM tt_rabi_log WHERE fork_id = $1 AND event = 'notice_action' ORDER BY created_at DESC LIMIT 1`, [forkId]);
-  if (last && Date.now() - new Date(last.created_at as string).getTime() < 7 * 86400000) return { show: false, reached };
-  return { show: true, reached };
+  if (level < ROUTE_CANDIDATE) return { show: false };
+  const [last] = await q(
+    `SELECT action, reached, created_at FROM tt_rabi_log WHERE fork_id = $1 AND event = 'notice_action' ORDER BY created_at DESC LIMIT 1`,
+    [forkId]
+  );
+  if (last) {
+    const baseline = Number(last.reached ?? 0);
+    if (last.action === 'watch' && reached < baseline * WATCH_GROWTH) return { show: false };
+    if (last.action === 'leave' && reached < baseline * LEAVE_GROWTH) return { show: false };
+    if (last.action === 'open_path' && Date.now() - new Date(last.created_at as string).getTime() < OPEN_PATH_COOLDOWN_DAYS * 86400000) {
+      return { show: false };
+    }
+  }
+  return { show: true };
 }
 
 /** That the notice was actually shown: once a day is enough to say so, however often it is checked. */
@@ -664,11 +687,45 @@ export async function logNoticeShown(q: Query, forkId: string, ownerSub: string,
 
 export type NoticeAction = 'open_path' | 'leave' | 'watch';
 
-/** What a maker decided, once, plainly: the only thing that can ever follow from pressure is a choice they made. */
+/**
+ * What a maker decided, plainly, with the pressure it was decided against
+ * (never shown to anyone, only kept to judge later growth against). Opening
+ * a path is not yet agreement: only actually making a fork afterward is
+ * (see logFunnelEvent). This is only ever a record of a choice; nothing
+ * here changes the fork.
+ */
 export async function logNoticeAction(q: Query, forkId: string, ownerSub: string, action: NoticeAction) {
   const f = await getForkRaw(q, forkId);
   if (!f || f.owner_sub !== ownerSub) return { error: 'Not yours.' } as const;
-  await q(`INSERT INTO tt_rabi_log (id, fork_id, owner_sub, event, action) VALUES ($1, $2, $3, 'notice_action', $4)`, [newId(), forkId, ownerSub, action]);
+  const reached = await reachCount(q, `fork/${forkId}`);
+  await q(`INSERT INTO tt_rabi_log (id, fork_id, owner_sub, event, action, reached) VALUES ($1, $2, $3, 'notice_action', $4, $5)`, [
+    newId(),
+    forkId,
+    ownerSub,
+    action,
+    reached,
+  ]);
+  return { ok: true } as const;
+}
+
+export type FunnelEvent = 'composer_opened' | 'fork_created';
+
+/**
+ * The rest of the chain past a click: that the fork-creation composer
+ * actually opened from a notice, and, the one thing that counts as real
+ * agreement, that a fork was actually made afterward. Neither is a
+ * decision; both are just what happened.
+ */
+export async function logFunnelEvent(q: Query, forkId: string, ownerSub: string, event: FunnelEvent, createdForkId?: string) {
+  const f = await getForkRaw(q, forkId);
+  if (!f || f.owner_sub !== ownerSub) return { error: 'Not yours.' } as const;
+  await q(`INSERT INTO tt_rabi_log (id, fork_id, owner_sub, event, created_fork_id) VALUES ($1, $2, $3, $4, $5)`, [
+    newId(),
+    forkId,
+    ownerSub,
+    event,
+    createdForkId ?? null,
+  ]);
   return { ok: true } as const;
 }
 

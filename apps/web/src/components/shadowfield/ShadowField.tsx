@@ -81,6 +81,8 @@ interface Composer {
   initial?: string;
   /** For 'inFork': which fork the post joins. */
   forkId?: string;
+  /** Set when this composer was opened from a Rabi notice's "open a path": which fork's notice sent us here. */
+  fromNoticeForkId?: string;
 }
 
 interface Tip {
@@ -406,7 +408,7 @@ export default function ShadowField({ serif }: Props) {
   // shown once, right after opening a fork: the link that lets someone else post inside it
   const [forkInvite, setForkInvite] = useState<{ forkId: string; title: string; link: string } | null>(null);
   // Rabi noticing pressure: shown only to the fork's own maker, never acted on by anything but them
-  const [rabiNotice, setRabiNotice] = useState<{ forkId: string; title: string; reached: number } | null>(null);
+  const [rabiNotice, setRabiNotice] = useState<{ forkId: string; title: string } | null>(null);
   const noticeCheckedRef = useRef(new Set<string>());
   // films can be added once the site has a file store for them
   const [filmsOn, setFilmsOn] = useState(false);
@@ -2790,6 +2792,13 @@ export default function ShadowField({ serif }: Props) {
             const link = `${window.location.origin}/slate?fork=${encodeURIComponent(d.fork.id)}&invite=${encodeURIComponent(d.fork.inviteLink)}`;
             setForkInvite({ forkId: d.fork.id, title: d.fork.title, link });
           }
+          if (c.fromNoticeForkId) {
+            void fetch(`/api/forks/${encodeURIComponent(c.fromNoticeForkId)}/notice`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ event: 'fork_created', createdForkId: d.fork.id }),
+            }).catch(() => undefined);
+          }
         })
         .catch(() => setNotice('that could not be opened'));
     } else if (c.mode === 'inFork' && c.forkId && me?.user) {
@@ -2925,8 +2934,8 @@ export default function ShadowField({ serif }: Props) {
       noticeCheckedRef.current.add(f.id);
       fetch(`/api/forks/${encodeURIComponent(f.id)}/notice`)
         .then((r) => (r.ok ? r.json() : null))
-        .then((d: { show?: boolean; reached?: number } | null) => {
-          if (d?.show) setRabiNotice({ forkId: f.id, title: f.title, reached: d.reached ?? 0 });
+        .then((d: { show?: boolean } | null) => {
+          if (d?.show) setRabiNotice({ forkId: f.id, title: f.title });
         })
         .catch(() => undefined);
     }
@@ -2935,6 +2944,8 @@ export default function ShadowField({ serif }: Props) {
     const notice = rabiNotice;
     if (!notice) return;
     setRabiNotice(null);
+    // clicking "open a path" only means "take me to the composer": it is not counted as
+    // agreement with Rabi until a fork is actually created from there (see submitComposer)
     void fetch(`/api/forks/${encodeURIComponent(notice.forkId)}/notice`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -2951,7 +2962,12 @@ export default function ShadowField({ serif }: Props) {
     if (path) flyTo(path);
     const cam = camRef.current;
     if (cam && last.id.startsWith('p/')) {
-      setComposer({ mode: 'fork', x: cam.w / 2 - 140, y: cam.h - 150, lx: 0, ly: 0, shadowId: last.id.slice(2) });
+      setComposer({ mode: 'fork', x: cam.w / 2 - 140, y: cam.h - 150, lx: 0, ly: 0, shadowId: last.id.slice(2), fromNoticeForkId: notice.forkId });
+      void fetch(`/api/forks/${encodeURIComponent(notice.forkId)}/notice`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ event: 'composer_opened' }),
+      }).catch(() => undefined);
     }
   };
   const widen = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -3570,9 +3586,7 @@ export default function ShadowField({ serif }: Props) {
       {rabiNotice && (
         <div className={styles.give}>
           <div className={styles.giveFor}>a path may be wanted here</div>
-          <p className={styles.quiet}>
-            {rabiNotice.reached} recent falls reached “{rabiNotice.title}” and continued elsewhere.
-          </p>
+          <p className={styles.quiet}>Several recent Falls reached “{rabiNotice.title}” and continued elsewhere.</p>
           <details>
             <summary className={styles.quiet}>why am I seeing this?</summary>
             <p className={styles.quiet}>
@@ -3580,13 +3594,13 @@ export default function ShadowField({ serif }: Props) {
               back rather than staying. that is the whole of it: nothing changes here unless you decide something.
             </p>
           </details>
-          <button type="button" className={styles.quiet} onClick={() => actOnNotice('open_path')}>
+          <button type="button" className={styles.quiet} onClick={() => actOnNotice('open_path')} title="look into it — only actually making a fork counts as agreeing">
             open a path
           </button>
-          <button type="button" className={styles.quiet} onClick={() => actOnNotice('leave')}>
+          <button type="button" className={styles.quiet} onClick={() => actOnNotice('leave')} title="I mean this dead end — don't ask again unless it grows much stronger">
             leave it
           </button>
-          <button type="button" className={styles.quiet} onClick={() => actOnNotice('watch')}>
+          <button type="button" className={styles.quiet} onClick={() => actOnNotice('watch')} title="don't change anything — tell me if this becomes meaningfully stronger">
             watch
           </button>
         </div>

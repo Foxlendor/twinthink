@@ -38,7 +38,9 @@ import {
   noticeFor,
   logNoticeShown,
   logNoticeAction,
-  ROUTE_CANDIDATE,
+  logFunnelEvent,
+  WATCH_GROWTH,
+  LEAVE_GROWTH,
 } from './store';
 
 let q: Query;
@@ -440,19 +442,14 @@ describe('Rabi noticing pressure', () => {
     for (let i = from; i < to; i++) await markReached(q, `fork/${forkId}`, `visitor${i}`, day);
   };
 
-  it('only tells a fork’s own maker, and only once it is more than merely gathering', async () => {
+  it('only tells a fork’s own maker, and only once it is more than merely gathering (never the exact count)', async () => {
     const home = (await createShadow(q, ana, { title: 'a lamp that listens' })).shadow!;
     const f = (await createFork(q, ana, home.id, { title: 'wiring' })).fork!;
     expect(await noticeFor(q, f.id, ben.sub)).toBeNull();
     await reach(f.id, 0, 5);
-    const early = await noticeFor(q, f.id, ana.sub);
-    expect(early!.show).toBe(false);
-    expect(early!.reached).toBe(5);
+    expect(await noticeFor(q, f.id, ana.sub)).toEqual({ show: false });
     await reach(f.id, 5, 13); // 13 distinct falls now: past ROUTE_CANDIDATE
-    const now = await noticeFor(q, f.id, ana.sub);
-    expect(now!.show).toBe(true);
-    expect(now!.reached).toBe(13);
-    expect(1 - Math.exp(-now!.reached / 8)).toBeGreaterThan(ROUTE_CANDIDATE);
+    expect(await noticeFor(q, f.id, ana.sub)).toEqual({ show: true });
   });
 
   it('logs that it was shown only once a day, however often it is checked', async () => {
@@ -482,5 +479,65 @@ describe('Rabi noticing pressure', () => {
     const rows = await q(`SELECT event, action, pressure_state FROM tt_rabi_log WHERE fork_id = $1 ORDER BY created_at`, [f.id]);
     expect(rows.map((r) => r.event)).toEqual(['notice_action']);
     expect(rows[0].action).toBe('watch');
+  });
+
+  it('watch re-notifies once pressure grows meaningfully, not on every re-check', async () => {
+    const home = (await createShadow(q, ana, { title: 'a lamp' })).shadow!;
+    const f = (await createFork(q, ana, home.id, { title: 'wiring' })).fork!;
+    const baseline = 13; // past ROUTE_CANDIDATE
+    const justShort = Math.ceil(baseline * WATCH_GROWTH) - 1;
+    const overFloor = Math.ceil(baseline * WATCH_GROWTH);
+    await reach(f.id, 0, baseline);
+    expect((await noticeFor(q, f.id, ana.sub))!.show).toBe(true);
+    await logNoticeAction(q, f.id, ana.sub, 'watch');
+    expect((await noticeFor(q, f.id, ana.sub))!.show).toBe(false);
+    await reach(f.id, baseline, justShort);
+    expect((await noticeFor(q, f.id, ana.sub))!.show).toBe(false);
+    await reach(f.id, justShort, overFloor);
+    expect((await noticeFor(q, f.id, ana.sub))!.show).toBe(true);
+  });
+
+  it('leave suppresses more strongly than watch: the same growth that reopens watch does not reopen leave', async () => {
+    const home = (await createShadow(q, ana, { title: 'a lamp' })).shadow!;
+    const f = (await createFork(q, ana, home.id, { title: 'wiring' })).fork!;
+    const baseline = 13;
+    const watchFloor = Math.ceil(baseline * WATCH_GROWTH);
+    const leaveFloor = Math.ceil(baseline * LEAVE_GROWTH);
+    await reach(f.id, 0, baseline);
+    expect((await noticeFor(q, f.id, ana.sub))!.show).toBe(true);
+    await logNoticeAction(q, f.id, ana.sub, 'leave');
+    await reach(f.id, baseline, watchFloor); // enough to have reopened a watch, not a leave
+    expect((await noticeFor(q, f.id, ana.sub))!.show).toBe(false);
+    await reach(f.id, watchFloor, leaveFloor);
+    expect((await noticeFor(q, f.id, ana.sub))!.show).toBe(true);
+  });
+
+  it('open a path is a flat cooldown, not growth-based: it lifts once time has passed', async () => {
+    const home = (await createShadow(q, ana, { title: 'a lamp' })).shadow!;
+    const f = (await createFork(q, ana, home.id, { title: 'wiring' })).fork!;
+    await reach(f.id, 0, 13);
+    await logNoticeAction(q, f.id, ana.sub, 'open_path');
+    expect((await noticeFor(q, f.id, ana.sub))!.show).toBe(false);
+    // even far more pressure doesn't lift it early: the cooldown is time, not growth
+    await reach(f.id, 13, 40);
+    expect((await noticeFor(q, f.id, ana.sub))!.show).toBe(false);
+    await q(`UPDATE tt_rabi_log SET created_at = NOW() - INTERVAL '8 days' WHERE fork_id = $1 AND event = 'notice_action'`, [f.id]);
+    expect((await noticeFor(q, f.id, ana.sub))!.show).toBe(true);
+  });
+
+  it('funnel events only from the fork’s own maker, and only carry a created fork id when one was made', async () => {
+    const home = (await createShadow(q, ana, { title: 'a lamp' })).shadow!;
+    const f = (await createFork(q, ana, home.id, { title: 'wiring' })).fork!;
+    expect('error' in (await logFunnelEvent(q, f.id, ben.sub, 'composer_opened'))).toBe(true);
+    expect('ok' in (await logFunnelEvent(q, f.id, ana.sub, 'composer_opened'))).toBe(true);
+    expect('ok' in (await logFunnelEvent(q, f.id, ana.sub, 'fork_created', 'new-fork-id'))).toBe(true);
+    const rows = await q(
+      `SELECT event, created_fork_id FROM tt_rabi_log WHERE fork_id = $1 AND event IN ('composer_opened', 'fork_created') ORDER BY created_at`,
+      [f.id]
+    );
+    expect(rows).toEqual([
+      { event: 'composer_opened', created_fork_id: null },
+      { event: 'fork_created', created_fork_id: 'new-fork-id' },
+    ]);
   });
 });

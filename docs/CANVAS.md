@@ -269,19 +269,48 @@ navigation one) and stay out of this layer.
 ## Rabi, noticing (not yet acting)
 The first, deliberately small step: once pressure at a fork passes
 `ROUTE_CANDIDATE` (a stronger bar than the ambient "gathering" line),
-its own maker, and only them, may be shown a plain notice: how many
-separate falls reached it lately, an honest "why am I seeing this?",
-and three choices, nothing more — **open a path** (starts a new fork
-from that fork's current end, using the same manual tools as ever),
-**leave it**, or **watch**. Any decision quiets the notice for a week;
-none of the three ever changes the fork itself (`tt_rabi_log`,
-`noticeFor()`/`logNoticeShown()`/`logNoticeAction()` in `store.ts`;
-`/api/forks/[id]/notice`). Every showing and every decision is logged
-(`notice_shown`, `notice_action`), so whether pressure is actually
-useful to a maker (do they choose to open a path, or mostly leave it?)
+its own maker, and only them, may be shown a plain notice: never the
+exact count (sparse traffic can still make an individual inferable),
+only the qualitative fact ("Several recent Falls reached [it] and
+continued elsewhere."), an honest "why am I seeing this?" that explains
+the threshold and rule instead, and three choices, nothing more —
+**open a path**, **leave it**, or **watch** (`tt_rabi_log`, `noticeFor()`/
+`logNoticeShown()`/`logNoticeAction()` in `store.ts`; `/api/forks/[id]/notice`).
+
+The three choices carry real, different semantics, not three flavors of
+dismissal:
+- **Open a path** only means "take me to the composer." Clicking it is
+  never counted as agreement by itself — only actually creating a fork
+  afterward is. The funnel is tracked in full: `notice_shown` →
+  `open_path` (the click) → `composer_opened` (the composer actually
+  appeared) → `fork_created` (a fork was actually made, carrying the id
+  it links back to) — so someone who opens the composer, thinks about
+  it, and backs out is correctly *not* counted as Rabi having been
+  right (`logFunnelEvent()`, `ShadowField.tsx`'s `actOnNotice`/
+  `submitComposer`).
+- **Leave it** means "I intentionally want this dead end." It is
+  suppressed until pressure grows to roughly double (`LEAVE_GROWTH`)
+  what it was when decided.
+- **Watch** means "don't change anything, but tell me if this becomes
+  materially stronger." It re-notifies at a much lower bar — about 1.3x
+  growth (`WATCH_GROWTH`) — so it is meaningfully more sensitive than
+  Leave, not merely a softer version of it.
+
+`Open a path` alone keeps a flat, time-based cooldown (a week) rather
+than a growth floor, since clicking it already tells you the maker was
+willing to look; the open question there is only whether something is
+still gathering, not whether it grew. Every showing and every decision
+is logged, so whether pressure is actually useful to a maker — and,
+now, whether being shown it actually leads to something made and kept —
 is a real, answerable question before anything is asked to act on its
 own. Other people's attention can gather around someone's work; it
 never earns them the right to change it just by accumulating there.
+
+Deliberately not built yet, per the same discipline: whether a path
+made this way is later actually used by other falls. That is a real
+next signal (did Rabi identify a missing route, or just talk someone
+into making one?) but a separate measurement from this funnel, and is
+left for once this one has run long enough to trust.
 
 ## Next
 1. Co-op rights: someone besides a fork's own maker managing it.
