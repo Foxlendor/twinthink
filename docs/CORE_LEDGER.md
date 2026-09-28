@@ -102,6 +102,15 @@ What exists today, honestly: the flight is one sequence in depth with hops betwe
 | D-16 | A shared Fall when two Drops take different trajectories. | Two Drops together need not share a trajectory every second; Fall with me must never become one person remotely controlling the other. |
 | D-07 | Where Dew's persistence lives (you, or the shared web). | Open; on this device until decided. |
 
+## Proposed 28 Sep, not decided: the web remembers traffic
+
+Recorded as direction, each with the rules it must not break. None of this is to be built before the Drop itself feels right.
+
+- **Desire paths (personal).** Routes you keep returning to, Dewing around, moving through or connecting through grow from a thread toward a highway, for you. This may be what Zed was reaching for: depth you can see as carved structure, not a number. Fits the current rules if it lives on your device, like the rest of your Fall.
+- **Shared infrastructure ("attention = infrastructure allocation").** Enough legitimate activity in an area gives Rabi more room to build there: more strands, resting points, depth, routes. It must remember *how* attention was used (returning, Dewing, building from, connecting, meaningful time), not *how much* (flying past builds little), or it rebuilds likes and the runaway attention loop. **Constraint:** this is collective use of people's navigation, the same category as aggregate Lean (SIGNAL-01, MEMORY-02). It needs the separate aggregate privacy protocol first: no personal trails on the server, no reconstruction from analytics.
+- **Currents and raids.** Enough Dew around something forms a current of people flowing there; someone with pull can release the whole current into another part of the web, making a temporary highway that the web partly remembers afterward. Based on people who Dewed, returned, built or joined the current, not follower counts. **Open:** consent of the place receiving it, abuse (brigading, flooding someone who did not want it), who may redirect a current, and the same aggregate privacy protocol. Also D-07 (whether Dew is shared at all).
+- **Synchronous multiplayer.** Several Drops in the same Fall at the same time: Fall with me grown up. Bound by D-16 (no remote control, no shared trajectory every second) and the follower privacy already built (`beyond`).
+
 ## Decided 28 Sep: the mobile direction (from John's mockup review)
 
 The central mobile requirement: **you are not browsing down a hallway; you are falling through a space with lateral choices.** Not "straight tunnel, keep scrolling, more tunnel", but: fall, drift, openings peel away around you, another branch catches your trajectory, the whole space bends and spirals around the clock. One thumb, one joystick, one falling field, several visibly diverging directions; the words and controls sit quietly around that.
