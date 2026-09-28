@@ -42,6 +42,8 @@ import {
   emptyMemory,
   findFood,
   clearPassed,
+  leanedChildOf,
+  markLeaned,
   markMaker,
   markPassed,
   markSeen,
@@ -324,6 +326,8 @@ export default function ShadowField({ serif }: Props) {
   const pressureRef = useRef(new Map<string, number>());
   // presence: in a shared Fall, how many other people are at each thing right now (never a trail)
   const presenceRef = useRef(new Map<string, number>());
+  // the one path deliberately leaned at the branch currently in view (device-only, never a trail)
+  const leanedRef = useRef(new Set<string>());
   const reachedRef = useRef(new Set<string>());
   const stayedRef = useRef(new Set<string>());
   const postedSigRef = useRef('');
@@ -648,6 +652,24 @@ export default function ShadowField({ serif }: Props) {
     },
     [flyTo]
   );
+
+  /**
+   * A deliberate choice at a branch (its parent holds two or more paths): kept on this device only,
+   * one per parent, replaced by a later choice there. Passing through in the ordinary sequence never
+   * calls this: only a direct, out-of-sequence pick (a tap, or its screen-reader equivalent) does.
+   */
+  const leanIfBranch = useCallback((path: IdeaNode[]) => {
+    if (path.length < 2) return;
+    const parent = path[path.length - 2];
+    const child = path[path.length - 1];
+    if (parent.children.length < 2) return;
+    webMemRef.current = markLeaned(webMemRef.current, parent.id, child.id);
+    try {
+      writeMemory(window.localStorage, webMemRef.current);
+    } catch {
+      // remembered for this visit only
+    }
+  }, []);
 
   // ---------------------------------------------------------------- setup
   useEffect(() => {
@@ -1880,6 +1902,7 @@ export default function ShadowField({ serif }: Props) {
           phases: phasesRef.current,
           resonance: resonanceRef.current,
           presence: presenceRef.current,
+          leaned: leanedRef.current,
           dt,
           web: {
             plucks: echoesRef.current.length ? [...plucksRef.current, ...echoesRef.current] : plucksRef.current,
@@ -2596,6 +2619,7 @@ export default function ShadowField({ serif }: Props) {
       // a song: go to it and let it play (the tap is what allows sound);
       // further taps in the same burst are a knock in the making, not play/pause
       if (taps > 1) return;
+      leanIfBranch(hit.path);
       flyTo(hit.path, 0.53);
       autoplayRef.current = true;
       toggleSong(hit.path);
@@ -2606,7 +2630,10 @@ export default function ShadowField({ serif }: Props) {
     if (hit && hit.kind === 'node' && film(hit.node)) {
       // a film: go to it; a tap on it once there gives it sound
       if (focusedNode?.id === hit.node.id) filmSound(film(hit.node)!.src, film(hit.node)!.webm);
-      else flyTo(hit.path);
+      else {
+        leanIfBranch(hit.path);
+        flyTo(hit.path);
+      }
       return;
     }
     if (!hit && hasMedia(focusedNode, 'audio')) {
@@ -2620,6 +2647,7 @@ export default function ShadowField({ serif }: Props) {
       return;
     }
     if (hit && hit.kind === 'node') {
+      leanIfBranch(hit.path);
       flyTo(hit.path, hit.sealed ? 0.12 : 0.53);
       return;
     }
@@ -3141,6 +3169,13 @@ export default function ShadowField({ serif }: Props) {
   const isFollowed = top ? followed.has(top.id) : false;
   const nearby = current ? (topologyOf(current), current.children) : [];
   const p = top ? closenessFor(top, followed) : 1;
+  // the path you deliberately chose here before, if this is a branch you have leaned at
+  const [leanedChild, setLeanedChild] = useState<string | null>(null);
+  useEffect(() => {
+    const lc = current && current.children.length >= 2 ? leanedChildOf(webMemRef.current, current.id) : null;
+    setLeanedChild(lc);
+    leanedRef.current = lc ? new Set([lc]) : new Set();
+  }, [current]);
 
   return (
     <div className={styles.field} ref={rootRef} data-night={night ? '' : undefined}>
@@ -3969,8 +4004,15 @@ export default function ShadowField({ serif }: Props) {
             .filter((c) => path.length <= 1 || c.disclosure <= p + SEAL_MARGIN)
             .map((c) => (
               <li key={c.id}>
-                <button type="button" onClick={() => flyTo([...path, c])}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    leanIfBranch([...path, c]);
+                    flyTo([...path, c]);
+                  }}
+                >
                   {c.disclosure > p && path.length > 1 ? 'something not open yet' : c.title ?? 'untitled'}
+                  {c.id === leanedChild ? ' (you leaned here last time)' : ''}
                 </button>
               </li>
             ))}

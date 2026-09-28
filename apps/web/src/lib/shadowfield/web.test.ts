@@ -131,7 +131,7 @@ describe('the web that moves: what the device remembers', () => {
     const later = beginVisit(readMemory(storage), 1000 + 31 * 60 * 1000);
     expect(later.since).toBe(1000);
     const raw = JSON.parse([...mem.values()][0]);
-    expect(Object.keys(raw).sort()).toEqual(['left', 'makers', 'passed', 'seen', 'since']);
+    expect(Object.keys(raw).sort()).toEqual(['leaned', 'left', 'makers', 'passed', 'seen', 'since']);
     for (const v of Object.values(raw)) {
       if (Array.isArray(v)) for (const x of v) expect(typeof x).toBe('string');
       else expect(typeof v).toBe('number');
@@ -151,6 +151,21 @@ describe('the web that moves: what the device remembers', () => {
     // entering it (or letting it go) is the only thing that clears it
     m = clearPassed(m, 'fork/f1');
     expect(m.passed).toEqual(['fork/f2']);
+  });
+
+  it('a deliberate choice at a branch is kept, one per parent, and a later choice there replaces it', async () => {
+    const { markLeaned, leanedChildOf } = await import('./web');
+    let m = emptyMemory();
+    expect(leanedChildOf(m, 'p/parent')).toBeNull();
+    m = markLeaned(m, 'p/parent', 'p/childA');
+    expect(leanedChildOf(m, 'p/parent')).toBe('p/childA');
+    // a different branch's own choice does not disturb this one
+    m = markLeaned(m, 'p/other', 'p/x');
+    expect(leanedChildOf(m, 'p/parent')).toBe('p/childA');
+    // choosing the other path at the same parent, later, replaces it (not a history of both)
+    m = markLeaned(m, 'p/parent', 'p/childB');
+    expect(leanedChildOf(m, 'p/parent')).toBe('p/childB');
+    expect(m.leaned.filter((e) => e.startsWith('p/parent\u0000'))).toHaveLength(1);
   });
 });
 

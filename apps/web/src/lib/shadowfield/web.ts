@@ -18,6 +18,7 @@ export const VISIT_GAP = 30 * 60 * 1000;
 const SEEN_MAX = 600;
 const MAKERS_MAX = 60;
 const PASSED_MAX = 60;
+const LEANED_MAX = 60;
 
 /** What this device remembers: ids and times only. Never sent anywhere. */
 export interface WebMemory {
@@ -31,10 +32,17 @@ export interface WebMemory {
   makers: string[];
   /** Forks come near but not entered: a way back to a turn not yet taken. */
   passed: string[];
+  /**
+   * A deliberate choice at a branch (a thing with two or more paths ahead):
+   * which one was taken, last time, kept as `parentId\u0000childId`. At most
+   * one per parent; a later choice there replaces it. Never sent anywhere,
+   * and never made from simply scrolling through in the ordinary sequence.
+   */
+  leaned: string[];
 }
 
 export function emptyMemory(): WebMemory {
-  return { since: 0, left: 0, seen: [], makers: [], passed: [] };
+  return { since: 0, left: 0, seen: [], makers: [], passed: [], leaned: [] };
 }
 
 export function readMemory(storage: Pick<Storage, 'getItem'> | null): WebMemory {
@@ -48,6 +56,7 @@ export function readMemory(storage: Pick<Storage, 'getItem'> | null): WebMemory 
       seen: Array.isArray(m.seen) ? m.seen.filter((x) => typeof x === 'string').slice(-SEEN_MAX) : [],
       makers: Array.isArray(m.makers) ? m.makers.filter((x) => typeof x === 'string').slice(-MAKERS_MAX) : [],
       passed: Array.isArray(m.passed) ? m.passed.filter((x) => typeof x === 'string').slice(-PASSED_MAX) : [],
+      leaned: Array.isArray(m.leaned) ? m.leaned.filter((x) => typeof x === 'string' && x.includes('\u0000')).slice(-LEANED_MAX) : [],
     };
   } catch {
     return emptyMemory();
@@ -64,6 +73,7 @@ export function writeMemory(storage: Pick<Storage, 'setItem'> | null, m: WebMemo
         seen: m.seen.slice(-SEEN_MAX),
         makers: m.makers.slice(-MAKERS_MAX),
         passed: m.passed.slice(-PASSED_MAX),
+        leaned: m.leaned.slice(-LEANED_MAX),
       })
     );
   } catch {
@@ -88,6 +98,23 @@ export const markMaker = (m: WebMemory, key: string): WebMemory => ({ ...m, make
 export const markPassed = (m: WebMemory, forkId: string): WebMemory => ({ ...m, passed: remember(m.passed, forkId, PASSED_MAX) });
 /** Once actually entered (or let go of), it stops being a turn not yet taken. */
 export const clearPassed = (m: WebMemory, forkId: string): WebMemory => ({ ...m, passed: m.passed.filter((id) => id !== forkId) });
+
+/** A deliberate choice at a branch: which of its several paths was taken. A later choice at the same parent replaces it. */
+export const markLeaned = (m: WebMemory, parentId: string, childId: string): WebMemory => ({
+  ...m,
+  leaned: remember(
+    m.leaned.filter((e) => !e.startsWith(parentId + '\u0000')),
+    `${parentId}\u0000${childId}`,
+    LEANED_MAX
+  ),
+});
+
+/** Which child was chosen at this parent, last time (null if none was, or it wasn't a real branch). */
+export function leanedChildOf(m: WebMemory, parentId: string): string | null {
+  const prefix = parentId + '\u0000';
+  const e = m.leaned.find((x) => x.startsWith(prefix));
+  return e ? e.slice(prefix.length) : null;
+}
 
 /** Posted work, as the Canvas receives it (only what food needs). */
 export interface PostedLike {

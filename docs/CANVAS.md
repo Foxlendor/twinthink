@@ -352,6 +352,40 @@ glint (`PRESENCE`, its own tone, never confused with resonance's warm dew)
 right at the thing itself, wherever the shared Fall currently is — not a
 trail of where anyone has been, only that someone else is there, right now.
 
+## Lean: a deliberate choice at a branch
+The existing "lean" in `flight.ts` is passive camera physics: it drifts
+sideways toward whatever comes next in the fixed, sequential order the
+track already visits everything in. It was never a choice, and passing
+through a thing in that ordinary sequence still isn't one.
+
+A deliberate Lean is a separate, new thing: at any branch (a thing with
+two or more paths ahead, wherever that occurs on the Slate, not tied to
+the maker-created `tt_forks` gates), directly picking one of them out of
+sequence (a tap, or its screen-reader equivalent, the "Ideas here" list)
+is recorded on this device only, one choice per branch, replaced by a
+later choice there (`web.ts`'s `leaned`, `markLeaned()`/`leanedChildOf()`).
+Nothing about it is ever sent anywhere. Scrolling or swiping through the
+ordinary sequence never records one, however far it goes or however long
+it lingers; only an out-of-sequence pick does.
+
+Returning to the same branch marks which path was actually taken last
+time (a plain word in the screen-reader list; a single still rose fleck,
+reusing the ink's own existing "this is yours" tone, at the thing itself
+on the Canvas) while leaving every other path exactly as open as before:
+choosing one, returning, and taking the other both work, plainly, every
+time.
+
+Verified with new store-free tests for the on-device memory itself, and a
+Playwright pass confirming, on two ordinary sibling Twins: scrolling past
+both records nothing; deliberately choosing one actually moves the
+visitor and is marked on return; choosing the other afterward replaces
+the record (not both at once) and never closes off the first.
+
+Deliberately not built: any aggregate, "others leaned this way too"
+signal. That would need its own privacy design (this is a personal,
+on-device record, not even pseudonymous) and is a separate, later
+question from whether Lean itself is worth having at all.
+
 ## Next
 1. Switch lead: the first addition after V1, once "Fall with me" is shown
    to actually feel better than sending a link or sharing a screen. This

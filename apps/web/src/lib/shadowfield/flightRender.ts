@@ -120,6 +120,8 @@ export interface FlightState {
    * in V1). Never a trail of where they have been, only where they are, this instant.
    */
   presence?: Map<string, number>;
+  /** The one path deliberately chosen, last time, at the branch currently in view (device-only). */
+  leaned?: Set<string>;
 }
 
 /**
@@ -198,6 +200,16 @@ function drawPresence(st: RenderState, s: Station, x: number, y: number, R: numb
     const size = clamp(R * 0.02, 1.4, 3.4) * (1 + 0.35 * glint);
     ink.dotPresence(bx, by, size, alpha * (0.5 + 0.4 * glint));
   }
+}
+
+/**
+ * The one path deliberately chosen, last time, at the branch now in view: a single, still mark
+ * (rose, the ink's own way of marking something as yours) right at the thing itself. Not a trail,
+ * not a count; the other paths stay exactly as open as this one.
+ */
+function drawLeaned(x: number, y: number, R: number, alpha: number, ink: Ink) {
+  if (R < 6) return;
+  ink.dot(x - R * 0.62, y - R * 0.62, clamp(R * 0.05, 1.6, 3.2), alpha * 0.6, true);
 }
 
 /**
@@ -850,6 +862,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     if (res && !sealed) drawDew(st, s, x, y, R, alpha, res, ink);
     const pres = fs.presence?.get(s.node.id);
     if (pres && !sealed) drawPresence(st, s, x, y, R, alpha, pres, ink);
+    if (fs.leaned?.has(s.node.id) && !sealed) drawLeaned(x, y, R, alpha, ink);
     ink.flush(ctx);
     if (!fs.frames.has(s.node.id) || dz < FOCUS * 2) fs.frames.set(s.node.id, { ox: x, oy: y, s: R });
     if (!sealed) seen.set(s.node.id, [x, y, alpha]);
