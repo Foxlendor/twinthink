@@ -240,13 +240,39 @@ signs in, wherever they were, and dropped from the address bar. Breadcrumbs
 are real too: dwelling at a fork's own gate without going in marks it, on
 this device only (`web.ts`'s `passed`, ids only, never sent anywhere); the
 compass ("n", or its rose dot) leads back to it once nothing else is
-waiting, and going in clears it. What's still open: an aggregate, resonance-shaped
-sense of "others paused here" at a fork (the mechanism already exists;
-nothing plugs a fork's id into it yet), and moving/closing controls beyond
-the single maker who opened it (co-op rights for other creators).
+waiting, and going in clears it.
+
+## Pressure
+Separate from resonance on purpose: resonance is the same one person coming
+back to a thing on another day; pressure is many different falls reaching
+the same wall and turning back. A fall reaching the last thing inside a
+fork, then hopping back out rather than continuing, marks that fork's own
+one-way, anonymous count for the day (`tt_pressure`, `pressure()`/
+`markReached()` in `store.ts`; `/api/pressure`, the same shape as
+`/api/resonance`, kept for two weeks rather than a season since this is
+about now, not a lasting presence). Once enough separate falls have
+reached it lately (`GATHERING`), its own line quietly reads "something is
+gathering here." instead of its usual line, the same felt, numberless way
+dew already works. Nothing is shown until real pressure exists; nothing
+is ever a count.
+
+This is the seed of the shape the navigation layer should keep: person
+travels → reaches a fork's end or passes it without entering → an
+anonymous, aggregate signal forms → once it's real, something is quietly
+shown → a human (or later, with a clear reason shown and nothing done
+without one, Rabi) can use the *existing* fork system to open a route
+there. No second kind of hole, no generated content, no topology that
+moves on its own. Dew ("carry this forward") and Drop ("I wouldn't carry
+this forward") are a different question entirely (an idea signal, not a
+navigation one) and stay out of this layer.
+
+What's still open: moving/closing controls beyond the single maker who
+opened a fork (co-op rights for other creators), and Rabi itself, which
+should only ever act on the fork system that already exists, never invent
+a parallel one.
 
 ## Next
-1. Resonance for forks (reuse the existing mechanism, a fork's id as its target).
+1. Co-op rights: someone besides a fork's own maker managing it.
 2. Plot claims + earning rules above (still planned, not built).
 3. Rabi: once forks can be made and moved by hand, give the same creation
    tools a guided, preview-and-approve AI layer. Not before the manual

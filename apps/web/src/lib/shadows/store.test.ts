@@ -32,6 +32,9 @@ import {
   joinFork,
   roomFor,
   FORK_ROOM_MAX,
+  markReached,
+  pressure,
+  GATHERING,
 } from './store';
 
 let q: Query;
@@ -402,5 +405,28 @@ describe('forks', () => {
     for (let i = 0; i < FORK_ROOM_MAX; i++) expect('fork' in (await createFork(q, ana, home.id, { title: `t${i}` }))).toBe(true);
     expect('error' in (await createFork(q, ana, home.id, { title: 'one too many' }))).toBe(true);
     expect((await roomFor(q, ana.sub)).room).toBe(0);
+  });
+});
+
+describe('pressure', () => {
+  it('comes from many different falls reaching the same wall, not one fall returning to it', async () => {
+    // the same one person, again and again in one day: still one fall
+    for (let i = 0; i < 30; i++) await markReached(q, 'fork/f1', 'g-ana', '2026-09-20');
+    expect(await pressure(q, '2026-09-20')).toEqual({});
+    // many different falls, the same day: this is the thing pressure actually measures
+    for (let i = 0; i < 6; i++) await markReached(q, 'fork/f1', `visitor${i}`, '2026-09-20');
+    const level = (await pressure(q, '2026-09-20'))['fork/f1'];
+    expect(level).toBeGreaterThan(0);
+    expect(level).toBeLessThan(1);
+    for (let i = 6; i < 20; i++) await markReached(q, 'fork/f1', `visitor${i}`, '2026-09-20');
+    expect((await pressure(q, '2026-09-20'))['fork/f1']).toBeGreaterThan(GATHERING);
+  });
+
+  it('keeps only a one-way mark of who, and lets go after two weeks (not a season: this is about now)', async () => {
+    await markReached(q, 'fork/x', 'g-secret-account', '2026-01-01');
+    const rows = await q(`SELECT * FROM tt_pressure`);
+    expect(JSON.stringify(rows)).not.toContain('g-secret-account');
+    await markReached(q, 'fork/x', 'g-secret-account', '2026-01-05');
+    expect(await pressure(q, '2026-01-20')).toEqual({});
   });
 });

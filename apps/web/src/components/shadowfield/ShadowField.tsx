@@ -225,6 +225,9 @@ function ownedHereFrom(list: LocalShadow[], node: IdeaNode | undefined) {
 /** One screen height of swipe moves this far along the flight. */
 const SWIPE = 2.4;
 
+/** Matches GATHERING in lib/shadows/store.ts: once pressure reaches this, it is shown, quietly. */
+const GATHERING = 0.5;
+
 function hasMedia(node: IdeaNode | undefined, kind: 'audio' | 'video') {
   return !!node?.media?.some((m) => m.kind === kind);
 }
@@ -305,6 +308,8 @@ export default function ShadowField({ serif }: Props) {
   const phasesRef = useRef(new Map<string, Phase>());
   // resonance: how much things resonate (from the server), and what you stayed with this visit
   const resonanceRef = useRef(new Map<string, number>());
+  const pressureRef = useRef(new Map<string, number>());
+  const reachedRef = useRef(new Set<string>());
   const stayedRef = useRef(new Set<string>());
   const postedSigRef = useRef('');
   // the scroll gesture that carried you onto something waiting (it stops there until a new one begins)
@@ -1291,6 +1296,22 @@ export default function ShadowField({ serif }: Props) {
     return () => window.clearInterval(t);
   }, []);
 
+  // where pressure has gathered: read now and every ten minutes, the same as resonance
+  useEffect(() => {
+    const read = () =>
+      fetch('/api/pressure')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: { levels?: Record<string, number> } | null) => {
+          if (d?.levels) pressureRef.current = new Map(Object.entries(d.levels));
+        })
+        .catch(() => undefined);
+    void read();
+    const t = window.setInterval(() => {
+      if (!document.hidden) void read();
+    }, 600000);
+    return () => window.clearInterval(t);
+  }, []);
+
   // while you are here: remember that you were, and look for new work every two minutes
   useEffect(() => {
     const beat = window.setInterval(() => {
@@ -1572,6 +1593,23 @@ export default function ShadowField({ serif }: Props) {
       // setting off: what lies ahead is readied, and a song begins as you come to it
       if (flying && fc.hops !== seenHopsRef.current && fc.hop) {
         seenHopsRef.current = fc.hops;
+        // a fall reached the end of a fork and turned back: pressure, anonymous, once a session
+        if (fc.hop.kind === 'back' && here) {
+          const forkAncestor = here.path.find((n) => n.id.startsWith('fork/'));
+          if (forkAncestor && forkAncestor.id !== here.node.id && !reachedRef.current.has(forkAncestor.id)) {
+            const nextZ = stepFocus(stream, here.z, 1, closed);
+            const nextStation = nextZ === null ? null : focusOf(stream, nextZ, closed);
+            const stillInside = nextStation?.path.some((n) => n.id === forkAncestor!.id);
+            if (!stillInside) {
+              reachedRef.current.add(forkAncestor.id);
+              void fetch('/api/pressure', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ target: forkAncestor.id }),
+              }).catch(() => undefined);
+            }
+          }
+        }
         // (how long since the hop before: a song begins on the way only outside a quick run)
         const before = prevHopAtRef.current;
         prevHopAtRef.current = nowMs;
@@ -1682,7 +1720,13 @@ export default function ShadowField({ serif }: Props) {
             calm: calmRef.current,
           },
           lineFor: (s) => {
-            const line = hasMedia(s.node, 'audio') && soundBlockedRef.current && !playingRef.current ? 'tap to hear it' : s.node.line;
+            // quiet, felt, never a number: many separate falls have reached this same wall lately
+            const gathering = s.node.id.startsWith('fork/') && (pressureRef.current.get(s.node.id) ?? 0) > GATHERING;
+            const line = gathering
+              ? 'something is gathering here.'
+              : hasMedia(s.node, 'audio') && soundBlockedRef.current && !playingRef.current
+                ? 'tap to hear it'
+                : s.node.line;
             return line && written < line.length ? line.slice(0, Math.floor(written)) : line;
           },
         };

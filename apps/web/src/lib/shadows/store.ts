@@ -294,10 +294,19 @@ const SCHEMA = [
   // a Shadow posted inside a fork, rather than loose on the Slate (sharing still follows it)
   `ALTER TABLE tt_shadows ADD COLUMN IF NOT EXISTS fork_id TEXT`,
   `CREATE INDEX IF NOT EXISTS tt_shadows_fork ON tt_shadows (fork_id)`,
+  // pressure: that someone's fall reached the end of a fork and turned back, kept as a one-way
+  // mark of them and the day (never who): many different people hitting the same wall, not one
+  // person returning to it (that is resonance's own, different, question)
+  `CREATE TABLE IF NOT EXISTS tt_pressure (
+    target TEXT NOT NULL,
+    day TEXT NOT NULL,
+    visitor TEXT NOT NULL,
+    PRIMARY KEY (target, day, visitor)
+  )`,
 ];
 
 /** Bumped whenever SCHEMA changes, so a database already up to date is not locked for nothing. */
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 // every read counts what grew from each, and names what each grew from (never who told a story)
 const SELECT = `SELECT s.*,
@@ -577,6 +586,33 @@ export async function resonance(q: Query, today = new Date().toISOString().slice
   return out;
 }
 
+/** Once a level like this reaches it, enough separate falls have hit the same wall to say so. */
+export const GATHERING = 0.5;
+
+/** A fall's reach recorded: someone's (a keyed one-way mark) fall reached this end and turned back, today. */
+export async function markReached(q: Query, target: string, visitor: string, day = new Date().toISOString().slice(0, 10)) {
+  const who = (await mark(`pressure|${visitor}`)).slice(0, 32);
+  await q(`INSERT INTO tt_pressure (target, day, visitor) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, [target, day, who]);
+  // kept for two weeks: this is about pressure right now, not a season of it
+  if (Math.random() < 0.01) await q(`DELETE FROM tt_pressure WHERE day < $1`, [dayBefore(day, 14)]);
+}
+
+/**
+ * How much pressure has gathered at each wall (0..1): from how many different
+ * falls have reached it and turned back in the last two weeks. Never a
+ * return: a crowd of strangers hitting the same place counts here; the same
+ * one person coming back to it is resonance's question, not this one.
+ */
+export async function pressure(q: Query, today = new Date().toISOString().slice(0, 10)): Promise<Record<string, number>> {
+  const rows = await q(
+    `SELECT target, COUNT(DISTINCT visitor)::int AS reached FROM tt_pressure WHERE day >= $1 GROUP BY target HAVING COUNT(DISTINCT visitor) >= 3`,
+    [dayBefore(today, 14)]
+  );
+  const out: Record<string, number> = {};
+  for (const r of rows) out[String(r.target)] = +(1 - Math.exp(-Number(r.reached) / 8)).toFixed(3);
+  return out;
+}
+
 
 /** One Shadow for whoever asked: anyone, if it is shared (even only by link); its maker, always. */
 export async function shadowFor(q: Query, id: string, viewerSub: string | undefined) {
@@ -647,6 +683,11 @@ export async function roomFor(q: Query, ownerSub: string): Promise<{ used: numbe
 async function getForkRaw(q: Query, id: string) {
   const [r] = await q(`SELECT * FROM tt_forks WHERE id = $1`, [id]);
   return r ?? null;
+}
+
+/** Whether a fork by this id is real: so pressure is never recorded against something made up. */
+export async function forkExists(q: Query, id: string): Promise<boolean> {
+  return !!(await getForkRaw(q, id));
 }
 
 /** Only a Shadow's own maker opens a fork inside it. */
