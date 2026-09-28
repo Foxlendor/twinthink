@@ -52,7 +52,7 @@ import {
   trembleAt,
   writeMemory,
 } from '@/lib/shadowfield/web';
-import { renderFlight } from '@/lib/shadowfield/flightRender';
+import { edgePaths, renderFlight } from '@/lib/shadowfield/flightRender';
 import { hash01, smoothstep } from '@/lib/shadowfield/rng';
 import Donate from '@/components/support/Donate';
 import { founderPlots } from '@/lib/shadowfield/plots';
@@ -1903,6 +1903,12 @@ export default function ShadowField({ serif }: Props) {
           resonance: resonanceRef.current,
           presence: presenceRef.current,
           leaned: leanedRef.current,
+          // at a branch, the other paths beside this one: only ones this viewer may actually enter
+          edges: edgePaths(here, (n, p) => {
+            const idx = stream.byId.get(n.id);
+            if (idx === undefined || skip(stream.stations[idx])) return false;
+            return n.disclosure <= lensRef.current.closeness(p[1]);
+          }),
           dt,
           web: {
             plucks: echoesRef.current.length ? [...plucksRef.current, ...echoesRef.current] : plucksRef.current,
@@ -3171,11 +3177,14 @@ export default function ShadowField({ serif }: Props) {
   const p = top ? closenessFor(top, followed) : 1;
   // the path you deliberately chose here before, if this is a branch you have leaned at
   const [leanedChild, setLeanedChild] = useState<string | null>(null);
+  const parentHere = path.length >= 2 ? path[path.length - 2] : null;
   useEffect(() => {
     const lc = current && current.children.length >= 2 ? leanedChildOf(webMemRef.current, current.id) : null;
     setLeanedChild(lc);
-    leanedRef.current = lc ? new Set([lc]) : new Set();
-  }, [current]);
+    // and, standing on one of several paths, whichever of them you chose here before (so its edge is marked too)
+    const pc = parentHere && parentHere.children.length >= 2 ? leanedChildOf(webMemRef.current, parentHere.id) : null;
+    leanedRef.current = new Set([lc, pc].filter((x): x is string => !!x));
+  }, [current, parentHere]);
 
   return (
     <div className={styles.field} ref={rootRef} data-night={night ? '' : undefined}>

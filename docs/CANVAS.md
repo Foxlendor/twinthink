@@ -381,6 +381,25 @@ both records nothing; deliberately choosing one actually moves the
 visitor and is marked on return; choosing the other afterward replaces
 the record (not both at once) and never closes off the first.
 
+A choice you cannot see is not a choice, so the other paths now wait at
+the edges of the view (`edgePaths()`/`drawEdge()` in `flightRender.ts`):
+standing on one of several paths, the nearest one before it sits half in at
+the left and the nearest one after it at the right, like the next book
+cover sliding in. Each is its own picture blurred (the renderer's existing
+coarser copies, no CSS filter), or, with no picture, a ring silhouette,
+inside a dotted outline that says "somewhere you can go." Never its title:
+that resolves only once it comes to the middle, the same way every title
+already does. They are faint while falling and fuller once still; pointed
+at, one slides further in and comes clearer; tapped, it is a Lean, and the
+Slide goes there. The one chosen here before is outlined in rose. Nothing a
+viewer may not enter is ever glimpsed; the next path they may enter is
+shown instead. They sit below the compass on both phone and desktop.
+
+This borrows the anticipation of a reveal and deliberately refuses what
+makes a loot box a loot box: a path always reveals the same thing, only
+the visitor's own Lean or approach reveals it (never a timer), and nothing
+is held back to make anyone return.
+
 Deliberately not built: any aggregate, "others leaned this way too"
 signal. That would need its own privacy design (this is a personal,
 on-device record, not even pseudonymous) and is a separate, later

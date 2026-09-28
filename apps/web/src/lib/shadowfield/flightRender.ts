@@ -11,7 +11,7 @@
 import { IdeaNode, LifeEvent, lastActivity, rippleReach } from './model';
 import { ScreenTransform } from './camera';
 import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, flightScale, leanAt, project, travelled, viewOf } from './flight';
-import { Hit, INK, PAPER, PRESENCE, ROSE, TINT_COOL, TINT_WARM, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
+import { Hit, INK, PAPER, PAPER_RGB, PRESENCE, ROSE, TINT_COOL, TINT_WARM, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
 import { AUTHOR } from './sources/author';
 import { Pluck, trembleAt } from './web';
 import { Phase, stepPhase, withinBudget } from './phases';
@@ -122,7 +122,105 @@ export interface FlightState {
   presence?: Map<string, number>;
   /** The one path deliberately chosen, last time, at the branch currently in view (device-only). */
   leaned?: Set<string>;
+  /** At a branch: the neighbouring paths, glimpsed at the edges of the view (their shape, never their words). */
+  edges?: EdgePath[];
 }
+
+/** A path you could take instead, from where you are: a sibling of the thing in front of you. */
+export interface EdgePath {
+  node: IdeaNode;
+  path: IdeaNode[];
+  side: -1 | 1;
+}
+
+/**
+ * The paths beside the one you are on: where the thing in front of you shares its parent with
+ * others, the nearest one before it and after it. Only what this viewer may open (`open`).
+ */
+export function edgePaths(here: Station | null | undefined, open: (n: IdeaNode, path: IdeaNode[]) => boolean): EdgePath[] {
+  if (!here || here.path.length < 2) return [];
+  const parent = here.path[here.path.length - 2];
+  const kids = parent.children.filter((c) => !c.portal && !c.void);
+  if (kids.length < 2) return [];
+  const i = kids.findIndex((c) => c.id === here.node.id);
+  if (i < 0) return [];
+  const base = here.path.slice(0, -1);
+  const out: EdgePath[] = [];
+  const pick = (from: number, step: -1 | 1) => {
+    for (let j = from; j >= 0 && j < kids.length; j += step) {
+      const path = [...base, kids[j]];
+      if (open(kids[j], path)) return out.push({ node: kids[j], path, side: step });
+    }
+  };
+  pick(i - 1, -1);
+  pick(i + 1, 1);
+  return out;
+}
+
+/**
+ * A neighbouring path at the edge of the view, half in, half out, like the next cover sliding in:
+ * its picture (blurred, by its own coarser copies) or a soft wash, inside a dotted outline that
+ * says "somewhere you can go", never its title. Pointed at, it comes a little clearer. Tapped,
+ * it is a Lean. The one leaned before, here, is outlined in rose.
+ */
+function drawEdge(st: RenderState, e: EdgePath, a: number, hovered: boolean, leaned: boolean, ink: Ink) {
+  const { ctx } = st;
+  const cw = clamp(st.w * 0.26, 64, 170);
+  type Cover = Extract<NonNullable<IdeaNode['media']>[number], { kind: 'image' } | { kind: 'video' }>;
+  const media = e.node.media?.find((m): m is Cover => m.kind === 'image' || (m.kind === 'video' && !!m.poster));
+  const src = media ? (media.kind === 'image' ? media.src : media.poster ?? '') : '';
+  const ch = media ? clamp(cw * media.aspect, cw * 0.6, cw * 1.5) : cw;
+  const shown = hovered ? 0.72 : 0.58;
+  const x0 = e.side < 0 ? -cw * (1 - shown) : st.w - cw * shown;
+  // below the compass (it sits at the right edge, halfway down, or higher on a phone)
+  const y0 = st.h * 0.64 - ch / 2;
+  const cx = e.side < 0 ? x0 + cw * (1 - shown) + (cw * shown) / 2 : x0 + (cw * shown) / 2;
+  const lit = hovered ? 1 : 0;
+  const loaded = src ? getImage(src) : null;
+  ctx.save();
+  if (loaded) {
+    const top = loaded.mips.length - 1;
+    ctx.globalAlpha = a * (0.55 + 0.3 * lit);
+    ctx.drawImage(loaded.mips[Math.max(0, Math.min(top, hovered ? 3 : 5))], x0, y0, cw, ch);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = `rgba(${PAPER_RGB},${(hovered ? 0.18 : 0.38) * a})`;
+    ctx.fillRect(x0, y0, cw, ch);
+  } else {
+    // no picture: its own shape instead, a ring like the rings you fly through, dark enough to notice
+    const mx = x0 + cw / 2;
+    const my = y0 + ch / 2;
+    const g = ctx.createRadialGradient(mx, my, 2, mx, my, cw * 0.42);
+    g.addColorStop(0, `rgba(${INK},${a * (0.28 + 0.12 * lit)})`);
+    g.addColorStop(1, `rgba(${INK},0)`);
+    ctx.fillStyle = g;
+    ctx.fillRect(x0, y0, cw, ch);
+    const rr = cw * 0.33;
+    const dots = Math.floor((2 * Math.PI * rr) / 5);
+    for (let k = 0; k < dots; k++) {
+      const t = (k / dots) * Math.PI * 2;
+      ink.dot(mx + Math.cos(t) * rr, my + Math.sin(t) * rr, 1.8, a * (0.55 + 0.3 * lit));
+    }
+  }
+  ctx.restore();
+  // the outline: a dotted edge all the way round, so it reads as a place, not a decoration
+  const per = 2 * (cw + ch);
+  const n = Math.floor(per / 6);
+  for (let k = 0; k < n; k++) {
+    let d = (k / n) * per;
+    let px: number;
+    let py: number;
+    if (d < cw) [px, py] = [x0 + d, y0];
+    else if ((d -= cw) < ch) [px, py] = [x0 + cw, y0 + d];
+    else if ((d -= ch) < cw) [px, py] = [x0 + cw - d, y0 + ch];
+    else [px, py] = [x0, y0 + ch - (d - cw)];
+    if (px < -2 || px > st.w + 2) continue;
+    ink.dot(px, py, 1.3, a * (0.35 + 0.3 * lit), leaned);
+  }
+  st.hits.push({ kind: 'node', node: e.node, path: e.path, x: cx, y: y0 + ch / 2, r: Math.max(cw * shown, ch) * 0.5, size: 1e9 });
+}
+
+/**
+ * The tunnel you fall through.
 
 /**
  * The clock at the centre of the flight: twelve faint ticks that turn with the
@@ -968,6 +1066,18 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   ink.flush(ctx);
   // the nearest thing under a finger is the one it means
   st.hits.reverse();
+
+  // at a branch, the other paths wait at the edges: faint while falling, fuller once still
+  if (fs.edges?.length) {
+    const before = st.hits.length;
+    const a = (0.35 + 0.55 * (fs.still ?? 0)) * quiet;
+    if (a > 0.03) {
+      for (const e of fs.edges) drawEdge(st, e, a, st.hoverId === e.node.id, !!fs.leaned?.has(e.node.id), ink);
+      ink.flush(ctx);
+      // drawn over everything else, so they are what a finger at the edge means
+      st.hits.unshift(...st.hits.splice(before));
+    }
+  }
 
   // names: nearest first, never on top of one another
   titles.sort((a, b) => b.near - a.near);
