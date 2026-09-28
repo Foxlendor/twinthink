@@ -3648,7 +3648,7 @@ export default function ShadowField({ serif }: Props) {
         </div>
       )}
 
-      {news && path.length <= 1 && (
+      {news && !notice && path.length <= 1 && (
         <div className={styles.news} role="status">
           <button type="button" className={styles.quiet} onClick={() => { flyToIds(news.ids); setNews(null); }}>
             {news.title}: go see
