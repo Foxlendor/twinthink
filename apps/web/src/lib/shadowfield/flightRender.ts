@@ -10,7 +10,7 @@
 
 import { IdeaNode, LifeEvent, lastActivity, rippleReach } from './model';
 import { ScreenTransform } from './camera';
-import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, flightScale, project, travelled, viewOf } from './flight';
+import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, flightScale, project, travelled, viewOf, type Quarter } from './flight';
 import { Hit, INK, PAPER, PAPER_RGB, PRESENCE, ROSE, TINT_COOL, TINT_WARM, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
 import { AUTHOR } from './sources/author';
 import { Pluck, trembleAt } from './web';
@@ -124,6 +124,8 @@ export interface FlightState {
   leaned?: Set<string>;
   /** At a branch: the neighbouring paths, glimpsed at the edges of the view (their shape, never their words). */
   edges?: EdgePath[];
+  /** Steering through the vortex: you are the drop at the middle; `facing` is the hour you have turned into. */
+  steer?: { on: boolean; facing: Quarter | null };
 }
 
 /** A path you could take instead, from where you are: a sibling of the thing in front of you. */
@@ -250,15 +252,13 @@ function drawClock(st: RenderState, v: View, next: [number, number] | null, ink:
  * from the bottom of the screen. Fixed to the page (they turn only with the clock's own spin,
  * when that has been asked for), clear of the header, the trail and the compass.
  */
-function drawHours(st: RenderState, v: View) {
+function drawHours(st: RenderState, v: View, facing: Quarter | null) {
   const { ctx } = st;
   const phone = st.w < 640;
   const size = phone ? 19 : 22;
   ctx.save();
-  ctx.font = `italic ${size}px ${st.serif}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = `rgba(${INK},0.55)`;
   // the room each edge leaves: the header's row at the top, the trail and actions at the bottom
   // (on a phone the trail can wrap to two lines), the compass on the right (at the middle on a
   // wide screen, above it on a phone)
@@ -266,18 +266,61 @@ function drawHours(st: RenderState, v: View) {
   const bottom = st.h - (phone ? 160 : 90);
   const side = 18;
   const right = st.w >= 640 ? st.w - 76 : st.w - side;
-  if (v.roll === 0) {
-    ctx.fillText('12', v.cx, top);
-    ctx.fillText('3', right, v.cy);
-    ctx.fillText('6', v.cx, bottom);
-    ctx.fillText('9', side, v.cy);
-  } else {
+  const rx = Math.min(v.cx - side, right - v.cx);
+  const ry = Math.min(v.cy - top, bottom - v.cy);
+  const hours: [string, number, number, number][] = [
+    ['12', -Math.PI / 2, v.cx, top],
+    ['3', 0, right, v.cy],
+    ['6', Math.PI / 2, v.cx, bottom],
+    ['9', Math.PI, side, v.cy],
+  ];
+  hours.forEach(([label, a, x, y], q) => {
+    // turned into, an hour is written darker and larger; the others step back
+    const turned = facing === q;
+    ctx.font = `italic ${turned ? size + 6 : size}px ${st.serif}`;
+    ctx.fillStyle = `rgba(${INK},${turned ? 0.92 : facing === null ? 0.55 : 0.3})`;
     // with the clock's own spin on, the numbers go round with it, on an oval inside those edges
-    const rx = Math.min(v.cx - side, right - v.cx);
-    const ry = Math.min(v.cy - top, bottom - v.cy);
-    const hours: [string, number][] = [['12', -Math.PI / 2], ['3', 0], ['6', Math.PI / 2], ['9', Math.PI]];
-    for (const [label, a] of hours) ctx.fillText(label, v.cx + Math.cos(a + v.roll) * rx, v.cy + Math.sin(a + v.roll) * ry);
+    if (v.roll === 0) ctx.fillText(label, x, y);
+    else ctx.fillText(label, v.cx + Math.cos(a + v.roll) * rx, v.cy + Math.sin(a + v.roll) * ry);
+  });
+  ctx.restore();
+}
+
+/**
+ * You, steering: a drop falling at the middle. Seen from above it is a round bead; turning, its
+ * tail trails away behind it, so the way you are heading reads at a glance while the vortex
+ * swings around you. Hollow, so it is never taken for a thing (ink) or for dew (beads of light).
+ * Only while steering.
+ */
+function drawDrop(st: RenderState, v: View) {
+  const { ctx } = st;
+  const r = st.w < 640 ? 7 : 8.5;
+  const m = Math.min(1, Math.hypot(v.bx, v.by));
+  // the tail points away from where you are heading, and grows the harder you turn
+  const a = Math.atan2(-v.by, -v.bx);
+  const tail = r * (1 + 1.6 * m);
+  ctx.save();
+  ctx.translate(v.cx, v.cy);
+  ctx.beginPath();
+  if (m < 0.05) ctx.arc(0, 0, r, 0, Math.PI * 2);
+  else {
+    // a teardrop: round at the front, drawn to a point behind (the arc runs between the two
+    // points where lines from the tip just touch the circle, around the side away from the tip)
+    const touch = Math.acos(Math.min(1, r / tail));
+    ctx.arc(0, 0, r, a + touch, a - touch + Math.PI * 2);
+    ctx.lineTo(Math.cos(a) * tail, Math.sin(a) * tail);
+    ctx.closePath();
   }
+  ctx.fillStyle = PAPER;
+  ctx.fill();
+  ctx.strokeStyle = `rgba(${INK},0.85)`;
+  ctx.lineWidth = 1.3;
+  ctx.stroke();
+  // a single catch of light, where a drop holds it
+  ctx.fillStyle = `rgba(${INK},0.55)`;
+  ctx.beginPath();
+  ctx.arc(-r * 0.3, -r * 0.35, r * 0.18, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -1065,7 +1108,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     nextDz = dz;
   }
   drawClock(st, v, next, ink);
-  drawHours(st, v);
+  drawHours(st, v, fs.steer?.on ? fs.steer.facing : null);
   // where the nearest food ahead lies, for the compass's rose dot
   let food: number | null = null;
   if (fs.web?.food.size) {
@@ -1146,6 +1189,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     placed.push(r);
   }
   ctx.textAlign = 'left';
+  if (fs.steer?.on) drawDrop(st, v);
 }
 
 /** Hits this frame carry station paths; the viewer's pointer picks the nearest. */

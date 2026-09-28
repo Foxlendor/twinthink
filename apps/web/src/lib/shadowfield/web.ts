@@ -15,31 +15,27 @@ import { hash01 } from './rng';
 export const WEB_KEY = 'twinthink.web.v1';
 /** How long away before this counts as a new visit (ms). */
 export const VISIT_GAP = 30 * 60 * 1000;
-const SEEN_MAX = 600;
-const MAKERS_MAX = 60;
-const PASSED_MAX = 60;
-const LEANED_MAX = 60;
+/**
+ * What this device keeps (the core's 'device' keeper): each trace a list of keys, newest last,
+ * and at most this many. Ids and times only; never sent anywhere.
+ *
+ *   seen    food already found (so it no longer trembles)
+ *   makers  makers (by their key) whose ring you stayed in, or kept from
+ *   passed  forks come near but not entered: a way back to a turn not yet taken
+ *   leaned  a deliberate choice at a branch, as `parentId\u0000childId`: one per parent, a later
+ *           choice there replaces it, and never made from simply passing through
+ */
+export const DEVICE = { seen: 600, makers: 60, passed: 60, leaned: 60 } as const;
+export type DeviceTrace = keyof typeof DEVICE;
+const TRACES = Object.keys(DEVICE) as DeviceTrace[];
 
-/** What this device remembers: ids and times only. Never sent anywhere. */
-export interface WebMemory {
+/** What this device remembers: when you were here, and its traces. */
+export type WebMemory = {
   /** When the visit before this one ended (0: this is the first). */
   since: number;
   /** When this device was last here. */
   left: number;
-  /** Food already found (so it no longer trembles). */
-  seen: string[];
-  /** Makers (by their key) whose ring you stayed in, or kept from. */
-  makers: string[];
-  /** Forks come near but not entered: a way back to a turn not yet taken. */
-  passed: string[];
-  /**
-   * A deliberate choice at a branch (a thing with two or more paths ahead):
-   * which one was taken, last time, kept as `parentId\u0000childId`. At most
-   * one per parent; a later choice there replaces it. Never sent anywhere,
-   * and never made from simply scrolling through in the ordinary sequence.
-   */
-  leaned: string[];
-}
+} & Record<DeviceTrace, string[]>;
 
 export function emptyMemory(): WebMemory {
   return { since: 0, left: 0, seen: [], makers: [], passed: [], leaned: [] };
@@ -49,15 +45,15 @@ export function readMemory(storage: Pick<Storage, 'getItem'> | null): WebMemory 
   try {
     const raw = storage?.getItem(WEB_KEY);
     if (!raw) return emptyMemory();
-    const m = JSON.parse(raw) as Partial<WebMemory>;
-    return {
-      since: typeof m.since === 'number' ? m.since : 0,
-      left: typeof m.left === 'number' ? m.left : 0,
-      seen: Array.isArray(m.seen) ? m.seen.filter((x) => typeof x === 'string').slice(-SEEN_MAX) : [],
-      makers: Array.isArray(m.makers) ? m.makers.filter((x) => typeof x === 'string').slice(-MAKERS_MAX) : [],
-      passed: Array.isArray(m.passed) ? m.passed.filter((x) => typeof x === 'string').slice(-PASSED_MAX) : [],
-      leaned: Array.isArray(m.leaned) ? m.leaned.filter((x) => typeof x === 'string' && x.includes('\u0000')).slice(-LEANED_MAX) : [],
-    };
+    const m = JSON.parse(raw) as Partial<Record<string, unknown>>;
+    const out = emptyMemory();
+    out.since = typeof m.since === 'number' ? m.since : 0;
+    out.left = typeof m.left === 'number' ? m.left : 0;
+    for (const t of TRACES) {
+      const list = m[t];
+      out[t] = Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string').slice(-DEVICE[t]) : [];
+    }
+    return out;
   } catch {
     return emptyMemory();
   }
@@ -65,17 +61,9 @@ export function readMemory(storage: Pick<Storage, 'getItem'> | null): WebMemory 
 
 export function writeMemory(storage: Pick<Storage, 'setItem'> | null, m: WebMemory) {
   try {
-    storage?.setItem(
-      WEB_KEY,
-      JSON.stringify({
-        since: m.since,
-        left: m.left,
-        seen: m.seen.slice(-SEEN_MAX),
-        makers: m.makers.slice(-MAKERS_MAX),
-        passed: m.passed.slice(-PASSED_MAX),
-        leaned: m.leaned.slice(-LEANED_MAX),
-      })
-    );
+    const out: Record<string, unknown> = { since: m.since, left: m.left };
+    for (const t of TRACES) out[t] = m[t].slice(-DEVICE[t]);
+    storage?.setItem(WEB_KEY, JSON.stringify(out));
   } catch {
     // no room, or not allowed: the web simply forgets
   }
@@ -92,22 +80,17 @@ export function remember(list: string[], id: string, max: number) {
   return list.includes(id) ? list : [...list, id].slice(-max);
 }
 
-export const markSeen = (m: WebMemory, id: string): WebMemory => ({ ...m, seen: remember(m.seen, id, SEEN_MAX) });
-export const markMaker = (m: WebMemory, key: string): WebMemory => ({ ...m, makers: remember(m.makers, key, MAKERS_MAX) });
-/** A fork paused at, not yet entered: kept so a compass can lead back to it later. */
-export const markPassed = (m: WebMemory, forkId: string): WebMemory => ({ ...m, passed: remember(m.passed, forkId, PASSED_MAX) });
-/** Once actually entered (or let go of), it stops being a turn not yet taken. */
-export const clearPassed = (m: WebMemory, forkId: string): WebMemory => ({ ...m, passed: m.passed.filter((id) => id !== forkId) });
+/** Keep a key under one of this device's traces. A key `place\u0000choice` replaces any earlier choice at that place. */
+export function keepOnDevice(m: WebMemory, trace: DeviceTrace, key: string): WebMemory {
+  const cut = key.indexOf('\u0000');
+  const list = cut < 0 ? m[trace] : m[trace].filter((e) => !e.startsWith(key.slice(0, cut + 1)));
+  return { ...m, [trace]: remember(list, key, DEVICE[trace]) };
+}
 
-/** A deliberate choice at a branch: which of its several paths was taken. A later choice at the same parent replaces it. */
-export const markLeaned = (m: WebMemory, parentId: string, childId: string): WebMemory => ({
-  ...m,
-  leaned: remember(
-    m.leaned.filter((e) => !e.startsWith(parentId + '\u0000')),
-    `${parentId}\u0000${childId}`,
-    LEANED_MAX
-  ),
-});
+/** Let a key go (a turn not yet taken, once it is taken). */
+export function forgetOnDevice(m: WebMemory, trace: DeviceTrace, key: string): WebMemory {
+  return { ...m, [trace]: m[trace].filter((e) => e !== key) };
+}
 
 /** Which child was chosen at this parent, last time (null if none was, or it wasn't a real branch). */
 export function leanedChildOf(m: WebMemory, parentId: string): string | null {

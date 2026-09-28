@@ -6,8 +6,9 @@ import {
   beginVisit,
   emptyMemory,
   findFood,
-  markMaker,
-  markSeen,
+  forgetOnDevice,
+  keepOnDevice,
+  leanedChildOf,
   plucksFor,
   readMemory,
   trembleAt,
@@ -47,7 +48,7 @@ describe('the web that moves: what counts as food', () => {
   });
 
   it('never your own, never private, hidden, sealed or seen', () => {
-    const memory = markSeen(emptyMemory(), 'p/seen');
+    const memory = keepOnDevice(emptyMemory(), 'seen', 'p/seen');
     const f = findFood({
       posted: [
         post({ id: 'own', mine: true, day: DAY }),
@@ -65,7 +66,7 @@ describe('the web that moves: what counts as food', () => {
   });
 
   it('new work by a maker you stayed with, and what is new since you were here', () => {
-    let memory = markMaker(emptyMemory(), 'mk1');
+    let memory = keepOnDevice(emptyMemory(), 'makers', 'mk1');
     memory = { ...memory, since: 500 };
     const f = findFood({
       posted: [post({ id: 'm', maker: 'mk1', created: 900 }), post({ id: 'old', maker: 'mk1', created: 100 })],
@@ -126,7 +127,7 @@ describe('the web that moves: what the device remembers', () => {
     const storage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v) };
     let m = beginVisit(readMemory(storage), 1000);
     expect(m.since).toBe(0);
-    m = markSeen(markMaker(m, 'abc123'), 'p/x');
+    m = keepOnDevice(keepOnDevice(m, 'makers', 'abc123'), 'seen', 'p/x');
     writeMemory(storage, m);
     const later = beginVisit(readMemory(storage), 1000 + 31 * 60 * 1000);
     expect(later.since).toBe(1000);
@@ -138,34 +139,45 @@ describe('the web that moves: what the device remembers', () => {
     }
   });
 
-  it('a fork paused at is kept until it is truly entered, so a way back to it survives', async () => {
-    const { markPassed, clearPassed } = await import('./web');
+  it('a fork paused at is kept until it is truly entered, so a way back to it survives', () => {
     let m = emptyMemory();
-    m = markPassed(m, 'fork/f1');
+    m = keepOnDevice(m, 'passed', 'fork/f1');
     expect(m.passed).toEqual(['fork/f1']);
     // pausing at it again is not a second turn not taken
-    m = markPassed(m, 'fork/f1');
+    m = keepOnDevice(m, 'passed', 'fork/f1');
     expect(m.passed).toEqual(['fork/f1']);
-    m = markPassed(m, 'fork/f2');
+    m = keepOnDevice(m, 'passed', 'fork/f2');
     expect(m.passed).toEqual(['fork/f1', 'fork/f2']);
     // entering it (or letting it go) is the only thing that clears it
-    m = clearPassed(m, 'fork/f1');
+    m = forgetOnDevice(m, 'passed', 'fork/f1');
     expect(m.passed).toEqual(['fork/f2']);
   });
 
-  it('a deliberate choice at a branch is kept, one per parent, and a later choice there replaces it', async () => {
-    const { markLeaned, leanedChildOf } = await import('./web');
+  it('a deliberate choice at a branch is kept, one per parent, and a later choice there replaces it', () => {
     let m = emptyMemory();
     expect(leanedChildOf(m, 'p/parent')).toBeNull();
-    m = markLeaned(m, 'p/parent', 'p/childA');
+    m = keepOnDevice(m, 'leaned', 'p/parent\u0000p/childA');
     expect(leanedChildOf(m, 'p/parent')).toBe('p/childA');
     // a different branch's own choice does not disturb this one
-    m = markLeaned(m, 'p/other', 'p/x');
+    m = keepOnDevice(m, 'leaned', 'p/other\u0000p/x');
     expect(leanedChildOf(m, 'p/parent')).toBe('p/childA');
     // choosing the other path at the same parent, later, replaces it (not a history of both)
-    m = markLeaned(m, 'p/parent', 'p/childB');
+    m = keepOnDevice(m, 'leaned', 'p/parent\u0000p/childB');
     expect(leanedChildOf(m, 'p/parent')).toBe('p/childB');
     expect(m.leaned.filter((e) => e.startsWith('p/parent\u0000'))).toHaveLength(1);
+  });
+
+  it('keeps each trace to its own limit, newest last, and nothing from storage but strings', () => {
+    let m = emptyMemory();
+    for (let i = 0; i < 70; i++) m = keepOnDevice(m, 'makers', `k${i}`);
+    expect(m.makers).toHaveLength(60);
+    expect(m.makers[59]).toBe('k69');
+    const mem = new Map<string, string>([['twinthink.web.v1', JSON.stringify({ since: 5, left: 9, seen: ['p/a', 7, null], passed: 'nope' })]]);
+    const back = readMemory({ getItem: (k: string) => mem.get(k) ?? null });
+    expect(back.seen).toEqual(['p/a']);
+    expect(back.passed).toEqual([]);
+    expect(back.leaned).toEqual([]);
+    expect([back.since, back.left]).toEqual([5, 9]);
   });
 });
 

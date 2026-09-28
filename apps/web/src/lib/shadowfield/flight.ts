@@ -50,6 +50,21 @@ export function clockAngle(t: number): number {
   return (hours / 12) * Math.PI * 2 - Math.PI / 2;
 }
 
+/** A quarter of the clock face: 0 around 12, 1 around 3, 2 around 6, 3 around 9. */
+export type Quarter = 0 | 1 | 2 | 3;
+
+/** Which quarter a moment falls in: 12 holds 10:30 to 1:30, 3 holds 1:30 to 4:30, and so on. */
+export function quarterOf(t: number): Quarter {
+  const hours = (((t + HIS_CLOCK_MS) / 3600000) % 12 + 12) % 12;
+  return Math.floor(((hours + 1.5) % 12) / 3) as Quarter;
+}
+
+/** Which quarter a direction on screen faces (x right, y down; `roll` is the clock's own turn). */
+export function quarterFacing(x: number, y: number, roll = 0): Quarter {
+  const a = Math.atan2(y, x) - roll + Math.PI / 2;
+  return ((((Math.round(a / (Math.PI / 2)) % 4) + 4) % 4) as Quarter);
+}
+
 export interface Station {
   i: number;
   node: IdeaNode;
@@ -293,6 +308,12 @@ export interface FlightCam {
   /** Counts: hops begun, and landings (a landing is when a hop settles exactly on its thing). */
   hops: number;
   landed: number;
+  /**
+   * Steering, on screen (x right, y down, within the unit circle): how far the way ahead bends
+   * toward where the viewer is heading. You stay at the middle; the vortex swings around you.
+   */
+  bx: number;
+  by: number;
 }
 
 export type HopKind = 'step' | 'touch' | 'skim' | 'back' | 'catch' | 'threshold';
@@ -426,6 +447,8 @@ export function newFlightCam(): FlightCam {
     pullV: 0,
     hops: 0,
     landed: 0,
+    bx: 0,
+    by: 0,
   };
 }
 
@@ -599,7 +622,16 @@ export interface View {
   roll: number;
   rc: number;
   rs: number;
+  /** Steering (see FlightCam.bx): the farther ahead, the further it swings that way. */
+  bx: number;
+  by: number;
 }
+
+/**
+ * How far the way ahead swings toward the steering, on screen, per track unit ahead, as a
+ * fraction of the view's scale: nothing at your feet, a third of the view at the far end.
+ */
+const BEND = 0.024;
 
 /**
  * How far the view has turned: only the clock's own slow turning, when it is on. Travel never
@@ -658,7 +690,19 @@ export function viewOf(stream: Stream, cam: FlightCam, w: number, h: number, ski
   const [px, py] = panAt(cam, stream.length);
   // crossing a threshold the view breathes out wide, then zooms back in as it arrives
   const F = M * (1 - 0.16 * rush) * (1 - cam.pull);
-  return { z: cam.z, x: lx + px, y: ly + py, F, cx: w / 2, cy: h * 0.47, roll, rc: Math.cos(roll), rs: Math.sin(roll) };
+  return {
+    z: cam.z,
+    x: lx + px,
+    y: ly + py,
+    F,
+    cx: w / 2,
+    cy: h * 0.47,
+    roll,
+    rc: Math.cos(roll),
+    rs: Math.sin(roll),
+    bx: cam.bx,
+    by: cam.by,
+  };
 }
 
 /** Screen position and scale (pixels per unit) of a point dz ahead of the camera. */
@@ -666,7 +710,9 @@ export function project(v: View, x: number, y: number, dz: number): [number, num
   const k = v.F / dz;
   const dx = x - v.x;
   const dy = y - v.y;
-  return [v.cx + (dx * v.rc - dy * v.rs) * k, v.cy + (dx * v.rs + dy * v.rc) * k, k];
+  // steering: the way ahead swings toward where you are heading, more the farther it is
+  const bend = BEND * dz * v.F;
+  return [v.cx + (dx * v.rc - dy * v.rs) * k + v.bx * bend, v.cy + (dx * v.rs + dy * v.rc) * k + v.by * bend, k];
 }
 
 /**

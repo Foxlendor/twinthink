@@ -19,6 +19,53 @@ because ordinary nouns don't have one for this.
 The Canvas is TwinThink's spatial medium. Engine: `apps/web/src/lib/shadowfield`,
 UI: `apps/web/src/components/shadowfield`. Tests: `cd apps/web && npm test`.
 
+## The core (read this before adding anything)
+One sentence holds the whole Slate: **a person falls through things made in
+time, and what they do leaves traces that are felt, never counted.** Built the
+way every mammal is built on one spine ("omit needless everything": nothing
+removed, everything derived from the same few parts), it has five parts
+(`lib/shadowfield/core.ts`):
+
+1. **Thing**: something made, at a moment. The moment is both its hour on the
+   clock face and its depth in the fall (newest first, older deeper).
+2. **Lens**: which things this fall holds. Any one reason leaves a thing out:
+   what this viewer may see, a replay's moment, the hour turned into.
+3. **Move**: the only way anything changes. Arrive, stay (still this long; with
+   it this long), choose (a Lean), turn back (out of a fork), turn (toward an
+   hour).
+4. **Keeper**: where a move's trace lives, declared once per trace: this device
+   only (`web.ts`), anonymous (one-way marks, gathered), or shared live
+   (overwritten in place). Nothing a fall leaves is kept anywhere else.
+5. **Mark**: how a trace is felt (`flightRender.ts`): dew, "something is
+   gathering here", the presence glint, the rose fleck, an edge in rose, an
+   hour written darker. Never a number.
+
+The spine is one table, `RULES`: every trace a fall leaves is one row saying
+*on this move, when this holds, keep this, with this keeper, at most once per
+arrival or visit*. Today it reads: something waiting, found after 1.2s still
+(device); a maker's ring stayed in 1.5s (device); a fork gate paused at 1.2s
+(device), let go once truly inside it; a thing stayed with 3s still, once a
+visit, if shared (anonymous: resonance); turning back out of a fork, once a
+visit (anonymous: pressure); a choice among several paths (device: Lean); where
+a shared Fall's leader has stopped 0.4s (live). The page reports what is in
+front of you each frame and the moves it sees; the core decides what is kept.
+
+**A new idea should cost one row, one lens, or one mark.** If it is none of
+these, it needs a sixth part, and that is a decision, not a detail. Ideas
+already described that are rows waiting to be added:
+- a breadcrumb where you turned (on turn → device), so you can come back and
+  take the other hour;
+- Dew and Drop, "I would carry this forward" / "I wouldn't" (two new moves,
+  and a keeper chosen with its own privacy design, plus a mark each);
+- "others leaned this way too" (on choose → anonymous: a second keeper for an
+  existing move, which needs its own privacy review first);
+- Switch lead, peel off and rejoin in a shared Fall (a lens: whose place the
+  fall follows).
+
+Making things, and a maker's own decisions about them (posting, opening a fork,
+answering Rabi), are things and actions the server keeps under its own rules
+(`lib/shadows/store.ts`), not traces of a fall.
+
 ## The flight (default)
 Scrolling moves *you*, not a page. The whole Canvas is one endless stream in
 depth (`flight.ts`, drawn by `flightRender.ts`): things wait small near the

@@ -41,18 +41,17 @@ import {
   beginVisit,
   emptyMemory,
   findFood,
-  clearPassed,
+  forgetOnDevice,
+  keepOnDevice,
   leanedChildOf,
-  markLeaned,
-  markMaker,
-  markPassed,
-  markSeen,
   lastPluck,
+  type DeviceTrace,
   readMemory,
   trembleAt,
   writeMemory,
 } from '@/lib/shadowfield/web';
 import { edgePaths, renderFlight } from '@/lib/shadowfield/flightRender';
+import { createCore, lensOf, replayLens, type Core, type Rule } from '@/lib/shadowfield/core';
 import { hash01, smoothstep } from '@/lib/shadowfield/rng';
 import Donate from '@/components/support/Donate';
 import { founderPlots } from '@/lib/shadowfield/plots';
@@ -316,7 +315,6 @@ export default function ShadowField({ serif }: Props) {
   const lastPluckRef = useRef<Map<string, number>>(new Map());
   const calmRef = useRef(1);
   const hadFoodRef = useRef(false);
-  const eatRef = useRef<{ id: string; t: number } | null>(null);
   const holdRef = useRef<{ timer: number; consumed: boolean }>({ timer: 0, consumed: false });
   const findFoodRef = useRef<() => void>(() => undefined);
   // each thing's name phase, kept from frame to frame
@@ -328,8 +326,8 @@ export default function ShadowField({ serif }: Props) {
   const presenceRef = useRef(new Map<string, number>());
   // the one path deliberately leaned at the branch currently in view (device-only, never a trail)
   const leanedRef = useRef(new Set<string>());
-  const reachedRef = useRef(new Set<string>());
-  const stayedRef = useRef(new Set<string>());
+  // the core (core.ts): what is in front of you, and the moves you make, run past its rules
+  const coreRef = useRef<Core | null>(null);
   const postedSigRef = useRef('');
   // the scroll gesture that carried you onto something waiting (it stops there until a new one begins)
   const foodGestureRef = useRef(-1);
@@ -431,7 +429,6 @@ export default function ShadowField({ serif }: Props) {
   // "Fall with me": an overlay on the Fall you already have, never its own kind of Fall. Only ever
   // the leader's own current place travels between two people; a follower's own position never does.
   const [sharedFall, setSharedFall] = useState<SharedFallState | null>(null);
-  const sharedFallLastSentRef = useRef<string | null>(null);
   const sharedFallLastSeenRef = useRef<string | null>(null);
   // films can be added once the site has a file store for them
   const [filmsOn, setFilmsOn] = useState(false);
@@ -654,21 +651,11 @@ export default function ShadowField({ serif }: Props) {
   );
 
   /**
-   * A deliberate choice at a branch (its parent holds two or more paths): kept on this device only,
-   * one per parent, replaced by a later choice there. Passing through in the ordinary sequence never
-   * calls this: only a direct, out-of-sequence pick (a tap, or its screen-reader equivalent) does.
+   * A direct, out-of-sequence pick (a tap, or its screen-reader equivalent) is a choose move; the
+   * core keeps it as a Lean where there were several paths. Passing through never calls this.
    */
-  const leanIfBranch = useCallback((path: IdeaNode[]) => {
-    if (path.length < 2) return;
-    const parent = path[path.length - 2];
-    const child = path[path.length - 1];
-    if (parent.children.length < 2) return;
-    webMemRef.current = markLeaned(webMemRef.current, parent.id, child.id);
-    try {
-      writeMemory(window.localStorage, webMemRef.current);
-    } catch {
-      // remembered for this visit only
-    }
+  const choose = useCallback((path: IdeaNode[]) => {
+    if (path.length >= 2) coreRef.current?.move({ kind: 'choose', from: path[path.length - 2], to: path[path.length - 1] });
   }, []);
 
   // ---------------------------------------------------------------- setup
@@ -905,7 +892,7 @@ export default function ShadowField({ serif }: Props) {
   /** Found: it no longer trembles, and the web settles a little. */
   const eatFood = useCallback((id: string) => {
     if (!foodSetRef.current.has(id)) return;
-    webMemRef.current = markSeen(webMemRef.current, id);
+    webMemRef.current = keepOnDevice(webMemRef.current, 'seen', id);
     try {
       writeMemory(window.localStorage, webMemRef.current);
     } catch {
@@ -1134,9 +1121,17 @@ export default function ShadowField({ serif }: Props) {
           setNotice((d.error ?? 'that could not be opened').toLowerCase());
           return;
         }
-        sharedFallLastSentRef.current = null;
         sharedFallLastSeenRef.current = null;
         setSharedFall(d.sharedFall);
+        // from here on the core keeps the leader's place each time they stop; this is where they already are
+        const here = hereRef.current?.node.id;
+        if (here) {
+          void fetch(`/api/shared-falls/${encodeURIComponent(d.sharedFall.id)}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ stationId: here }),
+          }).catch(() => undefined);
+        }
       })
       .catch(() => setNotice('that could not be opened'));
   };
@@ -1156,26 +1151,15 @@ export default function ShadowField({ serif }: Props) {
     sharedFallRef.current = sharedFall;
   }, [sharedFall]);
 
-  // While a shared Fall is open: its leader publishes where they are (never a follower's own
-  // position, never anything but the current place); everyone in it polls for that one field and,
-  // if they are following, travels there themselves, on their own local spring, at their own pace.
+  // While a shared Fall is open: its leader's place is kept by the core each time they stop (never a
+  // follower's own position, never anything but the current place); everyone in it polls for that one
+  // field and, if they are following, travels there themselves, on their own spring, at their own pace.
   useEffect(() => {
     const id = sharedFall?.id;
     const hosting = sharedFall?.hosting;
     if (!id) return;
     const timer = window.setInterval(() => {
       if (sharedFallRef.current?.ended) return;
-      if (hosting) {
-        const here = hereRef.current?.node.id ?? null;
-        if (here && here !== sharedFallLastSentRef.current) {
-          sharedFallLastSentRef.current = here;
-          void fetch(`/api/shared-falls/${encodeURIComponent(id)}`, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ stationId: here }),
-          }).catch(() => undefined);
-        }
-      }
       // both the leader and whoever is following read this back: the leader, to see who has
       // joined or left and whether it has ended; a follower, to travel to where it now is
       fetch(`/api/shared-falls/${encodeURIComponent(id)}`, { cache: 'no-store' })
@@ -1549,6 +1533,36 @@ export default function ShadowField({ serif }: Props) {
 
     const reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
+    // the keepers: where each trace the core's rules keep actually goes
+    const keep = (rule: Rule, key: string) => {
+      if (rule.keeper === 'device') {
+        // finding what was waiting also settles the web
+        if (rule.trace === 'seen') return eatFood(key);
+        const trace = rule.trace as DeviceTrace;
+        webMemRef.current = rule.forget ? forgetOnDevice(webMemRef.current, trace, key) : keepOnDevice(webMemRef.current, trace, key);
+        try {
+          writeMemory(window.localStorage, webMemRef.current);
+        } catch {
+          // remembered for this visit only
+        }
+      } else if (rule.keeper === 'anonymous') {
+        void fetch(`/api/${rule.trace}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ target: key }) }).catch(
+          () => undefined
+        );
+      } else if (rule.keeper === 'live') {
+        // only a shared Fall's own leader moves it
+        const sf = sharedFallRef.current;
+        if (!sf?.hosting || sf.ended) return;
+        void fetch(`/api/shared-falls/${encodeURIComponent(sf.id)}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ stationId: key }),
+        }).catch(() => undefined);
+      }
+    };
+    if (!coreRef.current) coreRef.current = createCore({ waiting: (id) => foodSetRef.current.has(id) }, keep);
+    const core = coreRef.current;
+
     const frame = (nowMs: number) => {
       raf = requestAnimationFrame(frame);
       const canvas = canvasRef.current;
@@ -1588,7 +1602,8 @@ export default function ShadowField({ serif }: Props) {
           cut = rp.from + (rp.to - rp.from) * e;
         }
       }
-      const skip = (s: Station) => hiddenStation(s) || (cut !== null && s.depth > 0 && s.node.began > cut);
+      // this fall's lens: what this viewer may see, a replay's moment
+      const skip = lensOf(hiddenStation, replayLens(cut));
       // a sealed thing is seen (a closed mark) but can never be the thing in front of you
       const closed = (s: Station) => skip(s) || (s.depth > 1 && s.node.disclosure > lensRef.current.closeness(s.path[1]));
       skipRef.current = closed;
@@ -1655,9 +1670,10 @@ export default function ShadowField({ serif }: Props) {
         }
       }
 
-      // what is in front of you
+      // what is in front of you, and whether you are still with it: the core turns it into moves
       const here = flying ? focusOf(stream, fc.z, closed) : null;
       hereRef.current = here;
+      core.frame(here, !!here && !fc.hop && !fc.held, nowMs);
 
       // music: loudness follows nearness, and a song left far behind stops itself
       let audioState: RenderState['audio'] = null;
@@ -1718,63 +1734,6 @@ export default function ShadowField({ serif }: Props) {
         }
         plucksRef.current = admitPlucks([...plucksRef.current, ...fresh], nowSec);
         echoesRef.current = echoesRef.current.filter((p) => nowSec - p.t0 < 3);
-        // found: staying a moment with something waiting
-        if (here && foodSetRef.current.has(here.node.id) && !fc.hop && !fc.held) {
-          if (eatRef.current?.id !== here.node.id) eatRef.current = { id: here.node.id, t: nowMs };
-          else if (nowMs - eatRef.current.t > 1200) {
-            eatRef.current = null;
-            eatFood(here.node.id);
-          }
-        } else eatRef.current = null;
-        // a maker whose ring you stayed in: their new work will stir the web
-        if (here?.node.id.startsWith('maker/') && hereSinceRef.current.id === here.node.id && !fc.hop && nowMs - hereSinceRef.current.t > 1500) {
-          const key = here.node.id.slice('maker/'.length);
-          if (!webMemRef.current.makers.includes(key)) {
-            webMemRef.current = markMaker(webMemRef.current, key);
-            try {
-              writeMemory(window.localStorage, webMemRef.current);
-            } catch {
-              // remembered for this visit only
-            }
-          }
-        }
-        // a fork paused at, not yet entered: a way back to it, if it was left for later
-        if (here?.node.id.startsWith('fork/') && hereSinceRef.current.id === here.node.id && !fc.hop && nowMs - hereSinceRef.current.t > 1200) {
-          if (!webMemRef.current.passed.includes(here.node.id)) {
-            webMemRef.current = markPassed(webMemRef.current, here.node.id);
-            try {
-              writeMemory(window.localStorage, webMemRef.current);
-            } catch {
-              // remembered for this visit only
-            }
-          }
-        }
-        // truly inside a fork (looking at something it holds, not just its gate): it is no longer a turn not taken
-        const insideFork = here?.path.find((n) => n.id.startsWith('fork/') && n.id !== here.node.id);
-        if (insideFork && webMemRef.current.passed.includes(insideFork.id)) {
-          webMemRef.current = clearPassed(webMemRef.current, insideFork.id);
-          try {
-            writeMemory(window.localStorage, webMemRef.current);
-          } catch {
-            // remembered for this visit only
-          }
-        }
-        // staying with something a while is part of its resonance (once a visit; a mark of the day, nothing more)
-        if (
-          here &&
-          here.depth > 0 &&
-          !fc.hop &&
-          !fc.held &&
-          hereSinceRef.current.id === here.node.id &&
-          nowMs - Math.max(hereSinceRef.current.t, landedAtRef.current) > 3000 &&
-          !stayedRef.current.has(here.node.id)
-        ) {
-          stayedRef.current.add(here.node.id);
-          const id = here.node.id;
-          if (!id.startsWith('local/') && !id.startsWith('k/') && !here.path.some((n) => n.disclosure > 0)) {
-            void fetch('/api/resonance', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ target: id }) }).catch(() => undefined);
-          }
-        }
         // caught up: once everything that moved has been reached, the tunnel breathes out and goes still
         const calmTo = !foodRef.current.length && hadFoodRef.current ? 0.2 : 1;
         calmRef.current += (calmTo - calmRef.current) * (1 - Math.exp(-dt / 1));
@@ -1785,18 +1744,11 @@ export default function ShadowField({ serif }: Props) {
         // a fall reached the end of a fork and turned back: pressure, anonymous, once a session
         if (fc.hop.kind === 'back' && here) {
           const forkAncestor = here.path.find((n) => n.id.startsWith('fork/'));
-          if (forkAncestor && forkAncestor.id !== here.node.id && !reachedRef.current.has(forkAncestor.id)) {
+          if (forkAncestor && forkAncestor.id !== here.node.id) {
             const nextZ = stepFocus(stream, here.z, 1, closed);
             const nextStation = nextZ === null ? null : focusOf(stream, nextZ, closed);
             const stillInside = nextStation?.path.some((n) => n.id === forkAncestor!.id);
-            if (!stillInside) {
-              reachedRef.current.add(forkAncestor.id);
-              void fetch('/api/pressure', {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ target: forkAncestor.id }),
-              }).catch(() => undefined);
-            }
+            if (!stillInside) core.move({ kind: 'turnBack', from: forkAncestor });
           }
         }
         // (how long since the hop before: a song begins on the way only outside a quick run)
@@ -2625,7 +2577,7 @@ export default function ShadowField({ serif }: Props) {
       // a song: go to it and let it play (the tap is what allows sound);
       // further taps in the same burst are a knock in the making, not play/pause
       if (taps > 1) return;
-      leanIfBranch(hit.path);
+      choose(hit.path);
       flyTo(hit.path, 0.53);
       autoplayRef.current = true;
       toggleSong(hit.path);
@@ -2637,7 +2589,7 @@ export default function ShadowField({ serif }: Props) {
       // a film: go to it; a tap on it once there gives it sound
       if (focusedNode?.id === hit.node.id) filmSound(film(hit.node)!.src, film(hit.node)!.webm);
       else {
-        leanIfBranch(hit.path);
+        choose(hit.path);
         flyTo(hit.path);
       }
       return;
@@ -2653,7 +2605,7 @@ export default function ShadowField({ serif }: Props) {
       return;
     }
     if (hit && hit.kind === 'node') {
-      leanIfBranch(hit.path);
+      choose(hit.path);
       flyTo(hit.path, hit.sealed ? 0.12 : 0.53);
       return;
     }
@@ -4016,7 +3968,7 @@ export default function ShadowField({ serif }: Props) {
                 <button
                   type="button"
                   onClick={() => {
-                    leanIfBranch([...path, c]);
+                    choose([...path, c]);
                     flyTo([...path, c]);
                   }}
                 >
