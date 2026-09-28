@@ -240,10 +240,38 @@ export const replayLens =
     cut !== null && s.depth > 0 && s.node.began > cut;
 
 /**
- * The hour turned into: only things made around it, falling through them one after another
- * (the Canvas itself always; rings are passed through, not stopped at).
+ * Where you are. On the Slate, you fall past its groups (a maker's songs, his dancing, a Twin
+ * and what grew from it), never into what is inside them by chance. Inside one, the fall holds
+ * only that group, and its end brings you back up to the Slate, not on into whatever group
+ * happens to be next in time.
+ */
+export const groupLens =
+  (inside: string | null): Hide =>
+  (s) =>
+    s.depth > 0 && (inside === null ? s.depth > 1 : s.path[1].id !== inside);
+
+/** The group (or thing on the Slate) something belongs to; null for the Slate itself. */
+export const groupOf = (s: Station) => (s.depth > 0 ? s.path[1].id : null);
+
+const holds = new WeakMap<IdeaNode, number>();
+/** Which hours a group holds work from (a bit for each quarter). */
+function hoursIn(n: IdeaNode): number {
+  const known = holds.get(n);
+  if (known !== undefined) return known;
+  const kids = n.children.filter((c) => !c.portal && !c.void);
+  const bits = kids.length ? kids.reduce((b, c) => b | hoursIn(c), 0) : 1 << quarterOf(n.began);
+  holds.set(n, bits);
+  return bits;
+}
+
+/**
+ * The hour turned into: only things made around it, falling through them one after another.
+ * On the Slate, only the groups holding work from around that hour; inside one, rings within it
+ * are passed through, not stopped at. (The Slate itself always.)
  */
 export const hourLens =
   (hour: Quarter | null): Hide =>
   (s) =>
-    hour !== null && s.depth > 0 && (s.gate || quarterOf(s.t) !== hour);
+    hour !== null &&
+    s.depth > 0 &&
+    (s.depth === 1 && s.gate ? (hoursIn(s.node) & (1 << hour)) === 0 : s.gate || quarterOf(s.t) !== hour);

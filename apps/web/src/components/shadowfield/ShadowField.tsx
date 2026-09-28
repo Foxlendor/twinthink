@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Camera, ScreenTransform } from '@/lib/shadowfield/camera';
 import { IdeaNode, LifeEvent, SEAL_MARGIN, findPath, lastActivity } from '@/lib/shadowfield/model';
 import { topologyOf } from '@/lib/shadowfield/layout';
@@ -31,6 +31,8 @@ import {
   focusAround,
   settle,
   stopZ,
+  quarterFacing,
+  type Quarter,
 } from '@/lib/shadowfield/flight';
 import { VelocityTracker, WheelHops, landingIndex, pxPerStop } from '@/lib/shadowfield/gesture';
 import {
@@ -51,7 +53,7 @@ import {
   writeMemory,
 } from '@/lib/shadowfield/web';
 import { edgePaths, renderFlight } from '@/lib/shadowfield/flightRender';
-import { createCore, lensOf, replayLens, type Core, type Rule } from '@/lib/shadowfield/core';
+import { createCore, groupLens, groupOf, hourLens, lensOf, replayLens, type Core, type Rule } from '@/lib/shadowfield/core';
 import { hash01, smoothstep } from '@/lib/shadowfield/rng';
 import Donate from '@/components/support/Donate';
 import { founderPlots } from '@/lib/shadowfield/plots';
@@ -396,6 +398,17 @@ export default function ShadowField({ serif }: Props) {
   const prevZRef = useRef<number | null>(null);
   // the clock can turn slowly by itself, but only if asked: tapping the compass starts or stops it
   const spinRef = useRef(false);
+  // steering (a mouse, held by the page): you are the drop at the middle; where the hand pushes,
+  // the way ahead swings, and pushed far enough toward an hour you turn into it
+  // the group you have gone into (null: on the Slate, among its groups)
+  const insideRef = useRef<string | null>(null);
+  const steerRef = useRef({ on: false, x: 0, y: 0, endedAt: 0, well: null as Quarter | null });
+  const [steering, setSteering] = useState(false);
+  const canSteer = useSyncExternalStore(
+    () => () => undefined,
+    () => window.matchMedia('(pointer: fine)').matches && 'requestPointerLock' in HTMLElement.prototype,
+    () => false
+  );
   const needleRef = useRef<SVGGElement | null>(null);
   const nextDotRef = useRef<SVGCircleElement | null>(null);
   const lapDotRef = useRef<SVGCircleElement | null>(null);
@@ -618,6 +631,7 @@ export default function ShadowField({ serif }: Props) {
         const idx = stream.byId.get(target[i].id);
         if (idx === undefined) continue;
         const s = stream.stations[idx];
+        insideRef.current = groupOf(s);
         fc.target = s.depth === 0 ? fc.z + wrapDelta(-ARRIVE, fc.z, stream.length) : focusZ(stream, s, fc.z);
         // a hop under way keeps its momentum as it turns toward the new place
         if (!fc.hop) fc.v = 0;
@@ -657,6 +671,24 @@ export default function ShadowField({ serif }: Props) {
   const choose = useCallback((path: IdeaNode[]) => {
     if (path.length >= 2) coreRef.current?.move({ kind: 'choose', from: path[path.length - 2], to: path[path.length - 1] });
   }, []);
+
+  /** Going to something you picked; a group picked on the Slate is gone into, to the first thing in it. */
+  const goTo = useCallback(
+    (path: IdeaNode[], radius?: number) => {
+      const stream = streamRef.current;
+      const idx = stream?.byId.get(path[path.length - 1].id);
+      const door = stream && idx !== undefined && stream.stations[idx].depth === 1 && stream.stations[idx].gate ? stream.stations[idx] : null;
+      const going = !!door && modeRef.current === 'flight' && insideRef.current !== door.node.id;
+      choose(path);
+      flyTo(path, radius);
+      const first = going && stream ? stream.stations[idx! + 1] : undefined;
+      if (first && first.depth === 2 && first.node.disclosure <= lensRef.current.closeness(first.path[1])) {
+        const fc = flightCamRef.current;
+        fc.target = focusZ(stream!, first, fc.z);
+      }
+    },
+    [choose, flyTo]
+  );
 
   // ---------------------------------------------------------------- setup
   useEffect(() => {
@@ -704,6 +736,7 @@ export default function ShadowField({ serif }: Props) {
       flight: flightCamRef.current,
       stream: () => streamRef.current,
       here: () => hereRef.current?.node.id ?? null,
+      steer: () => ({ ...steerRef.current }),
       flyTo: (ids: string[]) => flyToIds(ids),
       // recordings made frame by frame keep films and songs in time with the frames
       mediaRate: (r: number) => {
@@ -924,6 +957,7 @@ export default function ShadowField({ serif }: Props) {
     if (!stream) return false;
     const fc = flightCamRef.current;
     let best: number | null = null;
+    let into: string | null = null;
     for (const f of foodRef.current) {
       const i = stream.byId.get(f.id);
       if (i === undefined) continue;
@@ -931,7 +965,10 @@ export default function ShadowField({ serif }: Props) {
       // (the one you are on is not somewhere to go)
       if (Math.abs(z - hopBase(fc)) < 0.05) continue;
       if (z < hopBase(fc)) z += stream.length;
-      if (best === null || z < best) best = z;
+      if (best === null || z < best) {
+        best = z;
+        into = groupOf(stream.stations[i]);
+      }
     }
     // nothing waiting: a fork you passed but never entered is still a turn you can still take
     if (best === null) {
@@ -941,10 +978,14 @@ export default function ShadowField({ serif }: Props) {
         let z = stopZ(stream, stream.stations[i], hopBase(fc));
         if (Math.abs(z - hopBase(fc)) < 0.05) continue;
         if (z < hopBase(fc)) z += stream.length;
-        if (best === null || z < best) best = z;
+        if (best === null || z < best) {
+          best = z;
+          into = groupOf(stream.stations[i]);
+        }
       }
     }
     if (best === null) return false;
+    insideRef.current = into;
     hopFlight(best, 'threshold');
     return true;
   }, [hopFlight]);
@@ -1602,11 +1643,43 @@ export default function ShadowField({ serif }: Props) {
           cut = rp.from + (rp.to - rp.from) * e;
         }
       }
-      // this fall's lens: what this viewer may see, a replay's moment
-      const skip = lensOf(hiddenStation, replayLens(cut));
+      // steering: the way ahead swings toward the hand, and an hour pushed far enough toward is turned into
+      const steer = steerRef.current;
+      const wasWell = steer.well;
+      const ease = 1 - Math.exp(-dt * 5);
+      fc.bx += ((flying && steer.on ? steer.x : 0) - fc.bx) * ease;
+      fc.by += ((flying && steer.on ? steer.y : 0) - fc.by) * ease;
+      if (!flying && steer.on) document.exitPointerLock();
+      if (!flying || !steer.on) steer.well = null;
+      else {
+        const m = Math.hypot(steer.x, steer.y);
+        const q = quarterFacing(steer.x, steer.y, fc.spin);
+        if (steer.well === null) {
+          if (m > 0.5) steer.well = q;
+        } else if (m < 0.3) steer.well = null;
+        else if (q !== steer.well) {
+          // a little past the line between two hours before it gives way (no flicker on the line)
+          const mid = -Math.PI / 2 + steer.well * (Math.PI / 2) + fc.spin;
+          const off = Math.abs(mod(Math.atan2(steer.y, steer.x) - mid + Math.PI, Math.PI * 2) - Math.PI);
+          if (off > Math.PI / 4 + 0.14) steer.well = q;
+        }
+        // held by the page, the pointer is the drop: whatever is at the middle is what it points at
+        pointerRef.current = { x: cam.w / 2, y: cam.h * 0.47, inside: true, t: nowMs };
+      }
+      // this fall's lens: what this viewer may see, a replay's moment, the hour turned into
+      const skip = lensOf(hiddenStation, replayLens(cut), groupLens(insideRef.current), hourLens(steer.well));
       // a sealed thing is seen (a closed mark) but can never be the thing in front of you
       const closed = (s: Station) => skip(s) || (s.depth > 1 && s.node.disclosure > lensRef.current.closeness(s.path[1]));
       skipRef.current = closed;
+      if (steer.well !== wasWell) {
+        core.move({ kind: 'turn', hour: steer.well });
+        if (steer.well !== null) {
+          // turned into an hour: on, deeper, to the next thing made around it
+          const z = stream.stations.some((s) => s.depth > 0 && !closed(s)) ? stepFocus(stream, hopBase(fc), 1, closed) : null;
+          if (z !== null) hopTo(fc, z, 'threshold');
+          else setNotice(`nothing here from around ${['12', '3', '6', '9'][steer.well]} yet`);
+        }
+      }
 
       // motion
       if (flying) {
@@ -1673,6 +1746,12 @@ export default function ShadowField({ serif }: Props) {
       // what is in front of you, and whether you are still with it: the core turns it into moves
       const here = flying ? focusOf(stream, fc.z, closed) : null;
       hereRef.current = here;
+      // back on the Slate, you are among its groups again; deep in one (however you got there), inside it
+      // (only once landed: on the way somewhere, what you pass does not decide where you are)
+      if (fc.target === null && !fc.hop) {
+        if (here?.depth === 0) insideRef.current = null;
+        else if (here && here.depth > 1) insideRef.current = groupOf(here);
+      }
       core.frame(here, !!here && !fc.hop && !fc.held, nowMs);
 
       // music: loudness follows nearness, and a song left far behind stops itself
@@ -1855,6 +1934,7 @@ export default function ShadowField({ serif }: Props) {
           resonance: resonanceRef.current,
           presence: presenceRef.current,
           leaned: leanedRef.current,
+          steer: { on: steer.on, facing: steer.well },
           // at a branch, the other paths beside this one: only ones this viewer may actually enter
           edges: edgePaths(here, (n, p) => {
             const idx = stream.byId.get(n.id);
@@ -1875,7 +1955,9 @@ export default function ShadowField({ serif }: Props) {
               ? 'something is gathering here.'
               : hasMedia(s.node, 'audio') && soundBlockedRef.current && !playingRef.current
                 ? 'tap to hear it'
-                : s.node.line;
+                : s.depth === 1 && s.gate && insideRef.current !== s.node.id
+                  ? `${s.node.line ? `${s.node.line} ` : ''}tap to go in.`
+                  : s.node.line;
             return line && written < line.length ? line.slice(0, Math.floor(written)) : line;
           },
         };
@@ -2299,7 +2381,98 @@ export default function ShadowField({ serif }: Props) {
     setMode('flight');
   };
 
+  /** A tap (or, steering, a click) at a point: go to what is there, knock, hear, or begin something. */
+  const tapAt = (x: number, y: number, only?: Hit | null) => {
+    const now = performance.now();
+    const lastTap = lastTapRef.current;
+    const burst = now - lastTap.t < 380 && Math.hypot(lastTap.x - x, lastTap.y - y) < 28;
+    const taps = burst ? lastTap.n + 1 : 1;
+    const isDouble = taps === 2;
+    lastTapRef.current = { t: now, x, y, n: taps };
+
+    const hit = only !== undefined ? only : (hoverRef.current ?? hitsRef.current.find((h) => Math.hypot(h.x - x, h.y - y) < h.r) ?? null);
+    // touching something that was waiting is finding it
+    if (hit?.kind === 'node') eatFood(hit.node.id);
+    const focused = focusPath();
+    // three taps knock: the way in opens for those it is open to; for anyone else, a seal
+    if (taps === 3) {
+      if (hit && hit.kind === 'node' && hit.size < 1e8) knock(hit.path);
+      else if (focused.length > 1) knock(focused);
+      return;
+    }
+    // a sealed thing, touched, offers a note for its maker
+    if (hit && hit.kind === 'node' && hit.sealed) {
+      openSeal(hit.node);
+      return;
+    }
+    if (hit && hit.kind === 'node' && hasMedia(hit.node, 'audio')) {
+      // a song: go to it and let it play (the tap is what allows sound);
+      // further taps in the same burst are a knock in the making, not play/pause
+      if (taps > 1) return;
+      choose(hit.path);
+      flyTo(hit.path, 0.53);
+      autoplayRef.current = true;
+      toggleSong(hit.path);
+      return;
+    }
+    const focusedNode = focused[focused.length - 1];
+    const film = (n: IdeaNode | undefined) => n?.media?.find((m) => m.kind === 'video');
+    if (hit && hit.kind === 'node' && film(hit.node)) {
+      // a film: go to it; a tap on it once there gives it sound
+      if (focusedNode?.id === hit.node.id) filmSound(film(hit.node)!.src, film(hit.node)!.webm);
+      else {
+        choose(hit.path);
+        flyTo(hit.path);
+      }
+      return;
+    }
+    if (!hit && hasMedia(focusedNode, 'audio')) {
+      if (taps > 1) return;
+      autoplayRef.current = true;
+      toggleSong([...focused]);
+      return;
+    }
+    if (!hit && film(focusedNode)) {
+      filmSound(film(focusedNode)!.src, film(focusedNode)!.webm);
+      return;
+    }
+    if (hit && hit.kind === 'node') {
+      goTo(hit.path, hit.sealed ? 0.12 : 0.53);
+      return;
+    }
+    if (isDouble) openComposerAt(x, y);
+  };
+
+  // steering begins when the page holds the pointer, and ends when it lets go (Esc, or leaving the tab)
+  useEffect(() => {
+    const onChange = () => {
+      const s = steerRef.current;
+      const on = !!canvasRef.current && document.pointerLockElement === canvasRef.current;
+      if (s.on && !on) s.endedAt = performance.now();
+      s.on = on;
+      s.x = 0;
+      s.y = 0;
+      if (!on) pointerRef.current.inside = false;
+      setSteering(on);
+    };
+    document.addEventListener('pointerlockchange', onChange);
+    return () => document.removeEventListener('pointerlockchange', onChange);
+  }, []);
+  const startSteering = () => {
+    const c = canvasRef.current;
+    if (!c) return;
+    dismissHint();
+    setNotice('move to steer. esc to stop');
+    try {
+      void Promise.resolve(c.requestPointerLock()).catch(() => setNotice('steering is not available here'));
+    } catch {
+      setNotice('steering is not available here');
+    }
+  };
+
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // steering: the button acts on release, at the middle
+    if (steerRef.current.on) return;
     if (sketchRef.current && e.isPrimary) {
       const rect = e.currentTarget.getBoundingClientRect();
       const pt = sketchPoint(e.clientX - rect.left, e.clientY - rect.top);
@@ -2379,6 +2552,20 @@ export default function ShadowField({ serif }: Props) {
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const steer = steerRef.current;
+    if (steer.on) {
+      // the hand pushes the heading about, within reach: a third of the screen is all the way
+      const reach = 0.35 * Math.min(camRef.current?.w ?? 800, camRef.current?.h ?? 800);
+      steer.x += e.movementX / reach;
+      steer.y += e.movementY / reach;
+      const m = Math.hypot(steer.x, steer.y);
+      if (m > 1) {
+        steer.x /= m;
+        steer.y /= m;
+      }
+      handRef.current = performance.now();
+      return;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -2480,6 +2667,16 @@ export default function ShadowField({ serif }: Props) {
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (steerRef.current.on) {
+      const c = camRef.current;
+      // steering, a click is about the thing you are on, never whatever happens to lie far behind it
+      const on = hereRef.current;
+      const hit = hitsRef.current.find((h) => h.kind === 'node' && h.node.id === on?.node.id) ?? null;
+      // a group on the Slate is gone into
+      if (!hit && on?.depth === 1 && on.gate && insideRef.current !== on.node.id) goTo(on.path);
+      else if (c) tapAt(c.w / 2, c.h * 0.47, hit);
+      return;
+    }
     const sk = sketchRef.current;
     if (sk?.stroke && e.pointerId === sk.pointerId) {
       const stroke = sk.stroke;
@@ -2550,72 +2747,15 @@ export default function ShadowField({ serif }: Props) {
       holdRef.current.consumed = false;
       return;
     }
-
-    const now = performance.now();
-    const lastTap = lastTapRef.current;
-    const burst = now - lastTap.t < 380 && Math.hypot(lastTap.x - x, lastTap.y - y) < 28;
-    const taps = burst ? lastTap.n + 1 : 1;
-    const isDouble = taps === 2;
-    lastTapRef.current = { t: now, x, y, n: taps };
-
-    const hit = hoverRef.current ?? hitsRef.current.find((h) => Math.hypot(h.x - x, h.y - y) < h.r) ?? null;
-    // touching something that was waiting is finding it
-    if (hit?.kind === 'node') eatFood(hit.node.id);
-    const focused = focusPath();
-    // three taps knock: the way in opens for those it is open to; for anyone else, a seal
-    if (taps === 3) {
-      if (hit && hit.kind === 'node' && hit.size < 1e8) knock(hit.path);
-      else if (focused.length > 1) knock(focused);
-      return;
-    }
-    // a sealed thing, touched, offers a note for its maker
-    if (hit && hit.kind === 'node' && hit.sealed) {
-      openSeal(hit.node);
-      return;
-    }
-    if (hit && hit.kind === 'node' && hasMedia(hit.node, 'audio')) {
-      // a song: go to it and let it play (the tap is what allows sound);
-      // further taps in the same burst are a knock in the making, not play/pause
-      if (taps > 1) return;
-      choose(hit.path);
-      flyTo(hit.path, 0.53);
-      autoplayRef.current = true;
-      toggleSong(hit.path);
-      return;
-    }
-    const focusedNode = focused[focused.length - 1];
-    const film = (n: IdeaNode | undefined) => n?.media?.find((m) => m.kind === 'video');
-    if (hit && hit.kind === 'node' && film(hit.node)) {
-      // a film: go to it; a tap on it once there gives it sound
-      if (focusedNode?.id === hit.node.id) filmSound(film(hit.node)!.src, film(hit.node)!.webm);
-      else {
-        choose(hit.path);
-        flyTo(hit.path);
-      }
-      return;
-    }
-    if (!hit && hasMedia(focusedNode, 'audio')) {
-      if (taps > 1) return;
-      autoplayRef.current = true;
-      toggleSong([...focused]);
-      return;
-    }
-    if (!hit && film(focusedNode)) {
-      filmSound(film(focusedNode)!.src, film(focusedNode)!.webm);
-      return;
-    }
-    if (hit && hit.kind === 'node') {
-      choose(hit.path);
-      flyTo(hit.path, hit.sealed ? 0.12 : 0.53);
-      return;
-    }
-    if (isDouble) openComposerAt(x, y);
+    tapAt(x, y);
   };
 
   // keyboard
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (composer) return;
+      // the Esc that lets go of steering is only that
+      if (e.key === 'Escape' && (document.pointerLockElement || performance.now() - steerRef.current.endedAt < 400)) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
       handRef.current = performance.now();
@@ -2637,7 +2777,12 @@ export default function ShadowField({ serif }: Props) {
             fc.dir = dir;
           }
         };
+        const on = hereRef.current;
         if (e.key === ' ') pluckWeb();
+        else if (e.key === 'Enter' && on?.depth === 1 && insideRef.current !== on.node.id) {
+          // on the Slate, at a group: go into it
+          goTo(on.path);
+        }
         else if (e.key === 'n') goToFood();
         else if (['ArrowDown', 'ArrowRight', 'PageDown', '+', '=', 'j'].includes(e.key)) go(1);
         else if (['ArrowUp', 'ArrowLeft', 'PageUp', '-', '_', 'k'].includes(e.key)) go(-1);
@@ -2665,7 +2810,7 @@ export default function ShadowField({ serif }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [composer, dismissHint, flyTo, focusPath, hiddenStation, hopFlight, goToFood, pluckWeb]);
+  }, [composer, dismissHint, flyTo, focusPath, goTo, hiddenStation, hopFlight, goToFood, pluckWeb]);
 
   // ---------------------------------------------------------------- actions
   const wander = () => {
@@ -3310,6 +3455,11 @@ export default function ShadowField({ serif }: Props) {
               support his work
             </button>
           </>
+        )}
+        {mode === 'flight' && canSteer && !steering && (
+          <button type="button" className={styles.quiet} onClick={startSteering}>
+            steer
+          </button>
         )}
         {shareable && (
           <button type="button" className={styles.quiet} onClick={() => shareHere([...path])}>

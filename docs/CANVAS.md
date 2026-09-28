@@ -29,7 +29,8 @@ removed, everything derived from the same few parts), it has five parts
 1. **Thing**: something made, at a moment. The moment is both its hour on the
    clock face and its depth in the fall (newest first, older deeper).
 2. **Lens**: which things this fall holds. Any one reason leaves a thing out:
-   what this viewer may see, a replay's moment, the hour turned into.
+   what this viewer may see, a replay's moment, where you are (on the Slate,
+   its groups; inside a group, only that group), the hour turned into.
 3. **Move**: the only way anything changes. Arrive, stay (still this long; with
    it this long), choose (a Lean), turn back (out of a fork), turn (toward an
    hour).
@@ -79,7 +80,17 @@ out past the edges, behind you.
   along the walls. One dotted thread runs through everything, in order.
 - Order is content, not a feed: newest first, and the distance between two
   things is the time between them (a long silence is a long empty stretch,
-  where the thread thins). After the oldest thing comes the Canvas again.
+  where the thread thins).
+- Things stay with what they belong to (`groupLens` in `core.ts`). On the
+  Slate you fall past its groups (HEX Lab, the songs, TwinThink, the dancing,
+  moments, each posted Twin), never into something inside one by chance; each
+  says "tap to go in." Tap one (or Enter, or a click while steering) and you
+  are carried to the first thing in it, and the fall holds only that group.
+  Its end brings you back up to the Slate, not on into whatever group was
+  next in time. Going to something anywhere (a link, the trail, what is
+  waiting, a shared Fall) goes into its group. Before this, the fall ran
+  from the end of one group straight into the next (old invention write-ups
+  into songs into TwinThink's history into dancing), which read as random.
 - Songs play as you pass them (once a tap has allowed sound), loudest in front
   of you. Films play silently while near; a tap gives them sound.
 - Three taps on anything knock. For its maker, the owner (signed in) or a
@@ -94,6 +105,23 @@ out past the edges, behind you.
   something made at 6 comes up from the bottom of the screen. A dotted hand points
   at what comes next. The compass (right edge) shows world-up, where you are in
   the lap, and the next thing's direction.
+- Steering (desktop, a mouse; "steer" among the actions): the page holds the
+  pointer, and you are the drop at the middle (hollow, so it is never taken
+  for a thing or for dew; its tail trails away from where you are heading).
+  Moving the mouse swings the way ahead toward where you push. Pushed past
+  halfway toward an hour, you turn into it: the hour is written darker and
+  larger, and the fall holds only things made around it (`hourLens`), carrying
+  you on, deeper, to the next one. On the Slate that means only the groups
+  holding work from around that hour; inside a group, only its things from
+  around that hour. Back toward the middle, the whole fall again; a little
+  past the line between two hours before it gives way, so it never flickers.
+  A click acts on the thing you are on (never whatever lies far behind it),
+  and goes into a group you are facing. Esc lets go (and is only that). No
+  colors: the hours are ink, like everything else.
+  Not yet: steering on a phone; a breadcrumb where you turned; the prototype's
+  time policy is labeled, not settled: an hour is a quarter of a 12-hour face
+  on his clock (UTC-6), so 6 a.m. and 6 p.m. share the 6, and deeper is older
+  across days (spec D-01, D-02).
 - Night: pale ink on dark paper (the visitor's choice, or their system's).
   At thin places in the web (some rings), passing through drops you back
   into day, opening from the middle like falling through the ink.

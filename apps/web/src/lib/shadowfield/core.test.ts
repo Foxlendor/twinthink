@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RULES, createCore, hourLens, lensOf, replayLens, type Move, type Rule } from './core';
+import { RULES, createCore, groupLens, groupOf, hourLens, lensOf, replayLens, type Move, type Rule } from './core';
 import { quarterFacing, quarterOf, type Station } from './flight';
 import type { IdeaNode } from './model';
 
@@ -145,11 +145,38 @@ describe('lenses', () => {
   it('turned into an hour, a fall holds only that hour, passing through rings; the Canvas always', () => {
     const inSix = station([root, ring, node('p/six', { began: six })]);
     const inThree = station([root, ring, node('p/three', { began: three })]);
-    const gate = station([root, ring], { gate: true, t: six });
+    const inner = node('inner', { children: [node('p/i', { began: six })] });
+    const gate = station([root, node('g', { children: [inner] }), inner], { gate: true, t: six });
     const canvas = station([root], { depth: 0 });
     const lens = hourLens(2);
     expect([lens(inSix), lens(inThree), lens(gate), lens(canvas)]).toEqual([false, true, true, false]);
     expect(hourLens(null)(inThree)).toBe(false);
+  });
+
+  it('turned into an hour on the Slate, only the groups holding work from around it stay', () => {
+    const sixes = node('sixes', { children: [node('s/a', { began: six }), node('s/b', { began: three })] });
+    const threes = node('threes', { children: [node('t/a', { began: three })] });
+    const door = (g: IdeaNode) => station([root, g], { gate: true });
+    expect([hourLens(2)(door(sixes)), hourLens(2)(door(threes))]).toEqual([false, true]);
+    expect(hourLens(1)(door(sixes))).toBe(false);
+  });
+
+  it('on the Slate you pass its groups, never what is inside them by chance; inside one, only it', () => {
+    const songs = node('songs', { children: [node('song/a')] });
+    const dance = node('dance', { children: [node('clip/a')] });
+    const lone = node('p/lone');
+    const s = {
+      songs: station([root, songs], { gate: true }),
+      song: station([root, songs, songs.children[0]]),
+      dance: station([root, dance], { gate: true }),
+      clip: station([root, dance, dance.children[0]]),
+      lone: station([root, lone]),
+      canvas: station([root], { depth: 0 }),
+    };
+    const shown = (lens: (x: Station) => boolean) => Object.entries(s).filter(([, x]) => !lens(x)).map(([k]) => k);
+    expect(shown(groupLens(null))).toEqual(['songs', 'dance', 'lone', 'canvas']);
+    expect(shown(groupLens('songs'))).toEqual(['songs', 'song', 'canvas']);
+    expect([groupOf(s.clip), groupOf(s.lone), groupOf(s.canvas)]).toEqual(['dance', 'p/lone', null]);
   });
 
   it('a lens leaves a thing out for any one of its reasons', () => {
