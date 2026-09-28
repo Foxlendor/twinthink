@@ -47,6 +47,29 @@ Last updated: 28 September 2026.
 | COOP-02 | specified | | | | Creator co-op rights not built (D-09). |
 | FOUNDER-01 | preserved, dormant (John, 28 Sep) | 47 unverified, 427 verified, 474 in all, as `FOUNDER_ALLOCATION`. Read by nothing that decides anything. | `lib/entitlements.ts` | `entitlements.test.ts` | Verification and what founders receive are OPEN (D-10). Nothing is granted from these numbers. |
 
+## Decided 28 Sep (later): the Fall is a marble run, not a feed
+
+This replaces "falling through a space with sideways choices" as the central requirement:
+
+**The visitor is a falling body inside a living structure of ideas. They influence their trajectory; they do not browse a feed or select branches from a menu.**
+
+Like a marble in a living Rube Goldberg machine: fall, tumble, get caught by a structure (a bowl, a rail, a helix, a funnel), circle it, meet work embedded in it, get released into another trajectory, spiral through another layer, fall again. Every piece of the machine is formed from people's work and the relationships between it. The Slate is not a feed; paths are not buttons; the clock is not a menu; drift is not scrolling; Rabi is not "recommended for you".
+
+- **The thumb gives influence, not control.** Push toward 6 and the tumble is biased down into that spiral, but momentum can carry you past something; lean toward 3 and you may catch the edge of another route; you may circle a structure before it lets you go. That small loss of perfect control is part of the feeling. Not a free-roaming game joystick.
+- **Rabi builds pieces of the machine.** What people tag, connect, keep, group and contribute becomes the ramps, funnels, junctions, catches and passages someone else later falls through. The collective structure is the routing.
+
+What exists today, honestly: the flight is a single sequence in depth with hops between things, plus lenses, openings and steering bolted on. It is the old locomotion metaphor ("tunnels on a feed"). The marble run needs a new core part the spec already said was missing (6.1: space and connections): structure pieces, generated from relationships, and a motion model with momentum through them.
+
+Open decisions this raises (not to be filled in by an implementation):
+
+| ID | Question |
+| --- | --- |
+| D-12 | Which relationships make which pieces: a group, a fork, "goes with", a build-on, a keep, the hours. And what a person or Rabi may shape by hand. |
+| D-13 | What counts as a Lean when choices are nudges: taking a diverter because you pushed toward it? Only a deliberate act? (Lean must stay intentional and private.) |
+| D-14 | How you come to rest to read or watch (a catch that holds you until you push on), and how long the machine keeps you moving without input. |
+| D-15 | The same destinations without physics: keyboard, screen reader, reduced motion (spec 8.1 and VIS-08 still apply). |
+| D-16 | How a shared Fall works when two falling bodies take different trajectories (the leader's place is a place, not a path). |
+
 ## Decided 28 Sep: the mobile direction (from John's mockup review)
 
 The central mobile requirement: **you are not browsing down a hallway; you are falling through a space with lateral choices.** Not "straight tunnel, keep scrolling, more tunnel", but: fall, drift, openings peel away around you, another branch catches your trajectory, the whole space bends and spirals around the clock. One thumb, one joystick, one falling field, several visibly diverging directions; the words and controls sit quietly around that.
@@ -63,7 +86,7 @@ The central mobile requirement: **you are not browsing down a hallway; you are f
 | Clock positions | Keep their meaning (the hour a thing was made) unless the clock is deliberately redesigned later (D-04). The mockup's "12 further ahead, 6 deeper within, 9 different time, 3 new connections" is not adopted. |
 | Look | Ink, paper, monochrome. Icons in place of walls of explanatory text. |
 
-When the freeze lifts, the order is: the motion model and composition first (the falling field with diverging directions, the joystick), then controls and words around it. Not button polish first.
+When the freeze lifts, the order is: the motion model first (the marble run above: structure from relationships, momentum, thumb influence), then composition, then controls and words around it. Not button polish first. The joystick is its input, not a separate feature.
 
 ## Next, in order
 
@@ -73,4 +96,4 @@ Hold (28 Sep): no code changes until John brings back one of these results. Judg
 2. The Slate on real screens: the enlarged 6, notices at the top, long group names, crowded places.
 3. Fall with me into somewhere private, with two real accounts: the follower stays where they are and learns only that "X moved into a path you can't enter", never what or why. (`beyond` means exactly that and nothing more.)
 
-After those: the motion model and joystick (above); the recap's song (RECAP-03); creator co-op (COOP-02) once D-09 is decided. The iPhone motion permission question goes away with tilt.
+After those: the marble-run motion model and its thumb influence (above), starting from decisions D-12 to D-16; the recap's song (RECAP-03); creator co-op (COOP-02) once D-09 is decided. The iPhone motion permission question goes away with tilt.
