@@ -25,6 +25,7 @@ import {
   updateShadow,
   createFork,
   forksIn,
+  forksForMany,
   moveFork,
   setForkClosed,
   canPostInFork,
@@ -334,13 +335,31 @@ describe('forks', () => {
     const f = (await createFork(q, ana, home.id, { title: 'just us' })).fork!;
     expect(f.postAccess).toBe('invite');
     expect(f.inviteLink).toBeTruthy();
-    expect((await forksIn(q, home.id, ben.sub))[0].inviteLink).toBeUndefined();
+    expect(f.canPost).toBe(true);
+    const seenByBen = (await forksIn(q, home.id, ben.sub))[0];
+    expect(seenByBen.inviteLink).toBeUndefined();
+    expect(seenByBen.canPost).toBe(false);
     expect(await canPostInFork(q, f.id, ben.sub)).toBe(false);
     expect('error' in (await joinFork(q, f.id, 'wrong-token', ben.sub))).toBe(true);
     expect('ok' in (await joinFork(q, f.id, f.inviteLink!, ben.sub))).toBe(true);
     expect(await canPostInFork(q, f.id, ben.sub)).toBe(true);
+    expect((await forksIn(q, home.id, ben.sub))[0].canPost).toBe(true);
     // its own maker may always post inside it, invited or not
     expect(await canPostInFork(q, f.id, ana.sub)).toBe(true);
+  });
+
+  it('gathers forks for many Shadows in one call, the same as one at a time', async () => {
+    const homeA = (await createShadow(q, ana, { title: 'lamp A' })).shadow!;
+    const homeB = (await createShadow(q, ana, { title: 'lamp B' })).shadow!;
+    const fA = (await createFork(q, ana, homeA.id, { title: 'wiring', postAccess: 'anyone' })).fork!;
+    const fB = (await createFork(q, ana, homeB.id, { title: 'just us' })).fork!;
+    await joinFork(q, fB.id, fB.inviteLink!, ben.sub);
+    const many = await forksForMany(q, [homeA.id, homeB.id], ben.sub);
+    expect(many[homeA.id][0].id).toBe(fA.id);
+    expect(many[homeA.id][0].canPost).toBe(true); // 'anyone', signed in
+    expect(many[homeB.id][0].id).toBe(fB.id);
+    expect(many[homeB.id][0].canPost).toBe(true); // ben joined this one
+    expect(await forksForMany(q, [], ben.sub)).toEqual({});
   });
 
   it('a post made inside a fork still starts private, the same as anywhere else', async () => {
@@ -364,6 +383,9 @@ describe('forks', () => {
     expect('error' in (await setForkClosed(q, ben, f.id, true))).toBe(true);
     const closed = (await setForkClosed(q, ana, f.id, true)).fork!;
     expect(closed.closed).toBe(true);
+    // closed takes no new posts from anyone, its own maker included
+    expect(closed.canPost).toBe(false);
+    expect(await canPostInFork(q, f.id, ana.sub)).toBe(false);
     // closed: no new posts, but what is already there is untouched
     expect('error' in (await createShadow(q, ben, { title: 'too late', forkId: f.id }))).toBe(true);
     const bensOwn = (await createShadow(q, ben, { title: 'a Shadow of ben’s' })).shadow!;

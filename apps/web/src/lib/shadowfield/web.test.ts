@@ -131,11 +131,26 @@ describe('the web that moves: what the device remembers', () => {
     const later = beginVisit(readMemory(storage), 1000 + 31 * 60 * 1000);
     expect(later.since).toBe(1000);
     const raw = JSON.parse([...mem.values()][0]);
-    expect(Object.keys(raw).sort()).toEqual(['left', 'makers', 'seen', 'since']);
+    expect(Object.keys(raw).sort()).toEqual(['left', 'makers', 'passed', 'seen', 'since']);
     for (const v of Object.values(raw)) {
       if (Array.isArray(v)) for (const x of v) expect(typeof x).toBe('string');
       else expect(typeof v).toBe('number');
     }
+  });
+
+  it('a fork paused at is kept until it is truly entered, so a way back to it survives', async () => {
+    const { markPassed, clearPassed } = await import('./web');
+    let m = emptyMemory();
+    m = markPassed(m, 'fork/f1');
+    expect(m.passed).toEqual(['fork/f1']);
+    // pausing at it again is not a second turn not taken
+    m = markPassed(m, 'fork/f1');
+    expect(m.passed).toEqual(['fork/f1']);
+    m = markPassed(m, 'fork/f2');
+    expect(m.passed).toEqual(['fork/f1', 'fork/f2']);
+    // entering it (or letting it go) is the only thing that clears it
+    m = clearPassed(m, 'fork/f1');
+    expect(m.passed).toEqual(['fork/f2']);
   });
 });
 

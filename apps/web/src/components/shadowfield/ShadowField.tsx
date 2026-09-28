@@ -41,7 +41,9 @@ import {
   beginVisit,
   emptyMemory,
   findFood,
+  clearPassed,
   markMaker,
+  markPassed,
   markSeen,
   lastPluck,
   readMemory,
@@ -53,7 +55,7 @@ import { hash01, smoothstep } from '@/lib/shadowfield/rng';
 import Donate from '@/components/support/Donate';
 import { founderPlots } from '@/lib/shadowfield/plots';
 import { buildWorld, resolvePath } from '@/lib/shadowfield/world';
-import type { Posted } from '@/lib/shadowfield/sources/posted';
+import type { Posted, PostedFork } from '@/lib/shadowfield/sources/posted';
 import { dayOf, wordFor } from '@/lib/shadowfield/prompts';
 import type { Phase } from '@/lib/shadowfield/phases';
 import { createLocalStore, LocalShadow, ShadowStore } from '@/lib/shadowfield/sources/local';
@@ -64,7 +66,7 @@ interface Props {
 }
 
 interface Composer {
-  mode: 'cast' | 'thought' | 'rewrite' | 'challenge' | 'synthesis' | 'note' | 'story' | 'spark' | 'answer';
+  mode: 'cast' | 'thought' | 'rewrite' | 'challenge' | 'synthesis' | 'note' | 'story' | 'spark' | 'answer' | 'fork' | 'inFork';
   /** For a note left at a seal: the idea it is left at. */
   target?: string;
   /** For dialectic modes: the thought ids this one answers. */
@@ -77,6 +79,8 @@ interface Composer {
   parentId?: string | null;
   thoughtId?: string | null;
   initial?: string;
+  /** For 'inFork': which fork the post joins. */
+  forkId?: string;
 }
 
 interface Tip {
@@ -388,8 +392,14 @@ export default function ShadowField({ serif }: Props) {
   // a shared link to posted work waits for it to arrive from the server
   const pendingAtRef = useRef<string[] | null>(null);
   const pendingWhoRef = useRef<string | null>(null);
+  const pendingInviteRef = useRef<{ forkId: string; token: string } | null>(null);
   const [posting, setPosting] = useState(false);
   const [posted, setPostedList] = useState<Posted[]>([]);
+  const [forkRoom, setForkRoom] = useState<{ used: number; room: number } | null>(null);
+  // bumped to ask the existing load-posted effect to run again, without any new code calling it directly
+  const [refreshTick, setRefreshTick] = useState(0);
+  // shown once, right after opening a fork: the link that lets someone else post inside it
+  const [forkInvite, setForkInvite] = useState<{ forkId: string; title: string; link: string } | null>(null);
   // films can be added once the site has a file store for them
   const [filmsOn, setFilmsOn] = useState(false);
   const postPicRef = useRef<HTMLInputElement | null>(null);
@@ -685,6 +695,11 @@ export default function ShadowField({ serif }: Props) {
         history.replaceState(null, '', `${url.pathname}${url.search}${window.location.hash}`);
         pendingWhoRef.current = who.toLowerCase();
       }
+      // a fork's invite link (?fork=<id>&invite=<token>): held until signed in, then spent and
+      // dropped from the address bar; left in place so signing in carries it through
+      const forkId = url.searchParams.get('fork');
+      const invite = url.searchParams.get('invite');
+      if (forkId && invite) pendingInviteRef.current = { forkId, token: invite };
     } catch {
       // ignore malformed links
     }
@@ -877,6 +892,17 @@ export default function ShadowField({ serif }: Props) {
       if (z < hopBase(fc)) z += stream.length;
       if (best === null || z < best) best = z;
     }
+    // nothing waiting: a fork you passed but never entered is still a turn you can still take
+    if (best === null) {
+      for (const id of webMemRef.current.passed) {
+        const i = stream.byId.get(id);
+        if (i === undefined) continue;
+        let z = stopZ(stream, stream.stations[i], hopBase(fc));
+        if (Math.abs(z - hopBase(fc)) < 0.05) continue;
+        if (z < hopBase(fc)) z += stream.length;
+        if (best === null || z < best) best = z;
+      }
+    }
     if (best === null) return false;
     hopFlight(best, 'threshold');
     return true;
@@ -931,13 +957,14 @@ export default function ShadowField({ serif }: Props) {
   const loadPosted = useCallback(async (quiet = false) => {
     const d = (await fetch('/api/shadows', { cache: 'no-store' })
       .then((r) => r.json())
-      .catch(() => null)) as { enabled?: boolean; films?: boolean; public?: Posted[]; mine?: Posted[]; keeps?: string[] } | null;
+      .catch(() => null)) as { enabled?: boolean; films?: boolean; public?: Posted[]; mine?: Posted[]; keeps?: string[]; room?: { used: number; room: number } } | null;
     if (!d) return;
     // looking again and finding nothing new changes nothing
     const sig = JSON.stringify(d);
     if (quiet && sig === postedSigRef.current) return;
     postedSigRef.current = sig;
     setFilmsOn(!!d.films);
+    setForkRoom(d.room ?? null);
     postedRef.current = { public: d.public ?? [], mine: d.mine ?? [], today: !!d.enabled, keeps: d.keeps ?? [], linked: postedRef.current.linked ?? [] };
     setKeeps(d.keeps ?? []);
     setPosting(!!d.enabled);
@@ -983,7 +1010,35 @@ export default function ShadowField({ serif }: Props) {
 
   useEffect(() => {
     void loadPosted();
-  }, [loadPosted, me?.user]);
+  }, [loadPosted, me?.user, refreshTick]);
+
+  // a fork's invite link, held until signed in: spent once, then dropped from the address bar
+  useEffect(() => {
+    const invite = pendingInviteRef.current;
+    if (!invite || !me?.user) return;
+    pendingInviteRef.current = null;
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('fork');
+      url.searchParams.delete('invite');
+      history.replaceState(null, '', `${url.pathname}${url.search}${window.location.hash}`);
+    } catch {
+      // ignore
+    }
+    fetch(`/api/forks/${encodeURIComponent(invite.forkId)}/join`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: invite.token }),
+    })
+      .then(async (res) => {
+        const dj = (await res.json().catch(() => ({}))) as { error?: string };
+        if (res.ok) {
+          setNotice('you may post there now');
+          setRefreshTick((t) => t + 1);
+        } else setNotice((dj.error ?? 'that invitation is not open').toLowerCase());
+      })
+      .catch(() => setNotice('that invitation is not open'));
+  }, [me?.user]);
 
   /** Change one of your posted Shadows (share it, keep it to yourself) or let it go. */
   const changePosted = async (id: string, change: { visibility: 'private' | 'unlisted' | 'public' } | 'remove' | 'take down') => {
@@ -1014,8 +1069,10 @@ export default function ShadowField({ serif }: Props) {
   };
 
   const signIn = () => {
+    // wherever they are (an invite link included) is where they come back to
+    const next = encodeURIComponent(window.location.pathname + window.location.search || '/slate');
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a route handler that redirects to Google needs a full page load
-    window.location.assign('/api/auth/google?next=/slate');
+    window.location.assign(`/api/auth/google?next=${next}`);
   };
 
   /** A link to the thing in front of you, which unfolds into its own card wherever it is sent. */
@@ -1469,6 +1526,27 @@ export default function ShadowField({ serif }: Props) {
             } catch {
               // remembered for this visit only
             }
+          }
+        }
+        // a fork paused at, not yet entered: a way back to it, if it was left for later
+        if (here?.node.id.startsWith('fork/') && hereSinceRef.current.id === here.node.id && !fc.hop && nowMs - hereSinceRef.current.t > 1200) {
+          if (!webMemRef.current.passed.includes(here.node.id)) {
+            webMemRef.current = markPassed(webMemRef.current, here.node.id);
+            try {
+              writeMemory(window.localStorage, webMemRef.current);
+            } catch {
+              // remembered for this visit only
+            }
+          }
+        }
+        // truly inside a fork (looking at something it holds, not just its gate): it is no longer a turn not taken
+        const insideFork = here?.path.find((n) => n.id.startsWith('fork/') && n.id !== here.node.id);
+        if (insideFork && webMemRef.current.passed.includes(insideFork.id)) {
+          webMemRef.current = clearPassed(webMemRef.current, insideFork.id);
+          try {
+            writeMemory(window.localStorage, webMemRef.current);
+          } catch {
+            // remembered for this visit only
           }
         }
         // staying with something a while is part of its resonance (once a visit; a mark of the day, nothing more)
@@ -2647,6 +2725,41 @@ export default function ShadowField({ serif }: Props) {
           setNotice('kept, only you can see it until you share it');
         })
         .catch(() => setNotice('that could not be kept'));
+    } else if (c.mode === 'fork' && c.shadowId && me?.user) {
+      // opening one is always signed-in and server-kept: others must be able to find it too
+      fetch('/api/forks', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ hostShadowId: c.shadowId, title: value, postAccess: 'invite' }),
+      })
+        .then(async (res) => {
+          const d = (await res.json().catch(() => ({}))) as { fork?: PostedFork; error?: string };
+          if (!res.ok || !d.fork) {
+            setNotice((d.error ?? 'that could not be opened').toLowerCase());
+            return;
+          }
+          await loadPosted();
+          if (d.fork.inviteLink) {
+            const link = `${window.location.origin}/slate?fork=${encodeURIComponent(d.fork.id)}&invite=${encodeURIComponent(d.fork.inviteLink)}`;
+            setForkInvite({ forkId: d.fork.id, title: d.fork.title, link });
+          }
+        })
+        .catch(() => setNotice('that could not be opened'));
+    } else if (c.mode === 'inFork' && c.forkId && me?.user) {
+      fetch('/api/shadows', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: value, forkId: c.forkId }) })
+        .then(async (res) => {
+          const d = (await res.json().catch(() => ({}))) as { shadow?: Posted; error?: string };
+          if (!res.ok || !d.shadow) {
+            setNotice((d.error ?? 'that could not be kept').toLowerCase());
+            return;
+          }
+          await loadPosted();
+          const world = worldRef.current;
+          const path = world && findPath(world, `p/${d.shadow.id}`);
+          if (path) flyTo(path);
+          setNotice('kept, only you can see it until you share it');
+        })
+        .catch(() => setNotice('that could not be kept'));
     } else if (c.mode === 'cast') {
       const s = store.cast(value, c.lx, c.ly);
       rebuild();
@@ -2698,6 +2811,37 @@ export default function ShadowField({ serif }: Props) {
       store.revise(c.shadowId, c.thoughtId ?? null, value);
       rebuild();
       ripple(c.thoughtId ? `local/${c.shadowId}/${c.thoughtId}` : `local/${c.shadowId}`);
+    }
+  };
+
+  /** Closes (takes no new posts) or reopens a fork of yours; what is inside it is never touched. */
+  const toggleFork = (forkId: string, closed: boolean) => {
+    fetch(`/api/forks/${encodeURIComponent(forkId)}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ closed }),
+    })
+      .then(async (res) => {
+        const d = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) {
+          setNotice((d.error ?? 'that could not be changed').toLowerCase());
+          return;
+        }
+        await loadPosted();
+        setNotice(closed ? 'closed: what is inside it stays' : 'open again');
+      })
+      .catch(() => setNotice('that could not be changed'));
+  };
+
+  /** Its invite link, copied for sending: whoever opens it may post inside, once they sign in. */
+  const copyForkInvite = async (f: PostedFork) => {
+    if (!f.inviteLink) return;
+    const link = `${window.location.origin}/slate?fork=${encodeURIComponent(f.id)}&invite=${encodeURIComponent(f.inviteLink)}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setNotice('invite link copied');
+    } catch {
+      setForkInvite({ forkId: f.id, title: f.title, link });
     }
   };
 
@@ -2848,8 +2992,7 @@ export default function ShadowField({ serif }: Props) {
           {me.user.name.split(' ')[0]}
         </button>
       ) : me?.enabled ? (
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a route handler that redirects to Google needs a full page load
-        <button type="button" className={styles.me} onClick={() => window.location.assign('/api/auth/google?next=/slate')}>
+        <button type="button" className={styles.me} onClick={signIn}>
           sign in
         </button>
       ) : null}
@@ -3041,7 +3184,52 @@ export default function ShadowField({ serif }: Props) {
             <button type="button" className={styles.quiet} onClick={() => changePosted(postedHere.id, 'remove')}>
               {postedHere.kind === 'story' ? 'take it back' : 'let it go'}
             </button>
+            {postedHere.kind !== 'story' && (forkRoom?.room ?? 1) > 0 && (
+              <button
+                type="button"
+                className={styles.quiet}
+                onClick={() => {
+                  const cam = camRef.current;
+                  if (!cam) return;
+                  setComposer({ mode: 'fork', x: cam.w / 2 - 140, y: cam.h - 150, lx: 0, ly: 0, shadowId: postedHere.id });
+                }}
+              >
+                open a space here{forkRoom ? ` (room for ${forkRoom.room} more)` : ''}
+              </button>
+            )}
           </>
+        )}
+        {postedHere?.forks?.map(
+          (f) =>
+            f.mine && (
+              <span key={f.id} className={styles.quiet}>
+                <button type="button" className={styles.quiet} onClick={() => toggleFork(f.id, !f.closed)}>
+                  {f.closed ? `reopen “${f.title}”` : `close “${f.title}”`}
+                </button>
+                {f.postAccess === 'invite' && !f.closed && (
+                  <button type="button" className={styles.quiet} onClick={() => copyForkInvite(f)}>
+                    copy its invite link
+                  </button>
+                )}
+              </span>
+            )
+        )}
+        {postedHere?.forks?.map(
+          (f) =>
+            f.canPost && (
+              <button
+                key={`post-${f.id}`}
+                type="button"
+                className={styles.quiet}
+                onClick={() => {
+                  const cam = camRef.current;
+                  if (!cam) return;
+                  setComposer({ mode: 'inFork', x: cam.w / 2 - 140, y: cam.h - 150, lx: 0, ly: 0, forkId: f.id });
+                }}
+              >
+                post inside “{f.title}”
+              </button>
+            )
         )}
         {postedHere && !postedHere.mine && (
           <button type="button" className={styles.quiet} onClick={() => reportPosted(postedHere.id)}>
@@ -3264,6 +3452,37 @@ export default function ShadowField({ serif }: Props) {
         </div>
       )}
 
+      {forkInvite && (
+        <div className={styles.give}>
+          <div className={styles.giveFor}>send this to invite someone into “{forkInvite.title}”</div>
+          <input
+            type="text"
+            readOnly
+            value={forkInvite.link}
+            className={styles.quiet}
+            onFocus={(e) => e.currentTarget.select()}
+            style={{ width: '100%', background: 'none', border: 'none', font: 'inherit' }}
+          />
+          <button
+            type="button"
+            className={styles.quiet}
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(forkInvite.link);
+                setNotice('invite link copied');
+              } catch {
+                // the link is already shown to select and copy by hand
+              }
+            }}
+          >
+            copy
+          </button>
+          <button type="button" className={styles.quiet} onClick={() => setForkInvite(null)}>
+            done
+          </button>
+        </div>
+      )}
+
       {giving && path.length <= 1 && (
         <div className={styles.give}>
           <Donate compact onDone={() => setGiving(false)} />
@@ -3371,7 +3590,11 @@ export default function ShadowField({ serif }: Props) {
                           ? posted.find((q) => q.id === composer.target)?.kind === 'story'
                             ? 'what could be made from it?'
                             : 'what would you make of it?'
-                          : ''
+                          : composer.mode === 'fork'
+                            ? 'what belongs there?'
+                            : composer.mode === 'inFork'
+                              ? 'what are you leaving here?'
+                              : ''
             }
             onKeyDown={(e) => {
               if (e.key === 'Escape') setComposer(null);
@@ -3393,7 +3616,11 @@ export default function ShadowField({ serif }: Props) {
                   ? 'enter to answer · shared with everyone, under your first name'
                   : composer.mode === 'spark'
                   ? 'enter to keep · yours, private until you share it'
-                  : 'enter to keep'}
+                  : composer.mode === 'fork'
+                    ? 'enter to open it · invite-only until you share it wider'
+                    : composer.mode === 'inFork'
+                      ? 'enter to leave it here · private until you share it'
+                      : 'enter to keep'}
           </span>
         </form>
       )}

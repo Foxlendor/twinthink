@@ -227,20 +227,26 @@ seen. Each maker has room for a bounded number of forks at once
 (`FORK_ROOM_MAX`), closed ones included, since what a fork holds keeps taking
 real room even while quiet.
 
-Built so far: the data layer only (schema, `store.ts`, `/api/forks` routes,
-tests). Not yet built: showing a fork as a real gate in the flight itself (so
-travelling into one feels like passing through a ring, the way HEX Lab or a
-Whoeuvre already do), the compose UI for opening/moving/closing a fork and
-sharing its invite link, and on-device breadcrumbs (which fork someone
-approached but did not enter, so they can find their way back to it later,
-kept the same way `web.ts` already keeps its memory: on the device, ids and
-times only). Any shared, aggregate sense of "others paused here" at a fork
-should reuse resonance exactly as it already works: an anonymous, one-way
-mark, shown as a felt quality, never a number, never an individual's trail.
+Built now, end to end: a fork shows in the flight as a real gate once it
+holds anything (the same `gate = has real children` rule as any ring; an
+empty fork holds its place but is not yet something to travel through), with
+its own name, its line ("open by invitation", "closed now: what was made
+here stays"), and titles/phases exactly like everywhere else. The compose UI
+lets a maker open one from their own Shadow ("open a space here", with the
+room they have left shown alongside it), see and copy its invite link,
+close and reopen it, and post inside any fork whose rule currently allows
+it; a signed-in-but-new invite link is spent automatically once the visitor
+signs in, wherever they were, and dropped from the address bar. Breadcrumbs
+are real too: dwelling at a fork's own gate without going in marks it, on
+this device only (`web.ts`'s `passed`, ids only, never sent anywhere); the
+compass ("n", or its rose dot) leads back to it once nothing else is
+waiting, and going in clears it. What's still open: an aggregate, resonance-shaped
+sense of "others paused here" at a fork (the mechanism already exists;
+nothing plugs a fork's id into it yet), and moving/closing controls beyond
+the single maker who opened it (co-op rights for other creators).
 
 ## Next
-1. Wire forks into the flight itself: a fork as a travelable gate, its
-   compose UI, and on-device breadcrumbs.
+1. Resonance for forks (reuse the existing mechanism, a fork's id as its target).
 2. Plot claims + earning rules above (still planned, not built).
 3. Rabi: once forks can be made and moved by hand, give the same creation
    tools a guided, preview-and-approve AI layer. Not before the manual

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { del } from '@vercel/blob';
 import { currentUser } from '@/lib/auth/session';
 import { db, dbConfigured } from '@/lib/shadows/db';
-import { forViewer, removeShadow, shadowFor, updateShadow } from '@/lib/shadows/store';
+import { forksIn, forViewer, removeShadow, shadowFor, updateShadow } from '@/lib/shadows/store';
 
 // Only a Shadow's maker changes it or lets it go; the Canvas's owner may take
 // a public one down (it is hidden, not deleted, and stays its maker's).
@@ -15,7 +15,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const user = await currentUser();
     const s = await shadowFor(await db(), id, user?.sub);
     if (!s) return NextResponse.json({ error: 'Not here.' }, { status: 404 });
-    return NextResponse.json({ shadow: forViewer(s, user?.sub) }, { headers: { 'cache-control': 'no-store' } });
+    const forks = await forksIn(await db(), s.id, user?.sub);
+    return NextResponse.json({ shadow: { ...forViewer(s, user?.sub), forks } }, { headers: { 'cache-control': 'no-store' } });
   } catch {
     return NextResponse.json({ error: 'That could not be read.' }, { status: 502 });
   }

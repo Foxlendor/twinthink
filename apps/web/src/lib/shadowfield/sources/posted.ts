@@ -30,6 +30,23 @@ export interface Posted {
   parent?: { title: string; kind: 'shadow' | 'story'; by: string } | null;
   /** Yours, taken down: only you see it. */
   hidden?: boolean;
+  /** The fork it was posted inside, if any (sharing still follows the usual rule). */
+  forkId?: string | null;
+  /** The forks open inside this Shadow, if any. */
+  forks?: PostedFork[];
+}
+
+/** A fork: a named space open inside a Shadow, for others to travel into and, by its own rule, post inside. */
+export interface PostedFork {
+  id: string;
+  hostShadowId: string;
+  title: string;
+  postAccess: 'anyone' | 'invite';
+  closed: boolean;
+  created: number;
+  mine: boolean;
+  canPost: boolean;
+  inviteLink?: string;
 }
 
 const short = (t: string) => (t.length > 36 ? t.slice(0, 34).replace(/\s+\S*$/, '') + '…' : t);
@@ -75,7 +92,37 @@ function mediaOf(p: Posted): Media[] | undefined {
   });
 }
 
-function node(p: Posted, i: number): IdeaNode {
+/** The one line under a fork's name: what it is, and whether it still takes new posts. */
+function forkLine(f: PostedFork): string {
+  if (f.closed) return 'closed now: what was made here stays.';
+  if (f.mine) return f.postAccess === 'anyone' ? 'open to anyone signed in.' : 'open by invitation.';
+  return 'a space opened here.';
+}
+
+/** A fork, as a gate: what is posted inside it are its children, the same shape as anywhere else. */
+function forkNode(f: PostedFork, kids: IdeaNode[], i: number): IdeaNode {
+  const first = kids.length ? Math.min(...kids.map((k) => k.began)) : f.created;
+  return {
+    id: `fork/${f.id}`,
+    title: f.title,
+    kind: 'unknown',
+    origin: 'real',
+    began: first,
+    events: [{ t: f.created, kind: 'begin', note: 'opened' }],
+    state: f.closed ? 'dormant' : 'alive',
+    disclosure: 0,
+    children: kids,
+    line: forkLine(f),
+    x: Math.cos(i * 2.39996) * 0.4,
+    y: Math.sin(i * 2.39996) * 0.4,
+    r: 0.04,
+    seed: hashString(f.id),
+  };
+}
+
+/** What one Shadow posted `p` looks like, given `byFork`: everyone's Shadows, grouped by which fork (if any) holds them. */
+function node(p: Posted, i: number, byFork: Map<string, Posted[]>): IdeaNode {
+  const forks = (p.forks ?? []).map((f, k) => forkNode(f, (byFork.get(f.id) ?? []).map((c, j) => node(c, j, byFork)), k));
   return {
     id: `p/${p.id}`,
     title: p.title,
@@ -88,7 +135,7 @@ function node(p: Posted, i: number): IdeaNode {
     ],
     state: 'alive',
     disclosure: 0,
-    children: [],
+    children: forks,
     // its words are what is shown until it has pictures or films; then those are
     artifact: p.body && !p.media?.length ? { type: 'text', body: p.body } : undefined,
     media: mediaOf(p),
@@ -128,15 +175,25 @@ function ring(id: string, title: string, line: string, kids: IdeaNode[], x: numb
  */
 export function buildPosted(pub: Posted[], mine: Posted[], today = false, linked: Posted[] = []): IdeaNode[] {
   const out: IdeaNode[] = [];
+  // what is posted inside a fork lives only there, never also loose at the top level
+  const byFork = new Map<string, Posted[]>();
+  for (const p of [...pub, ...mine, ...linked]) {
+    if (!p.forkId) continue;
+    byFork.set(p.forkId, [...(byFork.get(p.forkId) ?? []), p]);
+  }
+  const at = (p: Posted, i: number) => node(p, i, byFork);
+  pub = pub.filter((p) => !p.forkId);
+  mine = mine.filter((p) => !p.forkId);
+  linked = linked.filter((p) => !p.forkId);
   // what someone sent you by its link (shared only that way): here for this visit, in its own ring
   const known = new Set([...pub, ...mine].map((p) => p.id));
   const sent = linked.filter((p) => !known.has(p.id));
-  if (sent.length) out.push(ring('linked', 'sent to you', 'shared with you by its link.', sent.map(node), 0.35, 0.7));
+  if (sent.length) out.push(ring('linked', 'sent to you', 'shared with you by its link.', sent.map(at), 0.35, 0.7));
   const day = dayOf();
   const isToday = (p: Posted) => p.day === day;
   if (today) {
     const answers = [...mine.filter(isToday), ...pub.filter((p) => isToday(p) && !p.mine)].sort((a, b) => b.created - a.created);
-    const r = ring('today', wordFor(day), 'today’s word. make something of it.', answers.map(node), -0.1, -0.7);
+    const r = ring('today', wordFor(day), 'today’s word. make something of it.', answers.map(at), -0.1, -0.7);
     // it begins with the day, so it is always the newest thing on the Canvas
     r.began = Math.max(r.began, Date.parse(`${day}T00:00:00Z`));
     out.push(r);
@@ -147,7 +204,7 @@ export function buildPosted(pub: Posted[], mine: Posted[], today = false, linked
   const stories = [...mine.filter(isStory), ...pub.filter((p) => isStory(p) && !p.mine)].sort((a, b) => b.created - a.created);
   const others = pub.filter((p) => !p.mine && !isStory(p));
   mine = mine.filter((p) => !isStory(p));
-  if (stories.length) out.push(ring('stories', 'story time', 'true stories of making do, told without names.', stories.map(node), 0.1, 0.65));
+  if (stories.length) out.push(ring('stories', 'story time', 'true stories of making do, told without names.', stories.map(at), 0.1, 0.65));
   if (others.length) {
     // one ring for each maker, holding what they have shared: flying in is visiting them
     const byMaker = new Map<string, Posted[]>();
@@ -156,7 +213,7 @@ export function buildPosted(pub: Posted[], mine: Posted[], today = false, linked
       byMaker.set(k, [...(byMaker.get(k) ?? []), p]);
     }
     const makers = [...byMaker.entries()].map(([k, list], i) => {
-      const r = ring(`maker/${k}`, list[0].by || 'someone', list.length > 1 ? 'their whoeuvre: what they have shared.' : 'their whoeuvre: what they shared.', list.map(node), 0, 0);
+      const r = ring(`maker/${k}`, list[0].by || 'someone', list.length > 1 ? 'their whoeuvre: what they have shared.' : 'their whoeuvre: what they shared.', list.map(at), 0, 0);
       r.fixed = false;
       r.r = 0.05;
       r.x = Math.cos(i * 2.39996) * 0.5;
@@ -167,6 +224,6 @@ export function buildPosted(pub: Posted[], mine: Posted[], today = false, linked
     });
     out.push(ring('people', 'from everyone', 'shared by the people who made them.', makers, 0.6, -0.1));
   }
-  if (mine.length) out.push(ring('yours', 'your whoeuvre', 'what you have left here.', mine.map(node), -0.6, -0.2));
+  if (mine.length) out.push(ring('yours', 'your whoeuvre', 'what you have left here.', mine.map(at), -0.6, -0.2));
   return out;
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { currentUser } from '@/lib/auth/session';
 import { db, dbConfigured } from '@/lib/shadows/db';
-import { createShadow, forViewer, myKeeps, myShadows, publicShadows } from '@/lib/shadows/store';
+import { createShadow, forksForMany, forViewer, myKeeps, myShadows, publicShadows, roomFor } from '@/lib/shadows/store';
 
 // Shadows people post. Anyone may see the public ones (their maker's first
 // name, the name of the work and what is inside it; nothing else). Signed-in
@@ -17,7 +17,14 @@ export async function GET() {
     const pub = (await publicShadows(q)).map((s) => forViewer(s, user?.sub));
     const mine = user ? (await myShadows(q, user.sub)).map((s) => forViewer(s, user.sub)) : [];
     const keeps = user ? await myKeeps(q, user.sub) : [];
-    return NextResponse.json({ enabled: true, signedIn: !!user, films: !!process.env.BLOB_READ_WRITE_TOKEN, public: pub, mine, keeps }, { headers: { 'cache-control': 'no-store' } });
+    // forks for every Shadow about to be sent, in one round trip; room is a maker's own to know
+    const forksByHost = await forksForMany(q, [...new Set([...pub, ...mine].map((s) => s.id))], user?.sub);
+    const withForks = <T extends { id: string }>(list: T[]) => list.map((s) => ({ ...s, forks: forksByHost[s.id] ?? [] }));
+    const room = user ? await roomFor(q, user.sub) : undefined;
+    return NextResponse.json(
+      { enabled: true, signedIn: !!user, films: !!process.env.BLOB_READ_WRITE_TOKEN, public: withForks(pub), mine: withForks(mine), keeps, ...(room ? { room } : {}) },
+      { headers: { 'cache-control': 'no-store' } }
+    );
   } catch {
     return NextResponse.json({ enabled: false, public: [], mine: [], error: 'The Slate could not be read just now.' }, { status: 502 });
   }
