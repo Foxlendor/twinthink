@@ -41,6 +41,11 @@ import {
   logFunnelEvent,
   WATCH_GROWTH,
   LEAVE_GROWTH,
+  createSharedFall,
+  sharedFallFor,
+  joinSharedFall,
+  setSharedFallStation,
+  leaveSharedFall,
 } from './store';
 
 let q: Query;
@@ -539,5 +544,69 @@ describe('Rabi noticing pressure', () => {
       { event: 'composer_opened', created_fork_id: null },
       { event: 'fork_created', created_fork_id: 'new-fork-id' },
     ]);
+  });
+});
+
+describe('a shared Fall', () => {
+  it('is led by whoever opens it, and by no one else, until an invited account joins', async () => {
+    const r = await createSharedFall(q, ana);
+    const f = r.sharedFall;
+    expect(f.hosting).toBe(true);
+    expect(f.stationId).toBeNull();
+    expect(f.ended).toBe(false);
+    expect(f.inviteLink).toBeTruthy();
+    expect(f.participants).toEqual([{ token: expect.any(String), name: 'Ana Maria Lopez', mine: true }]);
+    // not yet invited: cannot read it, and cannot lead it
+    expect(await sharedFallFor(q, f.id, ben.sub)).toBeNull();
+    expect('error' in (await setSharedFallStation(q, f.id, ben.sub, 'p/x'))).toBe(true);
+    // a wrong token opens nothing
+    expect('error' in (await joinSharedFall(q, f.id, 'not-the-token', ben))).toBe(true);
+    expect(await sharedFallFor(q, f.id, ben.sub)).toBeNull();
+  });
+
+  it('lets an invited account travel it as an independent participant, never a viewer', async () => {
+    const f = (await createSharedFall(q, ana)).sharedFall;
+    expect('ok' in (await joinSharedFall(q, f.id, f.inviteLink!, ben))).toBe(true);
+    const seen = await sharedFallFor(q, f.id, ben.sub);
+    expect(seen!.hosting).toBe(false);
+    expect(seen!.hostName).toBe('Ana Maria Lopez');
+    // never sent to anyone but its own leader
+    expect(seen!.inviteLink).toBeUndefined();
+    expect(seen!.participants.map((p) => p.name).sort()).toEqual(['Ana Maria Lopez', 'Ben']);
+    // recognisable within this one shared Fall, never their account id
+    expect(seen!.participants.some((p) => p.token === ben.sub)).toBe(false);
+    // Ben can tell his own presence apart from hers
+    expect(seen!.participants.find((p) => p.name === 'Ben')!.mine).toBe(true);
+    expect(seen!.participants.find((p) => p.name === 'Ana Maria Lopez')!.mine).toBe(false);
+  });
+
+  it('gives the same person a different token in a different shared Fall: never a lasting fingerprint', async () => {
+    const f1 = (await createSharedFall(q, ana)).sharedFall;
+    const f2 = (await createSharedFall(q, ana)).sharedFall;
+    await joinSharedFall(q, f1.id, f1.inviteLink!, ben);
+    await joinSharedFall(q, f2.id, f2.inviteLink!, ben);
+    const t1 = (await sharedFallFor(q, f1.id, ben.sub))!.participants.find((p) => p.name === 'Ben')!.token;
+    const t2 = (await sharedFallFor(q, f2.id, ben.sub))!.participants.find((p) => p.name === 'Ben')!.token;
+    expect(t1).not.toBe(t2);
+  });
+
+  it('is only ever moved by its own leader, never a follower — and never a follower\'s own position at all', async () => {
+    const f = (await createSharedFall(q, ana)).sharedFall;
+    await joinSharedFall(q, f.id, f.inviteLink!, ben);
+    expect('error' in (await setSharedFallStation(q, f.id, ben.sub, 'p/somewhere'))).toBe(true);
+    expect('ok' in (await setSharedFallStation(q, f.id, ana.sub, 'p/somewhere'))).toBe(true);
+    expect((await sharedFallFor(q, f.id, ben.sub))!.stationId).toBe('p/somewhere');
+  });
+
+  it('a follower leaving keeps it open; the leader leaving ends it for everyone, touching nothing else', async () => {
+    const f = (await createSharedFall(q, ana)).sharedFall;
+    await joinSharedFall(q, f.id, f.inviteLink!, ben);
+    await leaveSharedFall(q, f.id, ben.sub);
+    expect((await sharedFallFor(q, f.id, ana.sub))!.ended).toBe(false);
+    await leaveSharedFall(q, f.id, ana.sub);
+    expect((await sharedFallFor(q, f.id, ana.sub))!.ended).toBe(true);
+    // no one else to hand it to yet: once ended, it takes no further moves or joins
+    expect('error' in (await setSharedFallStation(q, f.id, ana.sub, 'p/late'))).toBe(true);
+    expect('error' in (await joinSharedFall(q, f.id, f.inviteLink!, ben))).toBe(true);
   });
 });

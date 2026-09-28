@@ -11,7 +11,7 @@
 import { IdeaNode, LifeEvent, lastActivity, rippleReach } from './model';
 import { ScreenTransform } from './camera';
 import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, flightScale, leanAt, project, travelled, viewOf } from './flight';
-import { Hit, INK, PAPER, ROSE, TINT_COOL, TINT_WARM, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
+import { Hit, INK, PAPER, PRESENCE, ROSE, TINT_COOL, TINT_WARM, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
 import { AUTHOR } from './sources/author';
 import { Pluck, trembleAt } from './web';
 import { Phase, stepPhase, withinBudget } from './phases';
@@ -27,11 +27,23 @@ const BUCKETS = 10;
 class Ink {
   private paths: (Path2D | undefined)[] = [];
   private rose: (Path2D | undefined)[] = [];
+  /** Another person's presence, in a shared Fall: its own cool tone, never confused with resonance's own warm one. */
+  private presence: (Path2D | undefined)[] = [];
   dot(x: number, y: number, size: number, a: number, rose = false) {
     if (a < 0.006) return;
     const b = Math.min(BUCKETS - 1, Math.floor(a * BUCKETS));
     const list = rose ? this.rose : this.paths;
     const p = (list[b] ??= new Path2D());
+    if (size < 1.3) p.rect(x - size / 2, y - size / 2, size, size);
+    else {
+      p.moveTo(x + size / 2, y);
+      p.arc(x, y, size / 2, 0, Math.PI * 2);
+    }
+  }
+  dotPresence(x: number, y: number, size: number, a: number) {
+    if (a < 0.006) return;
+    const b = Math.min(BUCKETS - 1, Math.floor(a * BUCKETS));
+    const p = (this.presence[b] ??= new Path2D());
     if (size < 1.3) p.rect(x - size / 2, y - size / 2, size, size);
     else {
       p.moveTo(x + size / 2, y);
@@ -66,6 +78,7 @@ class Ink {
     for (const [list, rgb] of [
       [this.paths, INK],
       [this.rose, ROSE],
+      [this.presence, PRESENCE],
     ] as const) {
       list.forEach((p, b) => {
         if (!p) return;
@@ -102,6 +115,11 @@ export interface FlightState {
   dt?: number;
   /** How much things resonate (0..1): people keep coming back to them. Drawn as dew catching light. */
   resonance?: Map<string, number>;
+  /**
+   * In a shared Fall: how many other people are, right now, at each thing (almost always 0 or 1
+   * in V1). Never a trail of where they have been, only where they are, this instant.
+   */
+  presence?: Map<string, number>;
 }
 
 /**
@@ -160,6 +178,25 @@ function drawDew(st: RenderState, s: Station, x: number, y: number, R: number, a
     const glint = Math.max(0, Math.sin(clock * 0.9 + hash01(s.node.seed, 120 + i) * 6.283));
     const size = clamp(R * 0.012, 1, 2.6) * (1 + 0.4 * glint);
     ink.dot(bx, by, size, alpha * (0.22 + 0.4 * level) * (0.5 + 0.5 * glint), glint > 0.85);
+  }
+}
+
+/**
+ * Presence: in a shared Fall, another person catching the same light you are,
+ * right now, at this one thing — never a trail of where they have been. Close
+ * to the thing itself, its own cool tone, so it is never mistaken for dew.
+ */
+function drawPresence(st: RenderState, s: Station, x: number, y: number, R: number, alpha: number, n: number, ink: Ink) {
+  if (R < 6) return;
+  const clock = st.reduced ? 0 : st.clock ?? 0;
+  for (let i = 0; i < n; i++) {
+    const ang = hash01(s.node.seed, 900 + i) * Math.PI * 2;
+    const rr = R * (0.3 + 0.15 * hash01(s.node.seed, 940 + i));
+    const bx = x + Math.cos(ang) * rr;
+    const by = y + Math.sin(ang) * rr;
+    const glint = Math.max(0, Math.sin(clock * 1.3 + hash01(s.node.seed, 960 + i) * 6.283));
+    const size = clamp(R * 0.02, 1.4, 3.4) * (1 + 0.35 * glint);
+    ink.dotPresence(bx, by, size, alpha * (0.5 + 0.4 * glint));
   }
 }
 
@@ -811,6 +848,8 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     if (s.depth === 0) drawAuthor(st, stream, x, y, R, alpha, ink);
     const res = fs.resonance?.get(s.node.id);
     if (res && !sealed) drawDew(st, s, x, y, R, alpha, res, ink);
+    const pres = fs.presence?.get(s.node.id);
+    if (pres && !sealed) drawPresence(st, s, x, y, R, alpha, pres, ink);
     ink.flush(ctx);
     if (!fs.frames.has(s.node.id) || dz < FOCUS * 2) fs.frames.set(s.node.id, { ox: x, oy: y, s: R });
     if (!sealed) seen.set(s.node.id, [x, y, alpha]);

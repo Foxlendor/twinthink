@@ -312,9 +312,52 @@ next signal (did Rabi identify a missing route, or just talk someone
 into making one?) but a separate measurement from this funnel, and is
 left for once this one has run long enough to trust.
 
+## Fall with me (V1)
+Two signed-in people travelling one Fall together: an overlay on top of each
+person's own Fall, never a second kind of one (`tt_shared_fall`, deliberately
+not `tt_falls`). One leads (`hosting`), moving it; the other follows,
+independently, on their own local camera. V1 is deliberately small: **Fall
+with me → Join → Lead/Follow → Leave.** No Pause (a leader simply not moving
+already is one), no Switch lead, no peel off/rejoin, no fork-lean visuals,
+no Dew/Drop overlap (Dew/Drop as an idea-judgment reaction is not built
+anywhere yet, in or out of this feature).
+
+Only the leader's current place is ever kept server-side (`station_id` on
+`tt_shared_fall`, overwritten in place, never appended to): a follower's own
+position is never collected at all, not even briefly. Presence is
+join-only (`tt_shared_fall_participant`): who is in it, not where they are
+or how they got there. Nothing about hesitation, timing, or a path not
+taken is ever stored; there is nothing to leak because nothing more than
+"who's in it" and "where is the leader" was ever written down.
+
+Sync is a plain poll (`/api/shared-falls/[id]`, ~800ms), not a socket: the
+leader publishes a content id (the same ids `findPath` already resolves),
+and a follower's own client calls the same local `flyTo`/hop it already has
+for any navigation — the flight's own spring smooths over the poll cadence,
+the same way it already smooths a single person's own hops. If the leader
+moves somewhere a follower's own `/api/shadows` response never included
+(still-private work, or content behind a closeness/disclosure level they
+have not earned), the follower is never moved there: "*[name] moved into a
+path you can't enter.*", holding at the nearest place they can actually see.
+Shared reference never overrides one person's own disclosure.
+
+Each participant is recognisable within one shared Fall only
+(`mark(fallId|sub)`, truncated): a different token in a different shared
+Fall, on purpose, so this is not a lasting cross-session fingerprint. A
+Whoeuvre-linked, carried-between-sessions signature is a later, deliberate
+choice, not a default.
+
+Visually: no avatars, no literal spiders. Presence draws as a small, cool
+glint (`PRESENCE`, its own tone, never confused with resonance's warm dew)
+right at the thing itself, wherever the shared Fall currently is — not a
+trail of where anyone has been, only that someone else is there, right now.
+
 ## Next
-1. Co-op rights: someone besides a fork's own maker managing it.
-2. Plot claims + earning rules above (still planned, not built).
-3. Rabi proposing (not just noticing): only once makers show, in the
+1. Switch lead: the first addition after V1, once "Fall with me" is shown
+   to actually feel better than sending a link or sharing a screen. This
+   is what turns "watch my Fall" into a genuine co-op Fall.
+2. Co-op rights: someone besides a fork's own maker managing it.
+3. Plot claims + earning rules above (still planned, not built).
+4. Rabi proposing (not just noticing): only once makers show, in the
    logs above, that they actually want this. Still never autonomous,
    still only ever through the fork system that already exists.

@@ -20,6 +20,8 @@ export let PAPER = '#fbfaf7';
 export let PAPER_RGB = '251,250,247';
 export let INK = '30,28,36';
 export let ROSE = '176,118,146';
+/** Another person's presence, in a shared Fall: cool, so it never reads as resonance's own warm glint. */
+export let PRESENCE = '92,126,168';
 export let TINT_WARM = '238,231,219';
 export let TINT_COOL = '233,229,236';
 export let NIGHT = false;
@@ -30,6 +32,7 @@ export function setNight(on: boolean) {
   PAPER_RGB = on ? '18,17,22' : '251,250,247';
   INK = on ? '232,228,238' : '30,28,36';
   ROSE = on ? '214,160,186' : '176,118,146';
+  PRESENCE = on ? '150,180,214' : '92,126,168';
   TINT_WARM = on ? '44,40,36' : '238,231,219';
   TINT_COOL = on ? '36,34,44' : '233,229,236';
 }

@@ -319,10 +319,35 @@ const SCHEMA = [
   // fork, if any, a click actually led to being made: opening the composer is not yet agreement
   `ALTER TABLE tt_rabi_log ADD COLUMN IF NOT EXISTS reached INT`,
   `ALTER TABLE tt_rabi_log ADD COLUMN IF NOT EXISTS created_fork_id TEXT`,
+  // a shared Fall: an overlay on top of two people's own Falls, never their definition. Its own
+  // maker leads it (the only thing kept here is where they currently are); ending it, or either
+  // person leaving it, touches neither person's own Fall or history.
+  `CREATE TABLE IF NOT EXISTS tt_shared_fall (
+    id TEXT PRIMARY KEY,
+    host_sub TEXT NOT NULL,
+    host_name TEXT NOT NULL,
+    invite_token TEXT NOT NULL,
+    station_id TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ended_at TIMESTAMPTZ
+  )`,
+  `CREATE INDEX IF NOT EXISTS tt_shared_fall_host ON tt_shared_fall (host_sub, created_at DESC)`,
+  // whoever has joined: presence only (has this account joined, and are they still here). Never
+  // where they are: a follower's own position is never collected, only the leader's.
+  `CREATE TABLE IF NOT EXISTS tt_shared_fall_participant (
+    shared_fall_id TEXT NOT NULL,
+    sub TEXT NOT NULL,
+    name TEXT NOT NULL,
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    left_at TIMESTAMPTZ,
+    PRIMARY KEY (shared_fall_id, sub)
+  )`,
+  `CREATE INDEX IF NOT EXISTS tt_shared_fall_participant_fall ON tt_shared_fall_participant (shared_fall_id)`,
 ];
 
 /** Bumped whenever SCHEMA changes, so a database already up to date is not locked for nothing. */
-const SCHEMA_VERSION = 12;
+const SCHEMA_VERSION = 13;
 
 // every read counts what grew from each, and names what each grew from (never who told a story)
 const SELECT = `SELECT s.*,
@@ -887,5 +912,107 @@ export async function joinFork(q: Query, forkId: string, inviteToken: string, vi
   const f = await getForkRaw(q, forkId);
   if (!f || f.closed || !f.invite_token || f.invite_token !== inviteToken) return { error: 'That invitation is not open.' } as const;
   await q(`INSERT INTO tt_fork_access (fork_id, poster_key) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [forkId, makerKey(viewerSub)]);
+  return { ok: true } as const;
+}
+
+// ---------------------------------------------------------------------------
+// A shared Fall: two people travelling one Fall together. Entirely an overlay
+// on top of each person's own: only the leader's current place is ever kept
+// (never a follower's own position, and never a history of hesitation or
+// timing, only the plain trail of where the shared Fall itself has gone).
+// Ending it, or either person leaving it, touches neither person's own Fall.
+
+export interface SharedFallParticipant {
+  /** Recognisable only for the life of this one shared Fall: hash(fallId, sub), never reused elsewhere. */
+  token: string;
+  name: string;
+  /** Whether this is the viewer's own entry (so a client can tell its own presence apart from theirs). */
+  mine: boolean;
+}
+
+export interface SharedFallView {
+  id: string;
+  hostName: string;
+  /** Whether this viewer is the one leading it. */
+  hosting: boolean;
+  /** A plain content id (the same ids `findPath` already resolves), null until the leader first moves. */
+  stationId: string | null;
+  ended: boolean;
+  /** Only ever sent to its own leader: the link that lets one other account join. */
+  inviteLink?: string;
+  participants: SharedFallParticipant[];
+}
+
+async function getSharedFallRaw(q: Query, id: string) {
+  const [r] = await q(`SELECT * FROM tt_shared_fall WHERE id = $1`, [id]);
+  return r ?? null;
+}
+
+/** One shared Fall, as one of its own participants sees it: null if it does not exist, or they are not in it. */
+export async function sharedFallFor(q: Query, id: string, viewerSub: string): Promise<SharedFallView | null> {
+  const f = await getSharedFallRaw(q, id);
+  if (!f) return null;
+  const all = await q(`SELECT sub, name, left_at FROM tt_shared_fall_participant WHERE shared_fall_id = $1`, [id]);
+  // once a participant, always able to check back (even to see it has ended); the list shown is only who is still in it
+  if (!all.some((r) => r.sub === viewerSub)) return null;
+  const rows = all.filter((r) => r.left_at === null);
+  const participants: SharedFallParticipant[] = [];
+  for (const r of rows) {
+    participants.push({ token: (await mark(`sharedFall|${id}|${r.sub}`)).slice(0, 16), name: String(r.name), mine: r.sub === viewerSub });
+  }
+  const hosting = f.host_sub === viewerSub;
+  const ended = f.ended_at !== null;
+  return {
+    id,
+    hostName: String(f.host_name),
+    hosting,
+    stationId: f.station_id ? String(f.station_id) : null,
+    ended,
+    ...(hosting && !ended ? { inviteLink: String(f.invite_token) } : {}),
+    participants,
+  };
+}
+
+/** Only a signed-in account opens one, leading it from wherever they already are. */
+export async function createSharedFall(q: Query, who: Author) {
+  // one that has already ended is let go after a couple of days: nothing here is meant to last
+  if (Math.random() < 0.05) await q(`DELETE FROM tt_shared_fall WHERE ended_at IS NOT NULL AND ended_at < NOW() - INTERVAL '2 days'`);
+  const id = newId();
+  const inviteToken = newId();
+  await q(`INSERT INTO tt_shared_fall (id, host_sub, host_name, invite_token) VALUES ($1, $2, $3, $4)`, [id, who.sub, who.name, inviteToken]);
+  await q(`INSERT INTO tt_shared_fall_participant (shared_fall_id, sub, name) VALUES ($1, $2, $3)`, [id, who.sub, who.name]);
+  return { sharedFall: (await sharedFallFor(q, id, who.sub))! } as const;
+}
+
+/** Opening someone's "Fall with me" link joins that account to it, as an independent participant, not a viewer. */
+export async function joinSharedFall(q: Query, id: string, inviteToken: string, who: Author) {
+  const f = await getSharedFallRaw(q, id);
+  if (!f || f.ended_at || f.invite_token !== inviteToken) return { error: 'That invitation is not open any more.' } as const;
+  await q(
+    `INSERT INTO tt_shared_fall_participant (shared_fall_id, sub, name) VALUES ($1, $2, $3)
+     ON CONFLICT (shared_fall_id, sub) DO UPDATE SET left_at = NULL, name = EXCLUDED.name`,
+    [id, who.sub, who.name]
+  );
+  return { ok: true } as const;
+}
+
+/** Only its own leader moves a shared Fall: a plain content id, the same the flight already navigates by. */
+export async function setSharedFallStation(q: Query, id: string, hostSub: string, stationId: string) {
+  const f = await getSharedFallRaw(q, id);
+  if (!f || f.host_sub !== hostSub || f.ended_at) return { error: 'Not yours to lead.' } as const;
+  await q(`UPDATE tt_shared_fall SET station_id = $2, updated_at = NOW() WHERE id = $1`, [id, stationId]);
+  return { ok: true } as const;
+}
+
+/**
+ * Leaving marks that seat empty; it never touches the leaver's own Fall or
+ * history. There being no one else yet to hand it to (see: switch lead,
+ * not built), the leader leaving ends the shared Fall itself.
+ */
+export async function leaveSharedFall(q: Query, id: string, sub: string) {
+  const f = await getSharedFallRaw(q, id);
+  if (!f) return { error: 'That is already over.' } as const;
+  await q(`UPDATE tt_shared_fall_participant SET left_at = NOW() WHERE shared_fall_id = $1 AND sub = $2 AND left_at IS NULL`, [id, sub]);
+  if (f.host_sub === sub && !f.ended_at) await q(`UPDATE tt_shared_fall SET ended_at = NOW() WHERE id = $1`, [id]);
   return { ok: true } as const;
 }

@@ -92,6 +92,17 @@ interface Tip {
   line?: string;
 }
 
+/** A shared Fall, as this account sees it (see /api/shared-falls): an overlay, never its own kind of Fall. */
+interface SharedFallState {
+  id: string;
+  hostName: string;
+  hosting: boolean;
+  stationId: string | null;
+  ended: boolean;
+  inviteLink?: string;
+  participants: { token: string; name: string; mine: boolean }[];
+}
+
 const FOLLOW_KEY = 'twinthink.following.v1';
 const VISITED_KEY = 'twinthink.visited.v1';
 const HINT_KEY = 'twinthink.hinted.v1';
@@ -311,6 +322,8 @@ export default function ShadowField({ serif }: Props) {
   // resonance: how much things resonate (from the server), and what you stayed with this visit
   const resonanceRef = useRef(new Map<string, number>());
   const pressureRef = useRef(new Map<string, number>());
+  // presence: in a shared Fall, how many other people are at each thing right now (never a trail)
+  const presenceRef = useRef(new Map<string, number>());
   const reachedRef = useRef(new Set<string>());
   const stayedRef = useRef(new Set<string>());
   const postedSigRef = useRef('');
@@ -400,6 +413,7 @@ export default function ShadowField({ serif }: Props) {
   const pendingAtRef = useRef<string[] | null>(null);
   const pendingWhoRef = useRef<string | null>(null);
   const pendingInviteRef = useRef<{ forkId: string; token: string } | null>(null);
+  const pendingSharedFallRef = useRef<{ id: string; token: string } | null>(null);
   const [posting, setPosting] = useState(false);
   const [posted, setPostedList] = useState<Posted[]>([]);
   const [forkRoom, setForkRoom] = useState<{ used: number; room: number } | null>(null);
@@ -410,6 +424,11 @@ export default function ShadowField({ serif }: Props) {
   // Rabi noticing pressure: shown only to the fork's own maker, never acted on by anything but them
   const [rabiNotice, setRabiNotice] = useState<{ forkId: string; title: string } | null>(null);
   const noticeCheckedRef = useRef(new Set<string>());
+  // "Fall with me": an overlay on the Fall you already have, never its own kind of Fall. Only ever
+  // the leader's own current place travels between two people; a follower's own position never does.
+  const [sharedFall, setSharedFall] = useState<SharedFallState | null>(null);
+  const sharedFallLastSentRef = useRef<string | null>(null);
+  const sharedFallLastSeenRef = useRef<string | null>(null);
   // films can be added once the site has a file store for them
   const [filmsOn, setFilmsOn] = useState(false);
   const postPicRef = useRef<HTMLInputElement | null>(null);
@@ -710,6 +729,9 @@ export default function ShadowField({ serif }: Props) {
       const forkId = url.searchParams.get('fork');
       const invite = url.searchParams.get('invite');
       if (forkId && invite) pendingInviteRef.current = { forkId, token: invite };
+      // a "Fall with me" invite (?sharedFall=<id>&invite=<token>): held the same way
+      const sharedFallId = url.searchParams.get('sharedFall');
+      if (sharedFallId && invite) pendingSharedFallRef.current = { id: sharedFallId, token: invite };
     } catch {
       // ignore malformed links
     }
@@ -1049,6 +1071,145 @@ export default function ShadowField({ serif }: Props) {
       })
       .catch(() => setNotice('that invitation is not open'));
   }, [me?.user]);
+
+  // a "Fall with me" invite, held until signed in: spent once, then dropped from the address bar
+  useEffect(() => {
+    const invite = pendingSharedFallRef.current;
+    if (!invite || !me?.user) return;
+    pendingSharedFallRef.current = null;
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('sharedFall');
+      url.searchParams.delete('invite');
+      history.replaceState(null, '', `${url.pathname}${url.search}${window.location.hash}`);
+    } catch {
+      // ignore
+    }
+    fetch(`/api/shared-falls/${encodeURIComponent(invite.id)}/join`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: invite.token }),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const dj = (await res.json().catch(() => ({}))) as { error?: string };
+          setNotice((dj.error ?? 'that invitation is not open').toLowerCase());
+          return;
+        }
+        const dr = await fetch(`/api/shared-falls/${encodeURIComponent(invite.id)}`, { cache: 'no-store' });
+        const d = (await dr.json().catch(() => ({}))) as { sharedFall?: SharedFallState };
+        if (d.sharedFall) setSharedFall(d.sharedFall);
+      })
+      .catch(() => setNotice('that invitation is not open'));
+  }, [me?.user]);
+
+  /** Opens a shared Fall, leading it from wherever you already are. */
+  const startSharedFall = () => {
+    fetch('/api/shared-falls', { method: 'POST' })
+      .then(async (res) => {
+        const d = (await res.json().catch(() => ({}))) as { sharedFall?: SharedFallState; error?: string };
+        if (!res.ok || !d.sharedFall) {
+          setNotice((d.error ?? 'that could not be opened').toLowerCase());
+          return;
+        }
+        sharedFallLastSentRef.current = null;
+        sharedFallLastSeenRef.current = null;
+        setSharedFall(d.sharedFall);
+      })
+      .catch(() => setNotice('that could not be opened'));
+  };
+
+  /** Leaving never ends your own Fall or history; the leader leaving ends it for the other person too. */
+  const leaveSharedFall = () => {
+    const id = sharedFall?.id;
+    setSharedFall(null);
+    if (!id) return;
+    void fetch(`/api/shared-falls/${encodeURIComponent(id)}/leave`, { method: 'POST' }).catch(() => undefined);
+  };
+
+  // the latest shared-Fall state, for the poll loop below to read without needing to be
+  // torn down and rebuilt every time that state changes (it changes almost every tick)
+  const sharedFallRef = useRef<SharedFallState | null>(null);
+  useEffect(() => {
+    sharedFallRef.current = sharedFall;
+  }, [sharedFall]);
+
+  // While a shared Fall is open: its leader publishes where they are (never a follower's own
+  // position, never anything but the current place); everyone in it polls for that one field and,
+  // if they are following, travels there themselves, on their own local spring, at their own pace.
+  useEffect(() => {
+    const id = sharedFall?.id;
+    const hosting = sharedFall?.hosting;
+    if (!id) return;
+    const timer = window.setInterval(() => {
+      if (sharedFallRef.current?.ended) return;
+      if (hosting) {
+        const here = hereRef.current?.node.id ?? null;
+        if (here && here !== sharedFallLastSentRef.current) {
+          sharedFallLastSentRef.current = here;
+          void fetch(`/api/shared-falls/${encodeURIComponent(id)}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ stationId: here }),
+          }).catch(() => undefined);
+        }
+      }
+      // both the leader and whoever is following read this back: the leader, to see who has
+      // joined or left and whether it has ended; a follower, to travel to where it now is
+      fetch(`/api/shared-falls/${encodeURIComponent(id)}`, { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then(async (d: { sharedFall?: SharedFallState } | null) => {
+          if (!d?.sharedFall) return;
+          const prev = sharedFallRef.current;
+          if (
+            !prev ||
+            prev.ended !== d.sharedFall.ended ||
+            prev.stationId !== d.sharedFall.stationId ||
+            prev.participants.length !== d.sharedFall.participants.length
+          ) {
+            setSharedFall(d.sharedFall);
+          }
+          if (hosting) return; // the leader's own place is never moved by this poll
+          const station = d.sharedFall.stationId;
+          if (!station || station === sharedFallLastSeenRef.current) return;
+          sharedFallLastSeenRef.current = station;
+          let world = worldRef.current;
+          let target = world && findPath(world, station);
+          if (!target) {
+            // not (yet) in what this account can see: one refresh before concluding it truly is not
+            await loadPosted(true);
+            world = worldRef.current;
+            target = world && findPath(world, station);
+          }
+          if (!target) {
+            setNotice(`${d.sharedFall.hostName} moved into a path you can't enter`);
+            return;
+          }
+          let open = target.length;
+          for (let i = 2; i < target.length; i++) {
+            if (target[i].disclosure > lensRef.current.closeness(target[1])) {
+              open = i;
+              break;
+            }
+          }
+          flyTo(target);
+          if (open < target.length) setNotice(`${d.sharedFall.hostName} moved into a path you can't enter`);
+        })
+        .catch(() => undefined);
+    }, 800);
+    return () => window.clearInterval(timer);
+  }, [sharedFall?.id, sharedFall?.hosting, flyTo, loadPosted]);
+
+  // presence, for the flight to draw: never a trail, only how many others are at the current
+  // shared place right now (almost always 0 or 1 in V1)
+  useEffect(() => {
+    const map = new Map<string, number>();
+    if (sharedFall && !sharedFall.ended && sharedFall.stationId) {
+      const others = sharedFall.participants.filter((p) => !p.mine).length;
+      if (others > 0) map.set(sharedFall.stationId, others);
+    }
+    presenceRef.current = map;
+  }, [sharedFall]);
 
   /** Change one of your posted Shadows (share it, keep it to yourself) or let it go. */
   const changePosted = async (id: string, change: { visibility: 'private' | 'unlisted' | 'public' } | 'remove' | 'take down') => {
@@ -1717,6 +1878,7 @@ export default function ShadowField({ serif }: Props) {
           compass: undefined,
           phases: phasesRef.current,
           resonance: resonanceRef.current,
+          presence: presenceRef.current,
           dt,
           web: {
             plucks: echoesRef.current.length ? [...plucksRef.current, ...echoesRef.current] : plucksRef.current,
@@ -3157,6 +3319,18 @@ export default function ShadowField({ serif }: Props) {
             send it
           </button>
         )}
+        {me?.user && !sharedFall && (
+          <button type="button" className={styles.quiet} onClick={startSharedFall}>
+            Fall with me
+          </button>
+        )}
+        {sharedFall && !sharedFall.ended && (
+          <button type="button" className={styles.quiet} onClick={leaveSharedFall}>
+            {sharedFall.participants.length <= 1
+              ? 'leave (waiting for them to join)'
+              : `leave (falling with ${sharedFall.participants.find((p) => !p.mine)?.name ?? sharedFall.hostName})`}
+          </button>
+        )}
         {posting && me?.enabled && current && shareable && !current.id.startsWith('k/') && !postedHere?.mine && top?.id !== 'sketchbook' && (
           <button type="button" className={keeps.includes(current.id) ? styles.following : styles.quiet} onClick={() => toggleKeep(current.id)}>
             {keeps.includes(current.id) ? 'kept' : 'keep it'}
@@ -3579,6 +3753,39 @@ export default function ShadowField({ serif }: Props) {
           </button>
           <button type="button" className={styles.quiet} onClick={() => setForkInvite(null)}>
             done
+          </button>
+        </div>
+      )}
+
+      {sharedFall && !sharedFall.ended && sharedFall.hosting && sharedFall.participants.length <= 1 && sharedFall.inviteLink && (
+        <div className={styles.give}>
+          <div className={styles.giveFor}>send this to Fall with someone</div>
+          <input
+            type="text"
+            readOnly
+            value={`${window.location.origin}/slate?sharedFall=${encodeURIComponent(sharedFall.id)}&invite=${encodeURIComponent(sharedFall.inviteLink)}`}
+            className={styles.quiet}
+            onFocus={(e) => e.currentTarget.select()}
+            style={{ width: '100%', background: 'none', border: 'none', font: 'inherit' }}
+          />
+          <button
+            type="button"
+            className={styles.quiet}
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(
+                  `${window.location.origin}/slate?sharedFall=${encodeURIComponent(sharedFall.id)}&invite=${encodeURIComponent(sharedFall.inviteLink!)}`
+                );
+                setNotice('invite link copied');
+              } catch {
+                // the link is already shown to select and copy by hand
+              }
+            }}
+          >
+            copy
+          </button>
+          <button type="button" className={styles.quiet} onClick={leaveSharedFall}>
+            never mind
           </button>
         </div>
       )}
