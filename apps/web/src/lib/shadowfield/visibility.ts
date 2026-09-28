@@ -75,7 +75,7 @@ export function semanticVisibilityAt(progress: number): SemanticVisibility {
 
 /**
  * Apply focus dampening: when a node is focused, emphasize it and quiet surroundings.
- * Subtle—not a spotlight—just a slight shift in attention.
+ * Subtle - not a spotlight - just a slight shift in attention.
  *
  * NOTE: Defined but not yet integrated into render path. Deferred pending focus system implementation.
  */
@@ -138,11 +138,11 @@ export function classifyByAttentionBudget(
   nodeIndex: number,
   totalNodes: number,
   isFocused: boolean,
-  coherence: number // 0–1 importance/coherence metric
+  coherence: number // 0-1 importance/coherence metric
 ): VisibilityTier {
   if (isFocused) return 'foreground';
 
-  // Roughly 3–7 foreground, 10–15 environmental, rest latent
+  // Roughly 3-7 foreground, 10-15 environmental, rest latent
   const foregroundBudget = 7;
   const environmentalBudget = 15;
 

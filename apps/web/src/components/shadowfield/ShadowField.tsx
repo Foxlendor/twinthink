@@ -9,6 +9,7 @@ import { Access, Flight, pan as panCam, stepFlight, transformOfPath, zoomAt } fr
 import { Hit, INK, Lens, RenderState, drawSketch, lifeWord, drawVoidLattice, pulseChain, render, shortDate } from '@/lib/shadowfield/render';
 import { paperTile, seedOf, tintOf } from '@/lib/people/share';
 import { getVideo, holdFilm, restVideos, setFilmRate, setMediaReadyCallback, settleVideos, toggleVideoSound } from '@/lib/shadowfield/media';
+import { breadcrumbs, BreadcrumbTrail } from '@/lib/shadowfield/breadcrumb';
 import {
   ScrubRange,
   Scrubber,
@@ -505,6 +506,18 @@ export default function ShadowField({ serif }: Props) {
     );
   }, []);
 
+  /**
+   * Record an intentional choice at a fork: user leaned into this child.
+   * Call before flying to a child when the parent has multiple children.
+   */
+  const recordLean = useCallback((target: IdeaNode[]) => {
+    if (target.length < 2) return;
+    const parent = target[target.length - 2];
+    const chosen = target[target.length - 1];
+    const siblings = parent.children.map((c) => c.id);
+    breadcrumbs.addLeaned(parent.id, chosen.id, siblings, performance.now());
+  }, []);
+
   const flyTo = useCallback((target: IdeaNode[], radius = 0.53) => {
     if (modeRef.current === 'flight') {
       // along the stream to the deepest thing on the path that is on it
@@ -986,6 +999,7 @@ export default function ShadowField({ serif }: Props) {
         scrub,
         plots: plotsFor(worldRef.current),
         paper: paperRef.current,
+        breadcrumbs,
       };
       if (flying) {
         // stillness: the one line under a thing appears only once you have stopped
@@ -1653,6 +1667,7 @@ export default function ShadowField({ serif }: Props) {
       return;
     }
     if (hit && hit.kind === 'node') {
+      recordLean(hit.path);
       flyTo(hit.path, hit.sealed ? 0.12 : 0.53);
       return;
     }

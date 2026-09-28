@@ -14,6 +14,7 @@ import { getPeaks } from './audio';
 import { PLOT, Plot } from './plots';
 import { clamp, hash01, noise1, smoothstep } from './rng';
 import { semanticVisibilityAt, SemanticVisibility, applyFocus } from './visibility';
+import { BreadcrumbTrail } from './breadcrumb';
 
 export const PAPER = '#fbfaf7';
 export const INK = '30,28,36';
@@ -72,6 +73,10 @@ export interface RenderState {
   dots?: (Path2D | undefined)[];
   /** Films drawn this frame (they play; the rest rest). */
   videos?: Set<string>;
+  /** Breadcrumb trail for tracking intentional choices at forks. */
+  breadcrumbs?: BreadcrumbTrail;
+  /** Callback when user leans into a gate (chooses a path). */
+  onLean?: (parentId: string, childId: string) => void;
 }
 
 const DOT_BUCKETS = 12;
@@ -1101,6 +1106,7 @@ export function drawNode(
   if (isRoot && !node.portal) drawPlots(st, T);
   if (isRoot) drawWater(st, node, T);
   const crowded = kids.length > 400;
+  const isFork = !isRoot && kids.length > 1; // multiple children = a fork
   for (const c of kids) {
     const cp = isRoot ? st.lens.closeness(c) : p;
     if (!isRoot && c.disclosure > p + SEAL_MARGIN) continue;
@@ -1129,6 +1135,13 @@ export function drawNode(
     else drawNode(st, c, CT, ca, cp, cpath, false);
     if (cs >= 4) (st.labels ??= []).push({ node: c, x: cx, y: cy, cs, alpha: ca * vis.childLabels, sealed });
     if (cs < 0.5 * M) st.hits.push({ kind: 'node', node: c, path: cpath, sealed, x: cx, y: cy, r: Math.max(cs * 0.55, 12), size: cs });
+
+    // Draw gate for fork (multiple children)
+    if (isFork && !sealed && !crowded) {
+      const isChosen = (st.breadcrumbs?.chosenAt(node.id) === c.id) ?? false;
+      const isUnexplored = (st.breadcrumbs?.unexploredAt(node.id) ?? []).includes(c.id);
+      drawGate(st, c, CT, ca, isChosen, isUnexplored);
+    }
   }
 }
 
@@ -1148,6 +1161,55 @@ function drawPortal(st: RenderState, node: IdeaNode, T: ScreenTransform, alpha: 
   if (inner < 0.004) return;
   drawLattice(st, T, inner * 0.2 * (1 - smoothstep(30 * M, 400 * M, R)), 1.2, R < 3 * M);
   drawNode(st, node, T, inner, 1, path, true);
+}
+
+/** A gate: visual portal at the boundary of a child when at a fork. */
+function drawGate(st: RenderState, child: IdeaNode, T: ScreenTransform, alpha: number, isChosen: boolean, isUnexplored: boolean) {
+  const R = T.s;
+  const M = st.M;
+  const { ctx } = st;
+  const cs = child.r * R;
+
+  // Gate only visible when approaching (child radius is legible)
+  if (cs < 30) return;
+
+  // Position at the boundary of the child
+  const cx = T.ox + child.x * R;
+  const cy = T.oy + child.y * R;
+
+  // Gate radius: slightly larger than child
+  const gr = cs * 1.3;
+
+  // Alpha based on state: chosen path is more visible, unexplored fades in
+  let gateAlpha = alpha * smoothstep(30, 120, cs);
+  if (isUnexplored) gateAlpha *= 0.4; // unexplored paths are quieter
+  if (gateAlpha < 0.01) return;
+
+  ctx.save();
+  ctx.globalAlpha = gateAlpha;
+
+  // Draw gate as a circular opening with a glow
+  const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, gr);
+  if (isChosen) {
+    gradient.addColorStop(0, `rgba(${ROSE}, 0.08)`);
+    gradient.addColorStop(1, `rgba(${ROSE}, 0.0)`);
+  } else {
+    gradient.addColorStop(0, `rgba(${INK}, 0.04)`);
+    gradient.addColorStop(1, `rgba(${INK}, 0.0)`);
+  }
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(cx, cy, gr, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Draw gate boundary (subtle ring)
+  ctx.strokeStyle = `rgba(${isChosen ? ROSE : INK}, ${isChosen ? 0.15 : 0.08})`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, cs * 1.15, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 /** Held plots: a soft tint and corner marks, visible once the grid is legible. */
