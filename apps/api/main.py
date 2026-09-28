@@ -218,8 +218,10 @@ def require_owner(twin_id: str, token: Optional[str]):
         raise HTTPException(status_code=404, detail="Twin not found")
     expected_hash = row["owner_token_hash"]
     if not expected_hash:
-        # If legacy twin without token hash, allow or deny
-        return True
+        # A twin ingested without ever setting an owner token has no one who can
+        # prove ownership of it; the safe default is to deny, not to let any
+        # supplied token through.
+        raise HTTPException(status_code=403, detail="Unauthorized: this twin has no owner token on file")
     if hash_token(token) != expected_hash:
         raise HTTPException(status_code=403, detail="Unauthorized: Invalid owner token")
     return True
@@ -985,11 +987,12 @@ async def get_twin_bom(twin_id: str, x_twin_owner_token: Optional[str] = Header(
     }
 
 @app.get("/api/twins/{twin_id}/bom/dpp")
-async def get_twin_dpp(twin_id: str):
+async def get_twin_dpp(twin_id: str, x_twin_owner_token: Optional[str] = Header(None)):
     """
     EU Digital Product Passport (DPP) compliance endpoint (2027 mandate preparation).
     Extracts component traceability, materials, recycled content, and supplier provenance.
     """
+    require_owner(twin_id, x_twin_owner_token)
     conn = get_db_local()
     row = conn.execute("SELECT creator, manifest_json, document_json FROM twins WHERE id = ?", (twin_id,)).fetchone()
     conn.close()
