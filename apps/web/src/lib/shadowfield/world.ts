@@ -58,7 +58,9 @@ function buildHexLab(twinthink: IdeaNode, throwaways: IdeaNode, starters: IdeaNo
 
 export function buildWorld(
   local: LocalShadow[],
-  posted?: { public: Posted[]; mine: Posted[]; today?: boolean; keeps?: string[]; linked?: Posted[] }
+  posted?: { public: Posted[]; mine: Posted[]; today?: boolean; keeps?: string[]; linked?: Posted[] },
+  /** Sample content, on a private preview only (sources/samples.ts); never on the real Slate. */
+  samples?: IdeaNode[]
 ): IdeaNode {
   twinthink ??= buildTwinThinkTwin();
   throwaways ??= buildThrowaways();
@@ -79,6 +81,7 @@ export function buildWorld(
     hexLab,
     ...(posted ? buildPosted(posted.public, posted.mine, posted.today, posted.linked) : []),
     ...local.map(localShadowNode),
+    ...(samples ?? []),
   ];
   // your sketchbook: what you kept of others' work, while it is still there to be seen
   if (posted?.keeps?.length) {

@@ -82,7 +82,8 @@ const stilled = (m: Move, ms: number) => m.kind === 'stay' && m.still >= ms;
 /** With it this long (ms) since it came in front of you, and not moving now. */
 const stayed = (m: Move, ms: number) => m.kind === 'stay' && m.since >= ms;
 /** What may leave a trace outside this device: on the Slate for anyone (not a device's own, a keep, or sealed). */
-const shared = (s: Station) => !s.node.id.startsWith('local/') && !s.node.id.startsWith('k/') && !s.path.some((n) => n.disclosure > 0);
+const shared = (s: Station) =>
+  !s.node.id.startsWith('local/') && !s.node.id.startsWith('k/') && !s.path.some((n) => n.disclosure > 0 || n.id.startsWith('sample/'));
 /** The fork a thing is inside (not the gate itself). */
 const forkAround = (s: Station) => s.path.find((n) => n.id.startsWith('fork/') && n.id !== s.node.id);
 

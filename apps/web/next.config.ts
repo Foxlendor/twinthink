@@ -7,6 +7,11 @@ const RETIRED = ["/roundup", "/bounties", "/explore", "/pitch", "/create", "/arc
 const nextConfig: NextConfig = {
   // no framework badge in anything shown or recorded
   devIndicators: false,
+  // which kind of deployment this is (production, preview, development): sample content may show
+  // only on a preview or in development, never in production (see lib/shadowfield/sources/samples.ts)
+  env: {
+    NEXT_PUBLIC_DEPLOY_ENV: process.env.VERCEL_ENV ?? process.env.DEPLOY_ENV ?? (process.env.NODE_ENV === "development" ? "development" : "local"),
+  },
   async redirects() {
     return [
       { source: "/canvas", destination: "/slate", permanent: true },

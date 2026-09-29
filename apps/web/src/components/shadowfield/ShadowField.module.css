@@ -445,6 +445,19 @@
   transition: opacity 120ms linear;
 }
 
+/* on a private preview only: says plainly that what is shown includes sample content */
+.samples {
+  position: absolute;
+  left: 20px;
+  top: 78px;
+  z-index: 3;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.8rem;
+  color: rgba(var(--rose), 0.8);
+  pointer-events: none;
+}
+
 .privacy {
   position: absolute;
   left: 20px;

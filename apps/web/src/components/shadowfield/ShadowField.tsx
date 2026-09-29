@@ -57,6 +57,7 @@ import {
 } from '@/lib/shadowfield/web';
 import { aheadFacing, aheadPaths, edgePaths, renderFlight } from '@/lib/shadowfield/flightRender';
 import { relatedTo } from '@/lib/shadowfield/relate';
+import { buildSamples, isSample, samplesAllowed } from '@/lib/shadowfield/sources/samples';
 import { addStep, beginJourney, forgetJourneys, recapOf, writeJourneys, type Journeys, type Recap } from '@/lib/shadowfield/journey';
 import { createCore, groupLens, groupOf, hourLens, lensOf, replayLens, type Core, type Move, type Rule } from '@/lib/shadowfield/core';
 import { hash01, smoothstep } from '@/lib/shadowfield/rng';
@@ -397,6 +398,9 @@ export default function ShadowField({ serif }: Props) {
   const [path, setPath] = useState<IdeaNode[]>([]);
   // what you have said of things on this device: carry it forward (Dew), or let it drop (Drop)
   const [said, setSaid] = useState<Record<string, 'dew' | 'drop'>>({});
+  // sample content (a private preview only): kept in the browser, never sent anywhere
+  const samplesRef = useRef<IdeaNode[] | null>(null);
+  const [previewSamples, setPreviewSamples] = useState(false);
   // your Fall, in order, on this device (journey.ts), and the recap of it when asked for
   const journeyRef = useRef<Journeys>({ current: { id: '', began: 0, steps: [] }, past: [] });
   const [recap, setRecap] = useState<{
@@ -533,7 +537,7 @@ export default function ShadowField({ serif }: Props) {
     const store = storeRef.current!;
     const list = store.list();
     setLocalList(list);
-    const world = buildWorld(list, postedRef.current);
+    const world = buildWorld(list, postedRef.current, samplesRef.current ?? undefined);
     worldRef.current = world;
     // the flight keeps what is in front of you in front of you
     const oldStream = streamRef.current;
@@ -846,7 +850,12 @@ export default function ShadowField({ serif }: Props) {
     const mono = getComputedStyle(document.documentElement).getPropertyValue('--font-jetbrains-mono').trim();
     monoRef.current = mono ? `${mono}, monospace` : 'monospace';
 
-    const world = buildWorld(storeRef.current.list(), postedRef.current);
+    // sample content: on a private preview (or in development) only, never on the real site
+    if (samplesAllowed(process.env.NEXT_PUBLIC_DEPLOY_ENV, window.location.hostname)) {
+      samplesRef.current = buildSamples(Date.now());
+      setPreviewSamples(true);
+    }
+    const world = buildWorld(storeRef.current.list(), postedRef.current, samplesRef.current ?? undefined);
     worldRef.current = world;
     const cam = new Camera(world);
     camRef.current = cam;
@@ -1300,7 +1309,7 @@ export default function ShadowField({ serif }: Props) {
         setSharedFall(d.sharedFall);
         // from here on the core keeps the leader's place each time they stop; this is where they already are
         const here = hereRef.current?.node.id;
-        if (here) {
+        if (here && !isSample(here)) {
           void fetch(`/api/shared-falls/${encodeURIComponent(d.sharedFall.id)}`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
@@ -1370,7 +1379,7 @@ export default function ShadowField({ serif }: Props) {
           if (prev && prev.hosting !== d.sharedFall.hosting) {
             setNotice(d.sharedFall.hosting ? 'you are leading now' : `${d.sharedFall.hostName} is leading now`);
             const at = hereRef.current?.node.id;
-            if (d.sharedFall.hosting && at)
+            if (d.sharedFall.hosting && at && !isSample(at))
               void fetch(`/api/shared-falls/${encodeURIComponent(id)}`, {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
@@ -1772,6 +1781,9 @@ export default function ShadowField({ serif }: Props) {
         } catch {
           // remembered for this visit only
         }
+      } else if (isSample(key)) {
+        // sample content never leaves the browser: no resonance, no pressure, no shared place
+        return;
       } else if (rule.keeper === 'anonymous') {
         void fetch(`/api/${rule.trace}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ target: key }) }).catch(
           () => undefined
@@ -3542,7 +3554,8 @@ export default function ShadowField({ serif }: Props) {
       .find((n) => !n.void && !n.portal && !n.ownedBy && !n.id.startsWith('local/') && n.id !== 'throwaways' && !n.id.startsWith('archive/') && !n.id.startsWith('p/') && n.id !== 'people' && n.id !== 'yours' && n.id !== 'stories' && n.id !== 'today' && n.id !== 'sketchbook' && n.id !== 'hex-lab' && n.id !== 'linked' && !n.id.startsWith('k/') && !n.id.startsWith('maker/')) ?? null;
   // an idea given away is never followed by an ask for money, nor is a song while it plays
   // nothing given away (songs, starters, throwaways) is ever followed by an ask
-  const asking = supportTarget && !path.some((n) => n.free) && playingId !== current?.id ? supportTarget : null;
+  // never toward sample content (a preview's invented work takes no one's money)
+  const asking = supportTarget && !path.some((n) => n.free || isSample(n.id)) && playingId !== current?.id ? supportTarget : null;
   const throwaway = current?.id.startsWith('archive/') ? current : null;
   const taken = throwaway ? localList.some((l) => l.from === throwaway.id) : false;
   // a copy taken from his throwaways is the visitor's to keep, but not theirs to prove
@@ -3552,7 +3565,7 @@ export default function ShadowField({ serif }: Props) {
   const shareable =
     !!current &&
     path.length > 1 &&
-    !path.some((n) => n.id.startsWith('local/') || n.id === 'sketchbook' || n.disclosure > 0) &&
+    !path.some((n) => n.id.startsWith('local/') || n.id === 'sketchbook' || n.disclosure > 0 || isSample(n.id)) &&
     (!current.id.startsWith('p/') || !!posted.find((q) => `p/${q.id}` === current.id && (q.public || q.visibility === 'unlisted') && !q.hidden));
   const postedHere = current?.id.startsWith('p/') ? posted.find((q) => `p/${q.id}` === current.id) ?? null : null;
   // Rabi noticing: whenever a maker looks at a Shadow of their own, ask once per fork whether
@@ -3747,6 +3760,7 @@ export default function ShadowField({ serif }: Props) {
       ) : null}
 
       {ownedHere && <div className={styles.privacy}>private · only on this device</div>}
+      {previewSamples && <div className={styles.samples}>preview · sample content, not real people</div>}
 
       <nav className={styles.trail} aria-label="Where you are">
         {crumbs.map(({ n, i }, j) => (
@@ -4041,7 +4055,7 @@ export default function ShadowField({ serif }: Props) {
             take down
           </button>
         )}
-        {me?.user?.owner && current && path.length > 1 && !ownedHere && !current.id.startsWith('p/') && (
+        {me?.user?.owner && current && path.length > 1 && !ownedHere && !current.id.startsWith('p/') && !isSample(current.id) && (
           <button type="button" className={styles.quiet} onClick={() => readNotes(current)}>
             notes
           </button>

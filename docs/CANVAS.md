@@ -547,3 +547,19 @@ question from whether Lean itself is worth having at all.
   checkout.
 - Founders: 47 unverified, 427 verified, 474 in all, kept as dormant
   metadata (`FOUNDER_ALLOCATION`). Nothing grants anything from it.
+
+## Sample content (private previews only)
+To see and feel the Slate busier than one maker's own work, sample content can be shown on a
+private preview (a branch's own Vercel deployment, such as the `preview` branch) or while
+developing: five invented makers, ten groups, branches with alternatives, work at every hour,
+names shared across makers (`lib/shadowfield/sources/samples.ts`).
+
+- Never on the real site: it shows only when the build is a preview or development AND the
+  address is not twinth.ink. Both are checked (`samplesAllowed`).
+- Never stored: it is made in the browser; every id begins `sample/`, and no trace, resonance,
+  pressure, shared-Fall place, keep, send, build-on, notes or support ever uses one. (Previews
+  share the production database, which is why nothing about samples may reach the server.)
+- Always said: "preview · sample content, not real people" on the page, "sample" on every group
+  and work. Locally: `DEPLOY_ENV=preview npm run build`.
+- Keep the preview private: in Vercel, Deployment Protection for previews should stay on.
+
