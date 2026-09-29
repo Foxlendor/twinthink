@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- No network access from this page: everything stays in this browser. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; font-src 'self'; form-action 'none'; base-uri 'none'"
+    />
+    <title>TwinThink · Drop prototype</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="src/app.js"></script>
+  </head>
+  <body>
+    <header class="bar">
+      <div class="brand">
+        <strong>TwinThink</strong>
+        <span class="tag">Drop prototype · sample content · this device only</span>
+      </div>
+      <nav class="actions" aria-label="Prototype">
+        <button type="button" id="btn-view" aria-pressed="false">List</button>
+        <button type="button" id="btn-rel" aria-expanded="false" aria-controls="sheet-rel">Relationships</button>
+        <button type="button" id="btn-idea" aria-expanded="false" aria-controls="sheet-idea">New idea</button>
+        <button type="button" id="btn-help" aria-expanded="false" aria-controls="sheet-help" aria-label="How to move">?</button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="scene" aria-label="The web (visual)">
+        <canvas id="web" aria-hidden="true"></canvas>
+        <article id="card" class="card" hidden aria-live="polite"></article>
+        <p id="hint" class="hint">Drag to drift · touch and hold to settle · let go to fall on</p>
+      </section>
+
+      <section id="list" class="list" hidden aria-label="The web as a list">
+        <p class="note">The same works and relationships as the web. Dew and Drop here are the same judgments.</p>
+        <div id="list-body"></div>
+      </section>
+    </main>
+
+    <footer class="controls">
+      <button type="button" id="btn-dew" class="judge" aria-describedby="status" disabled>
+        <span class="glyph" aria-hidden="true">◉</span> Dew <kbd>E</kbd>
+      </button>
+      <p id="status" class="status" role="status" aria-live="polite">Falling</p>
+      <button type="button" id="btn-drop" class="judge" aria-describedby="status" disabled>
+        Drop <kbd>Q</kbd> <span class="glyph" aria-hidden="true">↓</span>
+      </button>
+    </footer>
+
+    <aside id="sheet-rel" class="sheet" hidden aria-labelledby="rel-title">
+      <div class="sheet-head">
+        <h2 id="rel-title">Relationships shape the web</h2>
+        <button type="button" class="close" data-close aria-label="Close">×</button>
+      </div>
+      <p class="note">
+        Positions, strands, how firmly a strand holds, and how much a work pulls all come from these relationships.
+        Change one and the web re-forms; the dotted line shows where the Drop would go from here with no input.
+      </p>
+      <button type="button" id="btn-demo" class="wide">Try it: switch off “Rain map responds to Rain barrel”</button>
+      <label class="check"><input type="checkbox" id="chk-path" /> Show possible path (no input, next 12 s)</label>
+      <p id="compare" class="compare" aria-live="polite"></p>
+      <h3>Sample relationships <span class="muted">(switching one off is a local test change)</span></h3>
+      <ul id="rel-sample" class="rels"></ul>
+      <h3>Your relationships</h3>
+      <ul id="rel-own" class="rels"></ul>
+      <form id="form-rel" class="row-form">
+        <label>From <select id="rel-from" required></select></label>
+        <label>Kind <select id="rel-kind"></select></label>
+        <label>To <select id="rel-to" required></select></label>
+        <button type="submit">Connect</button>
+      </form>
+    </aside>
+
+    <aside id="sheet-idea" class="sheet" hidden aria-labelledby="idea-title">
+      <div class="sheet-head">
+        <h2 id="idea-title">New idea</h2>
+        <button type="button" class="close" data-close aria-label="Close">×</button>
+      </div>
+      <p class="note">
+        Private. Saved only in this browser, never sent anywhere. Your words are kept exactly as typed, with a
+        history of every change. No AI is connected: Rabi’s interpretation is not part of this prototype.
+      </p>
+      <form id="form-idea">
+        <input type="hidden" id="idea-id" />
+        <label>Title <input id="idea-name" maxlength="120" required autocomplete="off" /></label>
+        <label>Say it your way <textarea id="idea-text" rows="4" maxlength="4000"></textarea></label>
+        <fieldset id="idea-connect">
+          <legend>Connect it (optional)</legend>
+          <label>It <select id="idea-kind"></select></label>
+          <label><select id="idea-to"><option value="">nothing yet</option></select></label>
+        </fieldset>
+        <div class="buttons">
+          <button type="submit">Save privately</button>
+          <button type="button" id="btn-idea-delete" class="danger" hidden>Delete</button>
+        </div>
+      </form>
+      <section id="idea-history" hidden>
+        <h3>History</h3>
+        <ol id="idea-history-list" class="history"></ol>
+      </section>
+      <h3>Your ideas</h3>
+      <ul id="idea-list" class="rels"></ul>
+    </aside>
+
+    <aside id="sheet-help" class="sheet" hidden aria-labelledby="help-title">
+      <div class="sheet-head">
+        <h2 id="help-title">How to move</h2>
+        <button type="button" class="close" data-close aria-label="Close">×</button>
+      </div>
+      <dl class="help">
+        <dt>Let go</dt><dd>The Drop keeps falling. Gaps let it through; strands catch it.</dd>
+        <dt>Drift</dt><dd>Drag with your thumb (or mouse) from anywhere on the web: direction and strength nudge its course. Keys: arrows or WASD.</dd>
+        <dt>Touch or hold</dt><dd>Touch without dragging: the Drop slows and settles beside the nearest work so you can read it. Key: hold Space.</dd>
+        <dt>Release</dt><dd>Lift your thumb: motion resumes.</dd>
+        <dt>Dew</dt><dd>A decision to carry this forward: the Drop adheres and leaves a bead on the work (on this device). Key: E.</dd>
+        <dt>Drop</dt><dd>A decision to let go: it detaches and falls. Where it lands is up to the web. Key: Q.</dd>
+      </dl>
+      <p class="note">Being carried somewhere, settling, or reading records nothing. Only Dew and Drop are kept, on this device. The phone’s tilt is never used.</p>
+      <p class="note"><button type="button" id="btn-reset" class="danger">Clear everything this prototype stored</button></p>
+    </aside>
+  </body>
+</html>

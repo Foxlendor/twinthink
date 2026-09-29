@@ -11,3 +11,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## TwinThink
 
 Before changing the Slate, read `docs/TWINTHINK_CORE_SPEC.md` (the intent), `docs/CORE_LEDGER.md` (what is actually built, with evidence) and `docs/CANVAS.md` (how it works).
+
+## Drop prototype (restart)
+
+A separate local prototype of the Drop moving through a living web lives in `prototype/`. For it, read `prototype/PRODUCT.md`, `prototype/STATUS.md` and `prototype/RUN.md` (not the files above). It does not change the frozen production app.

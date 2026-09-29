@@ -1,0 +1,13 @@
+{
+  "name": "twinthink-drop-prototype",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Separate local prototype: a Drop moving through a living web of relationships. Not the production app.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node serve.mjs",
+    "test": "node --test test/*.test.js",
+    "e2e": "node test/e2e.mjs"
+  }
+}
