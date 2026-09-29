@@ -361,7 +361,8 @@
   .give {
     right: 12px;
     left: 12px;
-    bottom: 96px;
+    bottom: 104px;
+    max-width: none;
   }
 }
 
@@ -473,8 +474,27 @@
 .give {
   position: absolute;
   right: 20px;
-  bottom: 56px;
+  /* above the row of actions (which can wrap to two lines), on its own paper, never over them */
+  bottom: 84px;
+  z-index: 4;
+  max-width: min(440px, calc(100% - 40px));
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 12px 14px;
+  background: var(--paper);
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px rgba(var(--ink), 0.08);
+  /* its words take whole lines; its buttons sit in a row with room between them */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 18px;
   animation: tipIn 250ms ease-out;
+}
+
+.give > :not(button):not(a) {
+  flex-basis: 100%;
+  margin: 0;
 }
 
 .giveFor {

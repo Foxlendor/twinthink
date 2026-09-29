@@ -138,6 +138,10 @@ The central mobile requirement: **you are not browsing down a hallway; you are f
 
 When the freeze lifts, the order is: what the Drop physically is and what the web can do to it (above) first, then composition, then controls and words. Not JSX, typography, icons or animation first. The thumb is its input, not a separate feature.
 
+## Layout fixed during the freeze (29 Sep)
+
+- Panels (Your Fall, Rabi's notice, support, the Fall with me invite) sat over the row of actions and ran their buttons together ("look at itgo therereplay"). Found while taking screenshots for the explainer page; fixed as a layout defect (the kind check 2 exists for): each panel now sits on its own paper above the actions, with room between its buttons, on desktop and phone.
+
 ## Next, in order
 
 Hold (28 Sep): no code changes until John brings back one of these results. Judge by feel, not numbers.
