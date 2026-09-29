@@ -11,7 +11,7 @@
 import { IdeaNode, LifeEvent, lastActivity, rippleReach } from './model';
 import { ScreenTransform } from './camera';
 import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, clockAngle, flightScale, project, travelled, viewOf, type Quarter } from './flight';
-import { Hit, INK, PAPER, PAPER_RGB, PRESENCE, ROSE, TINT_COOL, TINT_WARM, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
+import { Hit, INK, PAPER, PRESENCE, ROSE, TINT_COOL, TINT_WARM, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
 import { AUTHOR } from './sources/author';
 import { Pluck, trembleAt } from './web';
 import { Phase, stepPhase, withinBudget } from './phases';
@@ -122,13 +122,11 @@ export interface FlightState {
   presence?: Map<string, number>;
   /** The one path deliberately chosen, last time, at the branch currently in view (device-only). */
   leaned?: Set<string>;
-  /** At a branch: the neighbouring paths, glimpsed at the edges of the view (their shape, never their words). */
-  edges?: EdgePath[];
   /**
    * Steering through the vortex: you are the drop at the middle; `facing` is the hour you have
-   * turned into; `aim` the side opening you are leaning toward (looked at, not yet gone into).
+   * turned into.
    */
-  steer?: { on: boolean; facing: Quarter | null; aim?: -1 | 0 | 1; turned?: Set<number> };
+  steer?: { on: boolean; facing: Quarter | null; turned?: Set<number> };
   /** The paths already taken from here (by id), on this device: an opening you have been through. */
   explored?: Set<string>;
   /**
@@ -139,8 +137,12 @@ export interface FlightState {
   topicFacing?: string | null;
   /** A note at the top of the page (screen box): the face's labels keep clear of it. */
   avoid?: { x0: number; y0: number; x1: number; y1: number };
-  /** At a branch, the ways on from here, waiting ahead; `aheadAim` the one aimed at, steering. */
+  /**
+   * Every way on from here (see openingsOf), each a side tunnel off the wall a little past the
+   * thing in front of you (its place along the fall, `hereZ`); `aheadAim` the one aimed at.
+   */
   ahead?: AheadPath[];
+  hereZ?: number;
   aheadAim?: string | null;
   /** The ways on from the thing you are on, as last taken from here (for the ahead openings' rose). */
   leanedAhead?: string | null;
@@ -215,102 +217,156 @@ export function aheadFacing(ahead: AheadPath[], x: number, y: number, roll: numb
 }
 
 /**
- * A way on, waiting ahead: the thing itself, ringed in dots where the tunnel draws it (or, still too
- * far to draw, a soft mark at its hour). Aimed at, the ring darkens. Tapped or clicked, it is a Lean.
+ * Every way you could go from here, as its own tunnel off the wall: the paths on from the thing in
+ * front of you and the paths beside it, each at the hour it was made, kept apart around the face.
  */
-function drawAhead(st: RenderState, v: View, p: AheadPath, a: number, aimed: boolean, leaned: boolean, been: boolean, ink: Ink) {
-  const { ctx } = st;
-  // the way on is the thing itself, already waiting ahead in the tunnel: ring it where it is drawn;
-  // only when it is still too far to be drawn is it marked at its hour instead
-  const drawn = st.hits.find((h) => h.kind === 'node' && h.node.id === p.node.id && h.size < 1e9);
-  const R = st.M * 0.36;
-  const x = drawn ? drawn.x : v.cx + Math.cos(p.angle + v.roll) * R;
-  const y = drawn ? drawn.y : v.cy + Math.sin(p.angle + v.roll) * R;
-  const r = Math.max(st.M * (aimed ? 0.06 : 0.045), drawn ? drawn.r * 1.15 : 0);
-  if (!drawn) {
-    const g = ctx.createRadialGradient(x, y, 1, x, y, r);
-    g.addColorStop(0, `rgba(${INK},${a * (aimed ? 0.32 : 0.18)})`);
-    g.addColorStop(1, `rgba(${INK},0)`);
-    ctx.fillStyle = g;
-    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+export function openingsOf(ahead: AheadPath[], edges: EdgePath[]): AheadPath[] {
+  const seen = new Set<string>();
+  const out: AheadPath[] = [];
+  for (const p of [...ahead, ...edges]) {
+    if (seen.has(p.node.id)) continue;
+    seen.add(p.node.id);
+    out.push({ node: p.node, path: p.path, angle: clockAngle(p.node.began) });
   }
-  const n = Math.max(14, Math.floor((2 * Math.PI * r) / 6));
-  for (let k = 0; k < n; k++) {
-    const t = (k / n) * Math.PI * 2;
-    ink.dot(x + Math.cos(t) * r, y + Math.sin(t) * r, aimed ? 1.8 : been ? 1.6 : 1.2, a * (aimed ? 0.85 : been ? 0.55 : 0.35), leaned);
-  }
-  // a name only when it is not yet drawn with its own, and aimed at: what it is, before going in
-  if (aimed && !drawn && p.node.title) {
-    ctx.font = `italic ${Math.round(clamp(st.M * 0.024, 13, 18))}px ${st.serif}`;
-    ctx.textAlign = 'center';
-    ctx.fillStyle = `rgba(${INK},${0.8 * a})`;
-    ctx.fillText(p.node.title.slice(0, 40), x, y + r + 18);
-    ctx.textAlign = 'left';
-  }
-  if (!drawn) st.hits.push({ kind: 'node', node: p.node, path: p.path, x, y, r: r * 1.1, size: 1e9 });
+  out.sort((a, b) => a.angle - b.angle);
+  const gap = Math.min(0.55, (Math.PI * 2) / Math.max(1, out.length));
+  for (let i = 1; i < out.length; i++) if (out[i].angle - out[i - 1].angle < gap) out[i].angle = out[i - 1].angle + gap;
+  return out.slice(0, 8);
+}
+
+/** The wall of the tunnel you fall through (its radius), and how far past the thing in front of you the side tunnels open. */
+const WALL = 1.3;
+const MOUTH_AHEAD = 3.2;
+/** A side tunnel: how far it runs, and how many rings it is drawn with. */
+const SIDE_LEN = 2.6;
+const SIDE_RINGS = 8;
+
+/** Where a side tunnel meets the wall: its centre (world), and how wide the hole is. */
+export interface Mouth {
+  p: AheadPath;
+  x: number;
+  y: number;
+  z: number;
+  r: number;
 }
 
 /**
- * A neighbouring path at the edge of the view, half in, half out, like the next cover sliding in:
- * its picture (blurred, by its own coarser copies) or a soft wash, inside a dotted outline that
- * says "somewhere you can go", never its title. Pointed at, it comes a little clearer. Tapped,
- * it is a Lean. The one leaned before, here, is outlined in rose.
+ * The side tunnels at the thing at `hereZ`: each a hole in the wall, `ahead` further down (farther
+ * on a narrow screen, so the wall there is still in view), at its hour.
  */
-function drawEdge(st: RenderState, e: EdgePath, a: number, hovered: boolean, leaned: boolean, ink: Ink, been = false) {
+export function mouthsOf(openings: AheadPath[], hereZ: number, ahead = MOUTH_AHEAD): Mouth[] {
+  const r = clamp(((Math.PI * WALL) / Math.max(2, openings.length)) * 0.62, 0.24, 0.44);
+  return openings.map((p) => ({ p, x: Math.cos(p.angle) * WALL, y: Math.sin(p.angle) * WALL, z: hereZ + ahead, r }));
+}
+
+/**
+ * A way on, as a real tunnel: a hole in the wall ahead, and through it a side tunnel of its own
+ * rings, running outward and on, with the work itself waiting at its far end. Aimed at (thumb or
+ * mouse), its rim and rings darken and its name is written beside it; been through before, the
+ * rim is worn heavier; the one leaned before is rimmed in rose. Tapped or clicked, it is a Lean.
+ */
+function drawMouth(st: RenderState, v: View, m: Mouth, a: number, aimed: boolean, leaned: boolean, been: boolean, ink: Ink): (Hit & { reach: number }) | null {
   const { ctx } = st;
-  const cw = clamp(st.w * 0.26, 64, 170);
-  type Cover = Extract<NonNullable<IdeaNode['media']>[number], { kind: 'image' } | { kind: 'video' }>;
-  const media = e.node.media?.find((m): m is Cover => m.kind === 'image' || (m.kind === 'video' && !!m.poster));
-  const src = media ? (media.kind === 'image' ? media.src : media.poster ?? '') : '';
-  const ch = media ? clamp(cw * media.aspect, cw * 0.6, cw * 1.5) : cw;
-  const shown = hovered ? 0.72 : 0.58;
-  const x0 = e.side < 0 ? -cw * (1 - shown) : st.w - cw * shown;
-  // below the compass (it sits at the right edge, halfway down, or higher on a phone)
-  const y0 = st.h * 0.64 - ch / 2;
-  const cx = e.side < 0 ? x0 + cw * (1 - shown) + (cw * shown) / 2 : x0 + (cw * shown) / 2;
-  const lit = hovered ? 1 : 0;
-  const loaded = src ? getImage(src) : null;
-  ctx.save();
-  if (loaded) {
-    const top = loaded.mips.length - 1;
-    ctx.globalAlpha = a * (0.55 + 0.3 * lit);
-    ctx.drawImage(loaded.mips[Math.max(0, Math.min(top, hovered ? 3 : 5))], x0, y0, cw, ch);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = `rgba(${PAPER_RGB},${(hovered ? 0.18 : 0.38) * a})`;
-    ctx.fillRect(x0, y0, cw, ch);
-  } else {
-    // no picture: its own shape instead, a ring like the rings you fly through, dark enough to notice
-    const mx = x0 + cw / 2;
-    const my = y0 + ch / 2;
-    const g = ctx.createRadialGradient(mx, my, 2, mx, my, cw * 0.42);
-    g.addColorStop(0, `rgba(${INK},${a * (0.28 + 0.12 * lit)})`);
-    g.addColorStop(1, `rgba(${INK},0)`);
-    ctx.fillStyle = g;
-    ctx.fillRect(x0, y0, cw, ch);
-    const rr = cw * 0.33;
-    const dots = Math.floor((2 * Math.PI * rr) / 5);
-    for (let k = 0; k < dots; k++) {
-      const t = (k / dots) * Math.PI * 2;
-      ink.dot(mx + Math.cos(t) * rr, my + Math.sin(t) * rr, 1.8, a * (0.55 + 0.3 * lit));
+  const c = Math.cos(m.p.angle);
+  const s = Math.sin(m.p.angle);
+  // the side tunnel runs outward and on, close to the line you look along, so you see down into it
+  const OUT = 0.55;
+  const n = Math.hypot(OUT, 1);
+  const d = [(c * OUT) / n, (s * OUT) / n, 1 / n];
+  // across it: along the wall (u), and square to that and to its own run (w)
+  const u = [-s, c, 0];
+  const w = [-c / n, -s / n, OUT / n];
+  const at = (t: number, r: number, phi: number): [number, number, number] | null => {
+    const X = m.x + d[0] * t + r * (Math.cos(phi) * u[0] + Math.sin(phi) * w[0]);
+    const Y = m.y + d[1] * t + r * (Math.cos(phi) * u[1] + Math.sin(phi) * w[1]);
+    const Z = m.z + d[2] * t + r * Math.sin(phi) * w[2];
+    const dz = Z - v.z;
+    if (dz < NEAR + 0.25) return null;
+    return project(v, X, Y, dz);
+  };
+  const lit = aimed ? 1 : 0;
+  // its rings, from the mouth down to the far end, fainter the deeper they go
+  let rimX = 0;
+  let rimY = 0;
+  let rimN = 0;
+  let reach = 0;
+  const rim: [number, number][] = [];
+  for (let k = 0; k <= SIDE_RINGS; k++) {
+    const t = (k / SIDE_RINGS) * SIDE_LEN;
+    const r = m.r * (1 - 0.18 * (k / SIDE_RINGS));
+    const depth = 1 - k / (SIDE_RINGS + 2);
+    const dots = k === 0 ? 40 : 26;
+    for (let i = 0; i < dots; i++) {
+      const phi = (i / dots) * Math.PI * 2;
+      const q = at(t, r, phi);
+      if (!q) continue;
+      const fog = fogOf(q[2] > 0 ? v.F / q[2] : FAR);
+      if (k === 0) {
+        rim.push([q[0], q[1]]);
+        rimX += q[0];
+        rimY += q[1];
+        rimN++;
+        ink.dot(q[0], q[1], clamp(0.02 * q[2], 1.2, aimed ? 3 : been ? 2.6 : 2.2), a * fog * (0.5 + 0.4 * lit + (been ? 0.15 : 0)), leaned);
+      } else ink.dot(q[0], q[1], clamp(0.012 * q[2], 0.8, 2), a * fog * depth * (0.28 + 0.4 * lit));
     }
   }
-  ctx.restore();
-  // the outline: a dotted edge all the way round, so it reads as a place, not a decoration
-  const per = 2 * (cw + ch);
-  const n = Math.floor(per / 6);
-  for (let k = 0; k < n; k++) {
-    let d = (k / n) * per;
-    let px: number;
-    let py: number;
-    if (d < cw) [px, py] = [x0 + d, y0];
-    else if ((d -= cw) < ch) [px, py] = [x0 + cw, y0 + d];
-    else if ((d -= ch) < cw) [px, py] = [x0 + cw - d, y0 + ch];
-    else [px, py] = [x0, y0 + ch - (d - cw)];
-    if (px < -2 || px > st.w + 2) continue;
-    // been through it before: the outline is written a little heavier, like a path worn in
-    ink.dot(px, py, been ? 1.7 : 1.3, a * (been ? 0.6 : 0.35 + 0.3 * lit), leaned);
+  // strands along its length, so it reads as a tube and not a stack of rings
+  for (let j = 0; j < 8; j++) {
+    const phi = (j / 8) * Math.PI * 2 + 0.2;
+    for (let t = 0.12; t < SIDE_LEN; t += 0.13) {
+      const q = at(t, m.r * (1 - 0.18 * (t / SIDE_LEN)), phi);
+      if (q) ink.dot(q[0], q[1], clamp(0.009 * q[2], 0.7, 1.6), a * (1 - t / (SIDE_LEN * 1.25)) * (0.2 + 0.3 * lit));
+    }
   }
-  st.hits.push({ kind: 'node', node: e.node, path: e.path, x: cx, y: y0 + ch / 2, r: Math.max(cw * shown, ch) * 0.5, size: 1e9 });
+  if (!rimN) return null;
+  const hx = rimX / rimN;
+  const hy = rimY / rimN;
+  for (const [x, y] of rim) reach = Math.max(reach, Math.hypot(x - hx, y - hy));
+  // the work itself, waiting at the far end
+  const end = at(SIDE_LEN, 0, 0);
+  if (end) {
+    const er = m.r * 0.82 * end[2];
+    type Cover = Extract<NonNullable<IdeaNode['media']>[number], { kind: 'image' } | { kind: 'video' }>;
+    const media = m.p.node.media?.find((q): q is Cover => q.kind === 'image' || (q.kind === 'video' && !!q.poster));
+    const src = media ? (media.kind === 'image' ? media.src : media.poster ?? '') : '';
+    const loaded = src ? getImage(src) : null;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(end[0], end[1], er, 0, Math.PI * 2);
+    ctx.clip();
+    if (loaded && media) {
+      const top = loaded.mips.length - 1;
+      const W = er * 2.2;
+      const H = W * media.aspect;
+      ctx.globalAlpha = a * (0.5 + 0.4 * lit);
+      ctx.drawImage(loaded.mips[Math.max(0, Math.min(top, aimed ? 2 : 3))], end[0] - W / 2, end[1] - H / 2, W, H);
+    } else {
+      // no picture: the far end is a soft darkness, like light not yet reached
+      const g = ctx.createRadialGradient(end[0], end[1], 0.5, end[0], end[1], er);
+      g.addColorStop(0, `rgba(${INK},${a * (0.22 + 0.2 * lit)})`);
+      g.addColorStop(1, `rgba(${INK},0)`);
+      ctx.fillStyle = g;
+      ctx.fillRect(end[0] - er, end[1] - er, er * 2, er * 2);
+    }
+    ctx.restore();
+  }
+  return { kind: 'node', node: m.p.node, path: m.p.path, x: hx, y: hy, r: Math.max(reach * 1.1, 22), size: 1e9, reach };
+}
+
+/** An aimed side tunnel's name, beside its mouth toward the middle: what it is, before going in. */
+function drawMouthName(st: RenderState, v: View, title: string, hx: number, hy: number, reach: number, a: number) {
+  const { ctx } = st;
+  const size = Math.round(clamp(st.M * 0.024, 13, 18));
+  ctx.font = `italic ${size}px ${st.serif}`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = `rgba(${INK},${0.85 * a})`;
+  const label = title.slice(0, 40);
+  const tw = ctx.measureText(label).width;
+  const toMid = Math.atan2(v.cy - hy, v.cx - hx);
+  const tx = clamp(hx + Math.cos(toMid) * (reach + 18), 12 + tw / 2, st.w - 12 - tw / 2);
+  const ty = clamp(hy + Math.sin(toMid) * (reach + 18) + size / 3, size + 8, st.h - 12);
+  haloText(ctx, label, tx, ty);
+  ctx.textAlign = 'left';
 }
 
 /**
@@ -568,7 +624,16 @@ function drawLeaned(x: number, y: number, R: number, alpha: number, ink: Ink) {
  * and at speed its dots stream into lines. While a song or a film is heard,
  * waves travel down its walls toward you with the sound.
  */
-function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink, web?: FlightState['web']) {
+function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink, web?: FlightState['web'], holes: Mouth[] = []) {
+  // where a side tunnel opens, the wall is not there: its dots leave a hole you can see into
+  const holed = (zAbs: number, ang: number) => {
+    for (const m of holes) {
+      const dz = zAbs - m.z;
+      if (Math.abs(dz) > m.r * 1.15) continue;
+      if (Math.hypot(Math.cos(ang) * WALL - m.x, Math.sin(ang) * WALL - m.y, dz) < m.r * 1.15) return true;
+    }
+    return false;
+  };
   const plucks = web?.plucks.length && !st.reduced ? web.plucks : null;
   // the walls tremble where a pluck is passing (worked out once per slice of the tunnel)
   const trem = new Map<number, number>();
@@ -583,7 +648,7 @@ function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink, web?: Fl
     return T;
   };
   const STEP = 0.7;
-  const RADIUS = 1.3;
+  const RADIUS = WALL;
   const DOTS = 64;
   const STRANDS = 18;
   const speed = Math.abs(cam.shown);
@@ -620,6 +685,7 @@ function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink, web?: Fl
     const size = clamp(0.011 * (v.F / dz), 0.9, 2.6);
     for (let i = 0; i < DOTS; i++) {
       const ang = (i / DOTS) * Math.PI * 2 + 0.03 * noise1(i + m * 13, 5);
+      if (holes.length && holed(zAbs, ang)) continue;
       const [x, y] = wall(zAbs, ang, dz);
       if (!onScreen(x, y)) continue;
       if (Math.abs(fast) > 0.05) {
@@ -646,6 +712,7 @@ function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink, web?: Fl
       const dz = zAbs - v.z;
       const a = 0.12 * presence * (1 - smoothstep(8, FAR, dz)) * smoothstep(0.5, 2, dz);
       if (a < 0.012) continue;
+      if (holes.length && holed(zAbs, base)) continue;
       const [x, y] = wall(zAbs, base, dz);
       if (!onScreen(x, y)) continue;
       ink.dot(x, y, clamp(0.008 * (v.F / dz), 0.75, 2), a);
@@ -1069,6 +1136,7 @@ interface Title {
   sub?: string;
   subA?: number;
   here?: boolean;
+  id?: string;
 }
 
 /** First time the arrival was seen (clock seconds): the name writes itself on once. */
@@ -1154,7 +1222,21 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   const born = (s: Station) => st.cut === null || s.depth === 0 || s.node.began <= st.cut;
   const gone = (s: Station) => !born(s) || fs.hidden(s);
 
-  drawTunnel(st, v, cam, ink, fs.web);
+  // at a branch, every way on is a side tunnel off the wall just ahead: faint while falling, fuller
+  // once still, and kept in view while steering so it is seen before it is passed
+  const mouthAhead = Math.max(MOUTH_AHEAD, (WALL * v.F) / (0.33 * Math.min(st.w, st.h)) - FOCUS);
+  const mouths = fs.ahead?.length && fs.hereZ !== undefined ? mouthsOf(fs.ahead, fs.hereZ, mouthAhead) : [];
+  drawTunnel(st, v, cam, ink, fs.web, mouths);
+  const mouthHits: (Hit & { reach: number })[] = [];
+  if (mouths.length) {
+    const a = Math.max(fs.steer?.on ? 0.7 : 0, 0.4 + 0.55 * (fs.still ?? 0));
+    for (const m of mouths) {
+      const id = m.p.node.id;
+      const aimed = fs.aheadAim === id || st.hoverId === id;
+      const h = drawMouth(st, v, m, a, aimed, fs.leanedAhead === id || !!fs.leaned?.has(id), !!fs.exploredAhead?.has(id) || !!fs.explored?.has(id), ink);
+      if (h) mouthHits.push(h);
+    }
+  }
   drawSpecks(st, v, cam, ink);
   for (const s of stream.stations) if (s.gate && !gone(s)) drawTube(st, v, s, L, ink);
   drawThread(st, v, stream, ink, cam, gone, fs.web);
@@ -1246,7 +1328,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
         }
         // and the one line, only for the thing in front of you, only while you are still
         const sub = fs.here === s.node.id ? fs.lineFor?.(s) : undefined;
-        titles.push({ text: s.node.title, x, y: ty, size, a: ta, near: 1 / dz, sub, subA: sub ? ta * (fs.still ?? 0) : 0, here: fs.here === s.node.id });
+        titles.push({ id: s.node.id, text: s.node.title, x, y: ty, size, a: ta, near: 1 / dz, sub, subA: sub ? ta * (fs.still ?? 0) : 0, here: fs.here === s.node.id });
       }
     }
   }
@@ -1299,23 +1381,14 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   // the nearest thing under a finger is the one it means
   st.hits.reverse();
 
-  // at a branch, the other paths wait at the edges: faint while falling, fuller once still
-  if (fs.edges?.length) {
-    const before = st.hits.length;
-    // steering, the openings stay in view while you move, so they are seen before they are passed
-    const a = Math.max(fs.steer?.on ? 0.6 : 0, 0.35 + 0.55 * (fs.still ?? 0)) * quiet;
-    if (a > 0.03) {
-      for (const e of fs.edges)
-        drawEdge(st, e, a, st.hoverId === e.node.id || (!!fs.steer?.aim && fs.steer.aim === e.side), !!fs.leaned?.has(e.node.id), ink, !!fs.explored?.has(e.node.id));
-      ink.flush(ctx);
-      // drawn over everything else, so they are what a finger at the edge means
-      st.hits.unshift(...st.hits.splice(before));
-    }
-  }
+  // a side tunnel's mouth is what a finger on it means, over whatever lies beyond it
+  st.hits.unshift(...mouthHits);
 
   // names: nearest first, never on top of one another
   titles.sort((a, b) => b.near - a.near);
   const placed: [number, number, number, number][] = [];
+  // whose names are written this frame (an aimed side tunnel's thing, already named, is not named twice)
+  const named = new Set<string>();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
   let font = '';
@@ -1363,12 +1436,11 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
       }
     }
     placed.push(r);
+    if (t.id) named.add(t.id);
   }
   ctx.textAlign = 'left';
-  if (fs.ahead?.length) {
-    const a = Math.max(fs.steer?.on ? 0.65 : 0, 0.3 + 0.6 * (fs.still ?? 0));
-    for (const p of fs.ahead)
-      drawAhead(st, v, p, a, fs.aheadAim === p.node.id || st.hoverId === p.node.id, fs.leanedAhead === p.node.id, !!fs.exploredAhead?.has(p.node.id), ink);
+  for (const h of mouthHits) {
+    if ((fs.aheadAim === h.node.id || st.hoverId === h.node.id) && h.node.title && !named.has(h.node.id)) drawMouthName(st, v, h.node.title, h.x, h.y, h.reach, 1);
   }
   ink.flush(st.ctx);
   if (fs.steer?.on) drawDrop(st, v);

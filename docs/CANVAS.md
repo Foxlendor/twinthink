@@ -119,12 +119,11 @@ out past the edges, behind you.
   holding work from around that hour; inside a group, only its things from
   around that hour. Back toward the middle, the whole fall again; a little
   past the line between two hours before it gives way, so it never flickers.
-  At a branch, the ways on from where you are wait ahead in the tunnel, each at
-  its own hour, ringed in dots: lean toward one to aim at it (its ring darkens;
-  nothing is kept), click to go in (a Lean); a tap on one works without
-  steering. The paths beside you are openings at the sides, and while steering
-  they stay in view: lean a little toward one to look at it (it comes clearer;
-  nothing is kept), click to go into it (that is the Lean). A click otherwise
+  At a branch, every way you could go (the ways on from where you are and the
+  paths beside you) is its own side tunnel off the wall a little way ahead, at
+  its own hour: lean toward one to aim at it (its rim and rings darken and its
+  name is written beside it; nothing is kept), click to dive in (a Lean); a
+  tap on one works without steering. A click otherwise
   acts on the thing you are on (never whatever lies far behind it), and goes
   into a group you are facing. Esc lets go (and is only that). No
   colors: the hours are ink, like everything else.
@@ -505,19 +504,21 @@ both records nothing; deliberately choosing one actually moves the
 visitor and is marked on return; choosing the other afterward replaces
 the record (not both at once) and never closes off the first.
 
-A choice you cannot see is not a choice, so the other paths now wait at
-the edges of the view (`edgePaths()`/`drawEdge()` in `flightRender.ts`):
-standing on one of several paths, the nearest one before it sits half in at
-the left and the nearest one after it at the right, like the next book
-cover sliding in. Each is its own picture blurred (the renderer's existing
-coarser copies, no CSS filter), or, with no picture, a ring silhouette,
-inside a dotted outline that says "somewhere you can go." Never its title:
-that resolves only once it comes to the middle, the same way every title
-already does. They are faint while falling and fuller once still; pointed
-at, one slides further in and comes clearer; tapped, it is a Lean, and the
-Slide goes there. The one chosen here before is outlined in rose. Nothing a
-viewer may not enter is ever glimpsed; the next path they may enter is
-shown instead. They sit below the compass on both phone and desktop.
+A choice you cannot see is not a choice, so every other way you could go is
+a real tunnel (`openingsOf()`/`mouthsOf()`/`drawMouth()` in `flightRender.ts`):
+standing on one of several paths, the ways on from it and the nearest path
+before and after it each open as a hole in the wall a little way down the
+tunnel (farther on a narrow screen, so the wall there stays in view), at the
+hour it was made, kept apart around the face. The wall's own dots leave the
+hole; through it runs a side tunnel of its own rings and strands, outward and
+on, close to the line you look along, so you see down into it, and at its far
+end waits the work's own picture (or, with none, a soft darkness). Never its
+title until aimed at. They are faint while falling and fuller once still;
+aimed at (thumb or mouse) or pointed at, the rim and rings darken; tapped or
+clicked, it is a Lean, and the view dives toward that mouth on the way in
+(not with reduced motion). Been through before, the rim is worn heavier; the
+one chosen here before is rimmed in rose. Nothing a viewer may not enter is
+ever opened; the next path they may enter is shown instead.
 
 This borrows the anticipation of a reveal and deliberately refuses what
 makes a loot box a loot box: a path always reveals the same thing, only

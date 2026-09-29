@@ -55,7 +55,7 @@ import {
   exploredFrom,
   turnedIn,
 } from '@/lib/shadowfield/web';
-import { aheadFacing, aheadPaths, edgePaths, renderFlight } from '@/lib/shadowfield/flightRender';
+import { aheadFacing, aheadPaths, edgePaths, openingsOf, renderFlight } from '@/lib/shadowfield/flightRender';
 import { relatedTo } from '@/lib/shadowfield/relate';
 import { buildSamples, isSample, samplesAllowed } from '@/lib/shadowfield/sources/samples';
 import { addStep, beginJourney, forgetJourneys, recapOf, writeJourneys, type Journeys, type Recap } from '@/lib/shadowfield/journey';
@@ -443,7 +443,7 @@ export default function ShadowField({ serif }: Props) {
   const topicsRef = useRef<{ id: string; label: string; angle: number }[] | null>(null);
   const topicTurnRef = useRef<string | null>(null);
   const timeWellRef = useRef<Quarter | null>(null);
-  const steerRef = useRef({ on: false, touch: false, x: 0, y: 0, endedAt: 0, well: null as Quarter | null, aim: 0 as -1 | 0 | 1 });
+  const steerRef = useRef({ on: false, touch: false, x: 0, y: 0, endedAt: 0, well: null as Quarter | null });
   // steering by touch: the finger's own run (a tap, or a drag that aims), and a pinch that carries you
   const steerTouchRef = useRef({ moved: 0, pinched: false, d0: 0, d: 0 });
   // steering by touch: where the thumb has pushed the heading (the phone itself stays still: how it
@@ -456,6 +456,8 @@ export default function ShadowField({ serif }: Props) {
   // the ways on from a branch, waiting ahead, and the one aimed at while steering
   const aheadRef = useRef<ReturnType<typeof aheadPaths>>([]);
   const aheadAimRef = useRef<string | null>(null);
+  /** Going into a side tunnel: the way ahead swings toward its mouth for a moment (screen direction, until when). */
+  const diveRef = useRef<{ x: number; y: number; until: number } | null>(null);
   const [steering, setSteering] = useState(false);
   // a mouse steers with the pointer held by the page; a finger steers by dragging (every screen can)
   const canSteer = useSyncExternalStore(
@@ -810,6 +812,12 @@ export default function ShadowField({ serif }: Props) {
       const idx = stream?.byId.get(path[path.length - 1].id);
       const door = stream && idx !== undefined && stream.stations[idx].depth === 1 && stream.stations[idx].gate ? stream.stations[idx] : null;
       const going = !!door && modeRef.current === 'flight' && insideRef.current !== door.node.id;
+      // into a side tunnel: the view dives toward its mouth on the way in
+      const mouth = aheadRef.current.find((o) => o.node.id === path[path.length - 1].id);
+      if (mouth && modeRef.current === 'flight') {
+        const turn = mouth.angle + flightCamRef.current.spin;
+        diveRef.current = { x: Math.cos(turn), y: Math.sin(turn), until: performance.now() + 750 };
+      }
       choose(path);
       flyTo(path, radius);
       const first = going && stream ? stream.stations[idx! + 1] : undefined;
@@ -1848,8 +1856,10 @@ export default function ShadowField({ serif }: Props) {
       // with reduced motion the way ahead never swings: the drop's tail, the hour written darker and
       // the rings of the openings still say where you are heading
       const swing = flying && steer.on && !reducedQuery.matches;
-      fc.bx += ((swing ? steer.x : 0) - fc.bx) * ease;
-      fc.by += ((swing ? steer.y : 0) - fc.by) * ease;
+      const dive = diveRef.current && nowMs < diveRef.current.until && flying && !reducedQuery.matches ? diveRef.current : null;
+      if (!dive) diveRef.current = null;
+      fc.bx += ((dive ? dive.x : swing ? steer.x : 0) - fc.bx) * (dive ? 1 - Math.exp(-dt * 9) : ease);
+      fc.by += ((dive ? dive.y : swing ? steer.y : 0) - fc.by) * (dive ? 1 - Math.exp(-dt * 9) : ease);
       if (!flying && steer.on) {
         if (!steer.touch) document.exitPointerLock();
         else {
@@ -1859,7 +1869,6 @@ export default function ShadowField({ serif }: Props) {
       }
       if (!flying || !steer.on) {
         steer.well = null;
-        steer.aim = 0;
         topicTurnRef.current = null;
       }
       else {
@@ -1896,8 +1905,6 @@ export default function ShadowField({ serif }: Props) {
           const off = Math.abs(mod(Math.atan2(steer.y, steer.x) - mid + Math.PI, Math.PI * 2) - Math.PI);
           if (off > Math.PI / 4 + 0.14) steer.well = q;
         }
-        // leaning a little to one side (not yet into an hour) looks at the opening there
-        steer.aim = steer.well === null && Math.abs(steer.x) > 0.2 && Math.abs(steer.x) > Math.abs(steer.y) ? (steer.x > 0 ? 1 : -1) : 0;
         // held by the page, the pointer is the drop: whatever is at the middle is what it points at
         pointerRef.current = { x: cam.w / 2, y: cam.h * 0.47, inside: true, t: nowMs };
       }
@@ -2159,15 +2166,17 @@ export default function ShadowField({ serif }: Props) {
         // the line writes itself at a reading pace after a landing
         const written = reducedQuery.matches || landedAtRef.current === 0 ? Infinity : Math.max(0, (sinceLanding - 0.35) * 45);
         // at a branch, the ways on from here, waiting ahead at their hours (only ones this viewer may enter)
-        const ahead = (aheadRef.current = aheadPaths(here, (n, p) => {
+        // and the paths beside this one: every way you could go from here is a side tunnel off the wall
+        const mayOpen = (n: IdeaNode, p: IdeaNode[]) => {
           const idx = stream.byId.get(n.id);
           if (idx === undefined || skip(stream.stations[idx])) return false;
           return n.disclosure <= lensRef.current.closeness(p[1]);
-        }));
-        // steering, a lean (not yet into an hour) toward one of them aims at it; the side openings wait
+        };
+        edgesRef.current = edgePaths(here, mayOpen);
+        const ahead = (aheadRef.current = openingsOf(aheadPaths(here, mayOpen), edgesRef.current));
+        // steering, a lean (not yet into an hour) toward one of them aims at it
         const aimed = steer.on && steer.well === null && Math.hypot(steer.x, steer.y) > 0.2 ? aheadFacing(ahead, steer.x, steer.y, fc.spin) : null;
         aheadAimRef.current = aimed?.node.id ?? null;
-        if (aimed) steer.aim = 0;
         const fstate: Parameters<typeof renderFlight>[3] = {
           frames: framesRef.current,
           closeness: (s) => (s.depth === 0 ? 1 : lensRef.current.closeness(s.path[1])),
@@ -2185,18 +2194,13 @@ export default function ShadowField({ serif }: Props) {
             return r && r.width > 0 ? { x0: r.left - rect.left, y0: r.top - rect.top, x1: r.right - rect.left, y1: r.bottom - rect.top } : undefined;
           })(),
           topicFacing: topicTurnRef.current,
-          steer: { on: steer.on, facing: steer.well, aim: steer.aim, turned: steer.on ? turnedIn(webMemRef.current, insideRef.current) : undefined },
+          steer: { on: steer.on, facing: steer.well, turned: steer.on ? turnedIn(webMemRef.current, insideRef.current) : undefined },
           explored: here && here.path.length > 1 ? exploredFrom(webMemRef.current, here.path[here.path.length - 2].id) : undefined,
           ahead,
+          hereZ: here?.z,
           aheadAim: aheadAimRef.current,
           leanedAhead: here ? leanedChildOf(webMemRef.current, here.node.id) : null,
           exploredAhead: here ? exploredFrom(webMemRef.current, here.node.id) : undefined,
-          // at a branch, the other paths beside this one: only ones this viewer may actually enter
-          edges: (edgesRef.current = edgePaths(here, (n, p) => {
-            const idx = stream.byId.get(n.id);
-            if (idx === undefined || skip(stream.stations[idx])) return false;
-            return n.disclosure <= lensRef.current.closeness(p[1]);
-          })),
           dt,
           web: {
             plucks: echoesRef.current.length ? [...plucksRef.current, ...echoesRef.current] : plucksRef.current,
@@ -2728,7 +2732,7 @@ export default function ShadowField({ serif }: Props) {
   };
   const startTouchSteering = () => {
     const s = steerRef.current;
-    Object.assign(s, { on: true, touch: true, x: 0, y: 0, well: null, aim: 0 });
+    Object.assign(s, { on: true, touch: true, x: 0, y: 0, well: null });
     steerHandRef.current = { dx: 0, dy: 0 };
     setSteering(true);
     setNotice('drag to steer, tap to go in, pinch to move');
@@ -2749,7 +2753,7 @@ export default function ShadowField({ serif }: Props) {
   const stopSteering = () => {
     const s = steerRef.current;
     if (document.pointerLockElement) return document.exitPointerLock();
-    Object.assign(s, { on: false, touch: false, x: 0, y: 0, well: null, aim: 0, endedAt: performance.now() });
+    Object.assign(s, { on: false, touch: false, x: 0, y: 0, well: null, endedAt: performance.now() });
     steerHandRef.current = { dx: 0, dy: 0 };
     pointersRef.current.clear();
     pinchRef.current = null;
@@ -2761,10 +2765,8 @@ export default function ShadowField({ serif }: Props) {
     // about the thing you are on, never whatever happens to lie far behind it
     const on = hereRef.current;
     const hit = hitsRef.current.find((h) => h.kind === 'node' && h.node.id === on?.node.id) ?? null;
-    // the opening you are leaning toward is gone into (a Lean: chosen, not passed): a way on, ahead,
-    // or one of the paths beside this one
-    const onward = aheadAimRef.current ? aheadRef.current.find((x) => x.node.id === aheadAimRef.current) : undefined;
-    const opening = onward ?? (steerRef.current.aim ? edgesRef.current.find((x) => x.side === steerRef.current.aim) : undefined);
+    // the side tunnel you are leaning toward is gone into (a Lean: chosen, not passed)
+    const opening = aheadAimRef.current ? aheadRef.current.find((x) => x.node.id === aheadAimRef.current) : undefined;
     if (opening) goTo(opening.path);
     else if (!hit && on?.depth === 1 && on.gate && insideRef.current !== on.node.id) goTo(on.path);
     else if (c) tapAt(c.w / 2, c.h * 0.47, hit);

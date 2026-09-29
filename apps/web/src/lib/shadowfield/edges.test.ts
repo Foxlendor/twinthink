@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { edgePaths } from './flightRender';
+import { edgePaths, mouthsOf, openingsOf } from './flightRender';
 import type { Station } from './flight';
 import type { IdeaNode } from './model';
 
@@ -56,5 +56,34 @@ describe('the paths beside the one you are on', () => {
     const edges = edgePaths(at([root, parent, a]), (n) => n.id !== 'b');
     expect(edges.map((e) => e.node.id)).toEqual(['c']);
     expect(edgePaths(at([root, parent, b]), () => false)).toEqual([]);
+  });
+});
+
+describe('every way on is a side tunnel off the wall', () => {
+  const H = 3600000;
+  const a = node('a', [], { began: 0 });
+  const b = node('b', [], { began: 3 * H });
+  const c = node('c', [], { began: 3 * H + 60000 });
+  const parent = node('parent', [a, b, c]);
+  const root = node('root', [parent]);
+
+  it('joins the ways on and the paths beside, once each, kept apart around the face', () => {
+    const edges = edgePaths(at([root, parent, b]), all);
+    const ahead = [{ node: c, path: [root, parent, c], angle: 0 }];
+    const open = openingsOf(ahead, edges);
+    expect(open.map((o) => o.node.id).sort()).toEqual(['a', 'c']);
+    const both = openingsOf([{ node: c, path: [root, parent, c], angle: 0 }], edgePaths(at([root, parent, a]), all));
+    // b and c were made a minute apart: never on top of each other
+    expect(Math.abs(both[1].angle - both[0].angle)).toBeGreaterThan(0.3);
+  });
+
+  it('opens each one in the wall, a little way past the thing in front of you, at its own hour', () => {
+    const open = openingsOf([], edgePaths(at([root, parent, b]), all));
+    const mouths = mouthsOf(open, 10);
+    for (const m of mouths) {
+      expect(Math.hypot(m.x, m.y)).toBeCloseTo(1.3);
+      expect(m.z).toBeGreaterThan(10);
+      expect(Math.atan2(m.y, m.x)).toBeCloseTo(Math.atan2(Math.sin(m.p.angle), Math.cos(m.p.angle)));
+    }
   });
 });
