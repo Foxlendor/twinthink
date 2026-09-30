@@ -61,6 +61,34 @@ article. Only pieces open to a visitor who is not signed in are ever shown, so a
 never expose anything private (`lib/fall/sources.ts`, tests in `sources.test.ts`). The list is
 empty until John writes it.
 
+## Multiplayer: decided 30 Sep, not built
+
+Watusi built synchronous collaboration; TwinThink is building synchronous experience. They
+overlap technically; they are not the same product. Multiplayer means sharing the depth: falling
+together, seeing one another's paths, and later making or attaching things inside the same space.
+What it is made of: shared presence, shared live state, and immediate consequence (a strand
+appears for both, a doorway opens for both, the joint route stays visible behind you).
+
+- The base is the existing "Fall with me" (on `main`): server-held position, per-viewer filtering
+  (a follower is only ever sent a place they could see themselves, otherwise only "beyond").
+  It is not replaced by Yjs or any shared client state; the server stays in charge of visibility.
+  Yjs may later carry only what is truly the same for everyone present (something written
+  together), never position.
+- Leans stay private by default. If sharing where you lean or aim is ever added: opt-in per
+  session, ephemeral, never stored.
+- `sample/` keeps meaning "never leaves the device". Real public knowledge gets its own
+  namespace (such as `wiki/`) before any of it can be shared; the `sample/` rule is not weakened.
+- A subject's continuity (the continuity log) and the history of a shared Fall session are
+  separate concepts, unless a later design shows they should share a model.
+- The first prototype, when it comes: "Fall with me" extended from Slate places to `/fall`
+  subjects, with the same privacy guarantees. Two people in the same relationship space, both
+  seeing the rose strands, each able to look back at their own route through it.
+- Not coming: channels, rooms, a code editor, GitHub as storage, or other Game Table surfaces.
+  What is worth keeping from it: a sandbox for running an interactive piece safely, and rename
+  and delete wherever people manage their work.
+- Order: first, the three bridges tried on a phone by one person (search, fall, meet a person's
+  work). Only then the smallest change that extends "Fall with me" to `/fall`.
+
 ## The vocabulary the space has (all of it earned from structure)
 
 | What the structure is | What it becomes |
