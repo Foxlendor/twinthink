@@ -18,6 +18,7 @@ import styles from './FallSpace.module.css';
 import { FallNode, Graph, Strand, chooseOpenings } from '@/lib/fall/graph';
 import { Frame, Opening, Place, START, V3, add, arrive, between, blend, circling, lerp3, norm, openingsAround, orbit, overlook, scale, sub, travelTime } from '@/lib/fall/space';
 import { Cam, Shown, drawFall, viewOf } from '@/lib/fall/draw';
+import { Entrance, isDescription, resolveEntrance } from '@/lib/fall/enter';
 import { Snapshot, WIKI_STARTS, createWikiGraph, titleOf, wikiId } from '@/lib/fall/wiki';
 
 import { samplesAllowed } from '@/lib/shadowfield/sources/samples';
@@ -95,6 +96,12 @@ export default function FallSpace({ serif }: { serif: string }) {
   const [canBack, setCanBack] = useState(false);
   const [overlooking, setOverlooking] = useState(false);
   const [failed, setFailed] = useState(false);
+  // the doorway: where you want to enter (open on the first page, and on asking while falling)
+  const [door, setDoor] = useState(false);
+  const [doorText, setDoorText] = useState('');
+  const [doorBusy, setDoorBusy] = useState(false);
+  const [doorNote, setDoorNote] = useState<string | null>(null);
+  const [doorChoice, setDoorChoice] = useState<Extract<Entrance, { kind: 'choose' }>['options'] | null>(null);
   const allowed = useSyncExternalStore(
     noop,
     () => samplesAllowed(process.env.NEXT_PUBLIC_DEPLOY_ENV, window.location.hostname),
@@ -291,6 +298,68 @@ export default function FallSpace({ serif }: { serif: string }) {
       },
     };
   }, [choose]);
+
+  /** Search chooses where you enter; the Fall determines where you go. */
+  const enterBy = async (text: string) => {
+    if (doorBusy || !text.trim()) return;
+    setDoorBusy(true);
+    setDoorNote(null);
+    setDoorChoice(null);
+    const r = await resolveEntrance(text);
+    setDoorBusy(false);
+    if (r.kind === 'enter') {
+      setDoor(false);
+      setDoorText('');
+      begin(r.id, r.title);
+    } else if (r.kind === 'choose') setDoorChoice(r.options);
+    else setDoorNote(r.kind === 'none' ? (isDescription(text) ? 'nothing matches that yet.' : 'nothing by that name.') : 'Wikipedia could not be reached just now.');
+  };
+  const enterAt = (id: string, title: string) => {
+    setDoor(false);
+    setDoorChoice(null);
+    setDoorText('');
+    begin(id, title);
+  };
+
+  const doorway = (
+    <form
+      className={styles.door}
+      role="search"
+      onSubmit={(e) => {
+        e.preventDefault();
+        enterBy(doorText);
+      }}
+    >
+      <input
+        className={styles.doorInput}
+        type="search"
+        value={doorText}
+        autoFocus
+        placeholder="where do you want to enter?"
+        aria-label="Where do you want to enter? A name, or what you are curious about."
+        onChange={(e) => {
+          setDoorText(e.target.value);
+          setDoorNote(null);
+          setDoorChoice(null);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && started) setDoor(false);
+        }}
+      />
+      {doorBusy && <p className={styles.doorNote}>finding it.</p>}
+      {doorNote && <p className={styles.doorNote}>{doorNote}</p>}
+      {doorChoice && (
+        <div className={styles.doorChoice}>
+          {doorChoice.map((o) => (
+            <button key={o.id} type="button" className={styles.start} onClick={() => enterAt(o.id, o.title)}>
+              {o.title}
+              {o.about ? <span className={styles.about}>{o.about}</span> : null}
+            </button>
+          ))}
+        </div>
+      )}
+    </form>
+  );
 
   const toggleOverlook = () => {
     overlookRef.current.on = !overlookRef.current.on;
@@ -542,7 +611,9 @@ export default function FallSpace({ serif }: { serif: string }) {
         <div className={styles.starts}>
           <h1>Fall through Wikipedia</h1>
           <p>Real articles, connected the way Wikipedia and DBpedia connect them. Where you go shapes the space you see.</p>
-          {WIKI_STARTS.map((t) => (
+          {doorway}
+          {!doorChoice && <p className={styles.or}>or begin somewhere:</p>}
+          {!doorChoice && WIKI_STARTS.map((t) => (
             <button key={t} type="button" className={styles.start} onClick={() => begin(wikiId(t), t)}>
               {t}
             </button>
@@ -564,6 +635,11 @@ export default function FallSpace({ serif }: { serif: string }) {
             <button type="button" className={styles.quiet} onClick={toggleOverlook}>
               {overlooking ? 'return' : 'look back'}
             </button>
+            {!overlooking && (
+              <button type="button" className={styles.quiet} onClick={() => setDoor(true)}>
+                enter elsewhere
+              </button>
+            )}
             <button type="button" className={styles.quiet} onClick={() => setStarted(false)}>
               start again
             </button>
@@ -599,6 +675,16 @@ export default function FallSpace({ serif }: { serif: string }) {
               <>From Wikipedia and DBpedia: {hereId ? titleOf(hereId) : ''}</>
             )}
           </div>
+          {door && (
+            <div
+              className={styles.doorLayer}
+              onPointerDown={(e) => {
+                if (e.target === e.currentTarget) setDoor(false);
+              }}
+            >
+              {doorway}
+            </div>
+          )}
         </>
       )}
     </div>

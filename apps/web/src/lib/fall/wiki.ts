@@ -12,7 +12,7 @@
 import { Bearing, FallNode, Graph, Strand, undash } from './graph';
 
 export const WIKI_PREFIX = 'sample/wiki/';
-const AGENT = 'TwinThink-preview/0.1 (https://twinth.ink)';
+export const AGENT = 'TwinThink-preview/0.1 (https://twinth.ink)';
 const WEEK = 7 * 86400000;
 
 /** The starting places, as in the brief: a few real, well connected articles. */

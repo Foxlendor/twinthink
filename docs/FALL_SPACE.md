@@ -27,6 +27,28 @@ The live Slate is unchanged. Nothing here replaces it until John has tried this 
 - The clock face is not thrown away. It is not forced into direction here; it stays an open
   idea, and time may become another dimension of the space (for example, depth along the thread).
 
+## Search is the entrance (30 Sep)
+
+**Search chooses where you enter. The Fall determines where you go.** Search is a doorway into
+the space, never a results page, and never the main interface.
+
+- On the first page: a quiet "where do you want to enter?", with "or begin somewhere" and the
+  starts below it (nobody needs to know what they are looking for). While falling: a quiet
+  "enter elsewhere" opens the same doorway over the page; it is gone as soon as you choose, and
+  Escape or a tap outside closes it. No search bar stays on screen while you fall.
+- A name ("Phonograph", "Michael Jackson") goes straight to that article. The start of a name goes
+  to what it begins. A description ("early recorded sound", "how bicycles evolved") goes to the
+  article that best matches it (Wikipedia's own full-text search, top result).
+- Only when a name means several things ("Mercury") is there a short, temporary choice: the
+  things it names, each with Wikipedia's one-line description (planet, element, Roman god, car).
+- Nothing found, or Wikipedia unreachable: said plainly, nothing invented.
+- One request per search (never per keystroke), `Api-User-Agent`, from the browser only
+  (`lib/fall/enter.ts`, tests in `enter.test.ts`).
+- Entering by search begins a new Fall at that place. Articles past the snapshot come from
+  DBpedia live, so the first steps from a searched article can be slow.
+- This is public knowledge only. It says nothing about searching private Whoeuvres or the
+  catalog, which keep their own discovery rules.
+
 ## The vocabulary the space has (all of it earned from structure)
 
 | What the structure is | What it becomes |
