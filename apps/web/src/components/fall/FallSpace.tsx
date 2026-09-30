@@ -16,7 +16,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import styles from './FallSpace.module.css';
 import { FallNode, Graph, Strand, chooseOpenings } from '@/lib/fall/graph';
-import { Frame, Opening, Place, START, V3, add, arrive, between, blend, circling, lerp3, norm, openingsAround, orbit, overlook, scale, sub, travelTime } from '@/lib/fall/space';
+import { Frame, Opening, Place, START, V3, add, arrive, between, blend, circling, cross, lerp3, norm, openingsAround, orbit, overlook, scale, sub, travelTime } from '@/lib/fall/space';
 import { Cam, Shown, drawFall, viewOf } from '@/lib/fall/draw';
 import { Look, Way, drawChamber, facing, lookAt, travelCam } from '@/lib/fall/chamber';
 import { Entrance, isDescription, resolveEntrance } from '@/lib/fall/enter';
@@ -86,7 +86,25 @@ export default function FallSpace({ serif }: { serif: string }) {
   /** What your path keeps circling, and where. */
   const centresRef = useRef<{ id: string; title: string; at: V3; n: number }[]>([]);
   const statusRef = useRef<string | undefined>(undefined);
-  const travelRef = useRef<{ from: Frame; to: Frame; path: (t: number) => V3; t0: number; dur: number; human: boolean } | null>(null);
+  /**
+   * Travelling a passage: how far along (0 to 1), which the frame advances; held W hurries it, held
+   * S reverses it, and reversing all the way returns you to where you set out (undo), as if you had
+   * never gone. What you walked is remembered only once you arrive.
+   */
+  const travelRef = useRef<{
+    from: Frame;
+    to: Frame;
+    path: (t: number) => V3;
+    prog: number;
+    dur: number;
+    human: boolean;
+    undo: { route: string[]; stack: string[]; here: string; added: string | null };
+    remember: [string, string] | null;
+  } | null>(null);
+  /** Desktop keys held (W, A, S, D), and, while testing, whether A/D turn or strafe. */
+  const keysRef = useRef(new Set<string>());
+  const adModeRef = useRef<'turn' | 'strafe'>('turn');
+  const strafeRef = useRef(0);
   /** First person: where you are looking in the chamber you are in (dragged), and a drag under way. */
   const lookRef = useRef<Look>({ yaw: 0, pitch: 0 });
   const dragRef = useRef<{ x: number; y: number; yaw: number; pitch: number; moved: number } | null>(null);
@@ -246,6 +264,8 @@ export default function FallSpace({ serif }: { serif: string }) {
       const pl = hereOf(placesRef.current, routeRef.current);
       if (!pl) return;
       const from = pl.frame;
+      const undo = { route: [...routeRef.current], stack: [...stackRef.current], here: pl.id, added: placesRef.current.has(to) ? null : to };
+      let walked: [string, string] | null = null;
       if (how === 'on') {
         // the ways not taken here stay, as stubs, part of where you have been
         pl.passed = openingsRef.current.filter((o) => o.strand.to !== to && !o.back).map((o) => ({ to: o.strand.to, pos: o.pos }));
@@ -255,7 +275,7 @@ export default function FallSpace({ serif }: { serif: string }) {
           placesRef.current.set(to, { id: to, title, frame, passed: [], via: via ? { from: pl.id, why: via.why, strength: via.strength, bearing: via.bearing, shape: via.shape } : undefined });
         }
         stackRef.current.push(to);
-        remember(pl.id, to);
+        walked = [pl.id, to];
       } else stackRef.current.pop();
       routeRef.current.push(to);
       const dest = placesRef.current.get(to)!.frame;
@@ -263,12 +283,15 @@ export default function FallSpace({ serif }: { serif: string }) {
         from,
         to: dest,
         path: between(from, dest),
-        t0: performance.now(),
+        prog: 0,
         dur: (reducedRef.current ? 0.25 : travelTime(from.p, dest.p)) * 1000,
         human,
+        undo,
+        remember: walked,
       };
       // arriving, you face the way you came in along the passage
       lookRef.current = { yaw: 0, pitch: 0 };
+      strafeRef.current = 0;
       openingsRef.current = [];
       shownPosRef.current = new Map();
       centresRef.current = [];
@@ -310,6 +333,7 @@ export default function FallSpace({ serif }: { serif: string }) {
       centres: () => centresRef.current.map((c) => ({ id: c.id, n: c.n })),
       enter: (id: string, title: string) => begin(id, title),
       aimed: () => aimedRef.current,
+      travelling: () => !!travelRef.current,
       go: (id: string) => {
         const o = openingsRef.current.find((x) => x.strand.to === id);
         if (o) choose(o);
@@ -436,6 +460,40 @@ export default function FallSpace({ serif }: { serif: string }) {
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+      // travelling: on at its own pace, quicker with W held, and back the way you came with S held
+      const trv = travelRef.current;
+      if (trv) {
+        const keys = keysRef.current;
+        const speed = keys.has('s') ? -1.4 : keys.has('w') ? 1.8 : 1;
+        trv.prog = Math.max(0, Math.min(1, trv.prog + ((dt * 1000) / trv.dur) * speed));
+        if (trv.prog >= 1) {
+          if (trv.remember) remember(trv.remember[0], trv.remember[1]);
+          travelRef.current = null;
+        } else if (trv.prog <= 0 && speed < 0) {
+          // all the way back: you are where you set out, as if you had never gone
+          routeRef.current = trv.undo.route;
+          stackRef.current = trv.undo.stack;
+          if (trv.undo.added) placesRef.current.delete(trv.undo.added);
+          travelRef.current = null;
+          openingsRef.current = [];
+          shownPosRef.current = new Map();
+          lookRef.current = { yaw: 0, pitch: 0 };
+          setHereId(trv.undo.here);
+          setCanBack(trv.undo.stack.length > 1);
+          setCredit(nodesRef.current.get(trv.undo.here)?.credit ?? null);
+          load(trv.undo.here);
+        }
+      }
+      // A/D, held: turn where you look, or (testing) step aside within the chamber
+      if (!travelRef.current) {
+        const k = keysRef.current;
+        const side = (k.has('d') ? 1 : 0) - (k.has('a') ? 1 : 0);
+        if (side) {
+          if (adModeRef.current === 'turn') lookRef.current = { ...lookRef.current, yaw: lookRef.current.yaw - side * 1.3 * dt };
+          else strafeRef.current = Math.max(-0.6, Math.min(0.6, strafeRef.current + side * 1.0 * dt));
+        }
+      }
+
       const pl = hereOf(placesRef.current, routeRef.current);
       if (!pl) return;
 
@@ -450,16 +508,16 @@ export default function FallSpace({ serif }: { serif: string }) {
         let travel: { path: (t: number) => V3; t: number; human: boolean } | null = null;
         let arrivingC = 1;
         if (trc) {
-          const t = Math.min(1, (now - trc.t0) / trc.dur);
+          const t = trc.prog;
           arrivingC = t;
           const c = travelCam(trc.from, trc.to, trc.path, ease(t));
           eye = c.eye;
           look = { f: c.f, u: c.u };
           travel = { path: trc.path, t: ease(t), human: trc.human };
-          if (t >= 1) travelRef.current = null;
         } else {
-          eye = pl.frame.p;
           look = lookAt(pl.frame, lookRef.current);
+          // a step aside within the chamber (A/D when testing strafe): never out of it
+          eye = add(pl.frame.p, scale(norm(cross(look.f, look.u)), strafeRef.current));
         }
         const settleC = reduced.matches ? 1 : 1 - Math.exp(-dt * 3);
         const opensC = openingsRef.current.map((o) => {
@@ -476,7 +534,7 @@ export default function FallSpace({ serif }: { serif: string }) {
           .map((o) => ({ id: o.strand.to, title: o.strand.title, pos: o.pos, strength: o.strand.strength, why: o.strand.why, human: o.strand.human, opening: o }));
         if (backId && backPlace) ways.push({ id: backId, title: backPlace.title, pos: backPlace.frame.p, strength: 0.6, human: isWiki(backId) !== isWiki(pl.id), back: true });
         waysRef.current = ways;
-        const faced = travel ? null : facing(pl.frame.p, look.f, ways);
+        const faced = travel ? null : facing(eye, look.f, ways);
         aimedRef.current = faced;
         // what you face becomes legible, a beat at a time; what you have walked or seen is half known
         const revC = revealRef.current;
@@ -513,10 +571,9 @@ export default function FallSpace({ serif }: { serif: string }) {
       const tr = travelRef.current;
       let arriving = 1;
       if (tr) {
-        const t = Math.min(1, (now - tr.t0) / tr.dur);
+        const t = tr.prog;
         arriving = t;
         fr = blend(tr.from, tr.to, ease(t), tr.path);
-        if (t >= 1) travelRef.current = null;
       }
       let cam = camFor(fr);
       // leaning: the view turns a little toward the way on leaned toward, and that way comes in
@@ -604,7 +661,7 @@ export default function FallSpace({ serif }: { serif: string }) {
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [allowed, started, serif]);
+  }, [allowed, started, serif, load]);
 
   // leaning with the mouse (no button), a thumb (drag), or the arrow keys
   const hit = (x: number, y: number) => shownRef.current.find((s) => Math.hypot(s.x - x, s.y - y) < s.r) ?? null;
@@ -710,6 +767,39 @@ export default function FallSpace({ serif }: { serif: string }) {
     } else return;
     e.preventDefault();
   };
+
+  // desktop: W goes into the way you face (held, it hurries you along), S goes back the way you came
+  // (held mid-passage, it takes you back), A/D turn where you look. Guided: you can look anywhere,
+  // but you only ever move through the structure that is there.
+  useEffect(() => {
+    if (!started) return;
+    try {
+      if (new URLSearchParams(window.location.search).get('ad') === 'strafe') adModeRef.current = 'strafe';
+    } catch {
+      // no address to read: turning it is
+    }
+    const typing = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+    const down = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase();
+      if (!['w', 'a', 's', 'd'].includes(k) || typing(e) || e.metaKey || e.ctrlKey || e.altKey || overlookRef.current.on) return;
+      e.preventDefault();
+      const fresh = !keysRef.current.has(k);
+      keysRef.current.add(k);
+      if (!fresh || travelRef.current) return;
+      if (k === 'w') goWay(aimedRef.current);
+      else if (k === 's') back();
+    };
+    const up = (e: KeyboardEvent) => keysRef.current.delete(e.key.toLowerCase());
+    const clear = () => keysRef.current.clear();
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', clear);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', clear);
+    };
+  });
 
   if (allowed === null) return <div className={styles.field} />;
   if (!allowed)

@@ -69,7 +69,15 @@ rose partway along. The way you came in stays open behind you ("back to ..."). G
 down the passage and arrive inside the next chamber, facing on.
 
 Controls: drag to look around (phone and mouse), tap or click to go into the way you face (or the
-one you tap), arrow keys and Enter, Backspace for back. "Look back" steps outside to the overview
+one you tap), arrow keys and Enter, Backspace for back.
+
+Desktop also has WASD, as guided movement: you can look anywhere, but you only ever move through
+the structure that is there (**WASD should make the Fall feel inhabited, not gamified**). W goes
+into the way you face, and held, hurries you along it; S goes back the way you came, and held
+partway down a passage, takes you back out to where you set out, as if you had never gone (what
+you walked is remembered only on arrival); A and D turn where you look. A/D stepping aside within
+the chamber (strafe) is kept for comparison at `/fall?ad=strafe`: in these small chambers it only
+shifts the view slightly, so turning is the default. Phones keep drag and tap; no virtual joystick. "Look back" steps outside to the overview
 of your route; the rest of the time you are inside. Same data underneath: sources, snapshot,
 search, bridges, strength and direction, reveal, circling.
 
