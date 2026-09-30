@@ -14,8 +14,14 @@ Before changing the Slate, read `docs/TWINTHINK_CORE_SPEC.md` (the intent), `doc
 
 ## Vocabulary (John decides names)
 
-John names concepts; agents name variables. Use only these terms for TwinThink concepts, in docs,
-UI, routes, comments and explanations:
+John names concepts; agents name variables. Agents may describe behavior with metaphors, but a
+metaphor does not become architecture unless John explicitly names it.
+
+Existing legacy names (`ShadowField.tsx`, `lib/shadowfield/`, `docs/CANVAS.md`, and the like) may
+remain in code for compatibility for now, but agents must not use them to infer current product
+concepts. Canonical terminology takes precedence over filenames.
+
+Use only these terms for TwinThink concepts, in docs, UI, routes, comments and explanations:
 
 | Term | Meaning |
 | --- | --- |
