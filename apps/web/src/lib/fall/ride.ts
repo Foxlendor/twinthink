@@ -1,23 +1,20 @@
-// The Fall as a current: you are always moving, through relationships, never between pages.
+// The Fall as a river: motion is always present; travel is voluntary.
 //
-// You don't enter tunnels: you are already in one (the relationship you are riding). You don't
-// choose things: you steer through relationships. You don't arrive at ideas: you pass through
-// them. You don't click to move: you stop to inspect.
+// Two states. Traveling: a current carries you through one relationship. Located: you have arrived
+// at a subject and stay there until you leave. The environment never stops moving; only you do.
+// Arrival gives you permission to do nothing.
 //
-// A leg of the ride is one relationship, from one subject to the next: a region at either end where
-// the tube swells, and the passage between. At the far end the subject's own relationships split
-// off as branches (space.ts puts each where its strand does: the strongest nearly straight on, the
-// weaker peeling away at their bearings). Leaning toward a branch lets it gradually capture you as
-// you near the split; you are committed only when you pass it. With no lean, the main current (the
-// strongest relationship) carries you. Momentum carries you; attention changes you; inattention
-// eventually lets you settle.
+// Looking is how you steer. Whatever current you look at resolves in order: notice (its name),
+// understand (why it connects), and, if you keep looking past that, commit (it begins, slowly, to
+// carry you, and carries you on if you keep looking). Look away before you are properly in it and
+// you drift back to the subject. Turn around and the passage you arrived through is still there;
+// looked at the same way, it carries you back along the path you actually came.
 //
 // Nothing here decides what connects: the relationships come from the sources underneath.
 
-import { Strand } from './graph';
-import { Frame, Opening, V3, add, between, dot, len, rightOf, scale, sub } from './space';
+import { Frame, V3, add, between, cross, dot, len, norm, rightOf, scale, sub } from './space';
 
-/** One relationship being ridden: from a subject (none, for the way in) to the next. */
+/** One relationship, travelled from one subject to the next (none behind, for the way in). */
 export interface Leg {
   from: string | null;
   to: string;
@@ -29,6 +26,8 @@ export interface Leg {
   why?: string;
   /** Crossing between public knowledge and a person's own work. */
   human: boolean;
+  /** Travelled against the way you first came (retracing). */
+  back?: boolean;
 }
 
 export function legOf(from: string | null, to: string, a: Frame, b: Frame, strength: number, why?: string, human = false): Leg {
@@ -45,99 +44,89 @@ export function legOf(from: string | null, to: string, a: Frame, b: Frame, stren
 
 /** The way in: you are already moving when you arrive, a little way up the current into it. */
 export function leadIn(at: Frame, to: string): Leg {
-  return legOf(null, to, { ...at, p: add(at.p, scale(at.f, -2.6)) }, at, 1);
+  return legOf(null, to, { ...at, p: add(at.p, scale(at.f, -3.4)) }, at, 1);
 }
 
-/**
- * The main current at a split: the strongest relationship there. A person's own work is a side
- * current (a thread of credit), taken only by leaning into it, unless nothing else leads on.
- */
-export function mainCurrent(openings: Opening[]): Opening | null {
-  const knowledge = openings.filter((o) => !o.strand.human);
-  const from = knowledge.length ? knowledge : openings;
-  let best: Opening | null = null;
-  for (const o of from) if (!best || o.strand.strength > best.strand.strength) best = o;
-  return best;
+const flip = (fr: Frame): Frame => ({ p: fr.p, f: scale(fr.f, -1), u: fr.u });
+
+/** The same relationship the other way: the very path you came by, retraced. */
+export function reverseLeg(leg: Leg): Leg {
+  if (!leg.from) throw new Error('the way in has nothing behind it');
+  return { ...leg, from: leg.to, to: leg.from, a: flip(leg.b), b: flip(leg.a), path: (t) => leg.path(1 - t), back: !leg.back };
 }
 
-/** Below this, a lean is no lean: the current decides. */
-export const LEAN_DEAD = 0.2;
+/** World units a second between subjects, faster across the gap of a weak relationship. */
+export const CRUISE = 1.2;
+export const paceOf = (strength: number) => 1 + 0.8 * (1 - Math.max(0, Math.min(1, strength)));
 
-/** Where a branch lies as you look along the split: right is +x, down is +y. */
-export function screenward(fork: Frame, pos: V3): [number, number] {
-  const d = sub(pos, fork.p);
-  return [dot(d, rightOf(fork)), -dot(d, fork.u)];
+/** Where you come to rest at a subject (world units before it), and how far out it begins to slow you. */
+export const REST = 0.9;
+export const REACH = 2.2;
+
+/** Arriving: full speed outside the subject's reach, falling away inside it, nothing at rest. */
+export function arrivalSpeed(left: number, cruise: number) {
+  const d = left - REST;
+  if (d <= 0) return 0;
+  return cruise * Math.min(1, Math.pow(d / REACH, 0.7));
 }
 
-/**
- * The branch a lean points into: the one lying nearest the lean's direction (within a wide cone).
- * No lean, or nothing that way, and the main current carries you.
- */
-export function branchFor(fork: Frame, openings: Opening[], lean: { x: number; y: number }): Opening | null {
-  if (Math.hypot(lean.x, lean.y) < LEAN_DEAD) return mainCurrent(openings);
-  const want = Math.atan2(lean.y, lean.x);
-  let best: Opening | null = null;
-  let bestD = 1.25;
-  for (const o of openings) {
-    const [x, y] = screenward(fork, o.pos);
-    if (Math.hypot(x, y) < 1e-3) continue;
-    const a = Math.atan2(y, x);
-    const d = Math.abs(Math.atan2(Math.sin(a - want), Math.cos(a - want)));
-    if (d < bestD) [best, bestD] = [o, d];
-  }
-  return best ?? mainCurrent(openings);
-}
-
-/** How strongly the branch ahead has you (0 to 1): nothing far off, all of it at the split. */
-export function captureAt(s: number) {
-  const t = Math.max(0, Math.min(1, (s - 0.5) / 0.45));
-  return t * t * (3 - 2 * t);
-}
-
-/** How crowded a subject is (0 to 1): the more strong relationships meet there, the denser. */
-export function densityOf(strands: Strand[] | undefined) {
-  if (!strands) return 0.5;
-  return Math.min(1, strands.filter((s) => s.strength >= 0.45).length / 10);
-}
-
-/** Metres (world units) a second, at an ordinary pace. */
-export const CRUISE = 0.85;
-
-/**
- * How fast the current runs at `s` along a leg (a multiple of cruise): slower through a dense
- * region, faster across the gap of a weak relationship.
- */
-export function paceAt(s: number, strength: number, density: number) {
-  const mid = Math.sin(Math.PI * Math.max(0, Math.min(1, s)));
-  const region = 0.55 + 0.35 * (1 - density);
-  const gap = 1 + 1.1 * (1 - Math.max(0, Math.min(1, strength)));
-  return region + (gap - region) * mid;
-}
-
-/**
- * Momentum: speed eases toward what the current asks. Held, it bleeds away at once (a stop begins
- * the moment you hold); let go, the current picks you back up more gently.
- */
-export function easeSpeed(v: number, target: number, dt: number, holding: boolean) {
-  const tau = target < v ? (holding ? 0.22 : 0.7) : 0.9;
+/** Momentum: speed eases toward what the current allows (dropping faster than it picks up). */
+export function easeSpeed(v: number, target: number, dt: number) {
+  const tau = target < v ? 0.25 : 0.6;
   return v + (target - v) * (1 - Math.exp(-dt / tau));
 }
 
-/** Passing this many subjects with no attention at all, the current lets you settle. */
-export const SETTLE_AFTER = 3;
-/** Where along the leg you settle: inside the next subject, its splits in view. */
-export const SETTLE_AT = 0.84;
+/** The point on a leg `left` world units before its end (near enough; the paths are gentle). */
+export const sBefore = (leg: Leg, left: number) => Math.max(0, Math.min(1, 1 - left / leg.length));
 
-/** The speed the current allows while settling: less and less, to nothing inside the subject. */
-export function settleSpeed(s: number, cruise: number) {
-  return cruise * Math.max(0, Math.min(1, (SETTLE_AT - s) / 0.35));
+const smooth = (a: number, b: number, x: number) => {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
+/**
+ * Attention, as seconds of looking at one current: first its name (notice), then why it connects
+ * (understand), and only well after the reason is legible, a pull (commit). Looking away resets it.
+ */
+export const NOTICE = [0.25, 0.6] as const;
+export const UNDERSTAND = [0.9, 1.5] as const;
+export const COMMIT = [2.4, 3.8] as const;
+export function attention(t: number) {
+  return { name: smooth(NOTICE[0], NOTICE[1], t), why: smooth(UNDERSTAND[0], UNDERSTAND[1], t), pull: smooth(COMMIT[0], COMMIT[1], t) };
 }
 
-/** Where you are along a leg, for what stopping reveals. */
-export type Zone = 'leaving' | 'passage' | 'arriving';
-export function zoneAt(s: number, hasFrom: boolean): Zone {
-  // the way in has no subject behind it: all of it is the approach to where you entered
-  if (!hasFrom) return 'arriving';
-  if (s < 0.14) return 'leaving';
-  return s < 0.6 ? 'passage' : 'arriving';
+/** How far you must actually have gone into a current before it has you (world units). */
+export const TAKEN = 0.8;
+
+/** Where you are looking, relative to a frame (radians). */
+export interface Look {
+  yaw: number;
+  pitch: number;
+}
+
+/** The direction you look, and which way is up, for a frame and a look. */
+export function lookAt(fr: Frame, look: Look): { f: V3; u: V3 } {
+  const r = rightOf(fr);
+  const f1 = norm(add(scale(fr.f, Math.cos(look.yaw)), scale(r, Math.sin(look.yaw))));
+  const r1 = norm(cross(f1, fr.u));
+  const f = norm(add(scale(f1, Math.cos(look.pitch)), scale(fr.u, Math.sin(look.pitch))));
+  return { f, u: norm(cross(r1, f)) };
+}
+
+/** The look that points a frame along a direction (so the view does not jump when the frame changes). */
+export function lookFor(fr: Frame, d: V3): Look {
+  const r = rightOf(fr);
+  const dn = norm(d);
+  return { yaw: Math.atan2(dot(dn, r), dot(dn, fr.f)), pitch: Math.asin(Math.max(-1, Math.min(1, dot(dn, fr.u)))) };
+}
+
+/** The current you are looking at: the one whose mouth is nearest the middle of your view, if close to it. */
+export function faced(eye: V3, look: V3, ways: { id: string; mouth: V3 }[], within = 0.3): string | null {
+  let best: string | null = null;
+  let bestA = within;
+  for (const w of ways) {
+    const a = Math.acos(Math.max(-1, Math.min(1, dot(norm(sub(w.mouth, eye)), look))));
+    if (a < bestA) [best, bestA] = [w.id, a];
+  }
+  return best;
 }

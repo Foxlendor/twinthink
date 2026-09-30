@@ -1,44 +1,58 @@
-// The Fall from inside the current: the relationship you are riding is the tube around you.
+// The Fall from inside the river: the relationships around you are tubes of ink.
 //
-// Its rings are fixed in the space, so they stream past as you move. Where it reaches a subject
-// the tube swells (a region), and that subject's own relationships split off ahead as branches:
-// wider the stronger, the strongest nearly straight on. Only the next split is drawn clearly, and
-// the one after it faintly. A person's own work is a thinner rose side current, with rose threads
-// drifting along the wall toward it before it splits off.
-//
-// While moving, nothing is named but the subject drifting past. Stopping is understanding: held
-// still, what is where you are resolves (the subject and its line in a region, why the two connect
-// in a passage, every branch and its reason at a split).
+// The environment never stops moving; only you do. Rings flow along every tube all the time, in
+// the direction the relationship runs, and a faint haze drifts, so the web is alive even while you
+// stay at a subject. The tube you arrived by runs into the subject and
+// swells there; the currents leaving it split off, wider the stronger, the strongest nearly straight
+// on. A person's own work is a thinner rose side current, with rose threads drifting along the wall
+// toward it. Words are few: the subject you are at, its line once you are there, and the name and
+// then the reason of whatever you look at.
 
 import { INK, PAPER, ROSE, View, project } from './draw';
 import { V3, add, cross, len, norm, scale, sub } from './space';
-import { Zone } from './ride';
+
+export interface Tube {
+  path: (t: number) => V3;
+  length: number;
+  strength: number;
+  /** Where along it is rose (crossing into, or out of, a person's work). */
+  roseAt?: (t: number) => boolean;
+  /** Swelling where it meets a subject, at either end (how much). */
+  swellA?: number;
+  swellB?: number;
+  alpha?: number;
+}
 
 export interface Branch {
   id: string;
-  title: string;
-  why?: string;
+  path: (t: number) => V3;
+  length: number;
   strength: number;
   human?: boolean;
-  /** The branch itself: from the split to the next subject along it. */
-  path: (t: number) => V3;
-  /** Where that subject leads in turn (once known): the split after, faint. */
+  /** How much it stands out: leaned at and pulling (above 1), or passed over (below 1). */
+  emph: number;
+  /** Where it leads in turn (once known): faint lines only. */
   onward: ((t: number) => V3)[];
 }
 
+export interface Label {
+  at: V3;
+  title: string;
+  why?: string;
+  nameA: number;
+  whyA: number;
+  rose?: boolean;
+  big?: boolean;
+}
+
 export interface StreamScene {
-  leg: { path: (t: number) => V3; s: number; length: number; strength: number; human: boolean; why?: string };
-  /** The subject behind you (none on the way in) and the one ahead. */
-  behind: { title: string; line?: string } | null;
-  ahead: { title: string; line?: string };
+  eye: V3;
+  tubes: Tube[];
   branches: Branch[];
-  captured: string | null;
-  capture: number;
-  /** How far stopping has resolved what is here (0 moving, 1 fully still). */
-  still: number;
-  zone: Zone;
-  /** A person's own work a step or two on, when it is not a branch here. */
-  roseNear?: { title: string; through: string; path: (t: number) => V3 } | null;
+  /** Rose threads drifting along a tube's wall toward a person's side current. */
+  threads?: { tube: Tube; toward: V3 } | null;
+  labels: Label[];
+  caption: { small?: string; smallA?: number; title: string; titleA: number; line?: string; lineA: number } | null;
   status?: string;
   time: number;
   reduced: boolean;
@@ -54,11 +68,11 @@ function text(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, a:
   ctx.globalAlpha = Math.min(1, a * 1.2);
   ctx.strokeText(s, x, y);
   ctx.restore();
-  ctx.fillStyle = `rgba(${INK},${a})`;
+  ctx.fillStyle = `rgba(${INK},${Math.min(1, a)})`;
   ctx.fillText(s, x, y);
 }
 
-function wrap(ctx: CanvasRenderingContext2D, s: string, max: number, lines = 3) {
+export function wrap(ctx: CanvasRenderingContext2D, s: string, max: number, lines = 3) {
   const out: string[] = [];
   let cur = '';
   for (const w of s.split(' ')) {
@@ -83,13 +97,11 @@ function across(d: V3): [V3, V3] {
   return [e1, cross(d, e1)];
 }
 
-const smooth = (a: number, b: number, x: number) => {
-  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
-  return t * t * (3 - 2 * t);
-};
-
 /** The tube's width for a relationship: wider the stronger. */
 export const tubeOf = (strength: number) => 0.2 + 0.2 * Math.max(0, Math.min(1, strength));
+
+/** How fast the rings flow along the web (world units a second): the web is never still. */
+export const FLOW = 0.32;
 
 export function drawStream(ctx: CanvasRenderingContext2D, v: View, sc: StreamScene) {
   ctx.fillStyle = PAPER;
@@ -103,6 +115,10 @@ export function drawStream(ctx: CanvasRenderingContext2D, v: View, sc: StreamSce
   const tangentAt = (path: (t: number) => V3, t: number) => {
     const d = sub(path(Math.min(1, t + 0.01)), path(Math.max(0, t - 0.01)));
     return len(d) > 1e-6 ? norm(d) : ([0, 0, 1] as V3);
+  };
+  const around = (path: (t: number) => V3, t: number, radius: number, th: number) => {
+    const [e1, e2] = across(tangentAt(path, t));
+    return add(path(t), add(scale(e1, Math.cos(th) * radius), scale(e2, Math.sin(th) * radius)));
   };
   /** A loop of ink through projected points (broken where a point is behind you). */
   const stroke = (qs: ([number, number, number] | null)[], a: number, col: string, closed: boolean) => {
@@ -123,86 +139,87 @@ export function drawStream(ctx: CanvasRenderingContext2D, v: View, sc: StreamSce
     ctx.lineWidth = Math.max(0.6, Math.min(2.2, 0.009 * (n ? k / n : 0)));
     ctx.stroke();
   };
-  const around = (path: (t: number) => V3, t: number, radius: number, th: number) => {
-    const [e1, e2] = across(tangentAt(path, t));
-    return add(path(t), add(scale(e1, Math.cos(th) * radius), scale(e2, Math.sin(th) * radius)));
+  // near you the web is clear, far off it fades; right on top of you it thins so you see out
+  const seen = (p: V3) => {
+    const d = len(sub(p, sc.eye));
+    return Math.min(1, d * 1.3) * Math.exp(-d / 6.5);
   };
-  /**
-   * A tube along a path: rings fixed in the space (so they stream past as you move), and a few
-   * seams running along it (so each branch reads as its own way).
-   */
-  const tube = (path: (t: number) => V3, from: number, to: number, length: number, radius: (t: number) => number, alpha: (t: number) => number, colAt: (t: number) => string, seams = 6, spacing = 0.34) => {
-    const step = spacing / Math.max(0.5, length);
-    for (let t = Math.ceil(from / step) * step; t <= to + 1e-4; t += step) {
+  const swell = (amount: number | undefined, dist: number) => (amount ? 0.55 * amount * Math.exp(-Math.pow(dist / 1.2, 2)) : 0);
+  const flowAt = (length: number) => (sc.reduced ? 0 : ((sc.time * FLOW) % 0.36) / Math.max(0.5, length));
+  /** A tube: rings flowing along it (the web moving), and, for a branch, a few seams so it reads as its own way. */
+  const tube = (path: (t: number) => V3, length: number, from: number, radius: (t: number) => number, alpha: (t: number) => number, colAt: (t: number) => string, seams: number) => {
+    const step = 0.36 / Math.max(0.5, length);
+    const phase = flowAt(length);
+    for (let t = from + phase; t <= 1 + 1e-4; t += step) {
       const tt = Math.min(1, t);
+      const c = path(tt);
+      const a = alpha(tt) * seen(c);
+      if (a < 0.01) continue;
       const r = radius(tt);
       const qs: ([number, number, number] | null)[] = [];
       for (let k = 0; k < 32; k++) qs.push(P(around(path, tt, r, (k / 32) * Math.PI * 2)));
-      stroke(qs, alpha(tt), colAt(tt), true);
+      stroke(qs, a, colAt(tt), true);
     }
     const fine = step / 3;
     for (let j = 0; j < seams; j++) {
       const th = (j / seams) * Math.PI * 2 + 0.3;
-      for (let t = from; t < to; t += fine * 4) {
+      for (let t = from; t < 1; t += fine * 4) {
         const qs: ([number, number, number] | null)[] = [];
-        for (let u = t; u <= Math.min(to, t + fine * 4) + 1e-6; u += fine) qs.push(P(around(path, Math.min(1, u), radius(Math.min(1, u)), th)));
-        stroke(qs, 0.55 * alpha(Math.min(1, t)), colAt(Math.min(1, t)), false);
+        for (let u = t; u <= Math.min(1, t + fine * 4) + 1e-6; u += fine) qs.push(P(around(path, Math.min(1, u), radius(Math.min(1, u)), th)));
+        stroke(qs, 0.55 * alpha(t) * seen(path(t)), colAt(t), false);
       }
     }
   };
-  const { leg } = sc;
-  const L = leg.length;
-  // a region swells the tube where it meets a subject (either end of a relationship)
-  const swell = (distToEnd: number) => 0.55 * Math.exp(-Math.pow(distToEnd / 1.1, 2));
-  const moving = 1 - sc.still;
 
-  // the relationship you are riding: around you, streaming past
-  const r0 = tubeOf(leg.strength);
-  const legR = (t: number) => r0 * (1 + swell(t * L) + swell((1 - t) * L));
-  tube(
-    leg.path,
-    leg.s,
-    1,
-    L,
-    legR,
-    (t) => {
-      const ahead = (t - leg.s) * L;
-      return 0.34 * Math.min(1, ahead * 1.4) * Math.exp(-ahead / 6);
-    },
-    // crossing into (or out of) a person's work: the tube turns to rose thread partway along
-    (t) => (leg.human && t > 0.45 ? ROSE : INK),
-    0
-  );
+  // a faint haze, drifting (still there, unmoving, with reduced motion)
+  for (let k = 0; k < 3; k++) {
+    const t = sc.reduced ? k : sc.time * 0.03 + k * 2.1;
+    const x = v.w * (0.5 + 0.38 * Math.sin(t * 0.7 + k));
+    const y = v.h * (0.45 + 0.3 * Math.cos(t * 0.5 + 2 * k));
+    const R = Math.max(v.w, v.h) * (0.35 + 0.1 * k);
+    const g = ctx.createRadialGradient(x, y, 1, x, y, R);
+    g.addColorStop(0, `rgba(${INK},0.035)`);
+    g.addColorStop(1, `rgba(${INK},0)`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, v.w, v.h);
+  }
 
-  // the split ahead: every branch, its width its strength, fading as it runs on to its subject
-  const human = sc.branches.find((b) => b.human);
+  // the relationships you are in, or just came along: rings flowing past you
+  for (const tb of sc.tubes) {
+    const r0 = tubeOf(tb.strength);
+    const L = tb.length;
+    tube(
+      tb.path,
+      L,
+      0,
+      (t) => r0 * (1 + swell(tb.swellA, t * L) + swell(tb.swellB, (1 - t) * L)),
+      () => 0.34 * (tb.alpha ?? 1),
+      (t) => (tb.roseAt?.(t) ? ROSE : INK),
+      0
+    );
+  }
+
+  // the currents leaving the subject: each its width its strength, fading as it runs on
   for (const b of sc.branches) {
-    const captured = b.id === sc.captured;
-    const emph = captured ? 1 + 0.7 * sc.capture : 1 - 0.5 * sc.capture;
     const col = b.human ? ROSE : INK;
     const r = tubeOf(b.strength) * (b.human ? 0.65 : 0.85);
-    const bl = len(sub(b.path(1), b.path(0)));
-    const toEnd = (1 - leg.s) * L;
+    const bl = b.length;
     tube(
       b.path,
-      0.06,
-      1,
       bl,
-      (t) => r * (0.55 + 0.45 * Math.min(1, t * 4) + swell((1 - t) * bl)),
-      (t) => (0.08 + 0.28 * b.strength) * (1 - 0.75 * t) * emph * Math.exp(-toEnd / 8),
+      0.06,
+      (t) => r * (0.55 + 0.45 * Math.min(1, t * 4) + swell(0.8, (1 - t) * bl)),
+      (t) => (0.1 + 0.28 * b.strength) * (1 - 0.72 * t) * b.emph,
       () => col,
-      3,
-      0.55
+      3
     );
-    // the split after this one: only its line, faint
     for (const o of b.onward) {
       for (let t = 0.1; t <= 1; t += 0.06) {
         const q = P(o(t));
-        if (q) dot1(q[0], q[1], Math.max(1, Math.min(2, 0.008 * q[2])), (captured ? 0.24 : 0.12) * (1 - 0.6 * t), INK);
+        if (q) dot1(q[0], q[1], Math.max(1, Math.min(2, 0.008 * q[2])), 0.12 * Math.min(1.6, b.emph) * (1 - 0.6 * t), INK);
       }
     }
     if (b.human) {
-      // rose light at the mouth of a person's side current
       const q = P(b.path(0.15));
       if (q) {
         const R = Math.max(14, Math.min(50, 0.14 * q[2]));
@@ -215,34 +232,27 @@ export function drawStream(ctx: CanvasRenderingContext2D, v: View, sc: StreamSce
     }
   }
 
-  // before a person's side current splits off, rose threads drift along the wall toward it
-  if (human && !leg.human) {
-    const target = human.path(0.3);
+  // rose threads drifting along the wall toward a person's side current, before it splits off
+  if (sc.threads) {
+    const { tube: tb, toward: target } = sc.threads;
+    const r0 = tubeOf(tb.strength);
     const drift = sc.reduced ? 0 : sc.time * 0.05;
     for (let k = 0; k < 3; k++) {
       for (let i = 0; i < 26; i++) {
         const t = 0.35 + ((i / 26 + drift + k * 0.013) % 1) * 0.65;
-        if (t < leg.s + 0.02) continue;
-        const c = leg.path(t);
-        const tan = tangentAt(leg.path, t);
-        let toward = sub(target, c);
-        toward = sub(toward, scale(tan, toward[0] * tan[0] + toward[1] * tan[1] + toward[2] * tan[2]));
-        if (len(toward) < 1e-4) continue;
-        toward = norm(toward);
-        const side = cross(tan, toward);
+        const c = tb.path(t);
+        const tan = tangentAt(tb.path, t);
+        let to = sub(target, c);
+        to = sub(to, scale(tan, to[0] * tan[0] + to[1] * tan[1] + to[2] * tan[2]));
+        if (len(to) < 1e-4) continue;
+        to = norm(to);
+        const side = cross(tan, to);
         const ang = (k - 1) * 0.28;
-        const radius = legR(t) * 0.96;
-        const q = P(add(c, scale(add(scale(toward, Math.cos(ang)), scale(side, Math.sin(ang))), radius)));
-        if (q) dot1(q[0], q[1], Math.max(1.2, Math.min(3, 0.012 * q[2])), 0.45 * (0.4 + 0.6 * t), ROSE);
+        const radius = r0 * (1 + swell(tb.swellB, (1 - t) * tb.length)) * 0.96;
+        const p = add(c, scale(add(scale(to, Math.cos(ang)), scale(side, Math.sin(ang))), radius));
+        const q = P(p);
+        if (q) dot1(q[0], q[1], Math.max(1.2, Math.min(3, 0.012 * q[2])), 0.5 * (0.4 + 0.6 * t) * Math.min(1, 2 * seen(p)), ROSE);
       }
-    }
-  }
-
-  // held still: a person's own work a step or two on, as a rose thread along the way to it
-  if (sc.roseNear && sc.still > 0.05) {
-    for (let t = 0.05; t <= 1; t += 0.04) {
-      const q = P(sc.roseNear.path(t));
-      if (q) dot1(q[0], q[1], Math.max(1.4, Math.min(3, 0.012 * q[2])), 0.55 * sc.still, ROSE);
     }
   }
 
@@ -252,93 +262,51 @@ export function drawStream(ctx: CanvasRenderingContext2D, v: View, sc: StreamSce
   const capY = v.h - (v.w < 600 ? 230 : 160);
   const big = Math.round(Math.max(22, Math.min(30, v.w / 28)));
   ctx.textAlign = 'center';
-
-  // the subject drifting past: named as you come into its region, gone as you leave it
-  const aheadA = Math.max(smooth(0.6, 0.8, leg.s), sc.zone === 'arriving' ? sc.still : 0);
-  const behindA = sc.behind ? Math.max(1 - smooth(0.03, 0.15, leg.s), sc.zone === 'leaving' ? sc.still : 0) : 0;
-  const drift = (x: number) => (sc.reduced ? 0 : x * moving);
-  const caption = (title: string, line: string | undefined, a: number, dy: number) => {
-    ctx.font = `italic ${big}px ${sc.serif}`;
-    text(ctx, title, v.cx, capY + dy, 0.9 * a);
-    boxes.push([v.cx - 260, capY + dy - big - 4, v.cx + 260, capY + dy + 70]);
-    if (line && sc.still > 0.02) {
-      ctx.font = `italic 15px ${sc.serif}`;
-      wrap(ctx, line, Math.min(460, v.w - 48)).forEach((l, i) => text(ctx, l, v.cx, capY + dy + 26 + i * 20, 0.62 * a * sc.still));
+  const cap = sc.caption;
+  if (cap) {
+    if (cap.small && (cap.smallA ?? 0) > 0.01) {
+      ctx.font = `italic 14px ${sc.serif}`;
+      text(ctx, cap.small, v.cx, capY - big - 8, 0.55 * (cap.smallA ?? 0));
     }
-  };
-  if (sc.zone === 'passage' && sc.still > 0.02 && sc.behind) {
-    // stopped between two subjects: why the two connect
-    ctx.font = `italic 15px ${sc.serif}`;
-    text(ctx, sc.behind.title, v.cx, capY - big - 10, 0.55 * sc.still);
     ctx.font = `italic ${big}px ${sc.serif}`;
-    text(ctx, sc.ahead.title, v.cx, capY, 0.9 * sc.still);
-    if (leg.why) {
+    text(ctx, cap.title, v.cx, capY, 0.9 * cap.titleA);
+    const line = sc.status ?? cap.line;
+    const lineA = sc.status ? 1 : cap.lineA;
+    if (line && lineA > 0.01) {
       ctx.font = `italic 15px ${sc.serif}`;
-      wrap(ctx, leg.why, Math.min(460, v.w - 48)).forEach((l, i) => text(ctx, l, v.cx, capY + 26 + i * 20, 0.62 * sc.still));
+      wrap(ctx, line, Math.min(460, v.w - 48)).forEach((l, i) => text(ctx, l, v.cx, capY + 26 + i * 20, 0.62 * lineA));
     }
-    boxes.push([v.cx - 260, capY - big - 30, v.cx + 260, capY + 80]);
-  } else if (aheadA > 0.02) caption(sc.ahead.title, sc.status ?? sc.ahead.line, aheadA, drift(-(leg.s - 0.8) * 40));
-  else if (behindA > 0.02 && sc.behind) caption(sc.behind.title, sc.behind.line, behindA, drift(-(leg.s + 0.1) * 60));
-  else if (sc.status) {
+    if (cap.titleA > 0.05) boxes.push([v.cx - 260, capY - big - 26, v.cx + 260, capY + 86]);
+  } else if (sc.status) {
     ctx.font = `italic 15px ${sc.serif}`;
     text(ctx, sc.status, v.cx, capY, 0.62);
   }
-
-  // held still near a split: every branch named where it leaves, with its reason
-  if (sc.still > 0.02 && sc.zone === 'arriving') {
-    const labels = sc.branches
-      .map((b) => ({ b, q: P(b.path(0.42)) }))
-      .filter((x): x is { b: Branch; q: [number, number, number] } => !!x.q)
-      .sort((x, y) => Number(!!y.b.human) - Number(!!x.b.human) || y.b.strength - x.b.strength);
-    for (const { b, q } of labels) {
-      ctx.font = `italic 16px ${sc.serif}`;
-      const nw = ctx.measureText(b.title).width;
-      ctx.font = `italic 12.5px ${sc.serif}`;
-      const why = b.why ? wrap(ctx, b.why, Math.min(260, v.w * 0.42), 2) : [];
-      const ww = Math.max(nw, ...why.map((l) => ctx.measureText(l).width));
-      const x = Math.max(16 + ww / 2, Math.min(v.w - 16 - ww / 2, q[0]));
-      let y = Math.max(80, Math.min(v.h - 120, q[1]));
-      const boxAt = (yy: number): [number, number, number, number] => [x - ww / 2 - 4, yy - 16, x + ww / 2 + 4, yy + 4 + why.length * 15];
-      let box = boxAt(y);
-      for (let tries = 0; tries < 6 && !clear(box); tries++) {
-        y += (tries % 2 ? -1 : 1) * (tries + 1) * 22;
-        box = boxAt(y);
-      }
-      if (!clear(box)) continue;
-      boxes.push(box);
-      const faint = b.id === sc.captured ? 1 : 0.72;
-      ctx.font = `italic 16px ${sc.serif}`;
-      text(ctx, b.title, x, y, 0.88 * sc.still * faint);
-      if (b.human) dot1(x - nw / 2 - 9, y - 5, 5, 0.8 * sc.still, ROSE);
-      ctx.font = `italic 12.5px ${sc.serif}`;
-      why.forEach((l, i) => text(ctx, l, x, y + 16 + i * 15, 0.55 * sc.still * faint));
+  // the currents around you, named: what you lean at first (and why), then the rest, faintly
+  for (const lb of [...sc.labels].sort((a, b) => Number(!!b.big) - Number(!!a.big) || b.nameA - a.nameA)) {
+    if (lb.nameA < 0.02) continue;
+    const q = P(lb.at);
+    if (!q) continue;
+    const size = lb.big ? 18 : 15;
+    ctx.font = `italic ${size}px ${sc.serif}`;
+    const nw = ctx.measureText(lb.title).width;
+    ctx.font = `italic 12.5px ${sc.serif}`;
+    const why = lb.why && lb.whyA > 0.02 ? wrap(ctx, lb.why, Math.min(280, v.w * 0.5), 3) : [];
+    const ww = Math.max(nw, ...why.map((l) => ctx.measureText(l).width));
+    const x = Math.max(16 + ww / 2, Math.min(v.w - 16 - ww / 2, q[0]));
+    let y = Math.max(80, Math.min(capY - 50 - why.length * 15, q[1]));
+    const boxAt = (yy: number): [number, number, number, number] => [x - ww / 2 - 4, yy - size, x + ww / 2 + 4, yy + 4 + why.length * 15];
+    let box = boxAt(y);
+    for (let tries = 0; tries < 6 && !clear(box); tries++) {
+      y += (tries % 2 ? -1 : 1) * (tries + 1) * 22;
+      box = boxAt(y);
     }
-  }
-  // held still, leaving a subject: the relationship you are riding, named ahead
-  if (sc.still > 0.02 && sc.zone === 'leaving') {
-    const q = P(leg.path(0.55));
-    if (q) {
-      ctx.font = `italic 16px ${sc.serif}`;
-      const y = Math.max(80, Math.min(capY - 80, q[1]));
-      text(ctx, sc.ahead.title, q[0], y, 0.85 * sc.still);
-      if (leg.why) {
-        ctx.font = `italic 12.5px ${sc.serif}`;
-        wrap(ctx, leg.why, Math.min(300, v.w - 48), 2).forEach((l, i) => text(ctx, l, Math.max(16 + 150, Math.min(v.w - 166, q[0])), y + 16 + i * 15, 0.55 * sc.still));
-      }
-    }
-  }
-  // and the person's work a step or two on, named where its thread leads
-  if (sc.roseNear && sc.still > 0.05) {
-    const q = P(sc.roseNear.path(0.9));
-    if (q) {
-      ctx.font = `italic 14px ${sc.serif}`;
-      const label = `${sc.roseNear.title}, a step on through ${sc.roseNear.through}`;
-      const w = ctx.measureText(label).width;
-      const x = Math.max(16 + w / 2, Math.min(v.w - 16 - w / 2, q[0]));
-      let y = Math.max(70, Math.min(capY - 60, q[1] - 12));
-      for (let tries = 0; tries < 6 && !clear([x - w / 2, y - 14, x + w / 2, y + 4]); tries++) y -= 20;
-      text(ctx, label, x, y, 0.7 * sc.still);
-    }
+    if (!clear(box) && !lb.big) continue;
+    boxes.push(box);
+    ctx.font = `italic ${size}px ${sc.serif}`;
+    text(ctx, lb.title, x, y, 0.88 * lb.nameA);
+    if (lb.rose) dot1(x - nw / 2 - 9, y - 5, 5, 0.8 * lb.nameA, ROSE);
+    ctx.font = `italic 12.5px ${sc.serif}`;
+    why.forEach((l, i) => text(ctx, l, x, y + 16 + i * 15, 0.58 * lb.whyA));
   }
   ctx.textAlign = 'left';
 }
