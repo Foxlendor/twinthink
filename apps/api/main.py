@@ -226,6 +226,13 @@ def require_owner(twin_id: str, token: Optional[str]):
         raise HTTPException(status_code=403, detail="Unauthorized: Invalid owner token")
     return True
 
+# Continuity log (append-only, server-timestamped, hash-chained): a persistence primitive for
+# "someone kept returning to this". Local (SQLite) mode only for now.
+if not USE_CLOUD:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from continuity import make_router as make_continuity_router
+    app.include_router(make_continuity_router(get_db_local))
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "mode": "cloud" if USE_CLOUD else "local", "storage_dir": str(STORAGE_DIR)}
