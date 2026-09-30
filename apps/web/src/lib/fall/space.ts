@@ -80,6 +80,8 @@ export function openingsAround(fr: Frame, strands: Strand[], placed?: Map<string
   const byBearing = new Map<Bearing, Strand[]>();
   for (const s of strands) byBearing.set(s.bearing, [...(byBearing.get(s.bearing) ?? []), s]);
   const out: Opening[] = [];
+  // many ways on widen the space (a cavern); few leave it narrow
+  const wide = 1 + 0.09 * Math.max(0, strands.length - 5);
   for (const [b, list] of byBearing) {
     const centres = BEARING_ANGLE[b];
     list.forEach((s, i) => {
@@ -93,8 +95,10 @@ export function openingsAround(fr: Frame, strands: Strand[], placed?: Map<string
         out.push({ strand: s, pos: back, angle, back: true });
         return;
       }
-      const phi = spreadFor(s.strength);
-      const d = distanceFor(s.strength);
+      // one version becoming the next runs almost straight on and close: a run of them is a tunnel;
+      // a contradiction lies far across a gap; someone else's pull comes from far off
+      const phi = s.shape === 'succession' ? 0.24 : Math.min(1.45, spreadFor(s.strength) * wide);
+      const d = s.shape === 'succession' ? 1.35 : s.shape === 'across' ? distanceFor(s.strength) * 1.45 : s.shape === 'outside' ? Math.max(5, distanceFor(s.strength)) : distanceFor(s.strength);
       // on the view, right is +x and down is +y, so "down" is away from up
       const lateral = norm(add(scale(r, Math.cos(angle)), scale(fr.u, -Math.sin(angle))));
       const dir = norm(add(scale(fr.f, Math.cos(phi)), scale(lateral, Math.sin(phi))));
@@ -155,7 +159,7 @@ export interface Place {
   title: string;
   frame: Frame;
   /** The strand that brought you here (absent at the start). */
-  via?: { from: string; why?: string; strength: number; bearing: Bearing };
+  via?: { from: string; why?: string; strength: number; bearing: Bearing; shape?: Strand['shape'] };
   passed: { to: string; pos: V3 }[];
 }
 
@@ -177,4 +181,52 @@ export function overlook(places: Place[]): { eye: V3; at: V3; up: V3 } {
   u = norm(sub(u, scale(f, dot(u, f))));
   const eye = add(c, add(scale(f, -R * 0.9), scale(u, R * 1.35)));
   return { eye, at: c, up: u };
+}
+
+/**
+ * Earning the spiral: when your path keeps coming back to one idea (several places on it carrying
+ * it), the next place that carries it is set on an orbit around it instead of wherever its strand
+ * alone would put it: turned on around the idea from where you are, a little closer in, a little
+ * further down. Keep circling and the path wraps into a spiral around what you keep returning to.
+ * `pull` (0 to 1) is how established the idea is on this path; `k` spreads several at once.
+ */
+export function orbit(anchor: V3, here: Frame, pos: V3, pull: number, k = 0): V3 {
+  if (pull <= 0) return pos;
+  const axis = here.f;
+  let v = sub(here.p, anchor);
+  v = sub(v, scale(axis, dot(v, axis)));
+  let r = len(v);
+  if (r < 0.3) {
+    v = rightOf(here);
+    r = 1.2;
+  }
+  const a = 0.95 + 0.4 * k;
+  const w = cross(axis, norm(v));
+  const turned = add(scale(norm(v), Math.cos(a)), scale(w, Math.sin(a)));
+  const onOrbit = add(add(anchor, scale(turned, Math.max(0.9, r * 0.82))), add(scale(axis, dot(sub(here.p, anchor), axis)), scale(axis, 0.9)));
+  return lerp3(pos, onOrbit, Math.min(1, pull));
+}
+
+/**
+ * What your path keeps circling: a thing linked from several of the places you have reached (not
+ * one you are standing on). Knowledge decides what links where; your route decides which of those
+ * centres you keep coming back around. A thing counts once `min` places on your route link to it
+ * (a place you have stood on counts toward itself), and the more, the more established it is.
+ */
+export function circling(route: string[], strandsOf: (id: string) => Strand[] | undefined, here: string, min = 3): Map<string, { n: number; from: string[]; title: string }> {
+  const seen = new Set<string>();
+  const count = new Map<string, { n: number; from: string[]; title: string }>();
+  for (const id of route) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    for (const s of strandsOf(id) ?? []) {
+      if (s.strength < 0.45) continue;
+      const c = count.get(s.to) ?? { n: 0, from: [], title: s.title };
+      count.set(s.to, { n: c.n + 1, from: [...c.from, id], title: c.title });
+    }
+  }
+  // having been at a thing, then landing again and again on what is tied to it, is circling it too
+  for (const [id, c] of count) if (seen.has(id)) count.set(id, { ...c, n: c.n + 1 });
+  for (const [id, c] of count) if (c.n < min || id === here) count.delete(id);
+  return count;
 }

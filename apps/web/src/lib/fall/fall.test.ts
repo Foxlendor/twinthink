@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Strand, chooseOpenings, undash } from './graph';
-import { START, arrive, distanceFor, dot, len, norm, openingsAround, overlook, spreadFor, sub } from './space';
+import { START, arrive, circling, distanceFor, dot, len, norm, openingsAround, orbit, overlook, spreadFor, sub } from './space';
 import { Row, WIKI_PREFIX, createWikiGraph, firstSentence, strandsFrom, titleOf, wikiId } from './wiki';
 
 // real rows, as DBpedia answered the step query for Phonograph (trimmed)
@@ -150,5 +150,53 @@ describe('the Wikipedia source', () => {
     await g.node('sample/wiki/A');
     expect(most).toBeLessThanOrEqual(2);
     expect(JSON.stringify(heads[0])).toContain('Api-User-Agent');
+  });
+});
+
+describe('the spiral is earned, never drawn', () => {
+  it('finds what a route keeps circling: a thing linked from several places on it', () => {
+    const links: Record<string, Strand[]> = {
+      a: [s('hub', 0.7), s('x', 0.6)],
+      b: [s('hub', 0.6)],
+      c: [s('hub', 0.8), s('y', 0.9)],
+      d: [s('y', 0.9)],
+    };
+    const c = circling(['a', 'b', 'c', 'd'], (id) => links[id], 'd');
+    expect([...c.keys()]).toEqual(['hub']);
+    expect(c.get('hub')!.n).toBe(3);
+    // two places are not yet a pattern
+    expect(circling(['a', 'b'], (id) => links[id], 'b').size).toBe(0);
+    // standing at a thing, then landing on two more tied to it, is circling it
+    const tri: Record<string, Strand[]> = { p: [s('q', 0.7), s('r', 0.7)], q: [s('p', 0.7)], r: [s('p', 0.7)] };
+    expect([...circling(['p', 'q', 'r'], (id) => tri[id], 'r').keys()]).toEqual(['p']);
+    // weak mentions do not count as coming round
+    expect(circling(['a', 'b', 'c'], (id) => links[id].map((x) => ({ ...x, strength: 0.2 })), 'c').size).toBe(0);
+  });
+
+  it('keeps coming round a centre and the path wraps around it: always turning the same way', () => {
+    const anchor: [number, number, number] = [0, 0, 6];
+    let fr = { ...START, p: [2, 0, 4] as [number, number, number] };
+    const angles: number[] = [];
+    for (let i = 0; i < 5; i++) {
+      const p = orbit(anchor, fr, [fr.p[0], fr.p[1], fr.p[2] + 2], 1);
+      fr = arrive(fr, p);
+      angles.push(Math.atan2(fr.p[1] - anchor[1], fr.p[0] - anchor[0]));
+    }
+    const turns = angles.slice(1).map((a, i) => Math.sign(Math.atan2(Math.sin(a - angles[i]), Math.cos(a - angles[i]))));
+    expect(new Set(turns).size).toBe(1);
+  });
+
+  it('leaves the space alone when nothing is being circled', () => {
+    const p: [number, number, number] = [1, 2, 3];
+    expect(orbit([0, 0, 0], START, p, 0)).toEqual(p);
+  });
+
+  it('closes a run of versions into a line almost straight on, and widens when there are many ways', () => {
+    const [v] = openingsAround(START, [{ ...s('next', 0.9), shape: 'succession' }]);
+    expect(dot(norm(sub(v.pos, START.p)), START.f)).toBeGreaterThan(0.95);
+    const few = openingsAround(START, [s('a', 0.5, 'beside')]);
+    const many = openingsAround(START, [s('a', 0.5, 'beside'), ...'bcdefghi'.split('').map((k) => s(k, 0.5, 'linked'))]);
+    const off = (o: { pos: [number, number, number] }) => Math.acos(dot(norm(sub(o.pos, START.p)), START.f));
+    expect(off(many.find((o) => o.strand.to === 'a')!)).toBeGreaterThan(off(few[0]));
   });
 });

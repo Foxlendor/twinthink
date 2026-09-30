@@ -1,8 +1,44 @@
 # The Fall, formed by relationships (preview)
 
-Status: a working prototype on previews only (`/fall`), built 30 Sep from John's correction:
+Status: a working prototype on previews only (`/fall`), built 30 Sep from John's corrections:
 "If removing the tunnel would leave basically the same experience, then the tunnel has failed."
 The live Slate is unchanged. Nothing here replaces it until John has tried this and decided.
+
+## Design rules (John, 30 Sep)
+
+- **The Fall isn't transportation between content. The Fall is the visible shape of understanding it.**
+- **Do not remove the spiral. Earn the spiral.** A tunnel, spiral, vortex, corridor, opening,
+  compression or huge empty drop can all happen. The form must result from the structure.
+- **Don't script the tunnel. Let the relationships create it.**
+- **DBWiki is the test material. The Fall is the invention.** Wikipedia/DBpedia is the real-data
+  testbed, on purpose: a huge existing relationship graph that shows whether this way of moving
+  works, and a way to show the idea without explaining TwinThink first ("pick Phonograph: instead
+  of a page of blue links, the relationships become a place you move through"). Keep the data
+  source and the interaction model separate: DBpedia says what is connected; the Fall decides
+  what those connections feel like as space. Do not let it collapse into a conventional 3D
+  knowledge graph, and do not mistake the DBpedia graph for the final TwinThink experience.
+- The space communicates first; text clarifies when needed. You understand it the way you come
+  to understand a city or someone's room, not by reading a graph legend.
+- The experiment `/fall` answers: can a person start at one concept and genuinely feel how
+  knowledge branches, converges, loops back, becomes dense, becomes distant, and becomes a
+  personal traveled route? Can knowledge itself generate the landscape you fall through? Later
+  the same engine is applied to a Whoeuvre, where the test becomes: does traveling through it
+  reveal something about the person that a profile, playlist, grid or feed cannot?
+- The clock face is not thrown away. It is not forced into direction here; it stays an open
+  idea, and time may become another dimension of the space (for example, depth along the thread).
+
+## The vocabulary the space has (all of it earned from structure)
+
+| What the structure is | What it becomes |
+| --- | --- |
+| A run of strong links that kept your way nearly straight | Rings form around that stretch of your thread: a tunnel, tighter the stronger the links. Ahead, when only a few ways lead on and one is strong, rings begin to form along it. |
+| Your route keeps coming back around one thing (it, or places tied to it, keep turning up) | That thing becomes a centre (faint rings, its name), and the next ways on tied to it are set on an orbit around it: keep circling and the path wraps into a spiral. |
+| A weak link | A long strand across empty space: a gap you can feel. |
+| Many ways of similar weight | The space widens (they spread further out). |
+| Going somewhere already reached | The strand joins back to where it was; the path loops. |
+| Returning (on this device) | Dew on places seen before; strands walked before drawn solid. |
+| Attention | At first only short stubs, enough to orient. Leaning toward one draws it out; keep leaning and it is named; keep on and it says why. What you have looked at stays a little clearer. |
+| The next step's own links, once known | The ways on ease into where they now belong: the space re-forms as more of the structure arrives. |
 
 ## What was wrong with the live Fall
 
@@ -61,12 +97,9 @@ Reduced motion: travel is a short cut, and the view does not turn while leaning.
 
 ## Differences from the brief, on purpose
 
-- **Direction means the kind of relationship, not the hour.** The Wikipedia brief says creation
-  dates place each thing at a real hour on the clock face. The correction says every movement
-  must answer "why is this here". An article's creation hour says nothing about why it is here,
-  so in `/fall` the bearing comes from the relationship and the hour is not used. This is open
-  for John: if the clock face should stay in the relationship space, it needs a different job
-  (for example, time as depth along the thread).
+- **Direction means the kind of relationship, not the hour.** The Wikipedia brief places things
+  by the hour their article was created; that says nothing about why a thing is here. The clock
+  stays an open idea (see the design rules).
 - **DBpedia states "where it came from" and "what it led to" only sometimes.** Phonograph has
   Edison ("known for it") above it and mostly kin at the sides; nothing states what the phonograph
   led to, so nothing is placed below it. That is the source being thin, not a rule; nothing is
@@ -74,15 +107,21 @@ Reduced motion: travel is a short cut, and the view does not turn while leaning.
 
 ## Not built yet
 
-- A maker's own Whoeuvre as a source (the same `Graph` interface: parent, children, siblings,
-  grew-from, goes-with), with the Slate's disclosure rules. This is the real target; Wikipedia is
-  the proving ground.
+- A maker's own Whoeuvre on the page. An adapter exists (`lib/fall/whoeuvre.ts`, with tests: it
+  offers only what a signed-out visitor may enter), but it is not on `/fall`: the Whoeuvre comes
+  after the Wikipedia testbed has shown the model works. Its relationships should be TwinThink's
+  own, richer than parent and child: grew from, reminds me of, made during, became, abandoned
+  for, returned to, inspired, contradicts, belongs with, someone else pulled this direction, and
+  the visitor's own "I keep coming back here". The engine already understands a version becoming
+  the next (a `succession`, which closes into a tunnel), a contradiction (`across` a gap),
+  someone else's pull (`outside`) and something left behind (`faded`).
 - Keeping a Fall across visits (today a reload starts again; seen and walked are kept).
 - The Wikipedia examples patch from the other session (`wikipedia-examples`, first edits as
   history) is on John's computer, not here; it does not conflict with these files.
 
 ## Where
 
-`lib/fall/graph.ts` (what a source answers), `lib/fall/space.ts` (the geometry the path makes),
+`lib/fall/graph.ts` (what a source answers), `lib/fall/space.ts` (the geometry the path makes,
+including `circling` and `orbit`),
 `lib/fall/draw.ts` (ink on paper), `lib/fall/wiki.ts` (the source), `components/fall/FallSpace.tsx`
 (the page), `app/fall/page.tsx` (preview only). Tests: `lib/fall/fall.test.ts`.

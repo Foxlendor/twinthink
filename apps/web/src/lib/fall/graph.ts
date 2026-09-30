@@ -33,6 +33,13 @@ export interface Strand {
   why?: string;
   /** How strongly the two are connected (0 to 1): close and clear when strong, far and faint when weak. */
   strength: number;
+  /**
+   * How it lies in the space, when that is more than its bearing: a `succession` (one version
+   * becoming the next) runs almost straight on, so a run of them closes into a tunnel; `across` (it
+   * contradicts this) lies far over a gap; `outside` (someone else's work that pulled this way)
+   * comes in from far off; `faded` (left behind, abandoned for something else) is drawn thin.
+   */
+  shape?: 'succession' | 'across' | 'outside' | 'faded';
 }
 
 export interface Graph {

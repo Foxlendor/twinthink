@@ -7,7 +7,7 @@
 // where it leads in turn (once known). Leaning toward a way on pulls it in and pushes the rest
 // out; a strand walked before (on this device) is drawn solid, one never taken stays dotted.
 
-import { Opening, Place, V3, add, between, cross, dot, len, norm, scale, sub } from './space';
+import { Opening, Place, V3, add, between, blend, cross, dot, len, norm, scale, sub } from './space';
 
 export const INK = '30,28,36';
 export const PAPER = '#fbfaf7';
@@ -64,6 +64,13 @@ export interface Scene {
   lean: number;
   /** Past each way on, where it leads in turn (already known), faint. */
   beyond: Map<string, V3[]>;
+  /**
+   * How legible each way on has become to you (0 to 1). At first you see only enough to orient:
+   * a short stub in its direction. Leaning toward it draws it out, then names it, then says why.
+   */
+  reveal: (id: string) => number;
+  /** What your path keeps circling: where, what, and how many of your places link to it. */
+  centres: { id: string; title: string; at: V3; n: number }[];
   here: { id: string; title: string; line?: string; pos: V3 } | null;
   /** On this device: places seen before (how much), and strands walked before. */
   seen: (id: string) => number;
@@ -132,6 +139,50 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
       prev = q;
     }
   }
+  // where a run of strong links held your way nearly straight, the space closed in around it: rings
+  // form along that stretch of your thread, tighter the stronger the link (a tunnel, earned)
+  const ring = (c: V3, t: V3, radius: number, a: number) => {
+    const e1 = norm(cross(t, up));
+    const e2 = cross(e1, t);
+    for (let k = 0; k < 30; k++) {
+      const th = (k / 30) * Math.PI * 2;
+      const q = P(add(c, add(scale(e1, Math.cos(th) * radius), scale(e2, Math.sin(th) * radius))));
+      if (!q) continue;
+      ctx.fillStyle = `rgba(${INK},${a})`;
+      ctx.fillRect(q[0] - 0.8, q[1] - 0.8, 1.6, 1.6);
+    }
+  };
+  for (let i = 1; i < places.length; i++) {
+    const a = places[i - 1];
+    const b = places[i];
+    const w = b.via?.strength ?? 0;
+    if (b.via?.from !== a.id || w < 0.7 || dot(a.frame.f, b.frame.f) < 0.8) continue;
+    const path = between(a.frame, b.frame);
+    for (const t of [0.2, 0.4, 0.6, 0.8]) {
+      const fr = blend(a.frame, b.frame, t, path);
+      ring(fr.p, fr.f, 0.62 - 0.4 * Math.min(1, (w - 0.7) / 0.3), 0.2);
+    }
+  }
+  // what your path keeps circling: a faint centre, named, heavier the more often you have come round
+  for (const c of sc.centres) {
+    const q = P(c.at);
+    if (!q) continue;
+    const a = Math.min(0.55, 0.22 + 0.08 * (c.n - 3));
+    for (let k = 0; k < 3; k++) {
+      ctx.strokeStyle = `rgba(${INK},${a * (1 - k * 0.3)})`;
+      ctx.lineWidth = 0.8;
+      ctx.setLineDash([2, 4]);
+      ctx.beginPath();
+      ctx.arc(q[0], q[1], Math.max(8, 0.1 * q[2]) * (1 + k * 0.7), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.font = `italic 14px ${sc.serif}`;
+    ctx.textAlign = 'center';
+    const ty = q[1] - Math.max(8, 0.1 * q[2]) * 2.5 - 6;
+    // looking back, a place you stood on is already named where it is
+    if (!(sc.overlooking > 0.05 && sc.places.has(c.id)) && room(q[0], ty, ctx.measureText(c.title).width, 16)) text(ctx, c.title, q[0], ty, a + 0.1);
+  }
   // the ways passed at each place behind you: short, faint stubs, so the choices you did not make stay visible
   for (const pl of places) {
     if (sc.here && pl.id === sc.here.id) continue;
@@ -171,6 +222,17 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
     ctx.font = `italic 15px ${sc.serif}`;
     room(hereP[0], hereP[1] - hereR - 8, ctx.measureText(sc.here.title).width, 16);
   }
+  // few ways on, and a strong one among them: the space narrows along it (a tunnel forming ahead)
+  if (sc.here && sc.openings.length > 0 && sc.openings.length <= 3) {
+    const best = sc.openings.reduce((a, b) => (b.strand.strength > a.strand.strength ? b : a));
+    if (best.strand.strength >= 0.7 && !best.back) {
+      for (const t of [0.35, 0.55, 0.75]) {
+        const c = strandAt(sc.here.pos, best.pos, up, t);
+        const d = sub(strandAt(sc.here.pos, best.pos, up, Math.min(1, t + 0.02)), c);
+        ring(c, norm(d), 0.55 - 0.3 * (best.strand.strength - 0.7), 0.16);
+      }
+    }
+  }
   // the ways on: each strand from here to where it leads
   for (const o of sc.openings) {
     const aimed = sc.aimed === o.strand.to;
@@ -181,11 +243,16 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
     const walked = sc.here ? sc.walked(sc.here.id, o.strand.to) : false;
     const from = sc.here?.pos;
     if (!from) continue;
+    const known = sc.reveal(o.strand.to);
+    // only as much of the strand as you have attended to: a stub at first, all of it once looked at
+    const reach = 0.22 + 0.78 * Math.min(1, known / 0.6);
+    const legible = 0.35 + 0.65 * known;
     const N = Math.max(10, Math.round(len(sub(o.pos, from)) * 9));
     for (let s = 1; s < N; s++) {
+      if (s / N > reach) break;
       const q = P(strandAt(from, o.pos, up, s / N));
       if (!q) continue;
-      const a = (0.18 + 0.5 * w) * fade * (aimed ? 1.35 : 1);
+      const a = (0.18 + 0.5 * w) * fade * legible * (aimed ? 1.35 : 1) * (o.strand.shape === 'faded' ? 0.5 : 1);
       const size = Math.max(1, Math.min(3.4, (0.012 + 0.012 * w) * q[2] * (aimed ? 1.4 : 1)));
       if (walked) {
         const q2 = P(strandAt(from, o.pos, up, (s + 1) / N));
@@ -204,8 +271,8 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
         ctx.fill();
       }
     }
-    // where it leads in turn, once known: faint, further on
-    for (const b of sc.beyond.get(o.strand.to) ?? []) {
+    // where it leads in turn, once known and looked at: faint, further on
+    for (const b of known > 0.55 ? sc.beyond.get(o.strand.to) ?? [] : []) {
       for (let s = 2; s <= 10; s += 2) {
         const q = P(strandAt(o.pos, b, up, s / 10));
         if (!q) continue;
@@ -213,10 +280,22 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
         ctx.fillRect(q[0] - 0.7, q[1] - 0.7, 1.4, 1.4);
       }
     }
+    // not yet attended to: just where the stub points, a mark with no outline and no name
+    if (reach < 0.999) {
+      const e = P(strandAt(from, o.pos, up, reach));
+      if (e) {
+        ctx.fillStyle = `rgba(${INK},${0.3 * fade * legible})`;
+        ctx.beginPath();
+        ctx.arc(e[0], e[1], 2.2, 0, Math.PI * 2);
+        ctx.fill();
+        shown.push({ opening: o, x: e[0], y: e[1], r: 26 });
+      }
+      continue;
+    }
     const q = P(o.pos);
     if (!q) continue;
     const r = Math.max(4, Math.min(22, (0.07 + 0.06 * w) * q[2])) * (aimed ? 1.25 : 1);
-    ctx.strokeStyle = `rgba(${INK},${(0.35 + 0.45 * w) * fade * (aimed ? 1.3 : 1)})`;
+    ctx.strokeStyle = `rgba(${INK},${(0.35 + 0.45 * w) * fade * legible * (aimed ? 1.3 : 1)})`;
     ctx.lineWidth = aimed ? 2 : 1.2;
     ctx.beginPath();
     ctx.arc(q[0], q[1], r, 0, Math.PI * 2);
@@ -233,8 +312,9 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
         ctx.fill();
       }
     }
-    // names only where a name helps: the strong ones faintly, the one leaned toward clearly, with why
-    const nameA = aimed ? 0.92 : w > 0.55 ? 0.5 * fade : 0;
+    // words only once the space has done its part: named after you have leaned toward it a while,
+    // and why only once you are still leaning (a name stays, faintly, once learned)
+    const nameA = known > 0.62 ? (aimed ? 0.92 : 0.42 * fade) : 0;
     ctx.font = `italic ${aimed ? 17 : 14}px ${sc.serif}`;
     const label = o.strand.title.slice(0, 44);
     const below = q[1] >= (hereP?.[1] ?? v.cy);
@@ -243,7 +323,7 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
     if (nameA > 0.03 && (aimed || room(tx, ty, ctx.measureText(label).width, 16))) {
       ctx.textAlign = 'center';
       text(ctx, label, tx, ty, nameA);
-      if (aimed && o.strand.why) {
+      if (aimed && o.strand.why && known > 0.85) {
         ctx.font = `italic 13px ${sc.serif}`;
         text(ctx, o.back ? `${o.strand.why}, back where you were` : o.strand.why, tx, ty + (below ? 17 : -18), 0.6);
       }

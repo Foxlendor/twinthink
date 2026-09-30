@@ -133,3 +133,8 @@
     bottom: 64px;
   }
 }
+
+.starts .or {
+  margin: 22px 0 4px;
+  font-size: 0.95rem;
+}

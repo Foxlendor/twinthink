@@ -16,9 +16,10 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import styles from './FallSpace.module.css';
 import { FallNode, Graph, Strand, chooseOpenings } from '@/lib/fall/graph';
-import { Frame, Opening, Place, START, V3, add, arrive, between, blend, lerp3, norm, openingsAround, overlook, scale, sub, travelTime } from '@/lib/fall/space';
+import { Frame, Opening, Place, START, V3, add, arrive, between, blend, circling, lerp3, norm, openingsAround, orbit, overlook, scale, sub, travelTime } from '@/lib/fall/space';
 import { Cam, Shown, drawFall, viewOf } from '@/lib/fall/draw';
 import { Snapshot, WIKI_STARTS, createWikiGraph, titleOf, wikiId } from '@/lib/fall/wiki';
+
 import { samplesAllowed } from '@/lib/shadowfield/sources/samples';
 
 const MEMORY_KEY = 'twinthink.fall.v1';
@@ -49,6 +50,7 @@ function writeMemory(m: Memory) {
 
 const noop = () => () => {};
 
+
 /** Where you are now: the last place on the route. */
 function hereOf(places: Map<string, Place>, route: string[]) {
   const id = route[route.length - 1];
@@ -70,6 +72,12 @@ export default function FallSpace({ serif }: { serif: string }) {
   const nodesRef = useRef(new Map<string, FallNode>());
   const strandsRef = useRef(new Map<string, Strand[]>());
   const openingsRef = useRef<Opening[]>([]);
+  /** Where each way on is drawn: easing toward where it now belongs, as the space forms. */
+  const shownPosRef = useRef(new Map<string, V3>());
+  /** How much of each way on has become legible to you (0 to 1): leaning toward it reveals it. */
+  const revealRef = useRef(new Map<string, number>());
+  /** What your path keeps circling, and where. */
+  const centresRef = useRef<{ id: string; title: string; at: V3; n: number }[]>([]);
   const statusRef = useRef<string | undefined>(undefined);
   const travelRef = useRef<{ from: Frame; to: Frame; path: (t: number) => V3; t0: number; dur: number } | null>(null);
   const leanRef = useRef({ x: 0, y: 0, shown: 0 });
@@ -105,14 +113,51 @@ export default function FallSpace({ serif }: { serif: string }) {
     const chosen = chooseOpenings(strands.filter((s) => s.to !== cameFrom));
     const placed = new Map<string, V3>();
     for (const [pid, p] of placesRef.current) if (pid !== id) placed.set(pid, p.frame.p);
-    openingsRef.current = openingsAround(pl.frame, chosen, placed);
+    const place = () => {
+      const open = openingsAround(pl.frame, chosen, placed);
+      // earning the spiral: what your route keeps circling pulls the ways on that link to it onto an
+      // orbit around it (knowledge says what links where; your route says what you keep coming round)
+      const centres = circling(routeRef.current, (x) => strandsRef.current.get(x), id);
+      const at = (cid: string, from: string[]): V3 => {
+        const p = placesRef.current.get(cid);
+        if (p) return p.frame.p;
+        let sum: V3 = [0, 0, 0];
+        for (const f of from) sum = add(sum, placesRef.current.get(f)?.frame.p ?? [0, 0, 0]);
+        return scale(sum, 1 / from.length);
+      };
+      centresRef.current = [...centres].map(([cid, c]) => ({ id: cid, title: c.title, at: at(cid, c.from), n: c.n }));
+      const around = new Map<string, number>();
+      return open.map((o) => {
+        if (o.back) return o;
+        let best: (typeof centresRef.current)[number] | null = null;
+        for (const c of centresRef.current) {
+          const links = o.strand.to === c.id || !!strandsRef.current.get(o.strand.to)?.some((x) => x.to === c.id && x.strength >= 0.45);
+          if (links && (!best || c.n > best.n)) best = c;
+        }
+        if (!best) return o;
+        const k = around.get(best.id) ?? 0;
+        around.set(best.id, k + 1);
+        const pull = Math.min(1, (best.n - 2) / 2);
+        // the thing circled itself lies at the heart of it
+        const pos = o.strand.to === best.id ? lerp3(o.pos, add(best.at, scale(pl.frame.f, 0.6)), pull) : orbit(best.at, pl.frame, o.pos, pull, k);
+        return { ...o, pos };
+      });
+    };
+    openingsRef.current = place();
     statusRef.current = chosen.length ? undefined : 'nothing leads on from here that both sides name.';
-    // look a step ahead: where each way on leads in turn (so it can be seen, faintly, and gone into without waiting)
+    // look a step ahead: where each way on leads in turn (seen faintly, gone into without waiting); once
+    // known, the space re-forms around what it reveals (things ease to where they now belong)
     const g = graphRef.current;
-    for (const o of openingsRef.current)
-      g?.strands(o.strand.to)
-        .then((s) => strandsRef.current.set(o.strand.to, s))
-        .catch(() => {});
+    if (!g) return;
+    Promise.allSettled(
+      openingsRef.current.map((o) =>
+        g.strands(o.strand.to).then((s) => {
+          strandsRef.current.set(o.strand.to, s);
+        })
+      )
+    ).then(() => {
+      if (routeRef.current[routeRef.current.length - 1] === id && !travelRef.current) openingsRef.current = place();
+    });
   }, []);
 
   const load = useCallback(
@@ -155,12 +200,13 @@ export default function FallSpace({ serif }: { serif: string }) {
   };
 
   const begin = useCallback(
-    (title: string) => {
-      const id = wikiId(title);
+    (id: string, title: string) => {
       placesRef.current = new Map([[id, { id, title, frame: START, passed: [] }]]);
       routeRef.current = [id];
       stackRef.current = [id];
       openingsRef.current = [];
+      shownPosRef.current = new Map();
+      centresRef.current = [];
       travelRef.current = null;
       overlookRef.current.on = false;
       setOverlooking(false);
@@ -186,7 +232,7 @@ export default function FallSpace({ serif }: { serif: string }) {
         const known = placesRef.current.get(to);
         if (!known) {
           const via = openingsRef.current.find((o) => o.strand.to === to)?.strand;
-          placesRef.current.set(to, { id: to, title, frame, passed: [], via: via ? { from: pl.id, why: via.why, strength: via.strength, bearing: via.bearing } : undefined });
+          placesRef.current.set(to, { id: to, title, frame, passed: [], via: via ? { from: pl.id, why: via.why, strength: via.strength, bearing: via.bearing, shape: via.shape } : undefined });
         }
         stackRef.current.push(to);
         remember(pl.id, to);
@@ -201,6 +247,8 @@ export default function FallSpace({ serif }: { serif: string }) {
         dur: (reducedRef.current ? 0.25 : travelTime(from.p, dest.p)) * 1000,
       };
       openingsRef.current = [];
+      shownPosRef.current = new Map();
+      centresRef.current = [];
       aimedRef.current = null;
       setFailed(false);
       setCanBack(stackRef.current.length > 1);
@@ -216,7 +264,8 @@ export default function FallSpace({ serif }: { serif: string }) {
       const pl = hereOf(placesRef.current, routeRef.current);
       if (!pl || travelRef.current) return;
       const known = placesRef.current.get(o.strand.to);
-      travelTo(o.strand.to, o.strand.title, known ? known.frame : arrive(pl.frame, o.pos), 'on');
+      const target = openingsRef.current.find((x) => x.strand.to === o.strand.to) ?? o;
+      travelTo(o.strand.to, o.strand.title, known ? known.frame : arrive(pl.frame, target.pos), 'on');
     },
     [travelTo]
   );
@@ -227,6 +276,21 @@ export default function FallSpace({ serif }: { serif: string }) {
     const pl = placesRef.current.get(prev);
     if (pl) travelTo(prev, pl.title, pl.frame, 'back');
   }, [travelTo]);
+
+  // for checking in development only: what is open here, what is circled, and going somewhere by id
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    (window as unknown as { __fall?: unknown }).__fall = {
+      here: () => routeRef.current[routeRef.current.length - 1],
+      ways: () => openingsRef.current.map((o) => ({ to: o.strand.to, title: o.strand.title, strength: o.strand.strength, reveal: revealRef.current.get(o.strand.to) ?? 0 })),
+      centres: () => centresRef.current.map((c) => ({ id: c.id, n: c.n })),
+      go: (id: string) => {
+        const o = openingsRef.current.find((x) => x.strand.to === id);
+        if (o) choose(o);
+        return !!o;
+      },
+    };
+  }, [choose]);
 
   const toggleOverlook = () => {
     overlookRef.current.on = !overlookRef.current.on;
@@ -321,9 +385,30 @@ export default function FallSpace({ serif }: { serif: string }) {
         cam = { eye: lerp3(cam.eye, o.eye, k), at: lerp3(cam.at, o.at, k), up: norm(lerp3(cam.up, o.up, k)) };
       }
       const v = viewOf(cam, w, h);
+      // the ways on, where they are drawn: each eases toward where it now belongs (the space forming)
+      const shownPos = shownPosRef.current;
+      const settle = reduced.matches ? 1 : 1 - Math.exp(-dt * 3);
+      const opens = openingsRef.current.map((o) => {
+        const was = shownPos.get(o.strand.to);
+        const pos = was ? lerp3(was, o.pos, settle) : o.pos;
+        shownPos.set(o.strand.to, pos);
+        return { ...o, pos };
+      });
+      // what you lean toward becomes legible, and stays a little clearer once looked at; a way walked
+      // or a place seen before is already half known to you
+      const rev = revealRef.current;
+      for (const o of opens) {
+        const id = o.strand.to;
+        const base = memRef.current.walked.includes(`${pl.id}\u0001${id}`) || (memRef.current.seen[id] ?? 0) > 0 ? 0.55 : 0.14;
+        let r = rev.get(id) ?? base;
+        if (id === aimedRef.current) r = Math.min(1, r + dt * (0.4 + 0.9 * L.shown));
+        else if (r < base) r = base;
+        else r = Math.max(base, r - dt * 0.06);
+        rev.set(id, r);
+      }
       // past each way on, where it leads in turn, faintly (once known)
       const beyond = new Map<string, V3[]>();
-      for (const o of openingsRef.current) {
+      for (const o of opens) {
         const s = strandsRef.current.get(o.strand.to);
         if (!s) continue;
         const onward = openingsAround(arrive(pl.frame, o.pos), chooseOpenings(s.filter((x) => x.to !== pl.id), 5));
@@ -337,7 +422,9 @@ export default function FallSpace({ serif }: { serif: string }) {
       shownRef.current = drawFall(ctx, v, {
         places: placesRef.current,
         route: routeRef.current,
-        openings: travelRef.current ? [] : openingsRef.current,
+        openings: travelRef.current ? [] : opens,
+        reveal: (id) => rev.get(id) ?? 0.14,
+        centres: centresRef.current,
         aimed: aimedRef.current,
         lean: leaned,
         beyond,
@@ -456,7 +543,7 @@ export default function FallSpace({ serif }: { serif: string }) {
           <h1>Fall through Wikipedia</h1>
           <p>Real articles, connected the way Wikipedia and DBpedia connect them. Where you go shapes the space you see.</p>
           {WIKI_STARTS.map((t) => (
-            <button key={t} type="button" className={styles.start} onClick={() => begin(t)}>
+            <button key={t} type="button" className={styles.start} onClick={() => begin(wikiId(t), t)}>
               {t}
             </button>
           ))}
