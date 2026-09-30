@@ -163,7 +163,7 @@ How the four test cases would lay out (real snapshot data):
 | Phonograph | Thomas Edison (0.77, above), 17 "filed with" (strongest 0.71), 20 "linked both ways" | A wide region; Edison above, Phonograph record, Phonograph cylinder, Turntablism, the "filed with" trunk; the twenty in the wall, resolving toward your lean |
 | Drinking straw | SipSmolder (0.8, rose), two "filed with" (0.47), eight "linked both ways" | Main current is the "filed with" trunk; the rose side current; the eight in the wall |
 
-## Opening a subject (proposed 30 Sep, not decided, not built)
+## Opening a subject (30 Sep, not built)
 
 Move to discover. Stop to understand. Open to study. The Fall is good at traversal and weak at
 dwelling; a subject should be a place you can explore, not only a waypoint. Proposed:
@@ -186,8 +186,17 @@ dwelling; a subject should be a place you can explore, not only a waypoint. Prop
 - Data: one extra DBpedia query only on opening (dates, category names, abstract, which linked
   things are people), cached a week; a "read on Wikipedia" link rather than reference lists; nothing
   invented. Twins tied to a subject are not in scope.
-- Open: where dates go (along the tube's axis would decide the clock question, which stays open),
-  and whether Rabi or opening is built first.
+- Decided 30 Sep (after the in-hand test, per the decision tree under Not built yet): Rabi before opening, in this order: Rabi allocates the space outside a
+  subject; confirm dense subjects stop feeling crowded; reuse the same allocator inside one opened
+  subject; Phonograph end to end; only then every subject. Outside a subject Rabi decides how
+  relationships get room; inside, how information gets depth. One system, not two.
+- Decided 30 Sep: dates get no spatial direction yet. The tube's axis already means where the
+  current carries you; making it also mean later in time would overload it before the time model
+  is decided. In the first study room dates are a deeper layer, revealed by dwelling, with the
+  summary and source ahead.
+- The three states: Fall (moving through relationships), Stop (understand what is here), Open
+  (study inside the subject). Opening only works once stopped, anchors you, and is the same tube
+  swelling around you: no page, modal, or visible change of mode.
 
 ## Multiplayer: decided 30 Sep, not built
 
@@ -307,6 +316,16 @@ the placement and the answers in this table are unchanged. The third-person view
   history) is on John's computer, not here; it does not conflict with these files.
 
 - Rabi's allocation and opening a subject (both above): waiting on the in-hand test of the current.
+  The test asks one question: does it feel like the structure already existed and you moved through
+  it, or like the system is drawing choices in response to you? What gets built next follows the
+  answer:
+  - feels pre-existing, but cluttered: build Rabi;
+  - feels pre-existing and clean: build the Phonograph study room (open subject);
+  - feels reactive or menu-like: first improve how far ahead the Fall forms its geometry and how
+    branches emerge before you reach them (no opening yet: depth added to a world that does not
+    yet feel physically real);
+  - feels slow because of DBpedia: solve caching, snapshot and loading separately before judging
+    the interaction.
 
 ## Where
 
