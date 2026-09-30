@@ -18,6 +18,7 @@ import styles from './FallSpace.module.css';
 import { FallNode, Graph, Strand, chooseOpenings } from '@/lib/fall/graph';
 import { Frame, Opening, Place, START, V3, add, arrive, between, blend, circling, lerp3, norm, openingsAround, orbit, overlook, scale, sub, travelTime } from '@/lib/fall/space';
 import { Cam, Shown, drawFall, viewOf } from '@/lib/fall/draw';
+import { Look, Way, drawChamber, facing, lookAt, travelCam } from '@/lib/fall/chamber';
 import { Entrance, isDescription, resolveEntrance } from '@/lib/fall/enter';
 import { BRIDGES } from '@/lib/fall/bridges';
 import { isWiki, joinSources } from '@/lib/fall/sources';
@@ -85,7 +86,11 @@ export default function FallSpace({ serif }: { serif: string }) {
   /** What your path keeps circling, and where. */
   const centresRef = useRef<{ id: string; title: string; at: V3; n: number }[]>([]);
   const statusRef = useRef<string | undefined>(undefined);
-  const travelRef = useRef<{ from: Frame; to: Frame; path: (t: number) => V3; t0: number; dur: number } | null>(null);
+  const travelRef = useRef<{ from: Frame; to: Frame; path: (t: number) => V3; t0: number; dur: number; human: boolean } | null>(null);
+  /** First person: where you are looking in the chamber you are in (dragged), and a drag under way. */
+  const lookRef = useRef<Look>({ yaw: 0, pitch: 0 });
+  const dragRef = useRef<{ x: number; y: number; yaw: number; pitch: number; moved: number } | null>(null);
+  const waysRef = useRef<Way[]>([]);
   const leanRef = useRef({ x: 0, y: 0, shown: 0 });
   const aimedRef = useRef<string | null>(null);
   const shownRef = useRef<Shown[]>([]);
@@ -237,7 +242,7 @@ export default function FallSpace({ serif }: { serif: string }) {
 
   /** Going to a place: along the strand, turning as you go (or back along your own thread). */
   const travelTo = useCallback(
-    (to: string, title: string, frame: Frame, how: 'on' | 'back') => {
+    (to: string, title: string, frame: Frame, how: 'on' | 'back', human = false) => {
       const pl = hereOf(placesRef.current, routeRef.current);
       if (!pl) return;
       const from = pl.frame;
@@ -260,7 +265,10 @@ export default function FallSpace({ serif }: { serif: string }) {
         path: between(from, dest),
         t0: performance.now(),
         dur: (reducedRef.current ? 0.25 : travelTime(from.p, dest.p)) * 1000,
+        human,
       };
+      // arriving, you face the way you came in along the passage
+      lookRef.current = { yaw: 0, pitch: 0 };
       openingsRef.current = [];
       shownPosRef.current = new Map();
       centresRef.current = [];
@@ -280,7 +288,7 @@ export default function FallSpace({ serif }: { serif: string }) {
       if (!pl || travelRef.current) return;
       const known = placesRef.current.get(o.strand.to);
       const target = openingsRef.current.find((x) => x.strand.to === o.strand.to) ?? o;
-      travelTo(o.strand.to, o.strand.title, known ? known.frame : arrive(pl.frame, target.pos), 'on');
+      travelTo(o.strand.to, o.strand.title, known ? known.frame : arrive(pl.frame, target.pos), 'on', !!o.strand.human);
     },
     [travelTo]
   );
@@ -289,7 +297,8 @@ export default function FallSpace({ serif }: { serif: string }) {
     if (travelRef.current || stackRef.current.length < 2) return;
     const prev = stackRef.current[stackRef.current.length - 2];
     const pl = placesRef.current.get(prev);
-    if (pl) travelTo(prev, pl.title, pl.frame, 'back');
+    const cur = routeRef.current[routeRef.current.length - 1];
+    if (pl) travelTo(prev, pl.title, pl.frame, 'back', isWiki(prev) !== isWiki(cur));
   }, [travelTo]);
 
   // for checking in development only: what is open here, what is circled, and going somewhere by id
@@ -429,6 +438,76 @@ export default function FallSpace({ serif }: { serif: string }) {
 
       const pl = hereOf(placesRef.current, routeRef.current);
       if (!pl) return;
+
+      // first person, the normal view: you are inside the place, not looking at it ("look back" is
+      // the one deliberate step outside, drawn by the older view below)
+      const ovc = overlookRef.current;
+      if (!ovc.on && ovc.amount < 0.02) {
+        ovc.amount = 0;
+        const trc = travelRef.current;
+        let eye: V3;
+        let look: { f: V3; u: V3 };
+        let travel: { path: (t: number) => V3; t: number; human: boolean } | null = null;
+        let arrivingC = 1;
+        if (trc) {
+          const t = Math.min(1, (now - trc.t0) / trc.dur);
+          arrivingC = t;
+          const c = travelCam(trc.from, trc.to, trc.path, ease(t));
+          eye = c.eye;
+          look = { f: c.f, u: c.u };
+          travel = { path: trc.path, t: ease(t), human: trc.human };
+          if (t >= 1) travelRef.current = null;
+        } else {
+          eye = pl.frame.p;
+          look = lookAt(pl.frame, lookRef.current);
+        }
+        const settleC = reduced.matches ? 1 : 1 - Math.exp(-dt * 3);
+        const opensC = openingsRef.current.map((o) => {
+          const was = shownPosRef.current.get(o.strand.to);
+          const pos = was ? lerp3(was, o.pos, settleC) : o.pos;
+          shownPosRef.current.set(o.strand.to, pos);
+          return { ...o, pos };
+        });
+        // the way you came in stays open behind you
+        const backId = stackRef.current.length > 1 ? stackRef.current[stackRef.current.length - 2] : null;
+        const backPlace = backId ? placesRef.current.get(backId) : undefined;
+        const ways: Way[] = opensC
+          .filter((o) => !(o.back && o.strand.to === backId))
+          .map((o) => ({ id: o.strand.to, title: o.strand.title, pos: o.pos, strength: o.strand.strength, why: o.strand.why, human: o.strand.human, opening: o }));
+        if (backId && backPlace) ways.push({ id: backId, title: backPlace.title, pos: backPlace.frame.p, strength: 0.6, human: isWiki(backId) !== isWiki(pl.id), back: true });
+        waysRef.current = ways;
+        const faced = travel ? null : facing(pl.frame.p, look.f, ways);
+        aimedRef.current = faced;
+        // what you face becomes legible, a beat at a time; what you have walked or seen is half known
+        const revC = revealRef.current;
+        for (const wy of ways) {
+          const base = wy.back ? 0.6 : memRef.current.walked.includes(`${pl.id}\u0001${wy.id}`) || (memRef.current.seen[wy.id] ?? 0) > 0 ? 0.55 : wy.human ? 0.3 : 0.14;
+          let rv = revC.get(wy.id) ?? base;
+          if (wy.id === faced) rv = Math.min(1, rv + dt * 0.75);
+          else if (rv < base) rv = base;
+          else rv = Math.max(base, rv - dt * 0.06);
+          revC.set(wy.id, rv);
+        }
+        const v1 = viewOf({ eye, at: add(eye, look.f), up: look.u }, w, h);
+        // a wider view from inside, so a chamber can be taken in with a little turning
+        v1.F = 0.45 * Math.max(Math.min(w, h), 0.6 * Math.max(w, h));
+        const nodeC = nodesRef.current.get(pl.id);
+        shownRef.current = drawChamber(ctx, v1, {
+          place: { id: pl.id, title: nodeC?.title ?? pl.title, line: nodeC?.line, frame: pl.frame },
+          eye,
+          look,
+          ways,
+          faced,
+          reveal: (id) => revC.get(id) ?? 0.14,
+          seen: (id) => memRef.current.seen[id] ?? 0,
+          travel,
+          arriving: arrivingC,
+          status: statusRef.current,
+          serif,
+        });
+        return;
+      }
+
       // where the camera is: at a place, or on the way between two
       let fr = pl.frame;
       const tr = travelRef.current;
@@ -529,8 +608,27 @@ export default function FallSpace({ serif }: { serif: string }) {
 
   // leaning with the mouse (no button), a thumb (drag), or the arrow keys
   const hit = (x: number, y: number) => shownRef.current.find((s) => Math.hypot(s.x - x, s.y - y) < s.r) ?? null;
+  /** Going through a way: on along it, or back the way you came. */
+  const goWay = (id: string | null) => {
+    const wy = waysRef.current.find((x) => x.id === id);
+    if (!wy) return;
+    if (wy.back) back();
+    else if (wy.opening) choose(wy.opening);
+  };
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
+    // first person: dragging turns where you look (the world moves under your thumb)
+    const dr = dragRef.current;
+    if (!overlookRef.current.on) {
+      if (dr) {
+        const dx = e.clientX - dr.x;
+        const dy = e.clientY - dr.y;
+        dr.moved = Math.max(dr.moved, Math.hypot(dx, dy));
+        const k = 1.6 / Math.min(r.width, r.height);
+        lookRef.current = { yaw: dr.yaw - dx * k, pitch: Math.max(-1.3, Math.min(1.3, dr.pitch + dy * k)) };
+      }
+      return;
+    }
     const x = e.clientX - r.left;
     const y = e.clientY - r.top;
     const M = Math.min(r.width, r.height);
@@ -547,6 +645,11 @@ export default function FallSpace({ serif }: { serif: string }) {
   };
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
+    if (!overlookRef.current.on) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      dragRef.current = { x: e.clientX, y: e.clientY, yaw: lookRef.current.yaw, pitch: lookRef.current.pitch, moved: 0 };
+      return;
+    }
     if (e.pointerType !== 'mouse') {
       e.currentTarget.setPointerCapture(e.pointerId);
       touchRef.current = { x: e.clientX - r.left, y: e.clientY - r.top, moved: 0 };
@@ -559,6 +662,16 @@ export default function FallSpace({ serif }: { serif: string }) {
     const t = touchRef.current;
     touchRef.current = null;
     if (overlookRef.current.on) return;
+    // first person: a tap (not a drag) goes into the way tapped, or else the one you face
+    const dr = dragRef.current;
+    dragRef.current = null;
+    if (dr) {
+      if (dr.moved < 8) {
+        const h = hit(x, y);
+        goWay(h ? h.opening.strand.to : aimedRef.current);
+      }
+      return;
+    }
     const aimed = openingsRef.current.find((o) => o.strand.to === aimedRef.current);
     if (e.pointerType === 'mouse' || (t && t.moved < 10)) {
       // a click or a tap: on a way on goes there; elsewhere, into the one leaned toward
@@ -569,6 +682,18 @@ export default function FallSpace({ serif }: { serif: string }) {
     if (e.pointerType !== 'mouse') leanRef.current.x = leanRef.current.y = 0;
   };
   const onKeyDown = (e: React.KeyboardEvent) => {
+    if (!overlookRef.current.on) {
+      const lk = lookRef.current;
+      if (e.key === 'ArrowLeft') lookRef.current = { ...lk, yaw: lk.yaw + 0.15 };
+      else if (e.key === 'ArrowRight') lookRef.current = { ...lk, yaw: lk.yaw - 0.15 };
+      else if (e.key === 'ArrowUp') lookRef.current = { ...lk, pitch: Math.min(1.3, lk.pitch + 0.15) };
+      else if (e.key === 'ArrowDown') lookRef.current = { ...lk, pitch: Math.max(-1.3, lk.pitch - 0.15) };
+      else if (e.key === 'Enter') goWay(aimedRef.current);
+      else if (e.key === 'Backspace' || e.key === 'Escape') back();
+      else return;
+      e.preventDefault();
+      return;
+    }
     const L = leanRef.current;
     const step = 0.2;
     if (e.key === 'ArrowLeft') L.x = Math.max(-1, L.x - step);

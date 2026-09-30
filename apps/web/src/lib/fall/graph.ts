@@ -49,6 +49,8 @@ export interface Graph {
   strands(id: string): Promise<Strand[]>;
   /** What a thing is. Rejects when the source cannot be reached. */
   node(id: string): Promise<FallNode>;
+  /** A thing's name, when the source can say at once (without asking anyone). */
+  titleNow?(id: string): string | undefined;
   /** Already known, without asking again (for drawing what lies a step ahead). */
   known?(id: string): Strand[] | undefined;
 }

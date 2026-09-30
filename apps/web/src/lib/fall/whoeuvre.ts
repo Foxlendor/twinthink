@@ -116,5 +116,9 @@ export function createWhoeuvreGraph(world: IdeaNode, opts: { closeness?: (top: I
       }
     },
     known: (id) => (paths.has(id) ? strandsOf(id) : undefined),
+    titleNow: (id) => {
+      const p = paths.get(id);
+      return p ? titleOf(p[p.length - 1]) : undefined;
+    },
   };
 }

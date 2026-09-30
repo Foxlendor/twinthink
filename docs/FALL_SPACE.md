@@ -6,6 +6,14 @@ The live Slate is unchanged. Nothing here replaces it until John has tried this 
 
 ## Design rules (John, 30 Sep)
 
+- **You should never feel like you're looking at the web. You should feel like you're inside it.**
+- **The tunnel was never the mistake. The fixed track was.** Keep the Slate's first-person
+  embodiment (inside the space, openings in the walls), and generate the chambers, openings and
+  passages from the real relationship structure. Things are places; relationships are distance;
+  attention is direction; the Fall is movement. First person is the normal view; "look back" is
+  the one deliberate step outside, to see the route you took.
+- Controls on a phone stay drag-only (tilt stays decided against).
+
 - **The Fall isn't transportation between content. The Fall is the visible shape of understanding it.**
 - **Do not remove the spiral. Earn the spiral.** A tunnel, spiral, vortex, corridor, opening,
   compression or huge empty drop can all happen. The form must result from the structure.
@@ -48,6 +56,22 @@ the space, never a results page, and never the main interface.
   DBpedia live, so the first steps from a searched article can be slow.
 - This is public knowledge only. It says nothing about searching private Whoeuvres or the
   catalog, which keep their own discovery rules.
+
+## First person (30 Sep, first proof)
+
+`/fall` is now seen from inside (`lib/fall/chamber.ts`). The place you are at is a chamber around
+you, rings of ink on its walls. Every way on is an opening in that wall where its relationship
+puts it (came from above, led to below, related things at the sides), wider the stronger the
+connection, and through it runs a passage: the very path you would travel, so a long passage is a
+long way and its turn is the turn you will take. Only the opening you face is named: its name
+after a beat, then its reason. A person's work opens as a rose-lit side passage whose rings turn
+rose partway along. The way you came in stays open behind you ("back to ..."). Going in, you fly
+down the passage and arrive inside the next chamber, facing on.
+
+Controls: drag to look around (phone and mouse), tap or click to go into the way you face (or the
+one you tap), arrow keys and Enter, Backspace for back. "Look back" steps outside to the overview
+of your route; the rest of the time you are inside. Same data underneath: sources, snapshot,
+search, bridges, strength and direction, reveal, circling.
 
 ## Where human work meets knowledge (30 Sep)
 

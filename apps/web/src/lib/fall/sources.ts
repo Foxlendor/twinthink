@@ -25,10 +25,8 @@ export function joinSources(wiki: Graph, whoeuvre: Graph | null, bridges: Bridge
       .filter((b) => b.piece === id && open(b))
       .map((b) => ({ to: wikiId(b.article), title: b.article.replace(/_/g, ' '), bearing: 'from' as const, why: b.why, strength: 0.8, human: true }));
   };
-  const titles = new Map<string, string>();
-  const titleOf = (piece: string) => titles.get(piece) ?? piece;
-  // learn the pieces' own titles up front (the Whoeuvre source answers at once)
-  for (const b of bridges) whoeuvre?.node(b.piece).then((n) => titles.set(b.piece, n.title), () => {});
+  // a piece is named by its own title, as the Whoeuvre gives it
+  const titleOf = (piece: string) => whoeuvre?.titleNow?.(piece) ?? piece;
 
   return {
     strands: async (id) => {
