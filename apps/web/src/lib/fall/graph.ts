@@ -40,6 +40,8 @@ export interface Strand {
    * comes in from far off; `faded` (left behind, abandoned for something else) is drawn thin.
    */
   shape?: 'succession' | 'across' | 'outside' | 'faded';
+  /** A person's own work, met inside the knowledge it relates to: drawn as a thread of credit. */
+  human?: boolean;
 }
 
 export interface Graph {
@@ -61,6 +63,8 @@ export function chooseOpenings(strands: Strand[], max = 7): Strand[] {
   const take = (s: Strand) => {
     if (out.length < max && !out.some((o) => o.to === s.to)) out.push(s);
   };
+  // a person's own work is never crowded out by knowledge
+  for (const s of sorted) if (s.human) take(s);
   // the strongest of each bearing first, then the strongest of the rest
   for (const b of ['from', 'to', 'beside', 'linked'] as Bearing[]) {
     const first = sorted.find((s) => s.bearing === b);

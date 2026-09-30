@@ -11,6 +11,8 @@ import { Opening, Place, V3, add, between, blend, cross, dot, len, norm, scale, 
 
 export const INK = '30,28,36';
 export const PAPER = '#fbfaf7';
+/** The Slate's colour for credit: a thread to a person's own work. */
+export const ROSE = '176,118,146';
 
 export interface Cam {
   eye: V3;
@@ -244,6 +246,8 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
     const from = sc.here?.pos;
     if (!from) continue;
     const known = sc.reveal(o.strand.to);
+    // a person's own work is joined by a thread of credit, in rose, as on the Slate
+    const col = o.strand.human ? ROSE : INK;
     // only as much of the strand as you have attended to: a stub at first, all of it once looked at
     const reach = 0.22 + 0.78 * Math.min(1, known / 0.6);
     const legible = 0.35 + 0.65 * known;
@@ -257,7 +261,7 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
       if (walked) {
         const q2 = P(strandAt(from, o.pos, up, (s + 1) / N));
         if (q2) {
-          ctx.strokeStyle = `rgba(${INK},${a})`;
+          ctx.strokeStyle = `rgba(${col},${a})`;
           ctx.lineWidth = size * 0.8;
           ctx.beginPath();
           ctx.moveTo(q[0], q[1]);
@@ -265,7 +269,7 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
           ctx.stroke();
         }
       } else {
-        ctx.fillStyle = `rgba(${INK},${a})`;
+        ctx.fillStyle = `rgba(${col},${a})`;
         ctx.beginPath();
         ctx.arc(q[0], q[1], size / 2, 0, Math.PI * 2);
         ctx.fill();
@@ -284,7 +288,7 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
     if (reach < 0.999) {
       const e = P(strandAt(from, o.pos, up, reach));
       if (e) {
-        ctx.fillStyle = `rgba(${INK},${0.3 * fade * legible})`;
+        ctx.fillStyle = `rgba(${col},${0.3 * fade * legible})`;
         ctx.beginPath();
         ctx.arc(e[0], e[1], 2.2, 0, Math.PI * 2);
         ctx.fill();
@@ -295,7 +299,7 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
     const q = P(o.pos);
     if (!q) continue;
     const r = Math.max(4, Math.min(22, (0.07 + 0.06 * w) * q[2])) * (aimed ? 1.25 : 1);
-    ctx.strokeStyle = `rgba(${INK},${(0.35 + 0.45 * w) * fade * legible * (aimed ? 1.3 : 1)})`;
+    ctx.strokeStyle = `rgba(${col},${(0.35 + 0.45 * w) * fade * legible * (aimed ? 1.3 : 1)})`;
     ctx.lineWidth = aimed ? 2 : 1.2;
     ctx.beginPath();
     ctx.arc(q[0], q[1], r, 0, Math.PI * 2);

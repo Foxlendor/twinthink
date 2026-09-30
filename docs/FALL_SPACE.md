@@ -49,6 +49,18 @@ the space, never a results page, and never the main interface.
 - This is public knowledge only. It says nothing about searching private Whoeuvres or the
   catalog, which keep their own discovery rules.
 
+## Where human work meets knowledge (30 Sep)
+
+The fourth step of the loop: search, enter, fall through knowledge, and meet a person's own work
+there. A piece of a Whoeuvre is tied to a Wikipedia article only where its maker says so
+(`lib/fall/bridges.ts`, written by the maker, never inferred). Then, from the article, a thread of
+credit in rose (the Slate's colour for credit) leads to the piece, named "johne.boi made this"
+with the maker's reason, and it is never crowded out by knowledge. Going in crosses into the
+Whoeuvre: the piece's own group, its neighbours, what it grew from, and a thread back to the
+article. Only pieces open to a visitor who is not signed in are ever shown, so a bridge can
+never expose anything private (`lib/fall/sources.ts`, tests in `sources.test.ts`). The list is
+empty until John writes it.
+
 ## The vocabulary the space has (all of it earned from structure)
 
 | What the structure is | What it becomes |
@@ -129,9 +141,8 @@ Reduced motion: travel is a short cut, and the view does not turn while leaning.
 
 ## Not built yet
 
-- A maker's own Whoeuvre on the page. An adapter exists (`lib/fall/whoeuvre.ts`, with tests: it
-  offers only what a signed-out visitor may enter), but it is not on `/fall`: the Whoeuvre comes
-  after the Wikipedia testbed has shown the model works. Its relationships should be TwinThink's
+- More of a maker's own Whoeuvre on the page than the pieces reached by a bridge (the adapter,
+  `lib/fall/whoeuvre.ts`, offers only what a signed-out visitor may enter). Its relationships should be TwinThink's
   own, richer than parent and child: grew from, reminds me of, made during, became, abandoned
   for, returned to, inspired, contradicts, belongs with, someone else pulled this direction, and
   the visitor's own "I keep coming back here". The engine already understands a version becoming

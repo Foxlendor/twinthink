@@ -19,6 +19,11 @@ import { FallNode, Graph, Strand, chooseOpenings } from '@/lib/fall/graph';
 import { Frame, Opening, Place, START, V3, add, arrive, between, blend, circling, lerp3, norm, openingsAround, orbit, overlook, scale, sub, travelTime } from '@/lib/fall/space';
 import { Cam, Shown, drawFall, viewOf } from '@/lib/fall/draw';
 import { Entrance, isDescription, resolveEntrance } from '@/lib/fall/enter';
+import { BRIDGES } from '@/lib/fall/bridges';
+import { isWiki, joinSources } from '@/lib/fall/sources';
+import { createWhoeuvreGraph } from '@/lib/fall/whoeuvre';
+import { buildWorld } from '@/lib/shadowfield/world';
+import { AUTHOR } from '@/lib/shadowfield/sources/author';
 import { Snapshot, WIKI_STARTS, createWikiGraph, titleOf, wikiId } from '@/lib/fall/wiki';
 
 import { samplesAllowed } from '@/lib/shadowfield/sources/samples';
@@ -382,7 +387,9 @@ export default function FallSpace({ serif }: { serif: string }) {
       .catch(() => null)
       .then((snapshot) => {
         if (cancelled) return;
-        graphRef.current = createWikiGraph({ storage, snapshot });
+        // knowledge and a maker's own work in one space, joined only where the maker says so (only
+        // pieces open to everyone; built here, sent nowhere)
+        graphRef.current = joinSources(createWikiGraph({ storage, snapshot }), createWhoeuvreGraph(buildWorld([])), BRIDGES, AUTHOR.name);
         const cur = routeRef.current[routeRef.current.length - 1];
         if (cur) load(cur);
       });
@@ -468,7 +475,7 @@ export default function FallSpace({ serif }: { serif: string }) {
       const rev = revealRef.current;
       for (const o of opens) {
         const id = o.strand.to;
-        const base = memRef.current.walked.includes(`${pl.id}\u0001${id}`) || (memRef.current.seen[id] ?? 0) > 0 ? 0.55 : 0.14;
+        const base = memRef.current.walked.includes(`${pl.id}\u0001${id}`) || (memRef.current.seen[id] ?? 0) > 0 ? 0.55 : o.strand.human ? 0.3 : 0.14;
         let r = rev.get(id) ?? base;
         if (id === aimedRef.current) r = Math.min(1, r + dt * (0.4 + 0.9 * L.shown));
         else if (r < base) r = base;
@@ -603,7 +610,7 @@ export default function FallSpace({ serif }: { serif: string }) {
           onKeyDown={onKeyDown}
         />
       )}
-      <div className={styles.label}>examples from Wikipedia, for previews only</div>
+      <div className={styles.label}>{!started || isWiki(hereId) ? 'examples from Wikipedia, for previews only' : `${AUTHOR.name}'s Whoeuvre, on a preview`}</div>
       <Link className={styles.home} href="/slate">
         slate
       </Link>
@@ -672,7 +679,7 @@ export default function FallSpace({ serif }: { serif: string }) {
                 ) : null}
               </>
             ) : (
-              <>From Wikipedia and DBpedia: {hereId ? titleOf(hereId) : ''}</>
+              <>{isWiki(hereId) ? `From Wikipedia and DBpedia: ${titleOf(hereId)}` : `From ${AUTHOR.name}'s Whoeuvre`}</>
             )}
           </div>
           {door && (
