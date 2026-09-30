@@ -83,6 +83,10 @@ export interface Scene {
   arriving: number;
   status?: string;
   serif: string;
+  /** The path actually ridden (when riding the current): drawn as your thread instead. */
+  ride?: V3[];
+  /** Where you stopped to look: landmarks on the thread, named. */
+  stops?: { at: V3; title: string }[];
 }
 
 /** A strand hangs a little, like silk, instead of running ruler straight. */
@@ -123,7 +127,22 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
   const places = sc.route.map((id) => sc.places.get(id)).filter((p): p is Place => !!p);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  for (let i = 1; i < places.length; i++) {
+  if (sc.ride) {
+    let prev: [number, number, number] | null = null;
+    for (const p of sc.ride) {
+      const q = P(p);
+      if (q && prev) {
+        ctx.strokeStyle = `rgba(${INK},0.62)`;
+        ctx.lineWidth = Math.min(3.2, Math.max(0.8, 0.018 * (q[2] + prev[2]) * 0.5));
+        ctx.beginPath();
+        ctx.moveTo(prev[0], prev[1]);
+        ctx.lineTo(q[0], q[1]);
+        ctx.stroke();
+      }
+      prev = q;
+    }
+  }
+  for (let i = 1; i < places.length && !sc.ride; i++) {
     const a = places[i - 1];
     const b = places[i];
     const path = between(a.frame, { ...b.frame, p: b.frame.p });
@@ -210,6 +229,25 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
         ctx.textAlign = 'center';
         text(ctx, pl.title, q[0], q[1] - r - 6, 0.78 * sc.overlooking);
       }
+    }
+  }
+
+  // where you stopped to look: an open ring on your thread, named (looking back)
+  for (const st of sc.stops ?? []) {
+    const q = P(st.at);
+    if (!q) continue;
+    const r = Math.max(4, Math.min(11, 0.09 * q[2]));
+    ctx.strokeStyle = `rgba(${INK},${0.7 * Math.max(0.2, sc.overlooking)})`;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.arc(q[0], q[1], r, 0, Math.PI * 2);
+    ctx.stroke();
+    // a stop inside a subject is named by the subject already
+    if (sc.overlooking > 0.05 && !places.some((p) => p.title === st.title)) {
+      ctx.font = `italic 14px ${sc.serif}`;
+      ctx.textAlign = 'center';
+      const w = ctx.measureText(st.title).width;
+      if (room(q[0], q[1] + r + 18, w, 16)) text(ctx, st.title, q[0], q[1] + r + 18, 0.8 * sc.overlooking);
     }
   }
 

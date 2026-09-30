@@ -8,8 +8,8 @@ The live Slate is unchanged. Nothing here replaces it until John has tried this 
 
 - **You should never feel like you're looking at the web. You should feel like you're inside it.**
 - **The tunnel was never the mistake. The fixed track was.** Keep the Slate's first-person
-  embodiment (inside the space, openings in the walls), and generate the chambers, openings and
-  passages from the real relationship structure. Things are places; relationships are distance;
+  embodiment (inside the space), and generate the tubes, regions and splits from the real
+  relationship structure. Things are places; relationships are distance;
   attention is direction; the Fall is movement. First person is the normal view; "look back" is
   the one deliberate step outside, to see the route you took.
 - Controls on a phone stay drag-only (tilt stays decided against).
@@ -57,29 +57,53 @@ the space, never a results page, and never the main interface.
 - This is public knowledge only. It says nothing about searching private Whoeuvres or the
   catalog, which keep their own discovery rules.
 
-## First person (30 Sep, first proof)
+## The current (30 Sep, replaces the chambers)
 
-`/fall` is now seen from inside (`lib/fall/chamber.ts`). The place you are at is a chamber around
-you, rings of ink on its walls. Every way on is an opening in that wall where its relationship
-puts it (came from above, led to below, related things at the sides), wider the stronger the
-connection, and through it runs a passage: the very path you would travel, so a long passage is a
-long way and its turn is the turn you will take. Only the opening you face is named: its name
-after a beat, then its reason. A person's work opens as a rose-lit side passage whose rings turn
-rose partway along. The way you came in stays open behind you ("back to ..."). Going in, you fly
-down the passage and arrive inside the next chamber, facing on.
+The chamber proof (click an opening to enter it) was node-graph logic in a tunnel costume. It
+is replaced, not patched (`lib/fall/ride.ts` for the movement, `lib/fall/stream.ts` for the
+drawing; `chamber.ts` is gone). The rules:
 
-Controls: drag to look around (phone and mouse), tap or click to go into the way you face (or the
-one you tap), arrow keys and Enter, Backspace for back.
+- **You don't enter tunnels. You're already in the tunnel. You don't choose nodes. You steer
+  through relationships. You don't arrive at ideas. You pass through them. You don't click to
+  move. You stop to inspect.**
+- **Movement is the default. Choosing is steering, not clicking.**
+- **Momentum carries you. Attention changes you. Inattention eventually lets you settle.**
+- Moving is experiencing relationships; steering is choosing attention; stopping is understanding.
 
-Desktop also has WASD, as guided movement: you can look anywhere, but you only ever move through
-the structure that is there (**WASD should make the Fall feel inhabited, not gamified**). W goes
-into the way you face, and held, hurries you along it; S goes back the way you came, and held
-partway down a passage, takes you back out to where you set out, as if you had never gone (what
-you walked is remembered only on arrival); A and D turn where you look. A/D stepping aside within
-the chamber (strafe) is kept for comparison at `/fall?ad=strafe`: in these small chambers it only
-shifts the view slightly, so turning is the default. Phones keep drag and tap; no virtual joystick. "Look back" steps outside to the overview
-of your route; the rest of the time you are inside. Same data underneath: sources, snapshot,
-search, bridges, strength and direction, reveal, circling.
+How it works:
+
+- You are always moving. The relationship you are riding is the tube around you; its rings are
+  fixed in the space, so they stream past. Where it reaches a subject the tube swells (a region)
+  and the subject's name drifts past; that is the only word on screen while you move.
+- The subject's own relationships split off ahead as branches, already formed (and the split
+  after, faintly), each where its strand puts it: wider the stronger, the strongest nearly straight
+  on, weaker ones peeling away at their bearings (came from above, led to below, related things at
+  the sides). The earned tunnel, gaps and spiral come from the same placement as before.
+- The pace follows the structure: slower through a dense subject, faster across the gap of a weak
+  relationship. While the split ahead is still forming (a live DBpedia answer), the current slows
+  and waits inside the subject.
+- Steering is a lean: drag a thumb, move the mouse, or A/D and the arrow keys. Nearing a split,
+  the branch nearest your lean gradually captures you (the view drifts toward its mouth); you are
+  committed only when you pass the split. No lean, and the main current (the strongest
+  relationship) carries you.
+- A person's own work is a thinner rose side current (at Drinking straw: SipSmolder), with rose
+  threads drifting along the wall toward it before it splits off. It is never the main current; you
+  lean into it, under the same rules as any branch. Crossing, the tube turns rose.
+- Holding stops you: a finger down (not moving), the mouse button, or S or Space. The slowing
+  starts at once; what is here resolves a beat later, once you are still. In a subject: its name
+  and line, and every branch named where it leaves, with its reason (the rose one too). Between
+  two subjects: why the two connect. And, when a person's own work is a step or two on, a rose
+  thread toward it, named. Only real data; nothing random, no rewards. Let go and the current
+  picks you back up. No modal, no pause icon, no hard freeze. Dragging is steering, not stopping.
+- Pay no attention for three subjects in a row and the current lets you settle, inside the next
+  subject with its splits in view. Any lean, drag, key or hold picks it back up.
+- W held hurries you. Reduced motion: a slower, even pace, no camera sway, no drifting threads.
+- "Look back" steps outside: the path you actually rode as one line, the branches passed at each
+  subject as stubs, every subject named, and where you stopped as open rings (named when the stop
+  was between two subjects).
+
+Same data underneath as before: sources, snapshot, search, bridges, strength and direction,
+circling. Tests: `ride.test.ts`.
 
 ## Where human work meets knowledge (30 Sep)
 
@@ -131,7 +155,7 @@ appears for both, a doorway opens for both, the joint route stays visible behind
 | Many ways of similar weight | The space widens (they spread further out). |
 | Going somewhere already reached | The strand joins back to where it was; the path loops. |
 | Returning (on this device) | Dew on places seen before; strands walked before drawn solid. |
-| Attention | At first only short stubs, enough to orient. Leaning toward one draws it out; keep leaning and it is named; keep on and it says why. What you have looked at stays a little clearer. |
+| Attention | Riding, nothing is named but the subject passing. Leaning lets a branch capture you as you near its split; holding still names what is here (the subject, why two things connect, every branch and its reason). |
 | The next step's own links, once known | The ways on ease into where they now belong: the space re-forms as more of the structure arrives. |
 
 ## What was wrong with the live Fall
@@ -159,11 +183,9 @@ upright), so a run of turns the same way curls into a spiral, a strong chain dro
 straight, and two branches can orbit the same thing before parting. None of that is drawn on
 purpose; it is what the path does.
 
-Leaning (mouse position, a thumb drag, or the arrow keys) pulls the way leaned toward in and turns
-the view a little toward it, while the rest drift out and fade. Click, tap, or push a thumb past
-the threshold to go. Travel time grows with distance. Faintly past each way on, where it leads in
-turn appears once known (the space forming ahead of you). "back" retraces your own thread.
-Reduced motion: travel is a short cut, and the view does not turn while leaning.
+(This section describes the first, third-person `/fall`. How you move is now the current, above;
+the placement and the answers in this table are unchanged. The third-person view remains as
+"look back".)
 
 ## The examples: Wikipedia and DBpedia
 
