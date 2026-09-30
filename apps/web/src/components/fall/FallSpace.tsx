@@ -1,18 +1,16 @@
 'use client';
 
-// The Fall, formed by relationships (preview only): real examples from Wikipedia, ridden as a
-// current.
+// The Fall, formed by relationships (preview only): real examples from Wikipedia, as a river.
 //
-// You are always moving. The relationship you are riding is the tube around you; where it reaches
-// a subject the tube swells and the subject drifts past, and its own relationships split off ahead.
-// Lean toward one (drag a thumb, move the mouse, or A/D and the arrows) and it gradually captures
-// you as you near the split; lean nowhere and the strongest current carries you. Hold (a finger
-// down, the mouse button, S or Space) and you slow at once; still, what is here resolves: the
-// subject, why two things connect, where each branch goes and why. Let go and the current picks
-// you back up. Pay no attention for a while and it lets you settle inside a subject. Look back to
-// see the path you actually rode, and where you stopped.
+// Motion is always present; travel is voluntary. Traveling, a current carries you through one
+// relationship. Arriving, you are Located: you stay at the subject until you leave, while the web
+// around you keeps flowing. Arrival gives you permission to do nothing.
 //
-// Momentum carries you. Attention changes you. Inattention eventually lets you settle.
+// Look around (drag, or A/D and the arrows). Whatever current you look at resolves: its name, then
+// why it connects, and, if you keep looking past that, it begins to carry you. Look away before
+// you are properly in it and you drift back. Turn around: the passage you arrived through is still
+// there, and looked at the same way it carries you back along the path you actually came. W leans
+// you in sooner. Look back to see the path you rode and where you stayed.
 //
 // Nothing here reaches our server. Every id begins "sample/"; what you have seen and ridden is
 // kept on this device only.
@@ -21,10 +19,10 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import styles from './FallSpace.module.css';
 import { FallNode, Graph, Strand, chooseOpenings } from '@/lib/fall/graph';
-import { Opening, Place, START, V3, add, arrive, between, blend, circling, cross, dot, len, lerp3, norm, openingsAround, orbit, overlook, scale, sub } from '@/lib/fall/space';
+import { Opening, Place, START, V3, add, arrive, between, blend, circling, len, lerp3, norm, openingsAround, orbit, overlook, scale, sub } from '@/lib/fall/space';
 import { Cam, drawFall, viewOf } from '@/lib/fall/draw';
-import { Branch, drawStream } from '@/lib/fall/stream';
-import { CRUISE, LEAN_DEAD, Leg, SETTLE_AFTER, branchFor, captureAt, densityOf, easeSpeed, leadIn, legOf, paceAt, settleSpeed, zoneAt } from '@/lib/fall/ride';
+import { CurrentLabel, LeavingCurrent, RouteCurrent, drawCurrents } from '@/lib/fall/drawCurrents';
+import { COMMITTED_AFTER, CRUISE, CurrentPath, Look, REACH, REST, arrivalSpeed, attention, currentPath, easeSpeed, entryPath, isReverseOf, lookAt, lookFor, lookedAt, paceOf, reversePath, sBefore } from '@/lib/fall/locomotion';
 import { Entrance, isDescription, resolveEntrance } from '@/lib/fall/enter';
 import { BRIDGES } from '@/lib/fall/bridges';
 import { isWiki, joinSources } from '@/lib/fall/sources';
@@ -69,8 +67,50 @@ const smooth = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
-/** The split ahead: the subject it is at, and its branches, each where its strand puts it. */
-interface Fork {
+/** Located: at a subject, resting on the passage you arrived by (at `s` along it). */
+interface Located {
+  kind: 'located';
+  at: string;
+  leg: CurrentPath;
+  s: number;
+  since: number;
+  marked: boolean;
+}
+/**
+ * Traveling along a relationship. Until you are properly in it (COMMITTED_AFTER), it is only a pull, and
+ * looking away lets you drift back to where you were (`anchor`).
+ */
+interface Traveling {
+  kind: 'travel';
+  leg: CurrentPath;
+  s: number;
+  s0: number;
+  speed: number;
+  /** Where the view started from, eased away as you go (so nothing jumps). */
+  offset: V3;
+  way: string;
+  anchor: Located | null;
+  taken: boolean;
+  /** What taking it means: going on into a new relationship, or retracing (the spine pops). */
+  on: 'forward' | 'back';
+}
+type Motion = Located | Traveling;
+
+/** A current you could take from where you are: its mouth (what you look at), and the leg it is. */
+interface ReachableCurrent {
+  id: string;
+  title: string;
+  why?: string;
+  strength: number;
+  human?: boolean;
+  back: boolean;
+  mouth: V3;
+  leg: CurrentPath;
+  s0: number;
+  opening?: Opening;
+}
+
+interface Leaving {
   id: string;
   openings: Opening[];
 }
@@ -79,37 +119,26 @@ export default function FallSpace({ serif }: { serif: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const graphRef = useRef<Graph | null>(null);
   const placesRef = useRef(new Map<string, Place>());
-  /** Every subject passed through, in order. */
+  /** Every subject reached, in order (for looking back). */
   const routeRef = useRef<string[]>([]);
+  /** Your own path, as a spine of the relationships you went on by: retracing takes them off again. */
+  const routeStackRef = useRef<CurrentPath[]>([]);
   const nodesRef = useRef(new Map<string, FallNode>());
   const strandsRef = useRef(new Map<string, Strand[]>());
-  /** What your path keeps circling, and where. */
+  const leavingRef = useRef(new Map<string, Leaving>());
   const centresRef = useRef<{ id: string; title: string; at: V3; n: number }[]>([]);
   const statusRef = useRef<string | undefined>(undefined);
-  /** The relationship being ridden, how far along it (0 to 1), and how fast (world units a second). */
-  const legRef = useRef<Leg | null>(null);
-  const sRef = useRef(0);
-  const speedRef = useRef(0);
-  const forkRef = useRef<Fork | null>(null);
-  /** Where each branch is drawn: easing toward where it now belongs, as the split forms. */
+  const motionRef = useRef<Motion | null>(null);
+  /** Where each current is drawn: easing toward where it now belongs, as the split forms. */
   const shownPosRef = useRef(new Map<string, V3>());
-  /** The branch that has you, as you near the split. */
-  const capturedRef = useRef<string | null>(null);
-  /** Leaning (screen terms: right +x, down +y), and what it came from (a mouse holds its lean). */
-  const leanRef = useRef<{ x: number; y: number; src: 'mouse' | 'touch' | 'keys' }>({ x: 0, y: 0, src: 'keys' });
-  const pressRef = useRef<{ x: number; y: number; lx: number; ly: number; moved: number; steering: boolean } | null>(null);
-  const holdRef = useRef(false);
+  const reachableRef = useRef<ReachableCurrent[]>([]);
+  /** Where you look, relative to the way you are going (or went); how long you have looked at one current. */
+  const lookRef = useRef<Look>({ yaw: 0, pitch: 0 });
+  const attnRef = useRef<{ id: string | null; t: number }>({ id: null, t: 0 });
+  const dragRef = useRef<{ x: number; y: number; yaw: number; pitch: number } | null>(null);
   const keysRef = useRef(new Set<string>());
-  /** Attention: any since the last split; subjects passed without any; letting you settle. */
-  const attendedRef = useRef(false);
-  const idleRef = useRef(0);
-  const settlingRef = useRef(false);
-  /** Stopping: how long still (s), how far what is here has resolved (0 to 1), and whether marked. */
-  const stillRef = useRef({ t: 0, amount: 0, marked: false });
-  /** The camera, eased (so a split never jerks the view). */
   const camRef = useRef<{ f: V3; u: V3 }>({ f: START.f, u: START.u });
-  const eyeRef = useRef<V3>(START.p);
-  /** The path actually ridden, and where you stopped to look. */
+  /** The path actually ridden, and where you stayed a while. */
   const rideRef = useRef<V3[]>([]);
   const stopsRef = useRef<{ at: V3; title: string }[]>([]);
   const regionRef = useRef('');
@@ -133,33 +162,24 @@ export default function FallSpace({ serif }: { serif: string }) {
     () => null
   );
 
-  /** Any attention at all: the current will not let you settle while you are paying it. */
-  const attend = useCallback(() => {
-    attendedRef.current = true;
-    idleRef.current = 0;
-    settlingRef.current = false;
-  }, []);
-
   /**
-   * Once what a subject leads to is known, the split at it forms: its branches, each where its
-   * strand puts it (the relationship you rode in on is behind you, not a branch).
+   * Once what a subject leads to is known, the currents leaving it form, each where its strand puts
+   * it (the relationship you came in by is behind you, not one of them).
    */
-  const formFork = useCallback((id: string) => {
-    const leg = legRef.current;
+  const formLeaving = useCallback((id: string) => {
     const pl = placesRef.current.get(id);
     const strands = strandsRef.current.get(id);
-    if (!leg || leg.to !== id || !pl || !strands) return;
-    const cameFrom = leg.from;
+    if (!pl || !strands) return;
+    const inLeg = routeStackRef.current[routeStackRef.current.length - 1];
+    const cameFrom = inLeg?.to === id ? inLeg.from : null;
     // except where you crossed between knowledge and a person's work: the way back across stays open
     const crossed = !!cameFrom && isWiki(cameFrom) !== isWiki(id);
-    let chosen = chooseOpenings(strands.filter((s) => s.to !== cameFrom || crossed));
-    // nothing else leads on: the only way is back the way you came
-    if (!chosen.length && cameFrom) chosen = strands.filter((s) => s.to === cameFrom).slice(0, 1);
+    const chosen = chooseOpenings(strands.filter((s) => s.to !== cameFrom || crossed));
     const placed = new Map<string, V3>();
     for (const [pid, p] of placesRef.current) if (pid !== id) placed.set(pid, p.frame.p);
     const place = () => {
       const open = openingsAround(pl.frame, chosen, placed);
-      // earning the spiral: what your route keeps circling pulls the branches that link to it onto
+      // earning the spiral: what your route keeps circling pulls the currents that link to it onto
       // an orbit around it (knowledge says what links where; your route says what you keep coming round)
       const centres = circling(routeRef.current, (x) => strandsRef.current.get(x), id);
       const at = (cid: string, from: string[]): V3 => {
@@ -186,23 +206,21 @@ export default function FallSpace({ serif }: { serif: string }) {
         return { ...o, pos };
       });
     };
-    forkRef.current = { id, openings: place() };
+    leavingRef.current.set(id, { id, openings: place() });
     statusRef.current = chosen.length ? undefined : 'nothing leads on from here that both sides name.';
-    // the split after this one forms too (seen faintly); once known, this split re-forms around what
-    // it reveals (branches ease to where they now belong)
+    // where each current leads in turn forms too (seen faintly); once known, this subject's currents
+    // re-form around what it reveals
     const g = graphRef.current;
     if (!g) return;
     Promise.allSettled(
-      forkRef.current.openings.map((o) =>
-        strandsRef.current.has(o.strand.to)
+      chosen.map((s) =>
+        strandsRef.current.has(s.to)
           ? Promise.resolve()
-          : g.strands(o.strand.to).then((s) => {
-              strandsRef.current.set(o.strand.to, s);
+          : g.strands(s.to).then((x) => {
+              strandsRef.current.set(s.to, x);
             })
       )
-    ).then(() => {
-      if (legRef.current?.to === id && forkRef.current?.id === id) forkRef.current = { id, openings: place() };
-    });
+    ).then(() => leavingRef.current.set(id, { id, openings: place() }));
   }, []);
 
   const load = useCallback(
@@ -212,17 +230,16 @@ export default function FallSpace({ serif }: { serif: string }) {
       const known = strandsRef.current.get(id) ?? g.known?.(id);
       if (known) {
         strandsRef.current.set(id, known);
-        formFork(id);
+        formLeaving(id);
       } else {
         statusRef.current = 'finding where this leads.';
         setFailed(false);
         g.strands(id)
           .then((s) => {
             strandsRef.current.set(id, s);
-            formFork(id);
+            formLeaving(id);
           })
           .catch(() => {
-            if (legRef.current?.to !== id) return;
             statusRef.current = UNREACHABLE;
             setFailed(true);
           });
@@ -235,12 +252,12 @@ export default function FallSpace({ serif }: { serif: string }) {
           })
           .catch(() => {});
     },
-    [formFork]
+    [formLeaving]
   );
 
   const remember = (from: string | null, to: string) => {
     const m = memRef.current;
-    m.seen[to] = (m.seen[to] ?? 0) + 1;
+    if (!from) m.seen[to] = (m.seen[to] ?? 0) + 1;
     if (from && !m.walked.includes(`${from}\u0001${to}`)) m.walked.push(`${from}\u0001${to}`);
     writeMemory(m);
   };
@@ -249,22 +266,17 @@ export default function FallSpace({ serif }: { serif: string }) {
     (id: string, title: string) => {
       placesRef.current = new Map([[id, { id, title, frame: START, passed: [] }]]);
       routeRef.current = [id];
+      const lead = entryPath(START, id);
+      routeStackRef.current = [lead];
       // you are already moving when you arrive: a little way up the current into where you entered
-      legRef.current = leadIn(START, id);
-      sRef.current = 0.2;
-      speedRef.current = CRUISE * 0.8;
-      forkRef.current = null;
+      motionRef.current = { kind: 'travel', leg: lead, s: 0.1, s0: 0, speed: CRUISE, offset: [0, 0, 0], way: id, anchor: null, taken: true, on: 'forward' };
+      leavingRef.current = new Map();
       shownPosRef.current = new Map();
-      capturedRef.current = null;
       centresRef.current = [];
       rideRef.current = [];
       stopsRef.current = [];
-      stillRef.current = { t: 0, amount: 0, marked: false };
-      leanRef.current = { x: 0, y: 0, src: 'keys' };
-      holdRef.current = false;
-      idleRef.current = 0;
-      attendedRef.current = false;
-      settlingRef.current = false;
+      lookRef.current = { yaw: 0, pitch: 0 };
+      attnRef.current = { id: null, t: 0 };
       camRef.current = { f: START.f, u: START.u };
       overlookRef.current.on = false;
       setOverlooking(false);
@@ -272,78 +284,77 @@ export default function FallSpace({ serif }: { serif: string }) {
       regionRef.current = id;
       setHereId(id);
       setStarted(true);
-      remember(null, id);
       load(id);
     },
     [load]
   );
 
-  /**
-   * Passing the split: the branch that has you becomes the relationship you ride. The branches not
-   * taken stay, as stubs, part of where you have been.
-   */
-  const pass = useCallback(
-    (over: number) => {
-      const leg = legRef.current;
-      const fork = forkRef.current;
-      const B = leg ? placesRef.current.get(leg.to) : undefined;
-      if (!leg || !fork || fork.id !== leg.to || !B || !fork.openings.length) return false;
-      const target = fork.openings.find((o) => o.strand.to === capturedRef.current) ?? branchFor(B.frame, fork.openings, leanRef.current);
-      if (!target) return false;
-      const pos = shownPosRef.current.get(target.strand.to) ?? target.pos;
-      B.passed = fork.openings.filter((o) => o !== target && !o.back).map((o) => ({ to: o.strand.to, pos: shownPosRef.current.get(o.strand.to) ?? o.pos }));
-      const to = target.strand.to;
-      const existing = placesRef.current.get(to);
-      const frame = arrive(B.frame, existing ? existing.frame.p : pos);
-      if (existing) existing.frame = frame;
-      else
-        placesRef.current.set(to, {
-          id: to,
-          title: target.strand.title,
-          frame,
-          passed: [],
-          via: { from: B.id, why: target.strand.why, strength: target.strand.strength, bearing: target.strand.bearing, shape: target.strand.shape },
-        });
-      const next = legOf(B.id, to, B.frame, frame, target.strand.strength, target.strand.why, !!target.strand.human);
-      legRef.current = next;
-      sRef.current = Math.min(0.5, (over * leg.length) / next.length);
-      routeRef.current.push(to);
-      remember(B.id, to);
-      // inattention: subjects passed with no attention at all, and the current lets you settle
-      if (attendedRef.current) idleRef.current = 0;
-      else idleRef.current += 1;
-      attendedRef.current = false;
-      if (idleRef.current >= SETTLE_AFTER) settlingRef.current = true;
-      forkRef.current = null;
-      shownPosRef.current = new Map();
-      capturedRef.current = null;
+  /** Properly in a current: it has you. Going on adds it to your path; going back takes it off. */
+  const take = useCallback(
+    (tr: Traveling) => {
+      tr.taken = true;
+      tr.anchor = null;
+      const leg = tr.leg;
+      if (tr.on === 'back') {
+        routeStackRef.current.pop();
+        routeRef.current.push(leg.to);
+      } else {
+        const from = placesRef.current.get(leg.from ?? '');
+        const w = reachableRef.current.find((x) => x.id === tr.way);
+        const existing = placesRef.current.get(leg.to);
+        if (existing) existing.frame = leg.b;
+        else if (from && w)
+          placesRef.current.set(leg.to, {
+            id: leg.to,
+            title: w.title,
+            frame: leg.b,
+            passed: [],
+            via: { from: from.id, why: w.why, strength: w.strength, bearing: w.opening?.strand.bearing ?? 'beside', shape: w.opening?.strand.shape },
+          });
+        // the currents not taken there stay, as stubs, part of where you have been
+        if (from) from.passed = (leavingRef.current.get(from.id)?.openings ?? []).filter((o) => o.strand.to !== leg.to && !o.back).map((o) => ({ to: o.strand.to, pos: shownPosRef.current.get(o.strand.to) ?? o.pos }));
+        routeStackRef.current.push(leg);
+        routeRef.current.push(leg.to);
+        remember(leg.from, leg.to);
+      }
       setFailed(false);
-      load(to);
-      return true;
+      load(leg.to);
     },
     [load]
   );
 
-  // for checking in development only: the ride, the split ahead, and steering by hand
+  // for checking in development only
   useEffect(() => {
     if (process.env.NODE_ENV === 'production') return;
     (window as unknown as { __fall?: unknown }).__fall = {
-      leg: () => ({ from: legRef.current?.from, to: legRef.current?.to, s: sRef.current, speed: speedRef.current, still: stillRef.current.amount, settling: settlingRef.current, idle: idleRef.current }),
-      fork: () => forkRef.current?.openings.map((o) => ({ to: o.strand.to, title: o.strand.title, strength: o.strand.strength, human: !!o.strand.human })) ?? null,
-      captured: () => capturedRef.current,
+      state: () => {
+        const m = motionRef.current;
+        if (!m) return null;
+        return m.kind === 'located'
+          ? { kind: m.kind, at: m.at, since: m.since, back: !!m.leg.back }
+          : { kind: m.kind, from: m.leg.from, to: m.leg.to, s: m.s, speed: m.speed, taken: m.taken, on: m.on };
+      },
+      ways: () => reachableRef.current.map((w) => ({ id: w.id, title: w.title, back: w.back, human: !!w.human })),
+      attention: () => ({ ...attnRef.current }),
+      look: (yaw: number, pitch = 0) => {
+        lookRef.current = { yaw, pitch };
+      },
+      /** Look straight at a current by id (as if you had turned to it). */
+      face: (id: string) => {
+        const m = motionRef.current;
+        const w = reachableRef.current.find((x) => x.id === id);
+        if (!m || !w) return false;
+        const eye = m.kind === 'located' ? m.leg.path(m.s) : m.leg.path(m.s);
+        const fr = blend(m.leg.a, m.leg.b, m.s, m.leg.path);
+        lookRef.current = lookFor(fr, sub(w.mouth, eye));
+        return true;
+      },
       route: () => [...routeRef.current],
+      spine: () => routeStackRef.current.map((l) => `${l.from}>${l.to}`),
       stops: () => stopsRef.current.map((s) => s.title),
       enter: (id: string, title: string) => begin(id, title),
-      lean: (x: number, y: number) => {
-        leanRef.current = { x, y, src: 'mouse' };
-        attend();
-      },
-      hold: (on: boolean) => {
-        holdRef.current = on;
-        attend();
-      },
     };
-  }, [begin, attend]);
+  }, [begin]);
 
   /** Search chooses where you enter; the Fall determines where you go. */
   const enterBy = async (text: string) => {
@@ -431,7 +442,8 @@ export default function FallSpace({ serif }: { serif: string }) {
         // knowledge and a maker's own work in one space, joined only where the maker says so (only
         // pieces open to everyone; built here, sent nowhere)
         graphRef.current = joinSources(createWikiGraph({ storage, snapshot }), createWhoeuvreGraph(buildWorld([])), BRIDGES, AUTHOR.name);
-        const cur = legRef.current?.to;
+        const m = motionRef.current;
+        const cur = m ? (m.kind === 'located' ? m.at : m.leg.to) : null;
         if (cur) load(cur);
       });
     return () => {
@@ -439,7 +451,7 @@ export default function FallSpace({ serif }: { serif: string }) {
     };
   }, [allowed, load]);
 
-  // riding, and drawing, every frame
+  // moving (or not), and drawing, every frame
   useEffect(() => {
     if (!allowed || !started) return;
     const canvas = canvasRef.current;
@@ -451,6 +463,39 @@ export default function FallSpace({ serif }: { serif: string }) {
     let last = performance.now();
     let time = 0;
     const titleOfPlace = (id: string) => nodesRef.current.get(id)?.title ?? placesRef.current.get(id)?.title ?? '';
+
+    /** The currents you could take from a subject, arriving (or arrived) along `arrival`. */
+    const currentsAt = (at: string, arrival: CurrentPath, s: number): ReachableCurrent[] => {
+      const pl = placesRef.current.get(at);
+      if (!pl) return [];
+      const out: ReachableCurrent[] = [];
+      const settle = reduced.matches ? 1 : 1 - Math.exp(-0.016 * 3);
+      for (const o of leavingRef.current.get(at)?.openings ?? []) {
+        // the one you arrived along (retracing, you came back up it) is the way behind you instead
+        if (arrival.back && o.strand.to === arrival.from) continue;
+        const was = shownPosRef.current.get(o.strand.to);
+        const pos = was ? lerp3(was, o.pos, settle) : o.pos;
+        shownPosRef.current.set(o.strand.to, pos);
+        const known = placesRef.current.get(o.strand.to);
+        const leg = currentPath(at, o.strand.to, pl.frame, arrive(pl.frame, known ? known.frame.p : pos), o.strand.strength, o.strand.why, !!o.strand.human);
+        out.push({ id: o.strand.to, title: o.strand.title, why: o.strand.why, strength: o.strand.strength, human: o.strand.human, back: false, mouth: leg.path(0.35), leg, s0: 0, opening: o });
+      }
+      if (arrival.from) {
+        // behind you: the passage you arrived through, still there, the way back along your path
+        const back = reversePath(arrival);
+        out.push({ id: `back:${arrival.from}`, title: titleOfPlace(arrival.from), why: arrival.why, strength: arrival.strength, human: arrival.human, back: true, mouth: arrival.path(Math.max(0, s - 1.4 / arrival.length)), leg: back, s0: 1 - s });
+      }
+      if (arrival.back) {
+        // arrived by retracing: further back along your path, if it goes further
+        const inLeg = routeStackRef.current[routeStackRef.current.length - 1];
+        if (inLeg?.to === at && inLeg.from) {
+          const further = reversePath(inLeg);
+          out.push({ id: `back:${inLeg.from}`, title: titleOfPlace(inLeg.from), why: inLeg.why, strength: inLeg.strength, human: inLeg.human, back: true, mouth: further.path(0.35), leg: further, s0: 0 });
+        }
+      }
+      return out;
+    };
+
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
       const dt = Math.min(0.05, (now - last) / 1000);
@@ -465,145 +510,121 @@ export default function FallSpace({ serif }: { serif: string }) {
         canvas.height = Math.round(h * dpr);
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (!legRef.current) return;
+      let m = motionRef.current;
+      if (!m) return;
 
-      // leaning: held keys lean you; a thumb's lean relaxes once lifted; a mouse's stays where it points
+      // turning where you look: A/D and the arrows (a drag is handled as it happens)
       const keys = keysRef.current;
-      const L = leanRef.current;
-      const kx = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0);
-      const ky = (keys.has('arrowdown') ? 1 : 0) - (keys.has('arrowup') ? 1 : 0);
-      if (kx || ky) {
-        L.x = clamp(L.x + kx * dt * 2, -1, 1);
-        L.y = clamp(L.y + ky * dt * 2, -1, 1);
-        L.src = 'keys';
-      } else if (L.src !== 'mouse' && !pressRef.current?.steering) {
-        const k = Math.exp(-dt / 2.2);
-        L.x *= k;
-        L.y *= k;
+      const turnX = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0);
+      const turnY = (keys.has('arrowup') ? 1 : 0) - (keys.has('arrowdown') ? 1 : 0);
+      if (turnX || turnY) lookRef.current = { yaw: lookRef.current.yaw + turnX * 1.4 * dt, pitch: clamp(lookRef.current.pitch + turnY * 1.0 * dt, -1.3, 1.3) };
+
+      // the subject you are at (or coming to), and the currents you could take from it
+      const at = m.kind === 'located' ? m.at : m.leg.to;
+      const arrival = m.kind === 'located' ? m.leg : m.anchor ? m.anchor.leg : m.leg;
+      const restS = m.kind === 'located' ? m.s : m.anchor ? m.anchor.s : sBefore(m.leg, REST);
+      const ways = m.kind === 'travel' && !m.taken && m.anchor ? currentsAt(m.anchor.at, m.anchor.leg, m.anchor.s) : currentsAt(at, arrival, restS);
+      // a current that is pulling you: what you look at along it stays ahead of you
+      if (m.kind === 'travel' && !m.taken) {
+        const tr = m;
+        const wy = ways.find((x) => x.id === tr.way);
+        if (wy) wy.mouth = tr.leg.path(Math.min(1, tr.s + 0.35));
       }
+      reachableRef.current = ways;
 
-      // momentum: the current's pace, slowed by holding, by settling, and by a split not yet formed
-      const holding = holdRef.current || keys.has('s') || keys.has(' ') || overlookRef.current.on;
-      let leg = legRef.current;
-      let fork = forkRef.current?.id === leg.to ? forkRef.current : null;
-      const s0 = sRef.current;
-      const cruise = CRUISE * (rm ? 0.6 : 1) * (keys.has('w') ? 1.5 : 1);
-      let target = cruise * (rm ? 1 : paceAt(s0, leg.strength, densityOf(strandsRef.current.get(leg.to))));
-      if (settlingRef.current) target = Math.min(target, settleSpeed(s0, cruise));
-      // the way ahead still forming (or nothing leads on): the current slows, and waits inside the subject
-      if (!fork || !fork.openings.length) target = Math.min(target, cruise * clamp((0.93 - s0) / 0.35, 0, 1));
-      if (holding) target = 0;
-      let speed = easeSpeed(speedRef.current, target, dt, holding);
-      if (target === 0 && speed < 0.004) speed = 0;
-      speedRef.current = speed;
-      let s = s0 + (speed * dt) / leg.length;
-      if (s >= 1) {
-        if (pass(s - 1)) {
-          leg = legRef.current!;
-          fork = null;
-          s = sRef.current;
-        } else s = 1;
-      }
-      sRef.current = s;
-
-      // stopping is understanding: the stop begins at once, what is here resolves a beat later
-      const st = stillRef.current;
-      if (speed < 0.05) st.t += dt;
-      else {
-        st.t = 0;
-        st.marked = false;
-      }
-      const wantStill = smooth(0.15, 0.6, st.t);
-      st.amount += (wantStill - st.amount) * (1 - Math.exp(-dt / (wantStill > st.amount ? 0.25 : 0.1)));
-
-      const B = placesRef.current.get(leg.to);
-      if (!B) return;
-      const zone = zoneAt(s, !!leg.from);
-
-      // the split ahead: each branch where it is drawn, easing to where it now belongs
-      const settle = rm ? 1 : 1 - Math.exp(-dt * 3);
-      const opens = (fork?.openings ?? []).map((o) => {
-        const was = shownPosRef.current.get(o.strand.to);
-        const pos = was ? lerp3(was, o.pos, settle) : o.pos;
-        shownPosRef.current.set(o.strand.to, pos);
-        return { ...o, pos };
-      });
-      // which branch has you: the one you lean toward (or the main current), more and more as you near it
-      const captured = opens.length ? branchFor(B.frame, opens, L) : null;
-      capturedRef.current = captured?.strand.to ?? null;
-      const cap = captured ? captureAt(s) : 0;
-      const branches: Branch[] = opens.map((o) => {
-        const bf = arrive(B.frame, o.pos);
-        const onward = strandsRef.current.get(o.strand.to);
-        return {
-          id: o.strand.to,
-          title: o.strand.title,
-          why: o.strand.why,
-          strength: o.strand.strength,
-          human: o.strand.human,
-          path: between(B.frame, bf),
-          onward: onward ? openingsAround(bf, chooseOpenings(onward.filter((x) => x.to !== B.id), 4)).map((x) => between(bf, arrive(bf, x.pos))) : [],
-        };
-      });
-
-      // the camera: riding the current, drawn toward the branch that has you, turned a little by attention
-      const base = blend(leg.a, leg.b, s, leg.path);
+      // where you are and which way you look
+      const base = blend(m.leg.a, m.leg.b, m.s, m.leg.path);
       let eye = base.p;
-      let f = base.f;
-      const capB = branches.find((b) => b.id === capturedRef.current);
-      if (capB && cap > 0) {
-        const cp = capB.path(0.3);
-        f = norm(lerp3(f, norm(sub(cp, eye)), 0.4 * cap));
-        const off = sub(cp, B.frame.p);
-        const side = sub(off, scale(B.frame.f, dot(off, B.frame.f)));
-        if (len(side) > 1e-3) eye = add(eye, scale(norm(side), 0.08 * cap));
+      if (m.kind === 'travel') {
+        const gone = Math.abs(m.s - m.s0) * m.leg.length;
+        eye = add(eye, scale(m.offset, 1 - smooth(0, 1.1, gone)));
       }
-      const r0 = norm(cross(f, base.u));
-      if (Math.hypot(L.x, L.y) > LEAN_DEAD && !rm) f = norm(add(f, add(scale(r0, 0.14 * L.x), scale(base.u, -0.14 * L.y))));
-      const cam = camRef.current;
-      const kc = rm ? 1 : 1 - Math.exp(-dt / 0.2);
-      const cf = norm(lerp3(cam.f, f, kc));
-      let cu = lerp3(cam.u, base.u, kc);
-      cu = norm(sub(cu, scale(cf, dot(cu, cf))));
-      camRef.current = { f: cf, u: cu };
-      eyeRef.current = eye;
+      const view = lookAt(base, lookRef.current);
 
-      // the path actually ridden
+      // attention: what you look at resolves (name, then why), and past that it begins to carry you
+      const approaching = m.kind === 'travel' && m.taken && (1 - m.s) * m.leg.length < REACH + 1.5;
+      const lookable = m.kind === 'located' || approaching || (m.kind === 'travel' && !m.taken);
+      const fid = lookable ? faced(eye, view.f, ways) : null;
+      const at0 = attnRef.current;
+      if (fid !== at0.id) attnRef.current = { id: fid, t: 0 };
+      else if (fid) at0.t += dt * (keys.has('w') ? 3 : 1);
+      const attn = attention(attnRef.current.t);
+      const aimed = ways.find((x) => x.id === attnRef.current.id) ?? null;
+
+      if (m.kind === 'located') {
+        m.since += dt;
+        if (!m.marked && m.since > 1.5) {
+          m.marked = true;
+          stopsRef.current.push({ at: eye, title: titleOfPlace(m.at) });
+        }
+        // keep looking past understanding, and the current begins to carry you
+        if (aimed && attn.pull > 0) {
+          const off = sub(eye, aimed.leg.path(aimed.s0));
+          const tr: Traveling = { kind: 'travel', leg: aimed.leg, s: aimed.s0, s0: aimed.s0, speed: 0, offset: off, way: aimed.id, anchor: m, taken: false, on: aimed.leg.back ? 'back' : 'forward' };
+          lookRef.current = lookFor(blend(tr.leg.a, tr.leg.b, tr.s, tr.leg.path), view.f);
+          motionRef.current = m = tr;
+        }
+      } else {
+        if (!m.taken) {
+          // only a pull so far: it strengthens while you keep looking; look away and you drift back
+          const pulling = attnRef.current.id === m.way ? attn.pull : 0;
+          const target = pulling > 0 ? CRUISE * 0.7 * pulling : -0.5;
+          m.speed = pulling > 0 ? easeSpeed(m.speed, target, dt) : Math.max(-0.5, m.speed - dt * 1.5);
+          m.s += (m.speed * dt) / m.leg.length;
+          if (m.s <= m.s0 && m.anchor) {
+            const anchor = m.anchor;
+            lookRef.current = lookFor(blend(anchor.leg.a, anchor.leg.b, anchor.s, anchor.leg.path), view.f);
+            motionRef.current = m = anchor;
+          } else if ((m.s - m.s0) * m.leg.length >= COMMITTED_AFTER) take(m);
+        } else {
+          // carried: full pace between subjects, arrival friction as you reach one
+          const left = (1 - m.s) * m.leg.length;
+          const cruise = CRUISE * (rm ? 0.6 : 1) * paceOf(m.leg.strength);
+          m.speed = easeSpeed(m.speed, arrivalSpeed(left, cruise), dt);
+          const restAt = sBefore(m.leg, REST);
+          m.s = Math.min(restAt, m.s + (m.speed * dt) / m.leg.length);
+          // far from any subject, the view settles back along the current (never while you look ahead to one)
+          if (!approaching && !dragRef.current && !turnX && !turnY) {
+            const k = 1 - Math.exp(-dt / 1.5);
+            lookRef.current = { yaw: lookRef.current.yaw * (1 - k), pitch: lookRef.current.pitch * (1 - k) };
+          }
+          if (m.s >= restAt - 1e-4 && m.speed < 0.03) {
+            // arrived. Already looking into one of its currents, past understanding: it carries you
+            // straight on. Otherwise you are Located, and may stay as long as you like.
+            const next = aimed && attn.pull > 0 && !aimed.back ? aimed : null;
+            const located: Located = { kind: 'located', at: m.leg.to, leg: m.leg, s: m.s, since: 0, marked: false };
+            remember(null, m.leg.to);
+            if (next) {
+              const tr: Traveling = { kind: 'travel', leg: next.leg, s: 0, s0: 0, speed: 0.4, offset: sub(eye, next.leg.path(0)), way: next.id, anchor: located, taken: false, on: 'forward' };
+              lookRef.current = lookFor(blend(tr.leg.a, tr.leg.b, 0, tr.leg.path), view.f);
+              motionRef.current = m = tr;
+            } else motionRef.current = m = located;
+          }
+        }
+      }
+
+      // the camera, eased (a new relationship never jerks the view)
+      const fr2 = blend(m.leg.a, m.leg.b, m.s, m.leg.path);
+      const v2 = lookAt(fr2, lookRef.current);
+      const cam = camRef.current;
+      const kc = rm ? 1 : 1 - Math.exp(-dt / 0.18);
+      const cf = norm(lerp3(cam.f, v2.f, kc));
+      let cu = lerp3(cam.u, v2.u, kc);
+      cu = norm(sub(cu, scale(cf, cf[0] * cu[0] + cf[1] * cu[1] + cf[2] * cu[2])));
+      camRef.current = { f: cf, u: cu };
+
       const ride = rideRef.current;
       if (!ride.length || len(sub(eye, ride[ride.length - 1])) > 0.1) {
         ride.push(eye);
         if (ride.length > 4000) ride.shift();
       }
-      const aheadT = titleOfPlace(leg.to);
-      const behindT = leg.from ? titleOfPlace(leg.from) : '';
-      // where you stopped to look, kept as a landmark on your path
-      if (st.t > 0.6 && !st.marked && !overlookRef.current.on) {
-        st.marked = true;
-        stopsRef.current.push({ at: eye, title: zone === 'arriving' ? aheadT : zone === 'leaving' ? behindT : `between ${behindT} and ${aheadT}` });
-      }
-      // the subject you are in (for the credit): the one ahead once past halfway
-      const region = s >= 0.5 || !leg.from ? leg.to : leg.from;
+      // the subject you are at (for the credit): the one ahead once past halfway
+      const legNow = m.leg;
+      const region = m.kind === 'located' ? m.at : m.anchor ? m.anchor.at : m.s >= 0.5 || !legNow.from ? legNow.to : legNow.from;
       if (region !== regionRef.current) {
         regionRef.current = region;
         setHereId(region);
         setCredit(nodesRef.current.get(region)?.credit ?? null);
-      }
-
-      // held still: a person's own work a step or two on (when it is not a branch here already)
-      let roseNear: { title: string; through: string; path: (t: number) => V3 } | null = null;
-      if (st.amount > 0.02 && !branches.some((b) => b.human) && !leg.human) {
-        if (zone === 'arriving') {
-          for (const b of branches) {
-            const hs = strandsRef.current.get(b.id)?.find((x) => x.human);
-            if (hs) {
-              roseNear = { title: hs.title, through: b.title, path: b.path };
-              break;
-            }
-          }
-        } else {
-          const hs = strandsRef.current.get(leg.to)?.find((x) => x.human);
-          if (hs) roseNear = { title: hs.title, through: aheadT, path: (t: number) => leg.path(s + (1 - s) * t) };
-        }
       }
 
       // looking back: up and away from where you are, until the whole path you rode is in view
@@ -635,78 +656,92 @@ export default function FallSpace({ serif }: { serif: string }) {
         return;
       }
 
-      const v = viewOf({ eye, at: add(eye, cf), up: cu }, w, h);
-      // a wide view from inside the current
-      v.F = 0.42 * Math.max(Math.min(w, h), 0.6 * Math.max(w, h));
-      const node = (id: string | null) => (id ? nodesRef.current.get(id) : undefined);
-      drawStream(ctx, v, {
-        leg: { path: leg.path, s, length: leg.length, strength: leg.strength, human: leg.human, why: leg.why },
-        behind: leg.from ? { title: behindT, line: node(leg.from)?.line } : null,
-        ahead: { title: aheadT, line: node(leg.to)?.line },
-        branches,
-        captured: capturedRef.current,
-        capture: cap,
-        still: st.amount,
-        zone,
-        roseNear,
-        status: s > 0.55 ? statusRef.current : undefined,
-        time,
-        reduced: rm,
-        serif,
+      // what is drawn: the relationship you are on, the ones either side of it on your path, and the
+      // currents leaving the subject you are at (or coming to)
+      const tubes: RouteCurrent[] = [];
+      const seenLeg = new Set<CurrentPath>();
+      const addTube = (l: CurrentPath | undefined, alpha: number, rose: (t: number) => boolean) => {
+        if (!l || seenLeg.has(l)) return;
+        seenLeg.add(l);
+        tubes.push({ path: l.path, length: l.length, strength: l.strength, swellB: 1, alpha, roseAt: l.human ? rose : undefined });
+      };
+      const roseTo = (l: CurrentPath) => (l.back ? (t: number) => t < 0.55 : (t: number) => t > 0.45);
+      addTube(m.leg, 1, roseTo(m.leg));
+      if (m.kind === 'travel' && m.anchor) addTube(m.anchor.leg, 1, roseTo(m.anchor.leg));
+      const sp = routeStackRef.current;
+      for (const l of sp.slice(-2)) if (!seenLeg.has(l) && !(m.leg.back && m.leg.from === l.to && m.leg.to === l.from)) addTube(l, 0.7, (t) => t > 0.45);
+      const forkAt = m.kind === 'travel' && !m.taken && m.anchor ? m.anchor.at : at;
+      const forward = ways.filter((x) => !x.back);
+      const branches: LeavingCurrent[] = forward.map((x) => {
+        const onward = strandsRef.current.get(x.id);
+        const bf = x.leg.b;
+        const isAimed = aimed?.id === x.id;
+        const pull = m.kind === 'travel' && !m.taken && m.way === x.id ? 1 : 0;
+        return {
+          id: x.id,
+          path: x.leg.path,
+          length: x.leg.length,
+          strength: x.strength,
+          human: x.human,
+          emph: isAimed ? 1 + 0.5 * attn.name + 0.6 * attn.pull + pull : aimed ? 0.7 : 1,
+          onward: onward ? openingsAround(bf, chooseOpenings(onward.filter((y) => y.to !== forkAt), 4)).map((y) => between(bf, arrive(bf, y.pos))) : [],
+        };
       });
+      // the back passages are tubes already (on your path); only the one you look at is named
+      const labels: CurrentLabel[] = [];
+      if (aimed && attn.name > 0.02)
+        labels.push({ at: aimed.mouth, title: aimed.back ? `back to ${aimed.title}` : aimed.title, why: aimed.why, nameA: attn.name, whyA: attn.why, rose: aimed.human, big: true });
+      const human = forward.find((x) => x.human);
+      const onLeg = m.kind === 'travel' && !m.taken && m.anchor ? m.anchor.leg : m.leg;
+      const threads = human && !onLeg.human && !onLeg.back ? { tube: { path: onLeg.path, length: onLeg.length, strength: onLeg.strength, swellB: 1 }, toward: human.leg.path(0.3) } : null;
+
+      // the caption: the subject you are at (its line once you are there), or drifting past as you travel
+      let caption: Parameters<typeof drawCurrents>[2]['caption'] = null;
+      const node = (id: string) => nodesRef.current.get(id);
+      if (m.kind === 'located' || (m.kind === 'travel' && !m.taken && m.anchor)) {
+        const loc = m.kind === 'located' ? m : m.anchor!;
+        caption = { title: titleOfPlace(loc.at), titleA: 1, line: node(loc.at)?.line, lineA: smooth(0.8, 1.6, loc.since) };
+      } else if (m.kind === 'travel') {
+        const left = (1 - m.s) * m.leg.length;
+        const gone = m.s * m.leg.length;
+        const aheadA = smooth(REACH + 1.8, REACH, left);
+        const behindA = m.leg.from ? 1 - smooth(0.3, 1.6, gone) : 0;
+        if (aheadA >= behindA && aheadA > 0.02) caption = { title: titleOfPlace(m.leg.to), titleA: aheadA, lineA: 0 };
+        else if (behindA > 0.02 && m.leg.from) caption = { title: titleOfPlace(m.leg.from), titleA: behindA, lineA: 0 };
+      }
+      const status = m.kind === 'located' && !leavingRef.current.get(m.at) ? statusRef.current ?? 'finding where this leads.' : m.kind === 'located' ? statusRef.current : undefined;
+
+      const v = viewOf({ eye, at: add(eye, cf), up: cu }, w, h);
+      // a wide view from inside the web
+      v.F = 0.42 * Math.max(Math.min(w, h), 0.6 * Math.max(w, h));
+      drawCurrents(ctx, v, { eye, tubes, branches, threads, labels, caption, status, time, reduced: rm, serif });
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [allowed, started, serif, pass]);
+  }, [allowed, started, serif, take]);
 
-  // a thumb: held, you slow to a stop; dragged, you lean (steer). A mouse leans where it points, and
-  // held, stops you too.
+  // dragging turns where you look (phone and mouse alike): the only gesture
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (overlookRef.current.on) return;
     e.currentTarget.setPointerCapture(e.pointerId);
-    pressRef.current = { x: e.clientX, y: e.clientY, lx: leanRef.current.x, ly: leanRef.current.y, moved: 0, steering: false };
-    holdRef.current = true;
-    attend();
+    dragRef.current = { x: e.clientX, y: e.clientY, yaw: lookRef.current.yaw, pitch: lookRef.current.pitch };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (overlookRef.current.on) return;
+    const dr = dragRef.current;
+    if (!dr || overlookRef.current.on) return;
     const r = e.currentTarget.getBoundingClientRect();
-    const M = Math.min(r.width, r.height);
-    if (e.pointerType === 'mouse') {
-      let x = (e.clientX - r.left - r.width / 2) / (0.42 * M);
-      let y = (e.clientY - r.top - r.height * 0.46) / (0.42 * M);
-      const m = Math.hypot(x, y);
-      if (m > 1) [x, y] = [x / m, y / m];
-      leanRef.current = { x, y, src: 'mouse' };
-      attend();
-      return;
-    }
-    const p = pressRef.current;
-    if (!p) return;
-    const dx = e.clientX - p.x;
-    const dy = e.clientY - p.y;
-    p.moved = Math.max(p.moved, Math.hypot(dx, dy));
-    if (p.moved > 10) {
-      // dragging is steering, not stopping: the current picks back up
-      p.steering = true;
-      holdRef.current = false;
-      let x = p.lx + dx / (0.3 * M);
-      let y = p.ly + dy / (0.3 * M);
-      const m = Math.hypot(x, y);
-      if (m > 1) [x, y] = [x / m, y / m];
-      leanRef.current = { x, y, src: 'touch' };
-      attend();
-    }
+    const k = 1.6 / Math.min(r.width, r.height);
+    // the world moves under your finger
+    lookRef.current = { yaw: dr.yaw - (e.clientX - dr.x) * k, pitch: clamp(dr.pitch + (e.clientY - dr.y) * k, -1.3, 1.3) };
   };
   const release = () => {
-    pressRef.current = null;
-    holdRef.current = false;
+    dragRef.current = null;
   };
 
-  // desktop: A/D and the arrows lean, S or Space held stops you, W held hurries you on
+  // desktop: A/D and the arrows turn where you look; W leans you in sooner
   useEffect(() => {
     if (!started) return;
-    const ours = ['w', 'a', 's', 'd', ' ', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'];
+    const ours = ['w', 'a', 'd', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'];
     const typing = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLButtonElement;
     const down = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
@@ -718,7 +753,6 @@ export default function FallSpace({ serif }: { serif: string }) {
       if (!ours.includes(k) || typing(e) || e.metaKey || e.ctrlKey || e.altKey || overlookRef.current.on) return;
       e.preventDefault();
       keysRef.current.add(k);
-      attend();
     };
     const up = (e: KeyboardEvent) => keysRef.current.delete(e.key.toLowerCase());
     const clear = () => keysRef.current.clear();
@@ -730,7 +764,7 @@ export default function FallSpace({ serif }: { serif: string }) {
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', clear);
     };
-  }, [started, attend]);
+  }, [started]);
 
   if (allowed === null) return <div className={styles.field} />;
   if (!allowed)
@@ -752,17 +786,11 @@ export default function FallSpace({ serif }: { serif: string }) {
           ref={canvasRef}
           className={styles.canvas}
           tabIndex={0}
-          aria-label="The Fall: you are moving through relationships. Drag, or move the mouse, to steer; hold to stop and see what is here."
+          aria-label="The Fall: drag to look around. Keep looking at a current and it carries you; turn around to go back the way you came."
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={release}
           onPointerCancel={release}
-          onPointerLeave={(e) => {
-            if (e.pointerType === 'mouse') {
-              leanRef.current = { x: 0, y: 0, src: 'mouse' };
-              release();
-            }
-          }}
         />
       )}
       <div className={styles.label}>{!started || isWiki(hereId) ? 'examples from Wikipedia, for previews only' : `${AUTHOR.name}'s Whoeuvre, on a preview`}</div>
@@ -786,7 +814,7 @@ export default function FallSpace({ serif }: { serif: string }) {
         <>
           <div className={styles.actions}>
             {failed && !overlooking && (
-              <button type="button" className={styles.quiet} onClick={() => legRef.current && load(legRef.current.to)}>
+              <button type="button" className={styles.quiet} onClick={() => load(regionRef.current)}>
                 try again
               </button>
             )}
