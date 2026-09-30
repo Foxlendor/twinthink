@@ -57,7 +57,7 @@ parts, prototype, tests, revisions.
 
 ### Quick start (tested launch commands)
 
-### 1. Launch Both API & Web Concurrently
+#### Launch the API and web app together
 On Windows (PowerShell):
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/dev-stack.ps1
@@ -69,7 +69,6 @@ On Linux / macOS (Bash):
 
 - **API**: [http://127.0.0.1:8001](http://127.0.0.1:8001) (API Docs: [http://127.0.0.1:8001/docs](http://127.0.0.1:8001/docs))
 - **Web UI**: [http://localhost:3000](http://localhost:3000)
-
 
 ### Running individually
 
