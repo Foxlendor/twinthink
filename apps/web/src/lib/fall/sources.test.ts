@@ -80,7 +80,17 @@ describe('knowledge and human work in one space', () => {
     expect((await g.node('lamp')).title).toBe('a lamp that listens');
   });
 
-  it('holds no bridges until the maker writes them', () => {
-    expect(BRIDGES).toEqual([]);
+  it('holds exactly the bridges the maker wrote, and no others', () => {
+    expect(BRIDGES.map((b) => [b.piece, b.article])).toEqual([
+      ['archive/sipsmolder', 'Drinking_straw'],
+      ['archive/bubbleblock', 'Ad_blocking'],
+      ['archive/wear-os', 'Smart_ring'],
+    ]);
   });
+
+  it('keeps the maker\'s own thread even when the knowledge source cannot be reached', async () => {
+    const down = joinSources(createWikiGraph({ fetch: offline }), who, [{ piece: 'lamp', article: 'Lamp', why: 'w' }], 'someone');
+    expect((await down.strands('sample/wiki/Lamp')).map((x) => x.to)).toEqual(['lamp']);
+    await expect(down.strands('sample/wiki/Nothing_here')).rejects.toThrow();
+  }, 20000);
 });

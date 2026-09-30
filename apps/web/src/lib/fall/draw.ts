@@ -248,6 +248,25 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
     const known = sc.reveal(o.strand.to);
     // a person's own work is joined by a thread of credit, in rose, as on the Slate
     const col = o.strand.human ? ROSE : INK;
+    // a way back across to where you came from (from a person's work to the knowledge it answers,
+    // or back): it is your own thread, so it is named on the thread, where it comes into view
+    const prevPlace = o.back && o.strand.human ? sc.places.get(o.strand.to) : undefined;
+    const herePlace = sc.here ? sc.places.get(sc.here.id) : undefined;
+    if (prevPlace && herePlace) {
+      const path = between(prevPlace.frame, herePlace.frame);
+      let edge: [number, number, number] | null = null;
+      for (let s = 0; s <= 60 && !edge; s++) {
+        const e = P(path(s / 60));
+        if (e && e[0] > 40 && e[1] > 70 && e[0] < v.w - 40 && e[1] < v.h - 70) edge = e;
+      }
+      if (edge) {
+        ctx.font = `italic 15px ${sc.serif}`;
+        ctx.textAlign = 'left';
+        text(ctx, `back to ${o.strand.title}`, Math.min(v.w - 200, edge[0] + 12), edge[1] + 22, 0.8);
+        shown.push({ opening: o, x: edge[0] + 60, y: edge[1] + 16, r: 40 });
+      }
+      continue;
+    }
     // only as much of the strand as you have attended to: a stub at first, all of it once looked at
     const reach = 0.22 + 0.78 * Math.min(1, known / 0.6);
     const legible = 0.35 + 0.65 * known;
@@ -321,15 +340,35 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
     const nameA = known > 0.62 ? (aimed ? 0.92 : 0.42 * fade) : 0;
     ctx.font = `italic ${aimed ? 17 : 14}px ${sc.serif}`;
     const label = o.strand.title.slice(0, 44);
-    const below = q[1] >= (hereP?.[1] ?? v.cy);
-    const ty = below ? q[1] + r + 17 : q[1] - r - 9;
     const tx = Math.max(60, Math.min(v.w - 60, q[0]));
-    if (nameA > 0.03 && (aimed || room(tx, ty, ctx.measureText(label).width, 16))) {
+    const why = aimed && o.strand.why && known > 0.85 ? (o.back ? `${o.strand.why}, back where you were` : o.strand.why) : '';
+    // the name (and, leaned toward, the reason) go on the side of the ring away from where you are,
+    // unless that would run into other words (the caption below all): then the other side
+    const lw = ctx.measureText(label).width;
+    ctx.font = `italic 13px ${sc.serif}`;
+    const ww = why ? ctx.measureText(why).width : 0;
+    ctx.font = `italic ${aimed ? 17 : 14}px ${sc.serif}`;
+    const at = (below: boolean) => {
+      const ty = below ? q[1] + r + 17 : q[1] - r - 9;
+      const wy = why ? ty + (below ? 17 : -18) : ty;
+      const top = Math.min(ty - 16, wy - 13);
+      const bottom = Math.max(ty + 4, wy + 4);
+      const w = Math.max(lw, ww);
+      return { ty, wy, box: [tx - w / 2 - 3, top, tx + w / 2 + 3, bottom] as [number, number, number, number] };
+    };
+    const clear = (b: [number, number, number, number]) => !boxes.some((q2) => b[0] < q2[2] && b[2] > q2[0] && b[1] < q2[3] && b[3] > q2[1]);
+    let place = at(q[1] >= (hereP?.[1] ?? v.cy));
+    if (!clear(place.box)) {
+      const other = at(!(q[1] >= (hereP?.[1] ?? v.cy)));
+      if (clear(other.box)) place = other;
+    }
+    if (nameA > 0.03 && (aimed || clear(place.box))) {
+      boxes.push(place.box);
       ctx.textAlign = 'center';
-      text(ctx, label, tx, ty, nameA);
-      if (aimed && o.strand.why && known > 0.85) {
+      text(ctx, label, tx, place.ty, nameA);
+      if (why) {
         ctx.font = `italic 13px ${sc.serif}`;
-        text(ctx, o.back ? `${o.strand.why}, back where you were` : o.strand.why, tx, ty + (below ? 17 : -18), 0.6);
+        text(ctx, why, tx, place.wy, 0.6);
       }
     }
     shown.push({ opening: o, x: q[0], y: q[1], r: Math.max(r * 1.4, 22) });

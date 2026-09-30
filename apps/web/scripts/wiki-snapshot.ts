@@ -69,6 +69,18 @@ async function summary(id: string): Promise<Summary | undefined> {
   }
 }
 
+// just a few more places, by title: npx jiti scripts/wiki-snapshot.ts public/fall/wiki-snapshot.json --add A,B
+const addAt = process.argv.indexOf('--add');
+if (addAt > 0) {
+  for (const t of (process.argv[addAt + 1] ?? '').split(',').filter(Boolean)) {
+    await rows(wikiId(t));
+    await summary(wikiId(t));
+    console.log('added', t, !!snap.nodes[t]?.rows, !!snap.nodes[t]?.summary);
+  }
+  save();
+  process.exit(0);
+}
+
 const level: string[][] = [WIKI_STARTS.map(wikiId)];
 for (let depth = 0; depth < 3; depth++) {
   const next: string[] = [];

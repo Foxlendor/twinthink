@@ -23,7 +23,7 @@ export function joinSources(wiki: Graph, whoeuvre: Graph | null, bridges: Bridge
     }
     return bridges
       .filter((b) => b.piece === id && open(b))
-      .map((b) => ({ to: wikiId(b.article), title: b.article.replace(/_/g, ' '), bearing: 'from' as const, why: b.why, strength: 0.8 }));
+      .map((b) => ({ to: wikiId(b.article), title: b.article.replace(/_/g, ' '), bearing: 'from' as const, why: b.why, strength: 0.8, human: true }));
   };
   const titles = new Map<string, string>();
   const titleOf = (piece: string) => titles.get(piece) ?? piece;
@@ -34,8 +34,15 @@ export function joinSources(wiki: Graph, whoeuvre: Graph | null, bridges: Bridge
     strands: async (id) => {
       const g = pick(id);
       if (!g) throw new Error('not ready');
-      const known = await g.strands(id);
-      return [...humanFrom(id), ...known];
+      const human = humanFrom(id);
+      try {
+        return [...human, ...(await g.strands(id))];
+      } catch (e) {
+        // the maker's own threads do not depend on the source being reachable; if there are none,
+        // the place says it could not be reached and shows nothing in their place
+        if (human.length) return human;
+        throw e;
+      }
     },
     node: (id): Promise<FallNode> => pick(id)?.node(id) ?? Promise.reject(new Error('not ready')),
     known: (id) => {

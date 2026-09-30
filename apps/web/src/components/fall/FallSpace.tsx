@@ -122,7 +122,10 @@ export default function FallSpace({ serif }: { serif: string }) {
     if (!pl || !strands || cur !== id) return;
     // the way back to where you came from is your own thread (and "back"), not a way on
     const cameFrom = stackRef.current[stackRef.current.length - 2];
-    const chosen = chooseOpenings(strands.filter((s) => s.to !== cameFrom));
+    // except where you crossed between knowledge and a person's work: then the way back to where you
+    // crossed from stays in view, named, as a way on
+    const crossed = !!cameFrom && isWiki(cameFrom) !== isWiki(id);
+    const chosen = chooseOpenings(strands.filter((s) => s.to !== cameFrom || crossed));
     const placed = new Map<string, V3>();
     for (const [pid, p] of placesRef.current) if (pid !== id) placed.set(pid, p.frame.p);
     const place = () => {
@@ -296,13 +299,15 @@ export default function FallSpace({ serif }: { serif: string }) {
       here: () => routeRef.current[routeRef.current.length - 1],
       ways: () => openingsRef.current.map((o) => ({ to: o.strand.to, title: o.strand.title, strength: o.strand.strength, reveal: revealRef.current.get(o.strand.to) ?? 0 })),
       centres: () => centresRef.current.map((c) => ({ id: c.id, n: c.n })),
+      enter: (id: string, title: string) => begin(id, title),
+      aimed: () => aimedRef.current,
       go: (id: string) => {
         const o = openingsRef.current.find((x) => x.strand.to === id);
         if (o) choose(o);
         return !!o;
       },
     };
-  }, [choose]);
+  }, [choose, begin]);
 
   /** Search chooses where you enter; the Fall determines where you go. */
   const enterBy = async (text: string) => {
@@ -475,7 +480,8 @@ export default function FallSpace({ serif }: { serif: string }) {
       const rev = revealRef.current;
       for (const o of opens) {
         const id = o.strand.to;
-        const base = memRef.current.walked.includes(`${pl.id}\u0001${id}`) || (memRef.current.seen[id] ?? 0) > 0 ? 0.55 : o.strand.human ? 0.3 : 0.14;
+        // the way back across to where you came from is always fully there
+        const base = o.back && o.strand.human ? 1 : memRef.current.walked.includes(`${pl.id}\u0001${id}`) || (memRef.current.seen[id] ?? 0) > 0 ? 0.55 : o.strand.human ? 0.3 : 0.14;
         let r = rev.get(id) ?? base;
         if (id === aimedRef.current) r = Math.min(1, r + dt * (0.4 + 0.9 * L.shown));
         else if (r < base) r = base;

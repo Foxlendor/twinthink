@@ -6,7 +6,7 @@
 // may enter are ever shown (the Whoeuvre source enforces that), so a bridge can never expose
 // anything private: a bridge to a piece that is not open to everyone is simply not drawn.
 //
-// Empty until the maker says which of their pieces relate to what. Nothing here is guessed.
+// Only what the maker has written here. Nothing is guessed, and nothing is added automatically.
 
 export interface Bridge {
   /** The piece, by its id on the Slate (e.g. "archive/sipsmolder"). */
@@ -17,4 +17,21 @@ export interface Bridge {
   why: string;
 }
 
-export const BRIDGES: Bridge[] = [];
+// johne.boi, 30 Sep 2026: the first three, in his words
+export const BRIDGES: Bridge[] = [
+  {
+    piece: 'archive/sipsmolder',
+    article: 'Drinking_straw',
+    why: 'I wondered why a straw could only carry a drink instead of changing its temperature too.',
+  },
+  {
+    piece: 'archive/bubbleblock',
+    article: 'Ad_blocking',
+    why: 'I wanted ad blocking to leave the screen and work on the physical world around you.',
+  },
+  {
+    piece: 'archive/wear-os',
+    article: 'Smart_ring',
+    why: 'I wondered how much of a working device could disappear into something as ordinary as a ring.',
+  },
+];
