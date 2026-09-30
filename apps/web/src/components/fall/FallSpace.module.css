@@ -1,0 +1,135 @@
+.field {
+  --ink: 30, 28, 36;
+  --paper: #fbfaf7;
+  position: fixed;
+  inset: 0;
+  background: var(--paper);
+  color: rgb(var(--ink));
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: var(--font-serif), Georgia, serif;
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  outline: none;
+}
+
+.label {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: rgba(var(--ink), 0.5);
+  pointer-events: none;
+}
+
+.home {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  font-style: italic;
+  font-size: 1rem;
+  color: rgba(var(--ink), 0.5);
+  text-decoration: none;
+}
+
+.actions {
+  position: absolute;
+  right: 20px;
+  bottom: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px 18px;
+  max-width: calc(100% - 40px);
+}
+
+.quiet {
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  padding: 4px 0;
+  font-family: inherit;
+  font-style: italic;
+  font-size: 1rem;
+  color: rgba(var(--ink), 0.55);
+  cursor: pointer;
+}
+
+.quiet:hover,
+.quiet:focus-visible {
+  color: rgba(var(--ink), 0.92);
+  border-bottom-color: rgba(var(--ink), 0.25);
+  outline: none;
+}
+
+.credit {
+  position: absolute;
+  left: 20px;
+  bottom: 18px;
+  max-width: min(460px, calc(100% - 40px));
+  font-style: italic;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: rgba(var(--ink), 0.5);
+}
+
+.credit a {
+  color: inherit;
+}
+
+.starts {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  text-align: center;
+}
+
+.starts h1 {
+  font-weight: 400;
+  font-size: 2rem;
+  margin: 0 0 4px;
+}
+
+.starts p {
+  font-style: italic;
+  color: rgba(var(--ink), 0.6);
+  margin: 0 0 18px;
+  max-width: 440px;
+}
+
+.start {
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-style: italic;
+  font-size: 1.35rem;
+  color: rgba(var(--ink), 0.7);
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.start:hover,
+.start:focus-visible {
+  color: rgb(var(--ink));
+  outline: none;
+}
+
+@media (max-width: 600px) {
+  .actions {
+    bottom: 64px;
+  }
+}

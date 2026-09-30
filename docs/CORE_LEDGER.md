@@ -12,7 +12,7 @@ a signed-out visitor with test Twins served in place of the real list where
 noted. It is not a real-network, signed-in, or real-phone check. No row is
 "experience accepted": that is John's call.
 
-Last updated: 28 September 2026.
+Last updated: 30 September 2026.
 
 ## Conflicts between the spec and later instructions
 
@@ -141,6 +141,10 @@ When the freeze lifts, the order is: what the Drop physically is and what the we
 ## Layout fixed during the freeze (29 Sep)
 
 - Panels (Your Fall, Rabi's notice, support, the Fall with me invite) sat over the row of actions and ran their buttons together ("look at itgo therereplay"). Found while taking screenshots for the explainer page; fixed as a layout defect (the kind check 2 exists for): each panel now sits on its own paper above the actions, with room between its buttons, on desktop and phone.
+
+## Prototype 30 Sep, not decided: the Fall formed by relationships
+
+John's correction: the space must come from how one thing leads to another, not a tunnel drawn around a fixed track ("If removing the tunnel would leave basically the same experience, then the tunnel has failed"). The live Fall fails that test today. A working prototype is on previews only at `/fall`, with real examples from Wikipedia and DBpedia; see `docs/FALL_SPACE.md`. The live Slate is unchanged until John tries it and decides. Open: whether the clock face keeps a job in the relationship space (the prototype uses direction for the kind of relationship, not the hour), and when a maker's own Whoeuvre becomes a source.
 
 ## Next, in order
 
