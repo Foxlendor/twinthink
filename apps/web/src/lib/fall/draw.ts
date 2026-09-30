@@ -345,14 +345,33 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
     // the name (and, leaned toward, the reason) go on the side of the ring away from where you are,
     // unless that would run into other words (the caption below all): then the other side
     const lw = ctx.measureText(label).width;
+    // the reason wraps to the screen (a phone included), up to three lines
     ctx.font = `italic 13px ${sc.serif}`;
-    const ww = why ? ctx.measureText(why).width : 0;
+    const whyLines: string[] = [];
+    if (why) {
+      const max = Math.min(420, v.w - 32);
+      let cur = '';
+      for (const word of why.split(' ')) {
+        const next = cur ? `${cur} ${word}` : word;
+        if (ctx.measureText(next).width > max && cur) {
+          whyLines.push(cur);
+          cur = word;
+        } else cur = next;
+      }
+      if (cur) whyLines.push(cur);
+      if (whyLines.length > 3) {
+        whyLines.length = 3;
+        whyLines[2] = `${whyLines[2].replace(/[\s,.;:]+$/, '')}\u2026`;
+      }
+    }
+    const ww = Math.max(0, ...whyLines.map((l) => ctx.measureText(l).width));
     ctx.font = `italic ${aimed ? 17 : 14}px ${sc.serif}`;
+    const lineH = 16;
     const at = (below: boolean) => {
-      const ty = below ? q[1] + r + 17 : q[1] - r - 9;
-      const wy = why ? ty + (below ? 17 : -18) : ty;
-      const top = Math.min(ty - 16, wy - 13);
-      const bottom = Math.max(ty + 4, wy + 4);
+      const ty = below ? q[1] + r + 17 : q[1] - r - 9 - (whyLines.length ? whyLines.length * lineH + 2 : 0);
+      const wy = ty + 17;
+      const top = ty - 16;
+      const bottom = ty + 4 + whyLines.length * lineH;
       const w = Math.max(lw, ww);
       return { ty, wy, box: [tx - w / 2 - 3, top, tx + w / 2 + 3, bottom] as [number, number, number, number] };
     };
@@ -366,9 +385,10 @@ export function drawFall(ctx: CanvasRenderingContext2D, v: View, sc: Scene): Sho
       boxes.push(place.box);
       ctx.textAlign = 'center';
       text(ctx, label, tx, place.ty, nameA);
-      if (why) {
+      if (whyLines.length) {
         ctx.font = `italic 13px ${sc.serif}`;
-        text(ctx, why, tx, place.wy, 0.6);
+        const cx = Math.max(16 + ww / 2, Math.min(v.w - 16 - ww / 2, tx));
+        whyLines.forEach((l, i) => text(ctx, l, cx, place.wy + i * lineH, 0.6));
       }
     }
     shown.push({ opening: o, x: q[0], y: q[1], r: Math.max(r * 1.4, 22) });
