@@ -117,6 +117,78 @@ article. Only pieces open to a visitor who is not signed in are ever shown, so a
 never expose anything private (`lib/fall/sources.ts`, tests in `sources.test.ts`). The list is
 empty until John writes it.
 
+## Rabi: depth for what cannot all fit (decided 30 Sep, not built)
+
+**Rabi gives depth to information that cannot all fit in front of you at once.** Rabi is not
+recommendation ("these five are best"); it says "there are forty true connections here, but a body
+cannot occupy forty doorways at once". This is the same Rabi that shapes parts of the web
+(`CORE_LEDGER.md`, "Rabi and the web"); here it has a concrete, deterministic job in the Fall, and
+it is never named on screen. People should only notice that even the most connected idea still
+feels navigable.
+
+Why: `chooseOpenings` keeps the 7 strongest ways on and throws the rest away (Phonograph has 40 from
+DBpedia, a query limit, so 33 vanish). That is hiding weak nodes. Rabi replaces the cap.
+
+The rules:
+
+- The source decides which relationships exist. Rabi never deletes one and never chooses your route.
+- Rabi budgets what becomes perceptible now: about 3 to 5 distinct currents at a split, the budget
+  growing with the number of strong relationships, not the total.
+- Strong and different relationships get direct space (their own current). Mouths keep a minimum
+  separation (about 30 degrees); when two collide, the weaker goes deeper.
+- Related relationships (same kind, same bearing, e.g. "filed with") share a trunk: one broad
+  current they peel off one at a time, strongest first, so each split is a two-way choice. **The
+  trunk is the relationship family, not a route to its strongest member.** It is drawn and named
+  as the family ("filed with", from Ring binder), and while members peel off it nothing implies
+  they are downstream of one another; the trunk simply narrows into the strongest remaining branch.
+  It never ends in a subjectless room.
+- Weak ones stay latent in the wall, as faint seams around the region.
+- Density widens the space: a subject with many strong relationships becomes a larger, deeper
+  region instead of shrinking every opening.
+- **Attention gives relationships space. Stopping gives them meaning.** Moving and leaning toward a
+  wall region makes its seams separate into real currents ahead (mostly wordless, spatial
+  resolution); stopping names them and says why (semantic resolution).
+- Human work receives protected space, but not unlimited space. Now: the one authored contribution
+  (SipSmolder at Drinking straw) keeps its own rose current, never merged, never in the wall, never
+  wider than the main current. Later, if a subject has many human contributions, at least one
+  relevant human current stays protected and the rest get their own family and depth, visibly
+  distinct, so there is no rose clutter.
+
+How the four test cases would lay out (real snapshot data):
+
+| Subject | What is there | Perceptible at once |
+| --- | --- | --- |
+| Crazy Legs (dancer) | Rock Steady Crew and Breakdancing (0.65), four "linked both ways" (0.35) | Two currents, well apart; one faint trunk for the four; narrow region |
+| Ring binder | Five "filed with" (0.47 to 0.59), seven "linked both ways" | One broad "filed with" trunk, members peeling off one at a time; the seven in the wall |
+| Phonograph | Thomas Edison (0.77, above), 17 "filed with" (strongest 0.71), 20 "linked both ways" | A wide region; Edison above, Phonograph record, Phonograph cylinder, Turntablism, the "filed with" trunk; the twenty in the wall, resolving toward your lean |
+| Drinking straw | SipSmolder (0.8, rose), two "filed with" (0.47), eight "linked both ways" | Main current is the "filed with" trunk; the rose side current; the eight in the wall |
+
+## Opening a subject (proposed 30 Sep, not decided, not built)
+
+Move to discover. Stop to understand. Open to study. The Fall is good at traversal and weak at
+dwelling; a subject should be a place you can explore, not only a waypoint. Proposed:
+
+- Opening anchors you: double-tap while still (phone), double-click or Enter while stopped
+  (desktop). A double tap while moving only brakes. Once open, no finger is needed to stay.
+- The region swells into a room around you (the same tube, paused and widened; not a panel, page
+  or modal). Dragging looks around instead of steering. Directions keep their meaning: ahead the
+  subject itself (longer summary, the source); behind, the relationship you came in by and why;
+  above, where it came from (people, what it grew from); below, what it led to; sides, kin and
+  categories as families; a person's work as rose.
+- First: only the longer summary (already fetched, today cut to one sentence), where you came from,
+  and the source. Everything else is unnamed marks on the walls.
+- Only what you face resolves; dwelling reveals deeper rings in that direction; looking away lets
+  them fade. Never more than about 3 to 5 legible items in view.
+- Leaving: double-tap again (double-click, Escape or Backspace) folds the room back to the stopped
+  state; W, or a long drag toward a branch, closes it and the current carries you on.
+- Rabi decides how much interior a subject gets: a highly connected subject gets more interior
+  depth, never more on screen at once.
+- Data: one extra DBpedia query only on opening (dates, category names, abstract, which linked
+  things are people), cached a week; a "read on Wikipedia" link rather than reference lists; nothing
+  invented. Twins tied to a subject are not in scope.
+- Open: where dates go (along the tube's axis would decide the clock question, which stays open),
+  and whether Rabi or opening is built first.
+
 ## Multiplayer: decided 30 Sep, not built
 
 Watusi built synchronous collaboration; TwinThink is building synchronous experience. They
@@ -233,6 +305,8 @@ the placement and the answers in this table are unchanged. The third-person view
 - Keeping a Fall across visits (today a reload starts again; seen and walked are kept).
 - The Wikipedia examples patch from the other session (`wikipedia-examples`, first edits as
   history) is on John's computer, not here; it does not conflict with these files.
+
+- Rabi's allocation and opening a subject (both above): waiting on the in-hand test of the current.
 
 ## Where
 
