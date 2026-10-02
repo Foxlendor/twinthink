@@ -39,18 +39,25 @@ export default function HomePage() {
           border: '1px solid var(--border-subtle)',
         }}
       >
-        <h1 style={{ fontFamily: font, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(2.4rem, 7vw, 3.6rem)', lineHeight: 1.1, margin: 0, color: 'var(--text-primary)' }}>
-          every idea deserves a place.
-        </h1>
-        <p style={{ fontFamily: font, fontSize: '1.25rem', lineHeight: 1.5, color: 'var(--text-secondary)', margin: '20px auto 36px' }}>
-          songs, dances, drawings and inventions, kept by the people who made them, given away, and built on.
+        {/* the mission, first */}
+        <p style={{ fontFamily: font, fontSize: '1.3rem', lineHeight: 1.5, color: 'var(--text-primary)', margin: '0 auto 36px' }}>
+          Preserving what humanity creates, not just what succeeds. Every idea, finished or not, with where it came from and what it led to. Where will you find it again?
         </p>
-        <Link
-          href="/slate"
-          style={{ fontFamily: font, fontStyle: 'italic', fontSize: '1.5rem', color: 'var(--text-primary)', textDecoration: 'none', borderBottom: '1px solid currentColor', paddingBottom: 2 }}
-        >
-          fall in
-        </Link>
+        <div style={{ display: 'flex', gap: 32, justifyContent: 'center', alignItems: 'baseline' }}>
+          {/* straight to the Slate seen whole */}
+          <Link
+            href="/slate#view=map"
+            style={{ fontFamily: font, fontStyle: 'italic', fontSize: '1.5rem', color: 'var(--text-primary)', textDecoration: 'none', borderBottom: '1px solid currentColor', paddingBottom: 2 }}
+          >
+            here.
+          </Link>
+          <Link
+            href="/slate"
+            style={{ fontFamily: font, fontStyle: 'italic', fontSize: '1.5rem', color: 'var(--text-primary)', textDecoration: 'none', borderBottom: '1px solid currentColor', paddingBottom: 2 }}
+          >
+            fall in
+          </Link>
+        </div>
         <p style={{ marginTop: 56 }}>
           <Link href="/support" style={{ fontFamily: font, fontStyle: 'italic', fontSize: '1.05rem', color: 'var(--text-secondary)' }}>
             help keep it here

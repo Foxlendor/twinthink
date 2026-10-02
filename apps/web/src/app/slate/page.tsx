@@ -33,6 +33,14 @@ export default function CanvasPage() {
   return (
     <main className={serif.variable}>
       <ShadowField serif={serif.style.fontFamily} />
+      {/* the old front page words, now kept on the Slate */}
+      <div
+        aria-label="every idea deserves a place"
+        style={{ position: 'fixed', top: 64, left: '50%', transform: 'translateX(-50%)', width: 'min(520px, 80vw)', textAlign: 'center', pointerEvents: 'none', zIndex: 1, fontFamily: `var(--font-serif), Georgia, serif`, color: 'var(--text-secondary)' }}
+      >
+        <p style={{ fontStyle: 'italic', fontSize: '1.4rem', lineHeight: 1.2, margin: 0 }}>every idea deserves a place.</p>
+        <p style={{ fontSize: '0.95rem', lineHeight: 1.4, margin: '6px 0 0' }}>songs, dances, drawings and inventions, kept by the people who made them, given away, and built on.</p>
+      </div>
     </main>
   );
 }
