@@ -9,7 +9,15 @@ import { Access, Flight, pan as panCam, stepFlight, zoomAt } from '@/lib/shadowf
 import { Hit, Lens, RenderState, continuityLine, drawVoidLattice, pulseChain, relTime, render, shortDate } from '@/lib/shadowfield/render';
 import { buildWorld, resolvePath } from '@/lib/shadowfield/world';
 import { createLocalStore, LocalShadow, ShadowStore } from '@/lib/shadowfield/sources/local';
+import { parseMetaCommand, META_COMMANDS, refineQuestion, generateSubQuestions, extractVerifiableClaims, lookupAlternatives } from '@/lib/promptPatterns';
 import styles from './ShadowField.module.css';
+
+interface MetaResult {
+  prefix: string;
+  label: string;
+  arg: string;
+  lines: string[];
+}
 
 interface Props {
   serif: string;
@@ -166,6 +174,7 @@ export default function ShadowField({ serif }: Props) {
   const [localList, setLocalList] = useState<LocalShadow[]>([]);
   const [news, setNews] = useState<{ ids: string[]; title: string; when: string } | null>(null);
   const [replayView, setReplayView] = useState<{ progress: number; t: number; playing: boolean } | null>(null);
+  const [metaResult, setMetaResult] = useState<MetaResult | null>(null);
 
   const access: Access = useMemo(
     () => ({
@@ -712,6 +721,48 @@ export default function ShadowField({ serif }: Props) {
     if (!c || !store) return;
     const value = text.trim();
     if (!value) return;
+
+    // Meta Language Pattern — intercept command prefixes before casting
+    const meta = parseMetaCommand(value);
+    if (meta) {
+      const { command, arg } = meta;
+      let lines: string[] = [];
+      if (command.patternId === 'question-refinement') {
+        lines = [refineQuestion(arg)];
+      } else if (command.patternId === 'sub-questions') {
+        lines = generateSubQuestions(arg);
+      } else if (command.patternId === 'fact-verification') {
+        lines = extractVerifiableClaims(arg);
+        if (lines.length === 0) lines = ['No numerically-bounded claims detected.'];
+      } else if (command.patternId === 'alternatives') {
+        const alts = lookupAlternatives(arg);
+        lines = alts ? alts.map(a => `${a.name} (${a.costFactor}) — ${a.pros[0]}`) : ['No alternatives on file for that keyword.'];
+      } else if (command.patternId === 'outline-expander') {
+        lines = [
+          `1. Define operating envelope and constraints for: ${arg}`,
+          `2. Survey existing approaches and documented failure modes`,
+          `3. Derive key physical/chemical constants governing the mechanism`,
+          `4. Build quantitative feasibility model`,
+          `5. Stress-test 2–3 most likely failure modes`,
+          `6. State physical specification with locked parameter values`,
+        ];
+      } else if (command.patternId === 'recipe') {
+        lines = [
+          `Goal: ${arg}`,
+          `1. Define success criteria with measurable thresholds`,
+          `2. Acquire raw materials and verify specs`,
+          `3. Prototype the core mechanism at bench scale`,
+          `4. Run validation tests and log data`,
+          `5. Iterate on failure modes until spec is met`,
+          `6. Document final parameters and lock BOM`,
+        ];
+      } else if (command.patternId === 'persona') {
+        lines = [`Viewing "${arg}" through persona lens — open the Peer Review tab and select a persona there.`];
+      }
+      setMetaResult({ prefix: command.prefix, label: command.label, arg, lines });
+      return;
+    }
+
     if (c.mode === 'cast') {
       const s = store.cast(value, c.lx, c.ly);
       rebuild();
@@ -1019,9 +1070,34 @@ export default function ShadowField({ serif }: Props) {
             }}
           />
           <span className={styles.composerHint}>
-            {composer.mode === 'cast' ? 'enter to cast · kept on this device for now' : 'enter to keep'}
+            {composer.mode === 'cast'
+              ? 'enter to cast · use expand: / alt: / refine: / validate: / recipe: for pattern modes'
+              : 'enter to keep'}
           </span>
         </form>
+      )}
+
+      {metaResult && (
+        <div style={{
+          position: 'absolute', bottom: 48, left: 16, right: 16,
+          background: 'rgba(17,24,39,0.97)', borderRadius: '12px',
+          padding: '1rem 1.25rem', zIndex: 30, boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
+          maxHeight: '260px', overflowY: 'auto'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#A78BFA', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              {metaResult.label}{metaResult.arg} · Meta Language Pattern
+            </span>
+            <button onClick={() => setMetaResult(null)} style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>×</button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            {metaResult.lines.map((line, i) => (
+              <div key={i} style={{ fontSize: '0.8125rem', color: '#E5E7EB', lineHeight: 1.5, fontFamily: metaResult.lines.length > 1 ? 'monospace' : 'inherit' }}>
+                {line}
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {!hinted && path.length <= 1 && <div className={styles.hint}>scroll toward anything</div>}

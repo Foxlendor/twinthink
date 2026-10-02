@@ -217,8 +217,116 @@ TOOL_DEFINITIONS = [
             },
             "required": ["twin_id"]
         }
+    },
+    # ─── Prompt Pattern Tools ────────────────────────────────────────────────
+    {
+        "name": "prompt_refine_question",
+        "description": "Question Refinement Pattern: given a hypothesis or inquiry question, return a more precise, falsifiable version with a measurable, bounded success criterion.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "question": {"type": "string", "description": "The hypothesis or inquiry question to refine."},
+                "twin_id": {"type": "string", "description": "Optional Twin ID for context (title and summary are used to frame the refinement)."}
+            },
+            "required": ["question"]
+        }
+    },
+    {
+        "name": "prompt_sub_questions",
+        "description": "Sub-question Decomposer Pattern: decompose a complex inquiry into 5-6 supporting sub-questions that together answer the main question. Combine the answers to reach the overall conclusion.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "question": {"type": "string", "description": "The main question or topic to decompose."},
+                "twin_id": {"type": "string", "description": "Optional Twin ID — the Twin's title and BOM keywords inform the decomposition."}
+            },
+            "required": ["question"]
+        }
+    },
+    {
+        "name": "prompt_fact_check",
+        "description": "Fact Verification Pattern: extract the fundamental verifiable claims from a block of engineering text. These are the claims that would undermine the conclusion if any were incorrect.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string", "description": "Engineering deliberation, thought log, or design rationale to extract claims from."},
+                "twin_id": {"type": "string", "description": "Optional Twin ID — if provided, also checks claims against the Twin's BOM and revision history."}
+            },
+            "required": ["text"]
+        }
+    },
+    {
+        "name": "prompt_alternatives",
+        "description": "Alternative Approaches Pattern: for a given material, mechanism, or design decision, list the best alternatives with pros, cons, and relative cost factor. Optionally compare/contrast each against the original approach.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "subject": {"type": "string", "description": "The material, mechanism, or design choice to find alternatives for (e.g. '316L stainless steel', 'sodium acetate PCM', 'snap-disc trigger')."},
+                "twin_id": {"type": "string", "description": "Optional Twin ID — constrains alternatives to those compatible with this Twin's operating envelope."},
+                "include_original": {"type": "boolean", "description": "If true, include the original approach in the comparison table. Defaults to false."}
+            },
+            "required": ["subject"]
+        }
     }
 ]
+
+# ─── Prompt Pattern Helpers (Python implementations) ─────────────────────────
+
+import re as _re
+
+def _refine_question(q: str) -> str:
+    stripped = q.rstrip("?.! ").strip()
+    lower = stripped.lower()
+    if lower.startswith(("can ", "is ", "does ", "will ")):
+        return stripped + " — under the specified operating conditions, with success defined by a physically measurable, numerically bounded outcome?"
+    if lower.startswith(("how ", "what ", "why ")):
+        return f'Can "{stripped}" be answered through direct physical measurement or quantitative analysis within the operating constraints of this prototype?'
+    return f'Can "{stripped}" be validated empirically within the prototype\'s operating envelope, with a measurable threshold distinguishing success from failure?'
+
+
+def _sub_questions(topic: str) -> List[str]:
+    return [
+        f"What are the fundamental physical or chemical mechanisms that enable or prevent {topic}?",
+        "What is the measurable threshold or quantitative boundary that defines success versus failure?",
+        "What existing approaches or prior art address this problem, and why are they insufficient here?",
+        "What are the most likely failure modes, edge cases, or degradation pathways?",
+        "How can the answer be empirically validated or reproduced in a physical bench test?",
+        "What upstream decisions or constraints does this answer affect in the BOM or design?",
+    ]
+
+
+_CLAIM_RE = _re.compile(
+    r'\d[\d,\.]*\s*(?:kJ\/kg|kJ|W\/m·K|W|kg|mm|°C|K|Pa|MPa|GPa|wt%|mL\/s|mL|Hz|N|V|A|g|cm|in|psi|bar|rpm|μm|nm|cycles?|seconds?|minutes?|hours?|days?)'
+    r'|316L|PEEK|PTFE|SAT|HDPE|pH\s*[\d\.]+|±[\d\.]+|[≤≥<>]\s*\d[\d\.]*|AISI\s*\d+|ASTM\s*\w+|ISO\s*\d+|\d+\s*[xX×]\s*\d+',
+    _re.IGNORECASE
+)
+
+def _extract_claims(text: str) -> List[str]:
+    sentences = _re.split(r'(?<=[.!])\s+', text)
+    return [s.strip() for s in sentences if len(s.strip()) > 25 and _CLAIM_RE.search(s)]
+
+
+_ALTERNATIVES_DB: Dict[str, List[Dict]] = {
+    "316l": [
+        {"name": "304 Stainless Steel", "pros": ["~30% lower cost", "Widely available"], "cons": ["No molybdenum — pitting in acidic media (pH<5)", "Not recommended for beverage contact"], "cost_factor": "0.7×", "suitability": "low"},
+        {"name": "Titanium Grade 2", "pros": ["Excellent corrosion resistance", "Biocompatible / FDA-approved", "Lighter (4.5 g/cm³)"], "cons": ["2–3× more expensive", "Harder to machine", "Limited tube suppliers"], "cost_factor": "2.5×", "suitability": "medium"},
+        {"name": "PEEK (30% GF)", "pros": ["Low thermal conductivity", "Chemically inert", "Injection-moldable"], "cons": ["Lower stiffness", "Not suitable for O-ring seal faces", "Higher creep at temperature"], "cost_factor": "1.8×", "suitability": "low"},
+    ],
+    "sodium acetate": [
+        {"name": "Erythritol PCM", "pros": ["Higher latent heat (339 kJ/kg)", "Food-safe"], "cons": ["Not supercoolable on demand", "Very expensive (4×)", "Hard crystallisation"], "cost_factor": "4×", "suitability": "low"},
+        {"name": "Paraffin Wax C18", "pros": ["Very cheap (0.3×)", "Stable"], "cons": ["Not food-safe", "No supercooling", "Lower latent heat (244 kJ/kg)"], "cost_factor": "0.3×", "suitability": "low"},
+        {"name": "CaCl₂·6H₂O", "pros": ["Supercoolable", "Inexpensive", "190 kJ/kg latent heat"], "cons": ["Corrosive to most metals", "Hygroscopic", "Narrower phase plateau"], "cost_factor": "0.5×", "suitability": "medium"},
+    ],
+}
+
+def _lookup_alternatives(subject: str) -> Optional[List[Dict]]:
+    s = subject.lower()
+    if "316" in s or "stainless" in s:
+        return _ALTERNATIVES_DB["316l"]
+    if "sodium acetate" in s or "sat" in s or "phase change" in s or "pcm" in s:
+        return _ALTERNATIVES_DB["sodium acetate"]
+    return None
+
 
 class McpServer:
     """Implements the Model Context Protocol (MCP) server over TwinService."""
@@ -425,6 +533,68 @@ class McpServer:
                     public_only=args.get("public_only", False)
                 )
                 return res, False
+
+            # ── Prompt Pattern Tools ────────────────────────────────────────
+            elif tool_name == "prompt_refine_question":
+                q = args["question"]
+                context = ""
+                if args.get("twin_id"):
+                    try:
+                        twin = self.service.twin_inspect(args["twin_id"])
+                        context = f" (Twin: {twin.get('title', '')})"
+                    except Exception:
+                        pass
+                return {
+                    "pattern": "question-refinement",
+                    "original": q,
+                    "refined": _refine_question(q),
+                    "context": context,
+                    "instruction": "The refined question adds a measurable, bounded success criterion and is more falsifiable."
+                }, False
+
+            elif tool_name == "prompt_sub_questions":
+                q = args["question"]
+                subs = _sub_questions(q)
+                return {
+                    "pattern": "sub-questions",
+                    "main_question": q,
+                    "sub_questions": subs,
+                    "instruction": "Individually answer each sub-question, then synthesize the answers to reach the overall conclusion."
+                }, False
+
+            elif tool_name == "prompt_fact_check":
+                text = args["text"]
+                claims = _extract_claims(text)
+                result: Dict[str, Any] = {
+                    "pattern": "fact-verification",
+                    "verifiable_claims": claims,
+                    "claim_count": len(claims),
+                    "instruction": "Each listed claim contains a specific numeric or material value. Verify each against primary sources or physical test data — if any is wrong, the conclusion is undermined."
+                }
+                if args.get("twin_id") and claims:
+                    result["note"] = f"Cross-check these claims against the BOM and revision history of twin {args['twin_id']} for consistency."
+                return result, False
+
+            elif tool_name == "prompt_alternatives":
+                subject = args["subject"]
+                include_original = args.get("include_original", False)
+                alts = _lookup_alternatives(subject)
+                if alts is None:
+                    return {
+                        "pattern": "alternatives",
+                        "subject": subject,
+                        "alternatives": [],
+                        "note": "No pre-catalogued alternatives for this subject. Consider adding them to the TwinThink alternatives database."
+                    }, False
+                result = {
+                    "pattern": "alternatives",
+                    "subject": subject,
+                    "alternatives": alts,
+                    "instruction": "Compare each alternative on suitability, cost, and trade-offs before selecting."
+                }
+                if include_original:
+                    result["note"] = "The original approach is implied as the baseline. Alternatives are rated relative to it."
+                return result, False
 
             else:
                 return f"Unknown tool: {tool_name}", True
