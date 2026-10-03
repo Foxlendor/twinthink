@@ -10,7 +10,8 @@
 
 import { IdeaNode, LifeEvent, lastActivity, rippleReach } from './model';
 import { ScreenTransform } from './camera';
-import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, clockAngle, flightScale, project, travelled, viewOf, type Quarter } from './flight';
+import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, clockAngle, flightScale, project, travelled, viewOf, type Eye, type Quarter } from './flight';
+import { LIGHT_BEHIND, SHADE_STRENGTH, SILHOUETTE_BEHIND, SILHOUETTE_WIDTH } from '../light/head';
 import { Hit, INK, PAPER, PRESENCE, ROSE, TINT_COOL, TINT_WARM, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
 import { AUTHOR } from './sources/author';
 import { Pluck, trembleAt } from './web';
@@ -25,11 +26,19 @@ const STRUCTURAL = new Set<LifeEvent['kind']>(['dormant', 'revival', 'return']);
 const BUCKETS = 10;
 
 class Ink {
+  /**
+   * The viewer's light: the shade (0..1) a silhouette casts on a point drawn at (x, y) this far
+   * ahead. Set with the depth of whatever is being inked, so the shadow is cast by depth: larger
+   * and nearer on what is near, smaller on what is far. Null when no one stands in the light.
+   */
+  shade: ((x: number, y: number, dz: number) => number) | null = null;
+  dz = 1;
   private paths: (Path2D | undefined)[] = [];
   private rose: (Path2D | undefined)[] = [];
   /** Another person's presence, in a shared Fall: its own cool tone, never confused with resonance's own warm one. */
   private presence: (Path2D | undefined)[] = [];
   dot(x: number, y: number, size: number, a: number, rose = false) {
+    if (this.shade) a *= 1 - this.shade(x, y, this.dz);
     if (a < 0.006) return;
     const b = Math.min(BUCKETS - 1, Math.floor(a * BUCKETS));
     const list = rose ? this.rose : this.paths;
@@ -53,6 +62,7 @@ class Ink {
   private lines = new Map<number, Path2D>();
   /** A short smear of ink (a streak), batched by darkness and width. */
   line(x0: number, y0: number, x1: number, y1: number, width: number, a: number) {
+    if (this.shade) a *= 1 - this.shade((x0 + x1) / 2, (y0 + y1) / 2, this.dz);
     if (a < 0.006) return;
     const ab = Math.min(19, Math.floor(a * 20));
     const wb = Math.min(6, Math.max(1, Math.round(width * 2)));
@@ -146,6 +156,16 @@ export interface FlightState {
   aheadAim?: string | null;
   /** A lean held toward a neighbour's mouth: which, and how far (0..1) the hold has come; when it closes, you cross. */
   aim?: { id: string; hold: number } | null;
+  /**
+   * The viewer's own light, when the room sees them: their eye at the window, and the shade their
+   * silhouette casts on a point at a depth (given the eye's centre on screen and F). On this device only.
+   */
+  light?: {
+    eye: Eye;
+    shade: (sx: number, sy: number, dz: number, eyeX: number, eyeY: number, F: number) => number;
+    maskImage: CanvasImageSource | null;
+    weight: number;
+  } | null;
   /** The ways on from the thing you are on, as last taken from here (for the ahead openings' rose). */
   leanedAhead?: string | null;
   exploredAhead?: Set<string>;
@@ -314,7 +334,8 @@ function drawMouth(st: RenderState, v: View, m: Mouth, a: number, aimed: boolean
       const phi = (i / dots) * Math.PI * 2;
       const q = at(t, r, phi);
       if (!q) continue;
-      const fog = fogOf(q[2] > 0 ? v.F / q[2] : FAR);
+      ink.dz = q[2] > 0 ? v.F / q[2] : FAR;
+      const fog = fogOf(ink.dz);
       if (k === 0) {
         rim.push([q[0], q[1]]);
         rimX += q[0];
@@ -329,6 +350,7 @@ function drawMouth(st: RenderState, v: View, m: Mouth, a: number, aimed: boolean
     const phi = (j / 8) * Math.PI * 2 + 0.2;
     for (let t = 0.12; t < SIDE_LEN; t += 0.13) {
       const q = at(t, m.r * (1 - 0.18 * (t / SIDE_LEN)), phi);
+      if (q) ink.dz = v.F / Math.max(1e-6, q[2]);
       if (q) ink.dot(q[0], q[1], clamp(0.009 * q[2], 0.7, 1.6), a * (1 - t / (SIDE_LEN * 1.25)) * (0.2 + 0.3 * lit));
     }
   }
@@ -535,6 +557,30 @@ function drawTopics(
  * swings around you. Hollow, so it is never taken for a thing (ink) or for dew (beads of light).
  * Only while steering.
  */
+/**
+ * The silhouette's shadow across a film, picture or object at depth dz: the mask placed where the
+ * light casts it at that depth, multiplied into the disc it is drawn in. The same planar shadow the
+ * ink gets, so a picture and the rings around it are shaded as one surface.
+ */
+function drawShadowOn(st: RenderState, light: NonNullable<FlightState['light']>, x: number, y: number, R: number, dz: number, eyeX: number, eyeY: number, F: number) {
+  const { ctx } = st;
+  const t = (LIGHT_BEHIND - SILHOUETTE_BEHIND) / (dz + LIGHT_BEHIND);
+  // the plane's width on screen at this depth: plane coordinates become world units by 1 / t, and
+  // world units become pixels by F / dz
+  const side = (SILHOUETTE_WIDTH / t) * (F / dz);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, R, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.globalAlpha = SHADE_STRENGTH * light.weight;
+  ctx.imageSmoothingEnabled = true;
+  // the mask is white where the silhouette is; inverted, it is dark there and clear elsewhere
+  ctx.filter = 'invert(1)';
+  ctx.drawImage(light.maskImage!, eyeX - side / 2, eyeY - side / 2, side, side);
+  ctx.restore();
+}
+
 /** A hold toward a mouth, filling clockwise around it from the top: when it closes, you cross. */
 function drawHold(st: RenderState, x: number, y: number, reach: number, hold: number) {
   const { ctx } = st;
@@ -677,6 +723,7 @@ function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink, web?: Fl
     const a = 0.24 * presence * pulse * (1 - smoothstep(8, FAR, dz)) * smoothstep(0.35, 1.4, dz) * (m % 3 === 0 ? 1.3 : 0.75);
     if (a < 0.012) continue;
     const size = clamp(0.011 * (v.F / dz), 0.9, 2.6);
+    ink.dz = dz;
     for (let i = 0; i < DOTS; i++) {
       const ang = (i / DOTS) * Math.PI * 2 + 0.03 * noise1(i + m * 13, 5);
       if (holes.length && holed(zAbs, ang)) continue;
@@ -708,6 +755,7 @@ function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink, web?: Fl
       if (a < 0.012) continue;
       if (holes.length && holed(zAbs, base)) continue;
       const [x, y] = wall(zAbs, base, dz);
+      ink.dz = dz;
       if (!onScreen(x, y)) continue;
       ink.dot(x, y, clamp(0.008 * (v.F / dz), 0.75, 2), a);
     }
@@ -730,6 +778,7 @@ function drawSpecks(st: RenderState, v: View, cam: FlightCam, ink: Ink) {
       const y = (hash01(i, jj * 3 + 3) * 2 - 1) * 1.6;
       const [sx, sy, k] = project(v, x, y, dz);
       if (sx < -20 || sy < -20 || sx > st.w + 20 || sy > st.h + 20) continue;
+      ink.dz = dz;
       const a = 0.22 * fogOf(dz) * (0.4 + 0.6 * hash01(i, jj));
       const size = clamp(0.006 * k, 0.5, 2.4);
       if (Math.abs(streak) > 0.04) {
@@ -768,6 +817,7 @@ function drawTube(st: RenderState, v: View, s: Station, L: number, ink: Ink) {
       if (a < 0.02) continue;
       const k = v.F / dz;
       const size = clamp(0.0045 * k, 0.45, 2.6);
+      ink.dz = dz;
       const ox = v.cx + (-v.x * v.rc + v.y * v.rs) * k;
       const oy = v.cy + (-v.x * v.rs - v.y * v.rc) * k;
       const rk = s.r * k;
@@ -811,6 +861,7 @@ function drawThread(st: RenderState, v: View, stream: Stream, ink: Ink, cam: Fli
         const y = a.y + (b.y - a.y) * e;
         const dz = base + u * span;
         const [sx, sy, k] = project(v, x, y, dz);
+        ink.dz = dz;
         if (sx < -6 || sy < -6 || sx > st.w + 6 || sy > st.h + 6) continue;
         let alpha = 0.34 * fogOf(dz) * (0.75 + 0.25 * hash01(n, a.i));
         const size = clamp(0.0075 * k, 0.5, 2.8);
@@ -1208,10 +1259,15 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   st.models = [];
   st.videos = new Set();
   fs.frames.clear();
-  const v = viewOf(stream, cam, st.w, st.h, fs.hidden);
+  const v = viewOf(stream, cam, st.w, st.h, fs.hidden, fs.light?.eye ?? null);
+  // the eye's centre on screen: where the silhouette's shadow is cast from
+  const eyeX = v.cx + v.F * v.ex;
+  const eyeY = v.cy + v.F * v.ey;
   const L = stream.length;
   const speed = cam.shown;
   const ink = new Ink();
+  const light = fs.light && fs.light.weight > 0.01 ? fs.light : null;
+  if (light) ink.shade = (x, y, dz) => light.shade(x, y, dz, eyeX, eyeY, v.F) * light.weight;
 
   const born = (s: Station) => st.cut === null || s.depth === 0 || s.node.id === fs.here || s.node.began <= st.cut;
   const gone = (s: Station) => !born(s) || fs.hidden(s);
@@ -1259,8 +1315,11 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     if (x + reach < 0 || y + reach < 0 || x - reach > st.w || y - reach > st.h) continue;
     const p = fs.closeness(s);
     const sealed = s.depth > 1 && s.node.disclosure > p;
+    ink.dz = dz;
     if (s.gate) drawGate(st, s, x, y, R, alpha, ink, sealed);
     else drawThing(st, s, x, y, R, alpha, speed, ink, sealed, p);
+    // a film, a picture, an object: the silhouette's shadow falls across it at its own depth
+    if (light && light.maskImage && !s.gate && (s.node.media?.length || s.node.artifact)) drawShadowOn(st, light, x, y, R * 1.3, dz, eyeX, eyeY, v.F);
     if (s.depth === 0) drawAuthor(st, stream, x, y, R, alpha, ink);
     const res = fs.resonance?.get(s.node.id);
     if (res && !sealed) drawDew(st, s, x, y, R, alpha, res, ink);

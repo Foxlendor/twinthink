@@ -58,6 +58,7 @@ import {
 } from '@/lib/shadowfield/web';
 import { aheadFacing, aheadPaths, edgePaths, openingsOf, usesInnerLean, renderFlight } from '@/lib/shadowfield/flightRender';
 import { crossZ, currentAtZ, currentsOf, fractionOf, neighbourFacing, neighboursOf, type Current, type Neighbour } from '@/lib/shadowfield/currents';
+import { createLight, type LightController, type LightStatus } from '@/lib/light/tracking';
 import { relatedTo } from '@/lib/shadowfield/relate';
 import { buildSamples, isSample, samplesAllowed } from '@/lib/shadowfield/sources/samples';
 import { addStep, beginJourney, forgetJourneys, recapOf, writeJourneys, type Journeys, type Recap } from '@/lib/shadowfield/journey';
@@ -306,6 +307,9 @@ export default function ShadowField({ serif }: Props) {
   // mirrored for a left hand: right click forward, left click back
   const [mirror, setMirror] = useState(false);
   const mirrorRef = useRef(false);
+  // the room seeing you: your head at the window, your silhouette in the light (this device only)
+  const lightRef = useRef<LightController | null>(null);
+  const [room, setRoom] = useState<LightStatus>('off');
   const worldRef = useRef<IdeaNode | null>(null);
   const camRef = useRef<Camera | null>(null);
   const lensRef = useRef<Lens>({ closeness: () => 0.5, visited: new Set(), followed: new Set() });
@@ -2199,6 +2203,7 @@ export default function ShadowField({ serif }: Props) {
           explored: here && here.path.length > 1 ? exploredFrom(webMemRef.current, here.path[here.path.length - 2].id) : undefined,
           ahead: shown,
           aim,
+          light: lightRef.current?.current(nowMs) ?? null,
           hereZ: here?.z,
           aheadAim: neighbourAimRef.current?.current.id ?? aheadAimRef.current,
           leanedAhead: here ? leanedChildOf(webMemRef.current, here.node.id) : null,
@@ -3039,6 +3044,48 @@ export default function ShadowField({ serif }: Props) {
     dragRef.current.lastT = now;
     velRef.current = { x: (dx / dtm) * 16, y: (dy / dtm) * 16 };
   };
+
+  /** The room sees you: the camera, read on this device, moves the window with your head and casts your shadow into the Fall. */
+  const roomSee = useCallback(
+    (source: 'camera' | 'synthetic') => {
+      if (lightRef.current) return;
+      const light = createLight({
+        source,
+        onStatus: (st) => {
+          setRoom(st);
+          if (st === 'asking') setNotice('asking for the camera…');
+          else if (st === 'loading') setNotice('the room is learning to see…');
+          else if (st === 'on') setNotice('the room sees you. look straight ahead, then set centre');
+          else if (st === 'lost') setNotice('the room cannot see you just now');
+          else if (st === 'denied') setNotice('the camera was not allowed; the room cannot see you');
+          else if (st === 'nocamera') setNotice('no camera here; the room cannot see you');
+          else if (st === 'failed') setNotice('the room could not learn to see on this device');
+          if (st === 'denied' || st === 'nocamera' || st === 'failed') {
+            lightRef.current?.stop();
+            lightRef.current = null;
+          }
+        },
+      });
+      lightRef.current = light;
+      void light.start();
+    },
+    []
+  );
+  const roomStop = useCallback(() => {
+    lightRef.current?.stop();
+    lightRef.current = null;
+    setRoom('off');
+    setNotice('the room no longer sees you');
+  }, []);
+  useEffect(() => () => lightRef.current?.stop(), []);
+  // on a preview, ?presence=synthetic shows the effect with a made-up person, for checking it without a camera
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get('presence') === 'synthetic' && samplesAllowed(process.env.NEXT_PUBLIC_DEPLOY_ENV, window.location.hostname)) roomSee('synthetic');
+    } catch {
+      // optional
+    }
+  }, [roomSee]);
 
   /** A click with a mouse: left is a step forward along the current, right is a step back. Simple as that. */
   const clickStep = (dir: 1 | -1) => {
@@ -3896,6 +3943,22 @@ export default function ShadowField({ serif }: Props) {
           <summary>{ownedHere ? 'Edit' : 'More'}</summary>
           <div className={styles.toolPanel}>
             {path.length <= 1 && <button type="button" className={styles.quiet} onClick={(e) => { e.currentTarget.closest('details')?.removeAttribute('open'); setRecalled(true); }}>how to move</button>}
+            {room === 'off' ? (
+              <button type="button" className={styles.quiet} title="your camera, read on this device only: your head moves the window, your shadow falls into the Fall" onClick={() => roomSee('camera')}>
+                let the room see you
+              </button>
+            ) : (
+              <>
+                <button type="button" className={styles.following} onClick={roomStop}>
+                  {room === 'on' ? 'the room sees you · stop' : room === 'lost' ? 'the room is looking for you · stop' : 'the room is learning to see · stop'}
+                </button>
+                {room === 'on' && (
+                  <button type="button" className={styles.quiet} title="look straight at the screen, then press: that is the centre" onClick={() => { lightRef.current?.setCentre(); setNotice('centre set'); }}>
+                    set centre
+                  </button>
+                )}
+              </>
+            )}
             {!coarse && (
               <button
                 type="button"
