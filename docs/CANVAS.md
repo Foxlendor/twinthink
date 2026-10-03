@@ -571,7 +571,16 @@ around the traveller. The camera is the traveller; nothing is drawn in the
 middle to stand for you, not a drop, not a pointer, not a reticle. Openings
 form at the edge of vision and fade as they near the middle; nothing flies to
 the centre to be looked at. Falling may leave the web abstract; stillness
-gives what is near enough definition to inspect.
+gives what is near enough definition to inspect. Never use the visual centre to
+advertise possibility: the centre communicates continuation of the Fall;
+possibility is communicated by deformation, disclosure and openings in the
+surrounding current. This holds however rich the web becomes. Baseline for the
+rule: commit f77bb54 (the drop no longer drawn, openings fading toward the
+middle). The revelation pass works on the periphery and the surrounding current
+only: strands deform near the edge, legitimate neighbours become perceptible
+there, openings widen as they become relevant, stillness increases legibility,
+Lean strengthens the selected opening, and a crossing shifts the whole frame
+into that current.
 
 Intent, not built: structure stays deterministic enough to mean something,
 revelation varies enough to feel alive. The relationships decide what is
