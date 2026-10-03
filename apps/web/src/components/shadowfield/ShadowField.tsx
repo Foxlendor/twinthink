@@ -418,6 +418,11 @@ export default function ShadowField({ serif }: Props) {
   const [tip, setTip] = useState<Tip | null>(null);
   const [composer, setComposer] = useState<Composer | null>(null);
   const [hinted, setHinted] = useState(true);
+  // guidance asked for again: from the More sheet, or by standing still at the start for a while
+  const [recalled, setRecalled] = useState(false);
+  const recallRef = useRef<() => void>(() => {});
+  // a phone or tablet moves by swiping; the hint names the gesture people actually use
+  const [coarse, setCoarse] = useState(false);
   const [followed, setFollowed] = useState<Set<string>>(new Set());
   const [, setVersion] = useState(0);
   const [localList, setLocalList] = useState<LocalShadow[]>([]);
@@ -853,6 +858,7 @@ export default function ShadowField({ serif }: Props) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setFollowed(new Set(followedSet));
     setHinted(wasHinted);
+    setCoarse(window.matchMedia('(pointer: coarse)').matches);
     setLocalList(storeRef.current.list());
     const mono = getComputedStyle(document.documentElement).getPropertyValue('--font-jetbrains-mono').trim();
     monoRef.current = mono ? `${mono}, monospace` : 'monospace';
@@ -2361,6 +2367,8 @@ export default function ShadowField({ serif }: Props) {
           f.value = flow;
           if (flow) root.dataset.flow = flow;
           else delete root.dataset.flow;
+          // standing still at the start, long enough: the way to move is offered again
+          if (flow === 'rest') recallRef.current();
         }
       }
       // in the flight, passing something is not visiting it: staying a moment is
@@ -2404,7 +2412,14 @@ export default function ShadowField({ serif }: Props) {
   }, [composer, giving, givingTo, sketching, replayView, notice]);
 
   // ---------------------------------------------------------------- input
+  useEffect(() => {
+    recallRef.current = () => {
+      if (hinted && !recalled && path.length <= 1) setRecalled(true);
+    };
+  }, [hinted, recalled, path.length]);
+
   const dismissHint = useCallback(() => {
+    setRecalled(false);
     if (hinted) return;
     setHinted(true);
     try {
@@ -3752,13 +3767,15 @@ export default function ShadowField({ serif }: Props) {
 
 
       <div className={styles.actions}>
-        {mode === 'flight' && canSteer && <button type="button" className={styles.quiet} onClick={steering ? stopSteering : startSteering}>{steering ? 'Stop' : 'Lean'}</button>}
+        {/* steering is for after the first travel: one fewer thing to wonder about on arrival */}
+        {mode === 'flight' && canSteer && hinted && <button type="button" className={styles.quiet} onClick={steering ? stopSteering : startSteering}>{steering ? 'Stop' : 'Lean'}</button>}
         {path.length <= 1 && <button type="button" className={styles.quiet} onClick={() => { const c = camRef.current; if (c) openComposerAt(c.w / 2, c.h / 2); }}>Create</button>}
         {edits.undo && <button type="button" className={styles.quiet} onClick={() => { if (storeRef.current?.undo()) { rebuild(); setNotice('Undone'); } else setNotice('Could not undo this change.'); }}>Undo</button>}
         {replayView && <button type="button" className={styles.quiet} onClick={stopReplay}>Return to now</button>}
         <details className={styles.moreTools} key={current?.id ?? 'slate'}>
           <summary>{ownedHere ? 'Edit' : 'More'}</summary>
           <div className={styles.toolPanel}>
+            {path.length <= 1 && <button type="button" className={styles.quiet} onClick={(e) => { e.currentTarget.closest('details')?.removeAttribute('open'); setRecalled(true); }}>how to move</button>}
             {edits.redo && <button type="button" className={styles.quiet} onClick={() => { if (storeRef.current?.redo()) { rebuild(); setNotice('Redone'); } }}>Redo</button>}
         {path.length <= 1 && (
           <>
@@ -4554,8 +4571,18 @@ export default function ShadowField({ serif }: Props) {
         </form>
       )}
 
-      {!hinted && path.length <= 1 && (
-        <div className={styles.hint}>{mode === 'flight' ? 'scroll, or swipe up' : 'scroll toward anything'}</div>
+      {/* a first visit: a few words and the one thing to do; both fade on the first real travel, and never return */}
+      {(!hinted || recalled) && path.length <= 1 && (
+        <div className={styles.intro} aria-label="every idea deserves a place">
+          <p className={styles.introLine}>every idea deserves a place.</p>
+          <p className={styles.introSub}>songs, dances, drawings and inventions, kept by the people who made them.</p>
+        </div>
+      )}
+      {(!hinted || recalled) && path.length <= 1 && (
+        <div className={styles.hint}>
+          <span className={styles.hintCue} aria-hidden />
+          {mode === 'flight' ? (coarse ? 'swipe up to fall in' : 'scroll to fall in') : coarse ? 'pinch toward anything' : 'scroll toward anything'}
+        </div>
       )}
 
       <nav className={styles.srNav} aria-label="Ideas here">

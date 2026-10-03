@@ -271,14 +271,83 @@
 .hint {
   position: absolute;
   left: 50%;
-  bottom: 18%;
+  bottom: 22%;
   transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
-  font-size: 1rem;
-  color: rgba(var(--ink), 0.4);
+  font-size: 1.05rem;
+  color: rgba(var(--ink), 0.55);
+  white-space: nowrap;
   pointer-events: none;
-  animation: hintIn 1.2s 2.5s both, breathe 5s 3.7s ease-in-out infinite;
+  animation: hintIn 1.2s 2s both, breathe 5s 3.2s ease-in-out infinite;
+}
+
+/* the drop that the hint names: it falls, as you will */
+.hintCue {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: hintDrop 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes hintDrop {
+  0% { transform: translateY(-6px); opacity: 0; }
+  25% { opacity: 1; }
+  70% { transform: translateY(6px); opacity: 1; }
+  100% { transform: translateY(8px); opacity: 0; }
+}
+
+/* the first words on the Slate: gone, with the hint, once you have travelled */
+.intro {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, 84vw);
+  text-align: center;
+  pointer-events: none;
+  font-family: var(--font-serif), Georgia, serif;
+  color: rgba(var(--ink), 0.78);
+  animation: hintIn 1.2s 0.4s both;
+}
+
+.introLine {
+  margin: 0;
+  font-style: italic;
+  font-size: 1.45rem;
+  line-height: 1.2;
+}
+
+.introSub {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: rgba(var(--ink), 0.55);
+  text-wrap: balance;
+}
+
+@media (max-width: 640px) {
+  /* clear of the clock's 6 and of the thumb */
+  .hint {
+    bottom: 27%;
+  }
+  .intro {
+    top: 72px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hint,
+  .intro {
+    animation: hintIn 600ms both;
+  }
+  .hintCue {
+    animation: none;
+  }
 }
 
 @keyframes hintIn {
@@ -608,13 +677,15 @@
 
 /* Primary actions stay visible; secondary controls live in one contextual sheet. */
 .actions { z-index: 30; gap: 20px; overflow: visible; mask-image: none; }
-.moreTools > summary { cursor: pointer; list-style: none; padding: 8px 14px; border: 1px solid rgba(var(--ink), .16); border-radius: 20px; font: 500 13px system-ui, sans-serif; color: rgba(var(--ink), .85); }
+.moreTools > summary { cursor: pointer; list-style: none; padding: 6px 16px 7px; border: 1px solid rgba(var(--ink), .22); border-radius: 999px; font-family: var(--font-serif), Georgia, serif; font-style: italic; font-size: 1rem; line-height: 1.2; color: rgba(var(--ink), .78); transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease; }
+.moreTools > summary:hover, .moreTools > summary:focus-visible { color: rgba(var(--ink), .95); border-color: rgba(var(--ink), .5); background: rgba(var(--ink), .05); outline: none; }
+.moreTools[open] > summary { color: rgba(var(--ink), .95); border-color: rgba(var(--ink), .5); }
 .moreTools > summary::-webkit-details-marker { display: none; }
 .toolPanel { position: absolute; right: 0; bottom: calc(100% + 14px); width: min(300px, calc(100vw - 32px)); max-height: min(65vh, 520px); overflow-y: auto; display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 12px; border-radius: 18px; background: var(--bg-primary, #111115); border: 1px solid rgba(var(--ink), .16); box-shadow: 0 16px 50px #0004; white-space: normal; }
-.toolPanel .quiet, .toolPanel .following { text-align: left; font: 400 14px/1.4 system-ui, sans-serif; padding: 10px 12px; border-radius: 8px; color: rgba(var(--ink), .8); }
+.toolPanel .quiet, .toolPanel .following { text-align: left; font-family: var(--font-serif), Georgia, serif; font-style: italic; font-size: 1.05rem; line-height: 1.35; padding: 10px 12px; min-height: 44px; border-radius: 10px; border-bottom: none; color: rgba(var(--ink), .82); }
 .toolPanel button:hover { background: rgba(var(--ink), .06); }
-.mediaTools { padding: 10px 12px; font: 400 14px/1.5 system-ui, sans-serif; }
+.mediaTools { padding: 10px 12px; font-family: var(--font-serif), Georgia, serif; font-style: italic; font-size: 1.05rem; line-height: 1.5; color: rgba(var(--ink), .82); }
 .mediaTools button { display: block; }
 .replay { bottom: 105px; z-index: 20; padding: 12px 18px; background: var(--bg-primary); border: 1px solid rgba(var(--ink), .12); border-radius: 16px; }
 .replayHeading { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; font: 12px system-ui, sans-serif; }
-@media(max-width: 640px) { .actions { left: 16px; right: 16px; padding: 0; overflow: visible; mask-image: none; justify-content: flex-end; } }
+@media(max-width: 640px) { .actions { left: 16px; right: 16px; bottom: 14px; padding: 0; overflow: visible; mask-image: none; justify-content: flex-end; gap: 22px; } .actions > .quiet { padding: 10px 0; } }
