@@ -25,7 +25,8 @@
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
     "stripe": "^22.6.2",
-    "three": "^0.183.0"
+    "three": "^0.183.0",
+    "paper": "^0.12.18"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",

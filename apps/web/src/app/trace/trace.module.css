@@ -1,0 +1,19 @@
+.main { min-height: 90vh; background: #101317; color: #e7ddd3; padding: clamp(24px, 5vw, 72px); }
+.main header, .controls, .main footer { max-width: 1100px; margin: 0 auto; }
+.main h1 { font-size: clamp(30px, 5vw, 60px); font-weight: 400; letter-spacing: -.04em; line-height: 1.1; margin: 16px 0; }
+.main p { color: #aaa7a4; line-height: 1.6; }
+.eyebrow { text-transform: uppercase; letter-spacing: .18em; font-size: 11px; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; padding: 32px 0; }
+.controls label { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+.controls input[type=range] { accent-color: #d7bca1; width: 130px; }
+.main select, .main button, .controls input:not([type=range]) { background: #1c2229; color: #e7ddd3; border: 1px solid #47515b; border-radius: 8px; padding: 10px; max-width: 100%; }
+.file { max-width: 100%; }
+.file input { width: 240px; }
+.stage { display: grid; place-items: center; min-height: 320px; padding: 24px; background: radial-gradient(ellipse at center, #1c242c, #101317 75%); border: 1px solid #293039; border-radius: 20px; max-width: 1100px; margin: 0 auto; }
+.stage canvas { max-width: 100%; height: auto; max-height: 65vh; object-fit: contain; }
+.main footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding-top: 22px; font-size: 13px; }
+.actions { display: flex; gap: 10px; }
+.main button { cursor: pointer; }
+.main button:disabled { opacity: .4; cursor: default; }
+.main :focus-visible { outline: 2px solid #d7bca1; outline-offset: 4px; }
+@media (max-width: 480px) { .stage { min-height: 240px; padding: 12px; } .controls { gap: 18px; } }
