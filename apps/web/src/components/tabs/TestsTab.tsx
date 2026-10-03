@@ -3,16 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import { TwinData, TwinTestsResponse, TwinTestRecord } from '@/lib/types';
 import { getApiUrl } from '@/lib/api';
-import { 
-  CheckCircle2, 
-  AlertCircle, 
-  UploadCloud, 
-  FileText, 
-  Download, 
-  Activity, 
-  Thermometer, 
-  ChevronRight, 
-  Plus, 
+import {
+  CheckCircle2,
+  AlertCircle,
+  UploadCloud,
+  FileText,
+  Download,
+  Activity,
+  Thermometer,
+  ChevronRight,
+  Plus,
   Sparkles,
   ShieldCheck
 } from 'lucide-react';
@@ -38,7 +38,7 @@ export default function TestsTab({ twin }: TabProps) {
   const [data, setData] = useState<TwinTestsResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Upload State
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [uploadTitle, setUploadTitle] = useState<string>('');
@@ -120,7 +120,7 @@ export default function TestsTab({ twin }: TabProps) {
       const apiBase = getApiUrl();
       const formData = new FormData();
       formData.append('file', sampleFile);
-      formData.append('title', `Rig #1 Flow Calibration Run #${(data?.summary.physical_tests_count || 0) + 1}`);
+      formData.append('title', `Rig #1 Flow Calibration Run #${(data?.summary?.physical_tests_count || 0) + 1}`);
       formData.append('operator', '@Foxlendor');
       formData.append('notes', '1-Click benchmark calibration log from dual micro-thermocouple flow bench.');
 
@@ -150,7 +150,7 @@ export default function TestsTab({ twin }: TabProps) {
 
   return (
     <div className={styles.tabContentContainer}>
-      
+
       {/* Validation Status Summary Card */}
       <div style={{
         background: 'linear-gradient(135deg, rgba(16, 26, 20, 0.7) 0%, rgba(13, 17, 23, 0.9) 100%)',
@@ -174,14 +174,14 @@ export default function TestsTab({ twin }: TabProps) {
           </div>
 
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <button 
+            <button
               className="button-secondary"
               onClick={downloadCsvTemplate}
               style={{ fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
             >
               <Download size={15} /> CSV Template
             </button>
-            <button 
+            <button
               className="button-primary"
               onClick={() => setShowUploadModal(true)}
               style={{ fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
@@ -192,10 +192,10 @@ export default function TestsTab({ twin }: TabProps) {
         </div>
 
         {/* 4 Core Summary Metrics */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
-          gap: '1.25rem', 
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: '1.25rem',
           marginTop: '1.5rem',
           paddingTop: '1.5rem',
           borderTop: '1px solid rgba(0, 229, 163, 0.15)'
@@ -205,10 +205,10 @@ export default function TestsTab({ twin }: TabProps) {
               Physical Tests
             </span>
             <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
-              {data?.summary.physical_tests_count || 0} Runs
+              {data?.summary?.physical_tests_count || 0} Runs
             </div>
             <span style={{ fontSize: '0.8rem', color: '#00e5a3' }}>
-              {data?.summary.last_test ? `Latest: ${data.summary.last_test}` : 'No test runs'}
+              {data?.summary?.last_test ? `Latest: ${data.summary.last_test}` : 'No test runs'}
             </span>
           </div>
 
@@ -217,7 +217,7 @@ export default function TestsTab({ twin }: TabProps) {
               Mean Absolute Error
             </span>
             <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#00e5a3', marginTop: '0.2rem' }}>
-              {data?.summary.mean_absolute_error_C?.toFixed(1) || '0.0'}°C
+              {data?.summary?.mean_absolute_error_C?.toFixed(1) || '0.0'}°C
             </div>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               Average residual across runs
@@ -229,7 +229,7 @@ export default function TestsTab({ twin }: TabProps) {
               RMSE Precision
             </span>
             <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#00e5a3', marginTop: '0.2rem' }}>
-              {data?.summary.root_mean_square_error_C?.toFixed(1) || '0.0'}°C
+              {data?.summary?.root_mean_square_error_C?.toFixed(1) || '0.0'}°C
             </div>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               Root mean square error
@@ -246,12 +246,12 @@ export default function TestsTab({ twin }: TabProps) {
                 fontWeight: 700,
                 padding: '0.35rem 0.75rem',
                 borderRadius: '999px',
-                background: data?.summary.model_status === 'EXPERIMENTALLY_CALIBRATED' ? 'rgba(0, 229, 163, 0.2)' : 'rgba(255, 170, 0, 0.2)',
-                color: data?.summary.model_status === 'EXPERIMENTALLY_CALIBRATED' ? '#00e5a3' : '#ffaa00',
-                border: data?.summary.model_status === 'EXPERIMENTALLY_CALIBRATED' ? '1px solid rgba(0, 229, 163, 0.4)' : '1px solid rgba(255, 170, 0, 0.4)',
+                background: data?.summary?.model_status === 'EXPERIMENTALLY_CALIBRATED' ? 'rgba(0, 229, 163, 0.2)' : 'rgba(255, 170, 0, 0.2)',
+                color: data?.summary?.model_status === 'EXPERIMENTALLY_CALIBRATED' ? '#00e5a3' : '#ffaa00',
+                border: data?.summary?.model_status === 'EXPERIMENTALLY_CALIBRATED' ? '1px solid rgba(0, 229, 163, 0.4)' : '1px solid rgba(255, 170, 0, 0.4)',
                 display: 'inline-block'
               }}>
-                {data?.summary.model_status === 'EXPERIMENTALLY_CALIBRATED' ? 'EXPERIMENTALLY CALIBRATED' : 'CALIBRATION REQUIRED'}
+                {data?.summary?.model_status === 'EXPERIMENTALLY_CALIBRATED' ? 'EXPERIMENTALLY CALIBRATED' : 'CALIBRATION REQUIRED'}
               </span>
             </div>
           </div>
@@ -271,7 +271,7 @@ export default function TestsTab({ twin }: TabProps) {
             <h3 style={{ margin: 0, fontSize: '1.125rem', color: 'var(--text-primary)' }}>
               Ingest Physical Test Telemetry CSV
             </h3>
-            <button 
+            <button
               className="button-secondary"
               onClick={() => setShowUploadModal(false)}
               style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
@@ -286,7 +286,7 @@ export default function TestsTab({ twin }: TabProps) {
                 <label style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
                   Test Run Title
                 </label>
-                <input 
+                <input
                   type="text"
                   placeholder="e.g. Flow Bench Run #004 (Water @ 5°C)"
                   value={uploadTitle}
@@ -300,7 +300,7 @@ export default function TestsTab({ twin }: TabProps) {
                 <label style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
                   Operator Handle
                 </label>
-                <input 
+                <input
                   type="text"
                   value={uploadOperator}
                   onChange={(e) => setUploadOperator(e.target.value)}
@@ -314,7 +314,7 @@ export default function TestsTab({ twin }: TabProps) {
               <label style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
                 Test Notes / Equipment Rig Details
               </label>
-              <textarea 
+              <textarea
                 rows={2}
                 placeholder="Microcontroller model, thermocouple type, ambient conditions..."
                 value={uploadNotes}
@@ -338,7 +338,7 @@ export default function TestsTab({ twin }: TabProps) {
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                 Columns: timestamp_s, ambient_C, pcm_C, inlet_C, outlet_C, flow_ml_s
               </p>
-              <input 
+              <input
                 type="file"
                 accept=".csv"
                 onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
@@ -348,7 +348,7 @@ export default function TestsTab({ twin }: TabProps) {
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-              <button 
+              <button
                 type="button"
                 className="button-secondary"
                 onClick={handleSampleUpload}
@@ -357,8 +357,8 @@ export default function TestsTab({ twin }: TabProps) {
               >
                 <Sparkles size={14} color="#ffaa00" /> Run Synthetic Benchmark
               </button>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="button-primary"
                 disabled={!selectedFile || uploading}
                 style={{ fontSize: '0.8125rem' }}
@@ -397,7 +397,7 @@ export default function TestsTab({ twin }: TabProps) {
                 </h3>
               </div>
               <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
-                Conducted by <strong>{selectedTest.operator}</strong> on {new Date(selectedTest.created_at).toLocaleDateString()}
+                Conducted by <strong>{selectedTest.operator}</strong> on {selectedTest.created_at ? new Date(selectedTest.created_at).toLocaleDateString() : 'unknown date'}
               </div>
             </div>
 
@@ -413,7 +413,7 @@ export default function TestsTab({ twin }: TabProps) {
               }}>
                 {selectedTest.status.toUpperCase()}
               </span>
-              <a 
+              {selectedTest.s3_csv_key && <a
                 href={`${getApiUrl()}/api/twins/${twin.id}/assets/${selectedTest.s3_csv_key.replace(`${twin.id}/`, '')}`}
                 target="_blank"
                 rel="noreferrer"
@@ -421,7 +421,7 @@ export default function TestsTab({ twin }: TabProps) {
                 style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
               >
                 <Download size={13} /> S3 Raw CSV
-              </a>
+              </a>}
             </div>
           </div>
 
@@ -475,7 +475,7 @@ export default function TestsTab({ twin }: TabProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedTest.raw_preview.map((pt, i) => (
+                    {selectedTest.raw_preview.map((pt: any, i: number) => (
                       <tr key={i}>
                         <td style={{ fontFamily: 'var(--font-mono)' }}>{pt.time_s}s</td>
                         <td style={{ fontFamily: 'var(--font-mono)' }}>{pt.ambient_C}°C</td>
@@ -521,13 +521,13 @@ export default function TestsTab({ twin }: TabProps) {
               </thead>
               <tbody>
                 {data?.tests && data.tests.length > 0 ? (
-                  data.tests.map((test) => (
-                    <tr 
+                  data.tests.map((test: TwinTestRecord) => (
+                    <tr
                       key={test.id}
                       onClick={() => setSelectedTest(test)}
-                      style={{ 
+                      style={{
                         cursor: 'pointer',
-                        background: selectedTest?.id === test.id ? 'rgba(0, 229, 163, 0.05)' : undefined 
+                        background: selectedTest?.id === test.id ? 'rgba(0, 229, 163, 0.05)' : undefined
                       }}
                     >
                       <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
@@ -562,7 +562,7 @@ export default function TestsTab({ twin }: TabProps) {
                         </span>
                       </td>
                       <td>
-                        <button 
+                        <button
                           className="button-secondary"
                           style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}
                           onClick={(e) => { e.stopPropagation(); setSelectedTest(test); }}

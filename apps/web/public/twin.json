@@ -1,0 +1,242 @@
+{
+  "$schema": "https://twinth.ink/schemas/twin.v0.1.json",
+  "identity": {
+    "twin_id": "twin_0001",
+    "slug": "resip-thermal-straw",
+    "title": "RESIP™",
+    "subtitle": "Thermal Drink Straw",
+    "version": "1.0.0",
+    "author": {
+      "name": "John Troy Thompson",
+      "handle": "foxlendor"
+    },
+    "license": "CERN-OHL-S-2.0",
+    "created_at": "2026-08-30T14:32:23.556149"
+  },
+  "reality_state": {
+    "composite_score": 0.68,
+    "derived_dimensions": {
+      "structure": {
+        "status": "ESTABLISHED",
+        "confidence": 0.92,
+        "reason": "Complete CAD geometry + sourced 9-part BOM with vendor pricing."
+      },
+      "thermal": {
+        "status": "EXPERIMENTAL",
+        "confidence": 0.64,
+        "reason": "4-node ODE calibrated against 3 physical test runs (RMSE: 3.3°C)."
+      },
+      "materials": {
+        "status": "PARTIALLY_ESTABLISHED",
+        "confidence": 0.55,
+        "reason": "Food-grade 316L and SAT literature validated; silicone high-temp leach test pending."
+      },
+      "safety": {
+        "status": "UNKNOWN",
+        "confidence": 0.2,
+        "reason": "No certified drop/rupture test or thermal skin-contact safety assay on record."
+      },
+      "manufacturing": {
+        "status": "CONCEPTUAL",
+        "confidence": 0.35,
+        "reason": "Bench assembly proven; automated snap-disc sealing tool unvalidated."
+      }
+    }
+  },
+  "claims": [
+    {
+      "id": "claim_thermal_01",
+      "target_node": "behavior.latent_heat_plateau",
+      "statement": "Maintains 54.0°C exothermic crystallization plateau for >120s under zero-draw conditions.",
+      "value": {
+        "magnitude": 54.0,
+        "unit": "degC",
+        "tolerance": "±1.5",
+        "currency": null
+      },
+      "epistemic_status": "VERIFIED",
+      "confidence": 0.96,
+      "source": {
+        "type": "MEASURED",
+        "reference": "telemetry/test_002_raw.csv"
+      },
+      "evidence_ids": [
+        "ev_test_002"
+      ],
+      "relationships": [
+        "comp_sat_core",
+        "mat_sodium_acetate_trihydrate"
+      ]
+    },
+    {
+      "id": "claim_bom_01",
+      "target_node": "structure.unit_cogs",
+      "statement": "Unit production cost is .50 USD at 1,000 unit volume.",
+      "value": {
+        "magnitude": 4.5,
+        "unit": "USD",
+        "tolerance": null,
+        "currency": "USD"
+      },
+      "epistemic_status": "ESTIMATED",
+      "confidence": 0.82,
+      "source": {
+        "type": "ESTIMATED",
+        "reference": "bom.csv"
+      },
+      "evidence_ids": [
+        "ev_quote_316l_supplier"
+      ],
+      "relationships": [
+        "structure.bom"
+      ]
+    }
+  ],
+  "object": {
+    "primary_3d": "assets/cad/preview.glb",
+    "cad_source": "assets/cad/primary.step",
+    "layers": [
+      {
+        "id": "layer_core",
+        "name": "Central 316L Stainless Conduit",
+        "role": "Fluid heat exchange"
+      },
+      {
+        "id": "layer_pcm",
+        "name": "Sodium Acetate Trihydrate Matrix",
+        "role": "Latent enthalpy storage"
+      },
+      {
+        "id": "layer_sleeve",
+        "name": "Food-Grade Silicone Outer Sleeve",
+        "role": "Thermal grip insulation"
+      }
+    ]
+  },
+  "structure": {
+    "bom_file": "structure/bom.csv",
+    "component_count": 9,
+    "components": [
+      {
+        "id": "comp_01",
+        "name": "316L Stainless Tube",
+        "qty": 1,
+        "unit_cost": 1.2,
+        "material": "Stainless Steel 316L",
+        "supplier": "McMaster-Carr"
+      },
+      {
+        "id": "comp_02",
+        "name": "Sodium Acetate Trihydrate",
+        "qty": 1,
+        "unit_cost": 0.65,
+        "material": "NaC2H3O2·3H2O",
+        "supplier": "Sigma-Aldrich"
+      },
+      {
+        "id": "comp_03",
+        "name": "Bistable Snap-Disc Trigger",
+        "qty": 1,
+        "unit_cost": 0.35,
+        "material": "Full-Hard 301 Stainless",
+        "supplier": "Precision Disc Stamping"
+      },
+      {
+        "id": "comp_04",
+        "name": "Silicone Insulation Jacket",
+        "qty": 1,
+        "unit_cost": 0.85,
+        "material": "Food-Grade Silicone",
+        "supplier": "Albright Silicone"
+      },
+      {
+        "id": "comp_05",
+        "name": "Viton End Collar & O-Rings",
+        "qty": 2,
+        "unit_cost": 1.45,
+        "material": "Viton FKM",
+        "supplier": "Marco Rubber"
+      }
+    ]
+  },
+  "behavior": {
+    "solver": "Euler-4Node-ODE",
+    "governing_equations": [
+      "d(T_pcm)/dt = -(Q_conduction + Q_draw) / (m_pcm * Cp_pcm)",
+      "Q_draw = m_dot_fluid * Cp_fluid * (T_out - T_in)"
+    ],
+    "parameters": {
+      "pcm_mass_g": {
+        "val": 22.0,
+        "status": "MEASURED"
+      },
+      "latent_heat_kj_kg": {
+        "val": 264.0,
+        "status": "LITERATURE"
+      },
+      "activation_temp_c": {
+        "val": 54.0,
+        "status": "LITERATURE"
+      }
+    }
+  },
+  "evidence": {
+    "test_runs": [
+      {
+        "id": "ev_test_001",
+        "date": "2026-08-12",
+        "file": "evidence/test_001.csv",
+        "type": "Static Thermal Soak",
+        "rmse": 4.12
+      },
+      {
+        "id": "ev_test_002",
+        "date": "2026-08-19",
+        "file": "evidence/test_002.csv",
+        "type": "Continuous Convective Draw",
+        "rmse": 2.85
+      },
+      {
+        "id": "ev_test_003",
+        "date": "2026-08-27",
+        "file": "evidence/test_003.csv",
+        "type": "Rig-001 Flow Bench",
+        "rmse": 3.3
+      }
+    ]
+  },
+  "history": {
+    "curated_manifest": "history/journal_manifest.json",
+    "established_nodes": [
+      {
+        "date": "2016",
+        "title": "Science Fair Beverage Calorimeter",
+        "source": "020-e1628076238962.png",
+        "provenance_level": "ESTABLISHED"
+      },
+      {
+        "date": "2021",
+        "title": "Bistable Trigger & Sleeve Integration",
+        "source": "003-1-e1628076904523.png",
+        "provenance_level": "ESTABLISHED"
+      }
+    ]
+  },
+  "lineage": {
+    "parent": null,
+    "forks_count": 0,
+    "mutations": []
+  },
+  "unknowns": [
+    {
+      "id": "unk_01",
+      "category": "Safety",
+      "issue": "Outer sleeve temperature under continuous boiling water submersion unverified."
+    },
+    {
+      "id": "unk_02",
+      "category": "Manufacturing",
+      "issue": "Cycle life limit of snap-disc before mechanical fatigue cracking is unmeasured."
+    }
+  ]
+}

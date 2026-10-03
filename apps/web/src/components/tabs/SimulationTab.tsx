@@ -2,18 +2,18 @@
 
 import React, { useState, useMemo, useRef } from 'react';
 import { TwinData } from '@/lib/types';
-import { 
-  Activity, 
-  Thermometer, 
-  Zap, 
-  ShieldCheck, 
-  Sliders, 
-  GitFork, 
-  Layers, 
-  Maximize2, 
-  Flame, 
-  Waves, 
-  Cpu, 
+import {
+  Activity,
+  Thermometer,
+  Zap,
+  ShieldCheck,
+  Sliders,
+  GitFork,
+  Layers,
+  Maximize2,
+  Flame,
+  Waves,
+  Cpu,
   Compass,
   ArrowRight,
   Eye,
@@ -80,7 +80,7 @@ const PARAMETER_PROVENANCE = [
   { key: "c_sa", label: "Specific Heat - Liquid (c_pcm)", value: "3,000 J/(kg·K)", status: "LITERATURE", source: "Thermophysical Property Tables", uncertainty: "±5%" },
   { key: "m_wall", label: "Conduit Wall Mass (m_wall)", value: "0.015 kg", status: "MEASURED", source: "316L Stainless Tube Weight", uncertainty: "±2%" },
   { key: "c_bev", label: "Fluid Specific Heat (c_fluid)", value: "4,184 J/(kg·K)", status: "STANDARD", source: "IAPWS-95 Pure Water Standard", uncertainty: "±1%" },
-  { key: "R_wall", label: "Conduction Resistance (R_wall)", value: "0.45 K/W", status: "CALIBRATED", source: "Test #001–#003 Flow Bench", uncertainty: "±8%" },
+  { key: "R_wall", label: "Conduction Resistance (R_wall)", value: "0.45 K/W", status: "CALIBRATED", source: "Test #001-#003 Flow Bench", uncertainty: "±8%" },
   { key: "R_env", label: "Ambient Dissipation Res. (R_env)", value: "2.20 K/W", status: "CALIBRATED", source: "Calorimetric Cooling Test #002", uncertainty: "±12%" }
 ];
 
@@ -287,7 +287,7 @@ export default function SimulationTab({ twin }: TabProps) {
 
   return (
     <div className={styles.tabContentContainer}>
-      
+
       {/* GOD'S EYE VIEW: Thermal Architecture Control Station Header */}
       <div style={{
         background: 'linear-gradient(135deg, rgba(14, 18, 26, 0.95) 0%, rgba(8, 10, 15, 0.98) 100%)',
@@ -492,7 +492,7 @@ export default function SimulationTab({ twin }: TabProps) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Activity size={17} color="#00e5a3" />
-            Synchronized Thermal Transient Trajectory (0–300s)
+            Synchronized Thermal Transient Trajectory (0-300s)
           </div>
 
           <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', flexWrap: 'wrap' }}>
@@ -574,7 +574,7 @@ export default function SimulationTab({ twin }: TabProps) {
         </div>
 
         {/* SVG Oscilloscope Graph */}
-        <div 
+        <div
           style={{ position: 'relative', width: '100%', cursor: 'crosshair' }}
           onMouseMove={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -609,13 +609,13 @@ export default function SimulationTab({ twin }: TabProps) {
             {/* Interactive Vertical Scrubber Line */}
             {hoverIndex !== null && (
               <g>
-                <line 
-                  x1={getX(hoverIndex)} 
-                  y1={paddingTop} 
-                  x2={getX(hoverIndex)} 
-                  y2={svgHeight - paddingBottom} 
-                  stroke="#fff" 
-                  strokeWidth="1.5" 
+                <line
+                  x1={getX(hoverIndex)}
+                  y1={paddingTop}
+                  x2={getX(hoverIndex)}
+                  y2={svgHeight - paddingBottom}
+                  stroke="#fff"
+                  strokeWidth="1.5"
                   opacity="0.8"
                 />
                 <circle cx={getX(hoverIndex)} cy={getY(simBaseline.t_fluid_arr[hoverIndex])} r="4" fill="#00ccff" />
@@ -633,13 +633,13 @@ export default function SimulationTab({ twin }: TabProps) {
           </div>
           <div style={{ height: '14px', background: '#0e121a', borderRadius: '3px', display: 'flex', overflow: 'hidden', border: '1px solid #161c2b' }}>
             {simBaseline.sip_active_arr.map((active, idx) => (
-              <div 
-                key={idx} 
-                style={{ 
-                  flex: 1, 
+              <div
+                key={idx}
+                style={{
+                  flex: 1,
                   background: active ? '#00ccff' : 'transparent',
-                  opacity: active ? 0.9 : 0 
-                }} 
+                  opacity: active ? 0.9 : 0
+                }}
               />
             ))}
           </div>
@@ -652,7 +652,7 @@ export default function SimulationTab({ twin }: TabProps) {
           <Sliders size={18} color="var(--accent-primary)" />
           <h3 style={{ fontSize: '1rem', margin: 0, color: 'var(--text-primary)' }}>Boundary Conditions & Flow Controls</h3>
         </div>
-        
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem' }}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.5rem' }}>
@@ -730,8 +730,8 @@ export default function SimulationTab({ twin }: TabProps) {
           <button
             className="button-secondary"
             onClick={() => setShowForkMutation(!showForkMutation)}
-            style={{ 
-              fontSize: '0.8125rem', 
+            style={{
+              fontSize: '0.8125rem',
               borderColor: showForkMutation ? '#a64dff' : undefined,
               color: showForkMutation ? '#a64dff' : undefined
             }}
@@ -841,17 +841,17 @@ export default function SimulationTab({ twin }: TabProps) {
                       fontWeight: 700,
                       padding: '0.2rem 0.5rem',
                       borderRadius: '4px',
-                      background: 
+                      background:
                         param.status === 'CALIBRATED' ? 'rgba(0, 229, 163, 0.15)' :
                         param.status === 'MEASURED' ? 'rgba(0, 204, 255, 0.15)' :
                         param.status === 'LITERATURE' ? 'rgba(166, 77, 255, 0.15)' :
                         'rgba(255, 170, 0, 0.15)',
-                      color: 
+                      color:
                         param.status === 'CALIBRATED' ? '#00e5a3' :
                         param.status === 'MEASURED' ? '#00ccff' :
                         param.status === 'LITERATURE' ? '#a64dff' :
                         '#ffaa00',
-                      border: 
+                      border:
                         param.status === 'CALIBRATED' ? '1px solid rgba(0, 229, 163, 0.3)' :
                         param.status === 'MEASURED' ? '1px solid rgba(0, 204, 255, 0.3)' :
                         param.status === 'LITERATURE' ? '1px solid rgba(166, 77, 255, 0.3)' :

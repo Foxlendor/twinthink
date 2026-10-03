@@ -1,0 +1,1457 @@
+// Drawing the flight, in the Canvas's ink on paper.
+//
+// Far ahead everything gathers into a few specks near the vanishing point. As
+// the viewer moves, things grow, resolve into what they are (a song's
+// waveform, an object, a drawing, the constellation of a working session) and
+// slide out past the edges, behind the viewer. Rings are ideas that hold
+// others; inside one, its silk runs past on every side like the walls of a
+// tunnel. One dotted thread runs through everything, in order: continuity.
+// The faster you move, the more the ink streaks.
+
+import { IdeaNode, LifeEvent, lastActivity, rippleReach } from './model';
+import { ScreenTransform } from './camera';
+import { FAR, FOCUS, FlightCam, NEAR, Station, Stream, View, aheadCopies, clockAngle, flightScale, project, travelled, viewOf, type Quarter } from './flight';
+import { Hit, INK, PAPER, PRESENCE, ROSE, TINT_COOL, TINT_WARM, RenderState, drawArtifact, drawAudioRing, drawRhythm, drawSketch, drawVideo, inkWords } from './render';
+import { AUTHOR } from './sources/author';
+import { Pluck, trembleAt } from './web';
+import { Phase, stepPhase, withinBudget } from './phases';
+import { getImage } from './media';
+import { clamp, hash01, noise1, smoothstep } from './rng';
+
+const DAY = 86400000;
+const STRUCTURAL = new Set<LifeEvent['kind']>(['dormant', 'revival', 'return']);
+
+/** A few alpha levels, so thousands of specks cost a handful of fills. */
+const BUCKETS = 10;
+
+class Ink {
+  private paths: (Path2D | undefined)[] = [];
+  private rose: (Path2D | undefined)[] = [];
+  /** Another person's presence, in a shared Fall: its own cool tone, never confused with resonance's own warm one. */
+  private presence: (Path2D | undefined)[] = [];
+  dot(x: number, y: number, size: number, a: number, rose = false) {
+    if (a < 0.006) return;
+    const b = Math.min(BUCKETS - 1, Math.floor(a * BUCKETS));
+    const list = rose ? this.rose : this.paths;
+    const p = (list[b] ??= new Path2D());
+    if (size < 1.3) p.rect(x - size / 2, y - size / 2, size, size);
+    else {
+      p.moveTo(x + size / 2, y);
+      p.arc(x, y, size / 2, 0, Math.PI * 2);
+    }
+  }
+  dotPresence(x: number, y: number, size: number, a: number) {
+    if (a < 0.006) return;
+    const b = Math.min(BUCKETS - 1, Math.floor(a * BUCKETS));
+    const p = (this.presence[b] ??= new Path2D());
+    if (size < 1.3) p.rect(x - size / 2, y - size / 2, size, size);
+    else {
+      p.moveTo(x + size / 2, y);
+      p.arc(x, y, size / 2, 0, Math.PI * 2);
+    }
+  }
+  private lines = new Map<number, Path2D>();
+  /** A short smear of ink (a streak), batched by darkness and width. */
+  line(x0: number, y0: number, x1: number, y1: number, width: number, a: number) {
+    if (a < 0.006) return;
+    const ab = Math.min(19, Math.floor(a * 20));
+    const wb = Math.min(6, Math.max(1, Math.round(width * 2)));
+    const key = ab * 8 + wb;
+    let p = this.lines.get(key);
+    if (!p) {
+      p = new Path2D();
+      this.lines.set(key, p);
+    }
+    p.moveTo(x0, y0);
+    p.lineTo(x1, y1);
+  }
+  flush(ctx: CanvasRenderingContext2D) {
+    if (this.lines.size) {
+      ctx.lineCap = 'round';
+      for (const [key, p] of this.lines) {
+        ctx.strokeStyle = `rgba(${INK},${(Math.floor(key / 8) + 0.5) / 20})`;
+        ctx.lineWidth = (key % 8) / 2;
+        ctx.stroke(p);
+      }
+      this.lines.clear();
+    }
+    for (const [list, rgb] of [
+      [this.paths, INK],
+      [this.rose, ROSE],
+      [this.presence, PRESENCE],
+    ] as const) {
+      list.forEach((p, b) => {
+        if (!p) return;
+        ctx.fillStyle = `rgba(${rgb},${(b + 0.5) / BUCKETS})`;
+        ctx.fill(p);
+      });
+      list.length = 0;
+    }
+  }
+}
+
+export interface FlightState {
+  /** Screen frame of each thing drawn this frame (its disk: centre and radius). */
+  frames: Map<string, ScreenTransform>;
+  /** Closeness p of the viewer to a station's top-level Shadow. */
+  closeness: (s: Station) => number;
+  /** Not perceivable at all by this viewer (or not born yet in a replay). */
+  hidden: (s: Station) => boolean;
+  /** The thing in front of you, and how still you are (0..1): its one line shows only then. */
+  here?: string;
+  still?: number;
+  /** The one line for a thing, when it has one right now. */
+  lineFor?: (s: Station) => string | undefined;
+  /** Written back each frame, for the compass: which way is up, where the next thing lies, and where food waits. */
+  compass?: { roll: number; next: number | null; food: number | null };
+  /**
+   * The web that moves: plucks travelling toward you (see web.ts), the time
+   * now in seconds, which things are food, and how calm the tunnel is (1 as
+   * ever; less once everything that moved has been reached).
+   */
+  web?: { plucks: Pluck[]; now: number; food: Set<string>; calm: number };
+  /** Each thing's name phase, kept from frame to frame (see phases.ts), and the seconds since the last frame. */
+  phases?: Map<string, Phase>;
+  dt?: number;
+  /** How much things resonate (0..1): people keep coming back to them. Drawn as dew catching light. */
+  resonance?: Map<string, number>;
+  /**
+   * In a shared Fall: how many other people are, right now, at each thing (almost always 0 or 1
+   * in V1). Never a trail of where they have been, only where they are, this instant.
+   */
+  presence?: Map<string, number>;
+  /** The one path deliberately chosen, last time, at the branch currently in view (device-only). */
+  leaned?: Set<string>;
+  /**
+   * Steering through the vortex: you are the drop at the middle; `facing` is the hour you have
+   * turned into.
+   */
+  steer?: { on: boolean; facing: Quarter | null; turned?: Set<number> };
+  /** The paths already taken from here (by id), on this device: an opening you have been through. */
+  explored?: Set<string>;
+  /**
+   * The topic lens: the groups around the face (their names where the hours were), and the one
+   * turned into while steering. Absent: the time lens, and the hours.
+   */
+  topics?: { id: string; label: string; angle: number }[];
+  topicFacing?: string | null;
+  /** A note at the top of the page (screen box): the face's labels keep clear of it. */
+  avoid?: { x0: number; y0: number; x1: number; y1: number };
+  /**
+   * Every way on from here (see openingsOf), each a side tunnel off the wall a little past the
+   * thing in front of you (its place along the fall, `hereZ`); `aheadAim` the one aimed at.
+   */
+  ahead?: AheadPath[];
+  hereZ?: number;
+  aheadAim?: string | null;
+  /** The ways on from the thing you are on, as last taken from here (for the ahead openings' rose). */
+  leanedAhead?: string | null;
+  exploredAhead?: Set<string>;
+}
+
+/** A path you could take instead, from where you are: a sibling of the thing in front of you. */
+export interface EdgePath {
+  node: IdeaNode;
+  path: IdeaNode[];
+  side: -1 | 1;
+}
+
+/**
+ * The paths beside the one you are on: where the thing in front of you shares its parent with
+ * others, the nearest one before it and after it. Only what this viewer may open (`open`).
+ */
+export function edgePaths(here: Station | null | undefined, open: (n: IdeaNode, path: IdeaNode[]) => boolean): EdgePath[] {
+  if (!here || here.path.length < 2) return [];
+  const parent = here.path[here.path.length - 2];
+  const kids = parent.children.filter((c) => !c.portal && !c.void);
+  if (kids.length < 2) return [];
+  const i = kids.findIndex((c) => c.id === here.node.id);
+  if (i < 0) return [];
+  const base = here.path.slice(0, -1);
+  const out: EdgePath[] = [];
+  const pick = (from: number, step: -1 | 1) => {
+    for (let j = from; j >= 0 && j < kids.length; j += step) {
+      const path = [...base, kids[j]];
+      if (open(kids[j], path)) return out.push({ node: kids[j], path, side: step });
+    }
+  };
+  pick(i - 1, -1);
+  pick(i + 1, 1);
+  return out;
+}
+
+/** A path you could take next from here, waiting ahead in the tunnel at the hour it was made. */
+export interface AheadPath {
+  node: IdeaNode;
+  path: IdeaNode[];
+  /** Where on the face it waits (radians, 12 at the top), kept apart from its neighbours. */
+  angle: number;
+}
+
+/**
+ * At a branch (a thing holding two or more paths), the paths on from it: seen ahead, each at its
+ * own hour, before you pass into any of them. Only ones this viewer may actually enter.
+ */
+export function aheadPaths(here: Station | null | undefined, open: (n: IdeaNode, path: IdeaNode[]) => boolean): AheadPath[] {
+  if (!here || here.depth < 1) return [];
+  const kids = here.node.children.filter((c) => !c.portal && !c.void && open(c, [...here.path, c]));
+  if (kids.length < 2) return [];
+  const out = kids.map((c) => ({ node: c, path: [...here.path, c], angle: clockAngle(c.began) })).sort((a, b) => a.angle - b.angle);
+  // never on top of each other: at least a little apart around the face
+  const gap = Math.min(0.55, (Math.PI * 2) / out.length);
+  for (let i = 1; i < out.length; i++) if (out[i].angle - out[i - 1].angle < gap) out[i].angle = out[i - 1].angle + gap;
+  return out.slice(0, 8);
+}
+
+/** Outer time/topic steering yields to the choices inside the entered group. */
+export function usesInnerLean(inside: string | null): boolean {
+  return inside !== null;
+}
+
+/** The ahead path nearest a heading (x right, y down), or null. */
+export function aheadFacing(ahead: AheadPath[], x: number, y: number, roll: number): AheadPath | null {
+  if (!ahead.length) return null;
+  const a = Math.atan2(y, x) - roll;
+  let best: AheadPath | null = null;
+  let d = Infinity;
+  for (const p of ahead) {
+    const dd = Math.abs(Math.atan2(Math.sin(a - p.angle), Math.cos(a - p.angle)));
+    if (dd < d) [best, d] = [p, dd];
+  }
+  return d < 0.6 ? best : null;
+}
+
+/**
+ * Every way you could go from here, as its own tunnel off the wall: the paths on from the thing in
+ * front of you and the paths beside it, each at the hour it was made, kept apart around the face.
+ */
+export function openingsOf(ahead: AheadPath[], edges: EdgePath[]): AheadPath[] {
+  const seen = new Set<string>();
+  const out: AheadPath[] = [];
+  for (const p of [...ahead, ...edges]) {
+    if (seen.has(p.node.id)) continue;
+    seen.add(p.node.id);
+    out.push({ node: p.node, path: p.path, angle: clockAngle(p.node.began) });
+  }
+  out.sort((a, b) => a.angle - b.angle);
+  const gap = Math.min(0.55, (Math.PI * 2) / Math.max(1, out.length));
+  for (let i = 1; i < out.length; i++) if (out[i].angle - out[i - 1].angle < gap) out[i].angle = out[i - 1].angle + gap;
+  return out.slice(0, 8);
+}
+
+/** The wall of the tunnel you fall through (its radius), and how far past the thing in front of you the side tunnels open. */
+const WALL = 1.3;
+const MOUTH_AHEAD = 3.2;
+/** A side tunnel: how far it runs, and how many rings it is drawn with. */
+const SIDE_LEN = 2.6;
+const SIDE_RINGS = 8;
+
+/** Where a side tunnel meets the wall: its centre (world), and how wide the hole is. */
+export interface Mouth {
+  p: AheadPath;
+  x: number;
+  y: number;
+  z: number;
+  r: number;
+}
+
+/**
+ * The side tunnels at the thing at `hereZ`: each a hole in the wall, `ahead` further down (farther
+ * on a narrow screen, so the wall there is still in view), at its hour.
+ */
+export function mouthsOf(openings: AheadPath[], hereZ: number, ahead = MOUTH_AHEAD): Mouth[] {
+  const r = clamp(((Math.PI * WALL) / Math.max(2, openings.length)) * 0.62, 0.24, 0.44);
+  return openings.map((p) => ({ p, x: Math.cos(p.angle) * WALL, y: Math.sin(p.angle) * WALL, z: hereZ + ahead, r }));
+}
+
+/**
+ * A way on, as a real tunnel: a hole in the wall ahead, and through it a side tunnel of its own
+ * rings, running outward and on, with the work itself waiting at its far end. Aimed at (thumb or
+ * mouse), its rim and rings darken and its name is written beside it; been through before, the
+ * rim is worn heavier; the one leaned before is rimmed in rose. Tapped or clicked, it is a Lean.
+ */
+function drawMouth(st: RenderState, v: View, m: Mouth, a: number, aimed: boolean, leaned: boolean, been: boolean, ink: Ink): (Hit & { reach: number }) | null {
+  const { ctx } = st;
+  const c = Math.cos(m.p.angle);
+  const s = Math.sin(m.p.angle);
+  // the side tunnel runs outward and on, close to the line you look along, so you see down into it
+  const OUT = 0.55;
+  const n = Math.hypot(OUT, 1);
+  const d = [(c * OUT) / n, (s * OUT) / n, 1 / n];
+  // across it: along the wall (u), and square to that and to its own run (w)
+  const u = [-s, c, 0];
+  const w = [-c / n, -s / n, OUT / n];
+  const at = (t: number, r: number, phi: number): [number, number, number] | null => {
+    const X = m.x + d[0] * t + r * (Math.cos(phi) * u[0] + Math.sin(phi) * w[0]);
+    const Y = m.y + d[1] * t + r * (Math.cos(phi) * u[1] + Math.sin(phi) * w[1]);
+    const Z = m.z + d[2] * t + r * Math.sin(phi) * w[2];
+    const dz = Z - v.z;
+    if (dz < NEAR + 0.25) return null;
+    return project(v, X, Y, dz);
+  };
+  const lit = aimed ? 1 : 0;
+  // its rings, from the mouth down to the far end, fainter the deeper they go
+  let rimX = 0;
+  let rimY = 0;
+  let rimN = 0;
+  let reach = 0;
+  const rim: [number, number][] = [];
+  for (let k = 0; k <= SIDE_RINGS; k++) {
+    const t = (k / SIDE_RINGS) * SIDE_LEN;
+    const r = m.r * (1 - 0.18 * (k / SIDE_RINGS));
+    const depth = 1 - k / (SIDE_RINGS + 2);
+    const dots = k === 0 ? 40 : 26;
+    for (let i = 0; i < dots; i++) {
+      const phi = (i / dots) * Math.PI * 2;
+      const q = at(t, r, phi);
+      if (!q) continue;
+      const fog = fogOf(q[2] > 0 ? v.F / q[2] : FAR);
+      if (k === 0) {
+        rim.push([q[0], q[1]]);
+        rimX += q[0];
+        rimY += q[1];
+        rimN++;
+        ink.dot(q[0], q[1], clamp(0.02 * q[2], 1.2, aimed ? 3 : been ? 2.6 : 2.2), a * fog * (0.5 + 0.4 * lit + (been ? 0.15 : 0)), leaned);
+      } else ink.dot(q[0], q[1], clamp(0.012 * q[2], 0.8, 2), a * fog * depth * (0.28 + 0.4 * lit));
+    }
+  }
+  // strands along its length, so it reads as a tube and not a stack of rings
+  for (let j = 0; j < 8; j++) {
+    const phi = (j / 8) * Math.PI * 2 + 0.2;
+    for (let t = 0.12; t < SIDE_LEN; t += 0.13) {
+      const q = at(t, m.r * (1 - 0.18 * (t / SIDE_LEN)), phi);
+      if (q) ink.dot(q[0], q[1], clamp(0.009 * q[2], 0.7, 1.6), a * (1 - t / (SIDE_LEN * 1.25)) * (0.2 + 0.3 * lit));
+    }
+  }
+  if (!rimN) return null;
+  const hx = rimX / rimN;
+  const hy = rimY / rimN;
+  for (const [x, y] of rim) reach = Math.max(reach, Math.hypot(x - hx, y - hy));
+  // the work itself, waiting at the far end
+  const end = at(SIDE_LEN, 0, 0);
+  if (end) {
+    const er = m.r * 0.82 * end[2];
+    type Cover = Extract<NonNullable<IdeaNode['media']>[number], { kind: 'image' } | { kind: 'video' }>;
+    const media = m.p.node.media?.find((q): q is Cover => q.kind === 'image' || (q.kind === 'video' && !!q.poster));
+    const src = media ? (media.kind === 'image' ? media.src : media.poster ?? '') : '';
+    const loaded = src ? getImage(src) : null;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(end[0], end[1], er, 0, Math.PI * 2);
+    ctx.clip();
+    if (loaded && media) {
+      const top = loaded.mips.length - 1;
+      const W = er * 2.2;
+      const H = W * media.aspect;
+      ctx.globalAlpha = a * (0.5 + 0.4 * lit);
+      ctx.drawImage(loaded.mips[Math.max(0, Math.min(top, aimed ? 2 : 3))], end[0] - W / 2, end[1] - H / 2, W, H);
+    } else {
+      // no picture: the far end is a soft darkness, like light not yet reached
+      const g = ctx.createRadialGradient(end[0], end[1], 0.5, end[0], end[1], er);
+      g.addColorStop(0, `rgba(${INK},${a * (0.22 + 0.2 * lit)})`);
+      g.addColorStop(1, `rgba(${INK},0)`);
+      ctx.fillStyle = g;
+      ctx.fillRect(end[0] - er, end[1] - er, er * 2, er * 2);
+    }
+    ctx.restore();
+  }
+  return { kind: 'node', node: m.p.node, path: m.p.path, x: hx, y: hy, r: Math.max(reach * 1.1, 22), size: 1e9, reach };
+}
+
+/** An aimed side tunnel's name, beside its mouth toward the middle: what it is, before going in. */
+function drawMouthName(st: RenderState, v: View, title: string, hx: number, hy: number, reach: number, a: number) {
+  const { ctx } = st;
+  const size = Math.round(clamp(st.M * 0.024, 13, 18));
+  ctx.font = `italic ${size}px ${st.serif}`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = `rgba(${INK},${0.85 * a})`;
+  const label = title.slice(0, 40);
+  const tw = ctx.measureText(label).width;
+  const toMid = Math.atan2(v.cy - hy, v.cx - hx);
+  const tx = clamp(hx + Math.cos(toMid) * (reach + 18), 12 + tw / 2, st.w - 12 - tw / 2);
+  const ty = clamp(hy + Math.sin(toMid) * (reach + 18) + size / 3, size + 8, st.h - 12);
+  haloText(ctx, label, tx, ty);
+  ctx.textAlign = 'left';
+}
+
+/**
+ * The clock at the centre of the flight: twelve faint ticks (turning only if the clock's own
+ * spin has been asked for), and a dotted hand that always points at what comes next.
+ */
+function drawClock(st: RenderState, v: View, next: [number, number] | null, ink: Ink) {
+  const M = st.M;
+  const rf = 0.17 * M;
+  for (let k = 0; k < 12; k++) {
+    const a = -Math.PI / 2 + (k * Math.PI) / 6 + v.roll;
+    ink.dot(v.cx + Math.cos(a) * rf, v.cy + Math.sin(a) * rf, k === 0 ? 3 : 1.6, k === 0 ? 0.3 : 0.16);
+  }
+  if (!next) return;
+  const dx = next[0] - v.cx;
+  const dy = next[1] - v.cy;
+  const d = Math.hypot(dx, dy);
+  if (d < 4) return;
+  const len = Math.min(d, rf * 0.9);
+  const n = Math.floor(len / 5);
+  for (let i = 1; i <= n; i++) {
+    const f = (i * 5) / d;
+    ink.dot(v.cx + dx * f, v.cy + dy * f, 1.4, 0.3 * (1 - (i / n) * 0.4));
+  }
+  ink.dot(v.cx + (dx / d) * len, v.cy + (dy / d) * len, 3.2, 0.7, true);
+}
+
+/**
+ * The page is the clock face you fall through: 12 at the top, 3 at the right, 6 at the bottom,
+ * 9 at the left. Things already sit at the hour they were made, so something from 6 comes up
+ * from the bottom of the screen. Fixed to the page (they turn only with the clock's own spin,
+ * when that has been asked for), clear of the header, the trail and the compass.
+ */
+/** A label on the face, with a thin rim of paper, so it reads even where it crosses a thing's own words. */
+function haloText(ctx: CanvasRenderingContext2D, label: string, x: number, y: number) {
+  ctx.save();
+  ctx.strokeStyle = PAPER;
+  ctx.lineWidth = 5;
+  ctx.lineJoin = 'round';
+  ctx.strokeText(label, x, y);
+  ctx.restore();
+  ctx.fillText(label, x, y);
+}
+
+/** Where a label may sit: moved beside a note it would be under (right of it if it fits, else left). */
+function clearOf(avoid: FlightState['avoid'], x: number, y: number, w: number, h: number, pageW: number): [number, number] {
+  if (!avoid || y + h / 2 < avoid.y0 - 4 || y - h / 2 > avoid.y1 + 4 || x + w / 2 < avoid.x0 - 8 || x - w / 2 > avoid.x1 + 8) return [x, y];
+  const right = avoid.x1 + 14 + w / 2;
+  if (right + w / 2 < pageW - 8) return [right, y];
+  const left = avoid.x0 - 14 - w / 2;
+  if (left - w / 2 > 8) return [left, y];
+  return [x, avoid.y1 + 6 + h / 2];
+}
+
+function drawHours(st: RenderState, v: View, facing: Quarter | null, before?: Set<number>, avoid?: FlightState['avoid']) {
+  const { ctx } = st;
+  const phone = st.w < 640;
+  const size = phone ? 19 : 22;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // the room each edge leaves: the header's row at the top, the trail and actions at the bottom
+  // (on a phone the trail can wrap to two lines), the compass on the right (at the middle on a
+  // wide screen, above it on a phone)
+  const top = 30;
+  const bottom = st.h - (phone ? 160 : 90);
+  const side = 18;
+  // clear of the compass at the right edge (a phone's is narrower, but there all the same)
+  const right = st.w >= 640 ? st.w - 76 : st.w - 58;
+  const rx = Math.min(v.cx - side, right - v.cx);
+  const ry = Math.min(v.cy - top, bottom - v.cy);
+  const hours: [string, number, number, number][] = [
+    ['12', -Math.PI / 2, v.cx, top],
+    ['3', 0, right, v.cy],
+    ['6', Math.PI / 2, v.cx, bottom],
+    ['9', Math.PI, side, v.cy],
+  ];
+  hours.forEach(([label, a, x, y], q) => {
+    // turned into, an hour is written darker and larger; the others step back
+    const turned = facing === q;
+    ctx.font = `italic ${turned ? size + 6 : size}px ${st.serif}`;
+    ctx.fillStyle = `rgba(${INK},${turned ? 0.92 : facing === null ? 0.55 : 0.3})`;
+    // with the clock's own spin on, the numbers go round with it, on an oval inside those edges
+    const [px, py] = v.roll === 0 ? [x, y] : [v.cx + Math.cos(a + v.roll) * rx, v.cy + Math.sin(a + v.roll) * ry];
+    const [lx, ly] = clearOf(avoid, px, py, ctx.measureText(label).width, size + 6, st.w);
+    haloText(ctx, label, lx, ly);
+    // turned into here before: a small dot beside it, a way back (and the hours not yet taken)
+    if (before?.has(q) && !turned) {
+      ctx.beginPath();
+      ctx.arc(lx + (label.length > 1 ? 18 : 12), ly - 8, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+  ctx.restore();
+}
+
+/**
+ * The topic lens: where the hours were, the names of the groups, each in its own direction (the
+ * same ink, the same size as the hours; the one turned into written darker and larger).
+ */
+function drawTopics(
+  st: RenderState,
+  v: View,
+  topics: { id: string; label: string; angle: number }[],
+  facing: string | null,
+  avoid?: FlightState['avoid']
+) {
+  const { ctx } = st;
+  const phone = st.w < 640;
+  const size = phone ? 15 : 18;
+  const top = 34;
+  const bottom = st.h - (phone ? 160 : 90);
+  const side = 18;
+  // clear of the compass at the right edge (a phone's is narrower, but there all the same)
+  const right = st.w >= 640 ? st.w - 76 : st.w - 58;
+  ctx.save();
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+  const placed: [number, number, number, number][] = [];
+  const hits = (x: number, y: number, w: number, h: number) =>
+    placed.some(([px, py, pw, ph]) => Math.abs(px - x) < (pw + w) / 2 + 6 && Math.abs(py - y) < (ph + h) / 2 + 2);
+  for (const t of topics) {
+    const turned = facing === t.id;
+    const fs = turned ? size + 5 : size;
+    ctx.font = `italic ${fs}px ${st.serif}`;
+    ctx.fillStyle = `rgba(${INK},${turned ? 0.92 : facing === null ? 0.55 : 0.3})`;
+    // a long name is shortened on a narrow page, never overlapped
+    const max = phone ? 12 : 18;
+    let label = t.label.length > max ? `${t.label.slice(0, max - 1)}…` : t.label;
+    let w = ctx.measureText(label).width;
+    const a = t.angle + v.roll;
+    // on an oval inside the edges, kept whole on the page
+    let x = clamp(v.cx + Math.cos(a) * (Math.min(v.cx - side, right - v.cx) - w * 0.2), side + w / 2, right - w / 2);
+    let y = clamp(v.cy + Math.sin(a) * Math.min(v.cy - top, bottom - v.cy), top, bottom);
+    [x, y] = clearOf(avoid, x, y, w, fs + 6, st.w);
+    if (hits(x, y, w, fs)) {
+      // crowded: shorter, then moved along its own side, away from the middle, until it is clear
+      label = t.label.length > 8 ? `${t.label.slice(0, 7)}…` : t.label;
+      w = ctx.measureText(label).width;
+      const away = Math.sign(y - v.cy) || 1;
+      for (let k = 1; k < 6 && hits(x, y, w, fs); k++) y = clamp(y + away * (fs + 6), top, bottom);
+    }
+    placed.push([x, y, w, fs]);
+    haloText(ctx, label, x, y);
+  }
+  ctx.restore();
+}
+
+/**
+ * You, steering: a drop falling at the middle. Seen from above it is a round bead; turning, its
+ * tail trails away behind it, so the way you are heading reads at a glance while the vortex
+ * swings around you. Hollow, so it is never taken for a thing (ink) or for dew (beads of light).
+ * Only while steering.
+ */
+function drawDrop(st: RenderState, v: View) {
+  const { ctx } = st;
+  const r = st.w < 640 ? 7 : 8.5;
+  const m = Math.min(1, Math.hypot(v.bx, v.by));
+  // the tail points away from where you are heading, and grows the harder you turn
+  const a = Math.atan2(-v.by, -v.bx);
+  const tail = r * (1 + 1.6 * m);
+  ctx.save();
+  ctx.translate(v.cx, v.cy);
+  ctx.beginPath();
+  if (m < 0.05) ctx.arc(0, 0, r, 0, Math.PI * 2);
+  else {
+    // a teardrop: round at the front, drawn to a point behind (the arc runs between the two
+    // points where lines from the tip just touch the circle, around the side away from the tip)
+    const touch = Math.acos(Math.min(1, r / tail));
+    ctx.arc(0, 0, r, a + touch, a - touch + Math.PI * 2);
+    ctx.lineTo(Math.cos(a) * tail, Math.sin(a) * tail);
+    ctx.closePath();
+  }
+  ctx.fillStyle = PAPER;
+  ctx.fill();
+  ctx.strokeStyle = `rgba(${INK},0.85)`;
+  ctx.lineWidth = 1.3;
+  ctx.stroke();
+  // a single catch of light, where a drop holds it
+  ctx.fillStyle = `rgba(${INK},0.55)`;
+  ctx.beginPath();
+  ctx.arc(-r * 0.3, -r * 0.35, r * 0.18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function fogOf(dz: number) {
+  return (1 - smoothstep(FAR * 0.45, FAR, dz)) * smoothstep(NEAR, 0.32, dz);
+}
+
+function liveness(node: IdeaNode, now: number) {
+  const quiet = (now - lastActivity(node)) / DAY;
+  if (node.state === 'abandoned') return 0.1;
+  return clamp(1 - quiet / 30, 0.15, 1);
+}
+
+// ---------------------------------------------------------------------------
+
+/**
+ * Resonance: dew on the web around a thing people keep coming back to. The
+ * more who return, the more beads; each catches the light now and then. Never
+ * a number, and nothing a crowd passing once can make.
+ */
+function drawDew(st: RenderState, s: Station, x: number, y: number, R: number, alpha: number, level: number, ink: Ink) {
+  if (R < 6) return;
+  const n = 3 + Math.round(level * 15);
+  const clock = st.reduced ? 0 : st.clock ?? 0;
+  const ring = (s.gate ? 1.02 : 1.2) * R;
+  for (let i = 0; i < n; i++) {
+    const ang = hash01(s.node.seed, 40 + i) * Math.PI * 2;
+    const rr = ring * (0.96 + 0.08 * hash01(s.node.seed, 80 + i));
+    const bx = x + Math.cos(ang) * rr;
+    const by = y + Math.sin(ang) * rr;
+    // it glints: a slow swell of light, each bead in its own time
+    const glint = Math.max(0, Math.sin(clock * 0.9 + hash01(s.node.seed, 120 + i) * 6.283));
+    const size = clamp(R * 0.012, 1, 2.6) * (1 + 0.4 * glint);
+    ink.dot(bx, by, size, alpha * (0.22 + 0.4 * level) * (0.5 + 0.5 * glint), glint > 0.85);
+  }
+}
+
+/**
+ * Presence: in a shared Fall, another person catching the same light you are,
+ * right now, at this one thing, never a trail of where they have been. Close
+ * to the thing itself, its own cool tone, so it is never mistaken for dew.
+ */
+function drawPresence(st: RenderState, s: Station, x: number, y: number, R: number, alpha: number, n: number, ink: Ink) {
+  if (R < 6) return;
+  const clock = st.reduced ? 0 : st.clock ?? 0;
+  for (let i = 0; i < n; i++) {
+    const ang = hash01(s.node.seed, 900 + i) * Math.PI * 2;
+    const rr = R * (0.3 + 0.15 * hash01(s.node.seed, 940 + i));
+    const bx = x + Math.cos(ang) * rr;
+    const by = y + Math.sin(ang) * rr;
+    const glint = Math.max(0, Math.sin(clock * 1.3 + hash01(s.node.seed, 960 + i) * 6.283));
+    const size = clamp(R * 0.02, 1.4, 3.4) * (1 + 0.35 * glint);
+    ink.dotPresence(bx, by, size, alpha * (0.5 + 0.4 * glint));
+  }
+}
+
+/**
+ * The one path deliberately chosen, last time, at the branch now in view: a single, still mark
+ * (rose, the ink's own way of marking something as yours) right at the thing itself. Not a trail,
+ * not a count; the other paths stay exactly as open as this one.
+ */
+function drawLeaned(x: number, y: number, R: number, alpha: number, ink: Ink) {
+  if (R < 6) return;
+  ink.dot(x - R * 0.62, y - R * 0.62, clamp(R * 0.05, 1.6, 3.2), alpha * 0.6, true);
+}
+
+/**
+ * The tunnel you fall through: a straight shaft, looking straight down. Its
+ * rings come out of the vanishing point and open past you, laced by strands
+ * running straight to that one point. At rest it fades to
+ * a whisper, so what is in front of you is what you see; moving, it returns,
+ * and at speed its dots stream into lines. While a song or a film is heard,
+ * waves travel down its walls toward you with the sound.
+ */
+function drawTunnel(st: RenderState, v: View, cam: FlightCam, ink: Ink, web?: FlightState['web'], holes: Mouth[] = []) {
+  // where a side tunnel opens, the wall is not there: its dots leave a hole you can see into
+  const holed = (zAbs: number, ang: number) => {
+    for (const m of holes) {
+      const dz = zAbs - m.z;
+      if (Math.abs(dz) > m.r * 1.15) continue;
+      if (Math.hypot(Math.cos(ang) * WALL - m.x, Math.sin(ang) * WALL - m.y, dz) < m.r * 1.15) return true;
+    }
+    return false;
+  };
+  const plucks = web?.plucks.length && !st.reduced ? web.plucks : null;
+  // the walls tremble where a pluck is passing (worked out once per slice of the tunnel)
+  const trem = new Map<number, number>();
+  const trembleOf = (zAbs: number) => {
+    if (!plucks) return 0;
+    const key = Math.round(zAbs * 20);
+    let T = trem.get(key);
+    if (T === undefined) {
+      T = clamp(trembleAt(plucks, zAbs, v.z, web!.now).T, -1, 1);
+      trem.set(key, T);
+    }
+    return T;
+  };
+  const STEP = 0.7;
+  const RADIUS = WALL;
+  const DOTS = 64;
+  const STRANDS = 18;
+  const speed = Math.abs(cam.shown);
+  // how much of the wall is there: a whisper at rest, whole when moving
+  const presence = (0.3 + 0.7 * smoothstep(0.15, 3, speed)) * (web?.calm ?? 1);
+  // quick hops only stir the walls; real speed streams them
+  const fast = st.reduced ? 0 : clamp(cam.shown * 0.035, -1.1, 1.1) * smoothstep(3, 10, Math.abs(cam.shown));
+  const level = st.audio?.level ?? 0;
+  const clock = st.reduced ? 0 : st.clock ?? 0;
+  // a straight shaft: it never bends to meet what comes next. You drift inside it, toward the hour
+  // of whatever you are nearing, the way a fall drifts toward one wall, not a track that turns.
+  const wall = (zAbs: number, ang: number, dz: number): [number, number] => {
+    // hand-drawn: it breathes a little along its length and around
+    let r = RADIUS * (1 + 0.06 * noise1(zAbs * 0.35, 11) + 0.035 * noise1(ang * 2 + zAbs * 0.2, 7));
+    // sound: a wave travels from the vanishing point toward you
+    if (level > 0.02) r *= 1 + 0.07 * level * Math.max(0, Math.sin(zAbs * 2.2 + clock * 7));
+    // food: the wall ripples as a pluck runs past
+    const T = trembleOf(zAbs);
+    if (T !== 0) r *= 1 + 0.045 * T * Math.sin(6 * ang + 1.7);
+    const [x, y] = project(v, Math.cos(ang) * r, Math.sin(ang) * r, dz);
+    return [x, y];
+  };
+  const onScreen = (x: number, y: number) => x > -6 && y > -6 && x < st.w + 6 && y < st.h + 6;
+
+  // rings, aligned to the track so they stream steadily toward you
+  const m0 = Math.ceil((v.z + Math.max(NEAR, 0.35)) / STEP);
+  const m1 = Math.floor((v.z + FAR) / STEP);
+  for (let m = m0; m <= m1; m++) {
+    const zAbs = m * STEP;
+    const dz = zAbs - v.z;
+    const pulse = level > 0.02 ? 1 + 1.4 * level * Math.max(0, Math.sin(zAbs * 2.2 + clock * 7)) : 1;
+    const a = 0.24 * presence * pulse * (1 - smoothstep(8, FAR, dz)) * smoothstep(0.35, 1.4, dz) * (m % 3 === 0 ? 1.3 : 0.75);
+    if (a < 0.012) continue;
+    const size = clamp(0.011 * (v.F / dz), 0.9, 2.6);
+    for (let i = 0; i < DOTS; i++) {
+      const ang = (i / DOTS) * Math.PI * 2 + 0.03 * noise1(i + m * 13, 5);
+      if (holes.length && holed(zAbs, ang)) continue;
+      const [x, y] = wall(zAbs, ang, dz);
+      if (!onScreen(x, y)) continue;
+      if (Math.abs(fast) > 0.05) {
+        let [tx, ty] = wall(zAbs, ang, Math.max(NEAR + 0.05, dz + fast));
+        const len = Math.hypot(tx - x, ty - y);
+        const cap = st.M * 0.16;
+        if (len > cap) {
+          tx = x + ((tx - x) * cap) / len;
+          ty = y + ((ty - y) * cap) / len;
+        }
+        ink.line(x, y, tx, ty, size, a * 0.7);
+      } else ink.dot(x, y, size, a);
+    }
+  }
+
+  // strands straight down the wall, all running to the one vanishing point below you
+  const SP = 0.16;
+  const n0 = Math.ceil((v.z + 0.5) / SP);
+  const n1 = Math.floor((v.z + FAR) / SP);
+  for (let j = 0; j < STRANDS; j++) {
+    const base = (j / STRANDS) * Math.PI * 2;
+    for (let n = n0; n <= n1; n++) {
+      const zAbs = n * SP;
+      const dz = zAbs - v.z;
+      const a = 0.12 * presence * (1 - smoothstep(8, FAR, dz)) * smoothstep(0.5, 2, dz);
+      if (a < 0.012) continue;
+      if (holes.length && holed(zAbs, base)) continue;
+      const [x, y] = wall(zAbs, base, dz);
+      if (!onScreen(x, y)) continue;
+      ink.dot(x, y, clamp(0.008 * (v.F / dz), 0.75, 2), a);
+    }
+  }
+}
+
+/** Ink specks suspended in the space you move through: they streak when you rush. */
+function drawSpecks(st: RenderState, v: View, cam: FlightCam, ink: Ink) {
+  const P = 4;
+  const N = 70;
+  const streak = st.reduced ? 0 : clamp(cam.shown * 0.03, -0.9, 0.9);
+  const j0 = Math.floor((v.z + NEAR) / P);
+  const j1 = Math.floor((v.z + FAR) / P);
+  for (let j = j0; j <= j1; j++) {
+    const jj = ((j % 9973) + 9973) % 9973;
+    for (let i = 0; i < N; i++) {
+      const dz = j * P + hash01(i, jj * 3 + 1) * P - v.z;
+      if (dz < NEAR || dz > FAR) continue;
+      const x = (hash01(i, jj * 3 + 2) * 2 - 1) * 2.2;
+      const y = (hash01(i, jj * 3 + 3) * 2 - 1) * 1.6;
+      const [sx, sy, k] = project(v, x, y, dz);
+      if (sx < -20 || sy < -20 || sx > st.w + 20 || sy > st.h + 20) continue;
+      const a = 0.22 * fogOf(dz) * (0.4 + 0.6 * hash01(i, jj));
+      const size = clamp(0.006 * k, 0.5, 2.4);
+      if (Math.abs(streak) > 0.04) {
+        let [tx, ty] = project(v, x, y, Math.max(NEAR, dz + streak));
+        const len = Math.hypot(tx - sx, ty - sy);
+        const cap = st.M * 0.12;
+        if (len > cap) {
+          tx = sx + ((tx - sx) * cap) / len;
+          ty = sy + ((ty - sy) * cap) / len;
+        }
+        ink.line(sx, sy, tx, ty, size, a * 0.8);
+      } else ink.dot(sx, sy, size, a);
+    }
+  }
+}
+
+/**
+ * Inside a ring, its silk runs along the walls: strands of dots converging on
+ * the vanishing point. How many strands: how much the idea holds.
+ */
+function drawTube(st: RenderState, v: View, s: Station, L: number, ink: Ink) {
+  const STEP = 0.5;
+  const strands = s.depth === 0 ? 30 : clamp(12 + 3 * travelled(s.node).length, 14, 44);
+  const turn = hash01(s.node.seed, 3) * Math.PI * 2 + (st.reduced ? 0 : (st.clock ?? 0) * 0.015);
+  const span = s.end - s.z;
+  const strength = s.depth === 0 ? 0.1 : 0.17;
+  for (const base of aheadCopies(s.z, v.z, L, NEAR - span, FAR)) {
+    // rings every STEP along the ring's length, aligned so they stream steadily
+    const m0 = Math.max(1, Math.ceil((NEAR - base) / STEP));
+    for (let m = m0; m * STEP <= span; m++) {
+      const dz = base + m * STEP;
+      if (dz > FAR) break;
+      const fade = fogOf(dz) * smoothstep(0, 1.5, m * STEP) * smoothstep(0, 1.2, span - m * STEP);
+      // far rings thin out (every other one fades), and nothing too faint to see is drawn
+      const a = strength * fade * (m % 2 ? 1 - smoothstep(3, 5, dz) : 1);
+      if (a < 0.02) continue;
+      const k = v.F / dz;
+      const size = clamp(0.0045 * k, 0.45, 2.6);
+      const ox = v.cx + (-v.x * v.rc + v.y * v.rs) * k;
+      const oy = v.cy + (-v.x * v.rs - v.y * v.rc) * k;
+      const rk = s.r * k;
+      for (let j = 0; j < strands; j++) {
+        const ang = turn + (j / strands) * Math.PI * 2 + 0.35 * noise1(m * 0.4 + j, s.node.seed);
+        const sx = ox + Math.cos(ang + v.roll) * rk;
+        const sy = oy + Math.sin(ang + v.roll) * rk;
+        if (sx < -4 || sy < -4 || sx > st.w + 4 || sy > st.h + 4) continue;
+        ink.dot(sx, sy, size, a);
+      }
+    }
+  }
+}
+
+/** One dotted thread through everything, in order. It thins across long silences. */
+function drawThread(st: RenderState, v: View, stream: Stream, ink: Ink, cam: FlightCam, skip: (s: Station) => boolean, web?: FlightState['web']) {
+  const plucks = web?.plucks.length ? web.plucks : null;
+  const { length: L } = stream;
+  // only what exists for this viewer is joined: the thread never bends toward a hidden place
+  const stations = stream.stations.filter((s) => s.depth === 0 || !skip(s));
+  const STEP = 0.055;
+  const streak = st.reduced ? 0 : clamp(cam.shown * 0.02, -0.6, 0.6);
+  for (let i = 0; i < stations.length; i++) {
+    const a = stations[i];
+    const b = stations[(i + 1) % stations.length];
+    const span = i + 1 < stations.length ? b.z - a.z : b.z + L - a.z;
+    const quietDays = b.quiet / DAY;
+    // a silence of weeks leaves only every third dot
+    const every = quietDays > 10 ? 3 : 1;
+    for (const base of aheadCopies(a.z, v.z, L, NEAR - span, FAR)) {
+      const u0 = Math.max(0, (NEAR - base) / span);
+      const u1 = Math.min(1, (FAR - base) / span);
+      if (u1 <= u0) continue;
+      const n0 = Math.ceil((u0 * span) / STEP);
+      const n1 = Math.floor((u1 * span) / STEP);
+      for (let n = n0; n <= n1; n++) {
+        if (n % every) continue;
+        const u = (n * STEP) / span;
+        const e = u * u * (3 - 2 * u);
+        const x = a.x + (b.x - a.x) * e;
+        const y = a.y + (b.y - a.y) * e;
+        const dz = base + u * span;
+        const [sx, sy, k] = project(v, x, y, dz);
+        if (sx < -6 || sy < -6 || sx > st.w + 6 || sy > st.h + 6) continue;
+        let alpha = 0.34 * fogOf(dz) * (0.75 + 0.25 * hash01(n, a.i));
+        const size = clamp(0.0075 * k, 0.5, 2.8);
+        // the web moves: the thread shivers sideways as a pluck runs along it toward you
+        if (plucks) {
+          const tr = trembleAt(plucks, v.z + dz, v.z, web!.now);
+          if (tr.T !== 0) {
+            const T = clamp(tr.T, -1, 1);
+            alpha = Math.min(0.9, alpha * (1 + (st.reduced ? 1.2 : 0.6) * Math.abs(T)));
+            if (!st.reduced) {
+              // sideways to the line of sight
+              const ox = sy - v.cy;
+              const oy = -(sx - v.cx);
+              const len = Math.hypot(ox, oy) || 1;
+              const px = sx + (ox / len) * 5 * T;
+              const py = sy + (oy / len) * 5 * T;
+              ink.dot(px, py, size * (1 + 0.3 * Math.abs(T)), alpha, tr.rose && Math.abs(T) > 0.04);
+              continue;
+            }
+            ink.dot(sx, sy, size, alpha, tr.rose && Math.abs(T) > 0.04);
+            continue;
+          }
+        }
+        if (Math.abs(streak) > 0.05 && k > 60) {
+          let [tx, ty] = project(v, x, y, Math.max(NEAR, dz + streak));
+          // a streak is a smear of ink, never a rule across the page
+          const len = Math.hypot(tx - sx, ty - sy);
+          const cap = st.M * 0.07;
+          if (len > cap) {
+            tx = sx + ((tx - sx) * cap) / len;
+            ty = sy + ((ty - sy) * cap) / len;
+          }
+          ink.line(sx, sy, tx, ty, size, alpha * 0.7);
+        } else ink.dot(sx, sy, size, alpha);
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Things.
+
+/** A change arriving: one clear rose ring. A Shadow on the Canvas spills it wider, by the size of its web. */
+function drawPulse(st: RenderState, s: Station, x: number, y: number, R: number, alpha: number) {
+  const t0 = st.pulses?.get(s.node.id);
+  if (t0 === undefined || st.clock === undefined || st.reduced) return;
+  const { ctx } = st;
+  const top = s.depth === 1;
+  const q = (st.clock - t0) / (top ? 4.2 : 2.4);
+  if (q < 0 || q > 1) return;
+  const spread = top ? R * (1.2 + 9 * rippleReach(s.node)) : R * 0.9 + 40;
+  for (let k = 0; k < (top ? 3 : 1); k++) {
+    const qk = q - k * 0.12;
+    if (qk <= 0 || qk >= 1) continue;
+    const e = 1 - Math.pow(1 - qk, 2.2);
+    ctx.strokeStyle = `rgba(${ROSE},${alpha * 0.7 * (1 - qk) * (1 - k * 0.3)})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(x, y, R * 0.5 + e * spread, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+/** An idea that holds others: a ring of silk, its own moments beaded on it. */
+function drawGate(st: RenderState, s: Station, x: number, y: number, R: number, alpha: number, ink: Ink, sealed: boolean) {
+  const { ctx, M } = st;
+  const node = s.node;
+  const clock = st.reduced ? 0 : st.clock ?? 0;
+  const live = liveness(node, st.now);
+  // a soft wash inside the first ring of a Shadow
+  if (s.depth === 1 && !sealed) {
+    const wa = alpha * 0.35 * smoothstep(0.03 * M, 0.2 * M, R) * (1 - smoothstep(0.5 * M, 1.4 * M, R));
+    if (wa > 0.01) {
+      const warm = hash01(node.seed, 99) > 0.5;
+      const tint = warm ? TINT_WARM : TINT_COOL;
+      const g = ctx.createRadialGradient(x, y, R * 0.2, x, y, R * 1.05);
+      g.addColorStop(0, `rgba(${tint},0)`);
+      g.addColorStop(0.75, `rgba(${tint},${wa * 0.6})`);
+      g.addColorStop(1, `rgba(${tint},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, R * 1.05, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  const circ = Math.PI * 2 * R;
+  const n = Math.round(clamp(circ / (s.depth === 0 ? 9 : 6), 16, 520));
+  const size = clamp(R / 240, 0.6, 2.4);
+  const turn = hash01(node.seed, 5) * Math.PI * 2 + clock * 0.03 * (s.depth % 2 ? 1 : -1);
+  // a light travels the ring: faster the more alive the idea is
+  const glint = (clock * (0.12 + 0.5 * live)) % 1;
+  const base = (s.depth === 0 ? 0.28 : 0.5) * alpha;
+  for (let i = 0; i < n; i++) {
+    const f = i / n;
+    const ang = turn + f * Math.PI * 2;
+    const px = x + Math.cos(ang) * R;
+    const py = y + Math.sin(ang) * R;
+    if (px < -4 || py < -4 || px > st.w + 4 || py > st.h + 4) continue;
+    const d = Math.min(Math.abs(f - glint), 1 - Math.abs(f - glint));
+    const lit = sealed ? 0 : Math.exp(-(d * d) * 900);
+    ink.dot(px, py, size * (1 + lit), base * (0.55 + 0.45 * lit));
+  }
+  // its own moments, placed around the ring by when they happened
+  if (!sealed && s.depth > 0) {
+    const evs = node.events.filter((e) => !STRUCTURAL.has(e.kind) && (st.cut === null || e.t <= st.cut));
+    const t0 = node.began;
+    const t1 = Math.max(t0 + 1, lastActivity(node));
+    for (const e of evs) {
+      const ang = turn + ((e.t - t0) / (t1 - t0)) * Math.PI * 1.9;
+      const px = x + Math.cos(ang) * R;
+      const py = y + Math.sin(ang) * R;
+      if (px < -6 || py < -6 || px > st.w + 6 || py > st.h + 6) continue;
+      const recent = (st.now - e.t) / DAY < 7;
+      ink.dot(px, py, size * 2.6, alpha * (recent ? 0.75 : 0.5), recent);
+    }
+  }
+  // a ring can carry things of its own too (a drawing, a picture), inside it
+  if (!sealed && s.depth > 0 && node.media?.length) drawCarried(st, node, x, y, R, alpha, 0, ink, 1);
+  drawPulse(st, s, x, y, R, alpha);
+}
+
+function drawImage(st: RenderState, m: { src: string; x: number; y: number; w: number; aspect: number }, T: ScreenTransform, alpha: number, p: number) {
+  const { ctx, M } = st;
+  const W = m.w * T.s;
+  const H = W * m.aspect;
+  if (W < 3) return;
+  const x0 = T.ox + m.x * T.s - W / 2;
+  const y0 = T.oy + m.y * T.s - H / 2;
+  if (x0 > st.w || y0 > st.h || x0 + W < 0 || y0 + H < 0) return;
+  const a = alpha * smoothstep(3, 30, W);
+  // it resolves from a pale shadow of itself as it nears focus (sooner, the closer you are to it)
+  const reveal = smoothstep(0.08 * M, (0.42 - 0.18 * p) * M, W);
+  const loaded = getImage(m.src);
+  if (!loaded) {
+    ctx.fillStyle = `rgba(${INK},${a * 0.05})`;
+    ctx.fillRect(x0, y0, W, H);
+    return;
+  }
+  const maxLevel = loaded.mips.length - 1;
+  const need = Math.max(0, Math.floor(Math.log2(loaded.img.naturalWidth / Math.max(W, 1))));
+  const lf = Math.min(maxLevel, Math.max((1 - reveal) * Math.min(5, maxLevel), need));
+  const l0 = Math.floor(lf);
+  const l1 = Math.min(maxLevel, l0 + 1);
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.drawImage(loaded.mips[l0], x0, y0, W, H);
+  if (lf - l0 > 0.01 && l1 !== l0) {
+    ctx.globalAlpha = a * (lf - l0);
+    ctx.drawImage(loaded.mips[l1], x0, y0, W, H);
+  }
+  const veil = 0.9 * Math.pow(1 - reveal, 1.1);
+  if (veil > 0.01) {
+    ctx.globalAlpha = a * veil;
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(x0 - 1, y0 - 1, W + 2, H + 2);
+  }
+  ctx.restore();
+}
+
+/** What an idea carries (images, films, songs, drawings, objects), in its own frame. */
+/** How much a film of width W is held back so it fits a screen of width sw while you look at it. */
+export function filmFit(W: number, sw: number) {
+  const C = sw - 24;
+  if (W <= C) return 1;
+  const over = W / C;
+  // held at the edge until it is well past you, then let go smoothly
+  const held = C * (1 + smoothstep(1.8, 3.2, over) * (over - 1));
+  return held / W;
+}
+
+function drawCarried(st: RenderState, node: IdeaNode, x: number, y: number, R: number, alpha: number, speed: number, ink: Ink, p: number) {
+  const { M } = st;
+  const clock = st.reduced ? 0 : st.clock ?? 0;
+  const T: ScreenTransform = { ox: x, oy: y, s: R };
+  for (const m of node.media ?? []) {
+    if (m.kind === 'image') drawImage(st, m, T, alpha, p);
+    else if (m.kind === 'video') {
+      const reveal = smoothstep(0.08 * M, (0.4 - 0.16 * p) * M, m.w * R);
+      // on a narrow screen a film in front of you holds at the screen's width, so none of it is
+      // cut off; only once you are flying on past it does it grow beyond the edges
+      const fit = filmFit(m.w * R, st.w);
+      const FT: ScreenTransform = fit === 1 ? T : { ox: x, oy: y, s: R * fit };
+      drawVideo(st, m, FT, alpha, reveal);
+      if (m.by && reveal > 0.4) {
+        // signed under its corner, like a pencil signature under a print
+        const W = m.w * R * fit;
+        const H = W * m.aspect;
+        const size = Math.round(clamp(W * 0.04, 13, 17));
+        const { ctx } = st;
+        ctx.textAlign = 'right';
+        ctx.font = `italic ${size}px ${st.serif}`;
+        ctx.fillStyle = `rgba(${INK},${alpha * 0.75 * smoothstep(0.4, 0.8, reveal)})`;
+        ctx.fillText(m.by, Math.min(st.w - 12, x + m.x * R * fit + W / 2), y + m.y * R * fit + H / 2 + size * 1.3);
+        ctx.textAlign = 'left';
+      }
+    }
+    else if (m.kind === 'audio') drawAudioRing(st, m.src, { ox: x, oy: y, s: R * 2 }, alpha);
+    else if (m.kind === 'sketch') drawSketch(st, m.strokes, T, alpha * smoothstep(0.05 * M, 0.16 * M, R));
+    else if (m.kind === 'model') {
+      const W = m.w * R * 1.5;
+      const H = W * m.aspect;
+      const cx = x + m.x * R;
+      const cy = y + m.y * R;
+      // the object itself turns in place once near and still enough to look at
+      const show = alpha * smoothstep(0.14 * M, 0.26 * M, W) * (1 - smoothstep(1.6, 4, Math.abs(speed)));
+      const ringA = alpha * smoothstep(12, 60, W) * (1 - show);
+      if (ringA > 0.01) {
+        for (let i = 0; i < 40; i++) {
+          const ang = (i / 40) * Math.PI * 2 + clock * 0.4;
+          ink.dot(cx + Math.cos(ang) * W * 0.3, cy + Math.sin(ang) * H * 0.3 * (0.35 + 0.25 * Math.sin(clock * 0.3)), 1.6, ringA * 0.5);
+        }
+      }
+      if (show > 0.01) (st.models ??= []).push({ src: m.src, x: cx - W / 2, y: cy - H / 2, w: W, h: H, alpha: show });
+    }
+  }
+}
+
+/** Anything else: an ink drop that resolves into what it carries. */
+function drawThing(st: RenderState, s: Station, x: number, y: number, R: number, alpha: number, speed: number, ink: Ink, sealed: boolean, p: number) {
+  const { ctx, M } = st;
+  const node = s.node;
+  const clock = st.reduced ? 0 : st.clock ?? 0;
+  const live = liveness(node, st.now);
+  const media = node.media ?? [];
+  const song = media.find((m) => m.kind === 'audio');
+  const content = !!(media.length || node.artifact);
+  const film = media.some((m) => m.kind === 'video');
+
+  // the drop: dense far away, thinning to a stain once what it carries shows
+  const breathe = node.state === 'alive' && !st.reduced ? 1 + 0.04 * Math.sin(clock * 0.8 + (node.seed % 97)) : 1;
+  const rb = R * (sealed ? 0.22 : 0.34) * breathe;
+  const thin = content && !sealed ? 1 - 0.8 * smoothstep(0.06 * M, 0.22 * M, R) : 1;
+  // (a film needs no drop: it is printed straight onto the page)
+  const coreA = film ? 0 : alpha * (0.3 + 0.35 * live) * thin * (song ? 0.5 : 1);
+  if (coreA > 0.01 && rb > 0.5) {
+    ctx.beginPath();
+    const n = 28;
+    for (let i = 0; i <= n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const wob = 1 + 0.12 * noise1(a * 1.6 + clock * 0.05, node.seed) + 0.05 * noise1(a * 4.3 - clock * 0.07, node.seed + 3);
+      const px = x + Math.cos(a) * rb * wob;
+      const py = y + Math.sin(a) * rb * wob;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    const g = ctx.createRadialGradient(x, y, 0, x, y, rb * 1.15);
+    g.addColorStop(0, `rgba(${INK},${coreA})`);
+    g.addColorStop(0.3, `rgba(${INK},${coreA * 0.6})`);
+    g.addColorStop(0.72, `rgba(${INK},${coreA * 0.15})`);
+    g.addColorStop(1, `rgba(${INK},0)`);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+  if (sealed) {
+    ctx.strokeStyle = `rgba(${INK},${alpha * 0.3})`;
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.arc(x, y, R * 0.3, 0, Math.PI * 2);
+    ctx.stroke();
+    return;
+  }
+
+  // a fine ring with a light travelling it: something here is alive, and how
+  // much (things that move on their own, a song, a film, an object, need none)
+  const moving = media.some((m) => m.kind === 'audio' || m.kind === 'video' || m.kind === 'model' || m.kind === 'image');
+  if (!moving) {
+    const ringR = R * 0.52;
+    const rn = Math.round(clamp((Math.PI * 2 * ringR) / 7, 12, 220));
+    const glint = (clock * (0.1 + 0.45 * live) + hash01(node.seed, 11)) % 1;
+    for (let i = 0; i < rn; i++) {
+      const f = i / rn;
+      const ang = f * Math.PI * 2 - Math.PI / 2;
+      const d = Math.min(Math.abs(f - glint), 1 - Math.abs(f - glint));
+      const lit = Math.exp(-(d * d) * 700);
+      ink.dot(x + Math.cos(ang) * ringR, y + Math.sin(ang) * ringR, clamp(R / 300, 0.5, 1.8) * (1 + lit), alpha * (0.16 + 0.5 * lit * live));
+    }
+  }
+
+  // what it carries
+  drawCarried(st, node, x, y, R, alpha, speed, ink, p);
+  if (node.artifact) drawArtifact(st, node, { ox: x, oy: y + R * 0.2, s: R * 2.4 }, alpha);
+  if (!content && node.events.length > 1) drawRhythm(st, node, { ox: x, oy: y + R * 0.25, s: R * 2 }, alpha);
+
+  // followed: a rose ring of dots you put there
+  if (st.lens.followed.has(node.id)) {
+    for (let i = 0; i < 36; i++) {
+      const ang = (i / 36) * Math.PI * 2 + clock * 0.02;
+      ink.dot(x + Math.cos(ang) * R * 0.62, y + Math.sin(ang) * R * 0.62, 1.2, alpha * 0.5, true);
+    }
+  }
+  drawPulse(st, s, x, y, R, alpha);
+}
+
+// ---------------------------------------------------------------------------
+
+/** Colour emoji print in the page's ink like every other mark (their shape stays, their colour goes). */
+const PICTOGRAPH = /\p{Extended_Pictographic}/u;
+export function inkText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number) {
+  if (!PICTOGRAPH.test(text)) {
+    ctx.fillText(text, x, y);
+    return;
+  }
+  const op = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'luminosity';
+  ctx.fillText(text, x, y);
+  ctx.globalCompositeOperation = op;
+}
+
+interface Title {
+  text: string;
+  x: number;
+  y: number;
+  size: number;
+  a: number;
+  near: number;
+  /** The one line under it, and how present it is. */
+  sub?: string;
+  subA?: number;
+  here?: boolean;
+  id?: string;
+}
+
+/** First time the arrival was seen (clock seconds): the name writes itself on once. */
+let authorSeen: number | null = null;
+
+/**
+ * At arrival, inside the Canvas's own ring: his name written into the paper in
+ * dotted ink, and one line of what he does. Each verb leads to its evidence.
+ * It passes behind you with the ring, and meets you again each lap.
+ */
+function drawAuthor(st: RenderState, stream: Stream, x: number, y: number, R: number, alpha: number, ink: Ink) {
+  const { ctx, M } = st;
+  const a = alpha * (1 - smoothstep(0.7 * M, 1.2 * M, R));
+  if (a < 0.02) return;
+  const words = inkWords(AUTHOR.name, st.serif);
+  if (!words) return;
+  const clock = st.clock ?? 0;
+  authorSeen ??= clock;
+  const prog = st.reduced ? 1 : clamp((clock - authorSeen) / 1.1, 0, 1);
+  const size = Math.max(30, R * 0.2);
+  const x0 = x - (words.w * size) / 2;
+  const y0 = y + R * 0.42;
+  const dot = Math.max(0.8, size / 34);
+  const edge = prog * words.w;
+  const pts = words.pts;
+  for (let i = 0; i < pts.length; i += 2) {
+    if (pts[i] > edge) continue;
+    ink.dot(x0 + pts[i] * size, y0 + pts[i + 1] * size, dot, a * 0.8);
+  }
+  const fsz = Math.round(Math.max(14, R * 0.042));
+  const la = a * 0.6 * smoothstep(0.55, 1, prog);
+  if (la < 0.01) return;
+  const y2 = y0 + fsz * 1.9;
+  ctx.font = `italic ${fsz}px ${st.serif}`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  const full = ctx.measureText(AUTHOR.line).width;
+  const lx = x - full / 2;
+  ctx.fillStyle = `rgba(${INK},${la})`;
+  ctx.fillText(AUTHOR.line, lx, y2);
+  for (const [word, ids] of Object.entries(AUTHOR.go)) {
+    const at = AUTHOR.line.indexOf(word);
+    const idx = stream.byId.get(ids[ids.length - 1]);
+    if (at < 0 || idx === undefined) continue;
+    const before = ctx.measureText(AUTHOR.line.slice(0, at)).width;
+    const ww = ctx.measureText(word).width;
+    const target = stream.stations[idx];
+    st.hits.push({ kind: 'node', node: target.node, path: target.path, x: lx + before + ww / 2, y: y2 - fsz * 0.35, r: ww / 2 + 6, size: 1e9 });
+  }
+}
+
+/** Words wrapped to a width, at most two lines. */
+function wrapTwo(ctx: CanvasRenderingContext2D, text: string, width: number): string[] {
+  if (ctx.measureText(text).width <= width) return [text];
+  const words = text.split(' ');
+  let best = 1;
+  for (let i = 1; i < words.length; i++) {
+    if (ctx.measureText(words.slice(0, i).join(' ')).width <= width) best = i;
+  }
+  let rest = words.slice(best).join(' ');
+  if (ctx.measureText(rest).width > width) {
+    while (rest.length > 1 && ctx.measureText(rest + '…').width > width) rest = rest.slice(0, -1);
+    rest = rest.trimEnd() + '…';
+  }
+  return [words.slice(0, best).join(' '), rest];
+}
+
+export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs: FlightState) {
+  // sizes in the flight are measured against the flight's own scale
+  st.M = flightScale(st.w, st.h);
+  const { ctx, M } = st;
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0, 0, st.w, st.h);
+  st.hits.length = 0;
+  st.models = [];
+  st.videos = new Set();
+  fs.frames.clear();
+  const v = viewOf(stream, cam, st.w, st.h, fs.hidden);
+  const L = stream.length;
+  const speed = cam.shown;
+  const ink = new Ink();
+
+  const born = (s: Station) => st.cut === null || s.depth === 0 || s.node.id === fs.here || s.node.began <= st.cut;
+  const gone = (s: Station) => !born(s) || fs.hidden(s);
+
+  // at a branch, every way on is a side tunnel off the wall just ahead: faint while falling, fuller
+  // once still, and kept in view while steering so it is seen before it is passed
+  const mouthAhead = Math.max(MOUTH_AHEAD, (WALL * v.F) / (0.33 * Math.min(st.w, st.h)) - FOCUS);
+  const mouths = fs.ahead?.length && fs.hereZ !== undefined ? mouthsOf(fs.ahead, fs.hereZ, mouthAhead) : [];
+  drawTunnel(st, v, cam, ink, fs.web, mouths);
+  const mouthHits: (Hit & { reach: number })[] = [];
+  if (mouths.length) {
+    const a = Math.max(fs.steer?.on ? 0.7 : 0, 0.4 + 0.55 * (fs.still ?? 0));
+    for (const m of mouths) {
+      const id = m.p.node.id;
+      const aimed = fs.aheadAim === id || st.hoverId === id;
+      const h = drawMouth(st, v, m, a, aimed, fs.leanedAhead === id || !!fs.leaned?.has(id), !!fs.exploredAhead?.has(id) || !!fs.explored?.has(id), ink);
+      if (h) mouthHits.push(h);
+    }
+  }
+  drawSpecks(st, v, cam, ink);
+  for (const s of stream.stations) if (s.gate && !gone(s)) drawTube(st, v, s, L, ink);
+  drawThread(st, v, stream, ink, cam, gone, fs.web);
+  ink.flush(ctx);
+
+  // far to near, so nearer things are drawn over farther ones
+  const list: { s: Station; dz: number }[] = [];
+  for (const s of stream.stations) {
+    if (gone(s)) continue;
+    for (const dz of aheadCopies(s.z, v.z, L, NEAR, FAR)) list.push({ s, dz });
+  }
+  list.sort((a, b) => b.dz - a.dz);
+
+  const titles: Title[] = [];
+  // where each thing was drawn (nearest copy last wins, as it is drawn last): for threads of credit
+  const seen = new Map<string, [number, number, number]>();
+  // what a near film, picture or object covers: names of things behind it are not written over it
+  const covers: { r: [number, number, number, number]; near: number }[] = [];
+  const quiet = 1 - smoothstep(2.5, 7, Math.abs(speed));
+  for (const { s, dz } of list) {
+    const [x, y, k] = project(v, s.x, s.y, dz);
+    const R = s.r * k;
+    const alpha = fogOf(dz);
+    if (alpha < 0.01) continue;
+    const reach = s.gate ? R * 1.1 : R;
+    if (x + reach < 0 || y + reach < 0 || x - reach > st.w || y - reach > st.h) continue;
+    const p = fs.closeness(s);
+    const sealed = s.depth > 1 && s.node.disclosure > p;
+    if (s.gate) drawGate(st, s, x, y, R, alpha, ink, sealed);
+    else drawThing(st, s, x, y, R, alpha, speed, ink, sealed, p);
+    if (s.depth === 0) drawAuthor(st, stream, x, y, R, alpha, ink);
+    const res = fs.resonance?.get(s.node.id);
+    if (res && !sealed) drawDew(st, s, x, y, R, alpha, res, ink);
+    const pres = fs.presence?.get(s.node.id);
+    if (pres && !sealed) drawPresence(st, s, x, y, R, alpha, pres, ink);
+    if (fs.leaned?.has(s.node.id) && !sealed) drawLeaned(x, y, R, alpha, ink);
+    ink.flush(ctx);
+    if (!fs.frames.has(s.node.id) || dz < FOCUS * 2) fs.frames.set(s.node.id, { ox: x, oy: y, s: R });
+    if (!sealed) seen.set(s.node.id, [x, y, alpha]);
+
+    if (s.depth > 0) {
+      // what a film, picture or object covers, however near: names from behind are not written over it
+      if (!sealed) {
+        for (const m of s.node.media ?? []) {
+          if (m.kind !== 'video' && m.kind !== 'image' && m.kind !== 'model') continue;
+          const W = m.w * R;
+          const H = W * m.aspect;
+          const cx = x + m.x * R;
+          const cy = y + m.y * R;
+          covers.push({ r: [cx - W / 2, cy - H / 2, cx + W / 2, cy + H / 2], near: 1 / dz });
+        }
+      }
+      if (!s.gate && R < 0.9 * M) {
+        // a film is touched anywhere on it, not only near its centre
+        let r = Math.max(R * 0.6, 16);
+        for (const m of s.node.media ?? []) {
+          if (m.kind === 'video' || m.kind === 'image' || m.kind === 'model') r = Math.max(r, 0.45 * Math.max(m.w * R, m.w * R * m.aspect));
+        }
+        st.hits.push({ kind: 'node', node: s.node, path: s.path, sealed, x, y, r, size: R });
+      } else if (s.gate && R < 0.3 * M) {
+        st.hits.push({ kind: 'node', node: s.node, path: s.path, sealed, x, y, r: Math.max(R * 0.9, 16), size: R * 1.5 });
+      }
+      // very little text: a name, only while it is near enough to read and you are not rushing
+      // (it comes in once near enough and goes only once clearly behind that: see phases.ts)
+      let nearIn = smoothstep(0.035 * M, 0.09 * M, R);
+      if (fs.phases) {
+        const ph = stepPhase(fs.phases.get(s.node.id), Math.min(1, R / (0.09 * M)), fs.dt ?? 1 / 60);
+        fs.phases.set(s.node.id, ph);
+        nearIn = ph.a;
+      }
+      const win = nearIn * (1 - smoothstep(s.gate ? 0.55 * M : 0.42 * M, s.gate ? 0.95 * M : 0.75 * M, R));
+      const ta = alpha * win * quiet;
+      if (ta > 0.02 && s.node.title && !sealed) {
+        // sizes in half-pixel steps, so the font is not rebuilt every frame
+        const size = Math.round(clamp(11 + R / 22, 12, s.gate ? 22 : 19) * 2) / 2;
+        const song = s.node.media?.some((m) => m.kind === 'audio');
+        // a song's name sits inside its ring; anything else's beneath it
+        let ty = s.gate ? Math.max(58, y - R - size * 0.6) : song ? y + R * 0.18 + size * 0.4 : y + R * 0.62 + size * 1.1;
+        // a film's name is written under it, below its signature, never across the picture
+        // (pictures too: the lowest edge of whatever it shows)
+        if (!s.gate && !song) {
+          for (const film of s.node.media ?? []) {
+            if (film.kind !== 'video' && film.kind !== 'image') continue;
+            const fit = film.kind === 'video' ? filmFit(film.w * R, st.w) : 1;
+            const H = film.w * R * fit * film.aspect;
+            const signed = film.kind === 'video' && film.by;
+            ty = Math.max(ty, y + film.y * R * fit + H / 2 + size * (signed ? 2.4 : 1.3));
+          }
+        }
+        // and the one line, only for the thing in front of you, only while you are still
+        const sub = fs.here === s.node.id ? fs.lineFor?.(s) : undefined;
+        titles.push({ id: s.node.id, text: s.node.title, x, y: ty, size, a: ta, near: 1 / dz, sub, subA: sub ? ta * (fs.still ?? 0) : 0, here: fs.here === s.node.id });
+      }
+    }
+  }
+  // credit is a thread: what was built on something is joined to it in rose
+  for (const { s } of list) {
+    for (const l of s.node.links ?? []) {
+      if (l.kind !== 'grew-from') continue;
+      const a = seen.get(s.node.id);
+      const b = seen.get(l.to);
+      if (!a || !b) continue;
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const n = Math.min(160, Math.floor(len / 7));
+      const alpha = 0.55 * Math.min(a[2], b[2]);
+      for (let i = 1; i < n; i++) {
+        const t = i / n;
+        // it bows a little, like a thread and not a ruler
+        const bow = Math.sin(t * Math.PI) * len * 0.08;
+        const nx = -(b[1] - a[1]) / (len || 1);
+        const ny = (b[0] - a[0]) / (len || 1);
+        ink.dot(a[0] + (b[0] - a[0]) * t + nx * bow, a[1] + (b[1] - a[1]) * t + ny * bow, 1.1, alpha, true);
+      }
+    }
+  }
+  ink.flush(ctx);
+  // the clock hand points at the next thing beyond the one in front of you
+  let next: [number, number] | null = null;
+  let nextDz = Infinity;
+  for (const { s, dz } of list) {
+    if (s.depth === 0 || dz <= FOCUS * 1.15 || dz >= nextDz) continue;
+    const [x, y] = project(v, s.x, s.y, dz);
+    next = [x, y];
+    nextDz = dz;
+  }
+  drawClock(st, v, next, ink);
+  if (fs.topics) drawTopics(st, v, fs.topics, fs.topicFacing ?? null, fs.avoid);
+  else drawHours(st, v, fs.steer?.on ? fs.steer.facing : null, fs.steer?.turned, fs.avoid);
+  // where the nearest food ahead lies, for the compass's rose dot
+  let food: number | null = null;
+  if (fs.web?.food.size) {
+    let bestDz = Infinity;
+    for (const { s, dz } of list) {
+      if (!fs.web.food.has(s.node.id) || dz <= FOCUS * 1.15 || dz >= bestDz) continue;
+      const [x, y] = project(v, s.x, s.y, dz);
+      food = Math.atan2(y - v.cy, x - v.cx);
+      bestDz = dz;
+    }
+  }
+  fs.compass = { roll: v.roll, next: next ? Math.atan2(next[1] - v.cy, next[0] - v.cx) : null, food };
+  ink.flush(ctx);
+  // the nearest thing under a finger is the one it means
+  st.hits.reverse();
+
+  // a side tunnel's mouth is what a finger on it means, over whatever lies beyond it
+  st.hits.unshift(...mouthHits);
+
+  // names: nearest first, never on top of one another
+  titles.sort((a, b) => b.near - a.near);
+  const placed: [number, number, number, number][] = [];
+  // whose names are written this frame (an aimed side tunnel's thing, already named, is not named twice)
+  const named = new Set<string>();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  let font = '';
+  const setFont = (f: string) => {
+    if (f !== font) ctx.font = font = f;
+  };
+  // only a few names at once: the nearest, and always the one in front of you
+  for (const t of withinBudget(titles)) {
+    setFont(`italic ${t.size}px ${st.serif}`);
+    // a long name wraps to the screen (a narrow phone included) instead of running off it
+    const names = wrapTwo(ctx, t.text, st.w - 32);
+    const w = Math.max(...names.map((n) => ctx.measureText(n).width));
+    const tx = w < st.w - 32 && names.length > 1 ? clamp(t.x, 16 + w / 2, st.w - 16 - w / 2) : t.x;
+    const lastY = t.y + (names.length - 1) * t.size * 1.2;
+    const r: [number, number, number, number] = [tx - w / 2 - 4, t.y - t.size, tx + w / 2 + 4, lastY + t.size * 0.35];
+    // the room its one line would take is measured now, before deciding: it must never print over
+    // a name already placed, even one placed after this title's own name was checked
+    const hasSub = t.sub && (t.subA ?? 0) > 0.01;
+    let subLines: string[] = [];
+    let ss = 0;
+    if (hasSub) {
+      ss = Math.max(13, Math.round(t.size * 0.78));
+      setFont(`italic ${ss}px ${st.serif}`);
+      subLines = wrapTwo(ctx, t.sub!, Math.min(360, st.w - 32));
+      let widest = w;
+      for (const line of subLines) widest = Math.max(widest, ctx.measureText(line).width);
+      r[0] = Math.min(r[0], tx - widest / 2 - 4);
+      r[2] = Math.max(r[2], tx + widest / 2 + 4);
+      r[3] = lastY + t.size * 1.35 + subLines.length * ss * 1.3;
+    }
+    if (placed.some((q) => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1])) continue;
+    if (covers.some((c) => c.near > t.near * 1.02 && r[0] < c.r[2] && r[2] > c.r[0] && r[1] < c.r[3] && r[3] > c.r[1])) continue;
+    setFont(`italic ${t.size}px ${st.serif}`);
+    ctx.fillStyle = `rgba(${INK},${t.a * 0.78})`;
+    names.forEach((n, i) => inkText(ctx, n, tx, t.y + i * t.size * 1.2));
+    if (hasSub) {
+      setFont(`italic ${ss}px ${st.serif}`);
+      ctx.fillStyle = `rgba(${INK},${(t.subA ?? 0) * 0.62})`;
+      let yy = lastY + t.size * 1.35;
+      for (const line of subLines) {
+        const lw = ctx.measureText(line).width;
+        const lx = clamp(t.x, 16 + lw / 2, st.w - 16 - lw / 2);
+        ctx.fillText(line, lx, yy);
+        yy += ss * 1.3;
+      }
+    }
+    placed.push(r);
+    if (t.id) named.add(t.id);
+  }
+  ctx.textAlign = 'left';
+  for (const h of mouthHits) {
+    if ((fs.aheadAim === h.node.id || st.hoverId === h.node.id) && h.node.title && !named.has(h.node.id)) drawMouthName(st, v, h.node.title, h.x, h.y, h.reach, 1);
+  }
+  ink.flush(st.ctx);
+  if (fs.steer?.on) drawDrop(st, v);
+}
+
+/** Hits this frame carry station paths; the viewer's pointer picks the nearest. */
+export type { Hit };
+
+

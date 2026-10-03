@@ -23,7 +23,7 @@ export default function LineageTab({ twin }: LineageTabProps) {
 
   const mutatedEnthalpy = (pcmMassG * 0.241).toFixed(2);
   const deltaEnthalpy = ((Number(mutatedEnthalpy) - baselineEnthalpy) / baselineEnthalpy * 100).toFixed(1);
-  
+
   const mutatedWeight = (30 + pcmMassG * 0.3).toFixed(1);
   const deltaWeight = ((Number(mutatedWeight) - baselineWeight) / baselineWeight * 100).toFixed(1);
 
@@ -55,7 +55,7 @@ export default function LineageTab({ twin }: LineageTabProps) {
 
       {/* Lineage Tree Visualization */}
       <div className={styles.section} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1.5rem 0' }}>
-        
+
         {/* Ancestor Concept Node */}
         <div style={{
           background: 'var(--bg-primary)',
@@ -101,7 +101,7 @@ export default function LineageTab({ twin }: LineageTabProps) {
         }}>
           <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#00e5a3', letterSpacing: '0.5px' }}>CURRENT CANONICAL SPECIMEN</div>
           <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0.25rem 0' }}>
-            RESIP™ — Twin #0001 (Outdoor Edition)
+            RESIP™ ,  Twin #0001 (Outdoor Edition)
           </div>
           <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
             50g SAT Core • 316L Food-Grade Conduit • $4.50 BOM • Calibrated ODE Engine
@@ -144,10 +144,10 @@ export default function LineageTab({ twin }: LineageTabProps) {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-          
+
           {/* Sliders */}
           <div style={{ background: 'var(--bg-primary)', padding: '1.25rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-            
+
             <div style={{ marginBottom: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.4rem' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>PCM Core Mass</span>
@@ -221,7 +221,7 @@ export default function LineageTab({ twin }: LineageTabProps) {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Latent Enthalpy Yield</span>
                   <div style={{ textAlign: 'right' }}>

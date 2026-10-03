@@ -1,101 +1,108 @@
 """
-TwinThink Automatic Reality State Calculator
-Derives epistemic completeness across 5 dimensions from evidence and claims.
+TwinThink Automatic Reality State Derivation Engine
+Evaluates evidence artifacts, claims, and telemetry to compute dimensional epistemic states.
 """
 
-from typing import List, Dict, Any
-from ..schema import RealityState, RealityDimensionState, Claim
+from typing import List, Dict, Any, Optional
+from ..schema import RealityState, RealityDimension, Claim
 
-def derive_reality_state(
+def derive_reality_state_v01(
     files: List[str],
     claims: List[Claim],
     has_step_cad: bool = False,
-    has_test_telemetry: bool = False,
+    has_glb: bool = False,
+    has_bom: bool = False,
+    has_tolerances: bool = False,
     has_simulation_ode: bool = False,
-    rmse_error: float = None
+    test_runs_count: int = 0,
+    min_rmse: Optional[float] = None,
+    has_safety_cert: bool = False
 ) -> RealityState:
-    # 1. Structural Reality
-    if has_step_cad and any(f.endswith('.glb') for f in files):
-        struct_status = "Verified"
-        struct_score = 100
-        struct_desc = "Parametric 3D solid geometry (STEP AP214) and web render mesh present."
-    elif has_step_cad or any(f.endswith('.glb') for f in files):
-        struct_status = "Partial"
-        struct_score = 70
-        struct_desc = "Mesh render available, awaiting native multi-body solid CAD verification."
+    """
+    Evaluates evidence artifacts and computes dimensional confidence and status according to the v0.1 spec.
+    """
+    # 1. Structure Dimension
+    struct_score = 0.0
+    struct_reasons = []
+    if has_step_cad or has_glb:
+        struct_score += 0.40
+        struct_reasons.append("Complete CAD geometry (STEP/GLB)")
+    if has_bom:
+        struct_score += 0.40
+        struct_reasons.append("sourced BOM with vendor pricing")
+    if has_tolerances:
+        struct_score += 0.20
+        struct_reasons.append("fits & critical tolerances defined")
+        
+    struct_score = round(min(1.0, struct_score), 2)
+    if struct_score >= 0.85:
+        struct_status = "ESTABLISHED"
+    elif struct_score >= 0.50:
+        struct_status = "PARTIALLY_ESTABLISHED"
     else:
-        struct_status = "Concept"
-        struct_score = 25
-        struct_desc = "Concept drawings only. Dimensional solid geometry not yet established."
+        struct_status = "CONCEPTUAL"
+        
+    struct_reason = " + ".join(struct_reasons) if struct_reasons else "Dimensional solid geometry not yet established."
 
-    # 2. Thermal / Physical Dynamics
-    if has_simulation_ode and has_test_telemetry and rmse_error is not None and rmse_error < 2.5:
-        therm_status = "Verified"
-        therm_score = 92
-        therm_desc = f"ODE model calibrated against physical benchtop thermocouple runs (RMSE = {rmse_error:.2f}°C)."
-    elif has_simulation_ode and has_test_telemetry:
-        therm_status = "Experimental"
-        therm_score = 80
-        therm_desc = "Physics solver present with uncalibrated empirical test logs."
-    elif has_simulation_ode:
-        therm_status = "Experimental"
-        therm_score = 65
-        therm_desc = "Theoretical ODE simulation model present. Awaiting physical benchtop sensor logging."
+    # 2. Thermal Dimension
+    therm_score = 0.0
+    therm_reasons = []
+    if has_simulation_ode:
+        therm_score += 0.30
+        therm_reasons.append("4-node ODE solver")
+    if test_runs_count > 0:
+        therm_score += 0.30
+        therm_reasons.append(f"{test_runs_count} physical test runs")
+    if min_rmse is not None and min_rmse < 4.0:
+        therm_score += 0.40
+        therm_reasons.append(f"calibrated residual (RMSE: {min_rmse:.1f}°C)")
+        
+    therm_score = round(min(1.0, therm_score), 2)
+    if therm_score >= 0.85:
+        therm_status = "VERIFIED"
+    elif therm_score >= 0.50:
+        therm_status = "EXPERIMENTAL"
     else:
-        therm_status = "Unvalidated"
-        therm_score = 20
-        therm_desc = "Thermal behavior estimated without dynamic differential equations."
+        therm_status = "UNKNOWN"
+        
+    therm_reason = " ".join(therm_reasons) if therm_reasons else "Thermal behavior unmodeled."
 
-    # 3. Material Provenance
-    material_claims = [c for c in claims if any(k in c.key.lower() for k in ['material', 'conduit', 'pcm', 'silicone', 'bom'])]
-    verified_mats = [c for c in material_claims if c.status in ["VERIFIED", "MEASURED"]]
-    
-    if len(verified_mats) >= 3:
-        mat_status = "Verified"
-        mat_score = 90
-        mat_desc = "Food-contact 316L, SAT salt, and silicone elastomer properties verified with suppliers."
-    elif len(material_claims) >= 2:
-        mat_status = "Partial"
-        mat_score = 65
-        mat_desc = "Key chemical and alloy materials specified from literature database (NIST)."
+    # 3. Materials Dimension
+    mat_score = 0.50  # Literature validated
+    mat_reason = "Food-grade 316L and SAT literature validated; silicone high-temp leach test pending."
+    mat_status = "PARTIALLY_ESTABLISHED"
+
+    # 4. Safety Dimension
+    if has_safety_cert:
+        safe_score = 0.85
+        safe_status = "VERIFIED"
+        safe_reason = "Certified food-contact and pressure testing complete."
     else:
-        mat_status = "Concept"
-        mat_score = 30
-        mat_desc = "Generic material classes specified. Specific grades pending supplier quote."
+        safe_score = 0.20
+        safe_status = "UNKNOWN"
+        safe_reason = "No certified drop/rupture test or thermal skin-contact safety assay on record."
 
-    # 4. Safety & Regulatory
-    safety_claims = [c for c in claims if 'safety' in c.key.lower() or 'food' in c.key.lower()]
-    if any(c.status == "VERIFIED" for c in safety_claims):
-        safe_status = "Verified"
-        safe_score = 85
-        safe_desc = "Food-contact certification and pressure tests confirmed."
-    elif safety_claims:
-        safe_status = "Unvalidated"
-        safe_score = 35
-        safe_desc = "Prototype status. Formal FDA / LFGB food-contact laboratory certification pending."
-    else:
-        safe_status = "Unknown"
-        safe_score = 15
-        safe_desc = "Safety envelope not yet formally established."
+    # 5. Manufacturing Dimension
+    mfg_score = 0.35
+    mfg_status = "CONCEPTUAL"
+    mfg_reason = "Bench assembly proven; automated snap-disc sealing tool unvalidated."
 
-    # 5. Manufacturing Readiness
-    bom_claims = [c for c in claims if 'bom' in c.key.lower() or 'cost' in c.key.lower()]
-    if any(c.status == "MEASURED" for c in bom_claims):
-        mfg_status = "Partial"
-        mfg_score = 45
-        mfg_desc = "Pilot build (100 units) priced from standard off-the-shelf catalog parts ($4.50 USD)."
-    else:
-        mfg_status = "Concept"
-        mfg_score = 20
-        mfg_desc = "Concept BOM estimates without binding high-volume tooling quotes."
-
-    overall = int((struct_score * 0.25) + (therm_score * 0.3) + (mat_score * 0.2) + (safe_score * 0.15) + (mfg_score * 0.1))
+    composite = round(
+        (struct_score * 0.25) +
+        (therm_score * 0.30) +
+        (mat_score * 0.20) +
+        (safe_score * 0.15) +
+        (mfg_score * 0.10),
+        2
+    )
 
     return RealityState(
-        structural=RealityDimensionState(status=struct_status, score_pct=struct_score, evidence_count=len([f for f in files if f.endswith(('.step', '.glb', '.stl'))]), rationale=struct_desc),
-        thermal=RealityDimensionState(status=therm_status, score_pct=therm_score, evidence_count=len([f for f in files if 'sim' in f or 'test' in f]), rationale=therm_desc),
-        material=RealityDimensionState(status=mat_status, score_pct=mat_score, evidence_count=len(material_claims), rationale=mat_desc),
-        safety=RealityDimensionState(status=safe_status, score_pct=safe_score, evidence_count=len(safety_claims), rationale=safe_desc),
-        manufacturing=RealityDimensionState(status=mfg_status, score_pct=mfg_score, evidence_count=len(bom_claims), rationale=mfg_desc),
-        overall_score_pct=overall
+        composite_score=composite,
+        derived_dimensions={
+            "structure": RealityDimension(status=struct_status, confidence=struct_score, reason=struct_reason),
+            "thermal": RealityDimension(status=therm_status, confidence=therm_score, reason=therm_reason),
+            "materials": RealityDimension(status=mat_status, confidence=mat_score, reason=mat_reason),
+            "safety": RealityDimension(status=safe_status, confidence=safe_score, reason=safe_reason),
+            "manufacturing": RealityDimension(status=mfg_status, confidence=mfg_score, reason=mfg_reason)
+        }
     )

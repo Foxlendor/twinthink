@@ -1,0 +1,647 @@
+.field {
+  --ink: 30, 28, 36;
+  --paper: #fbfaf7;
+  --paper-rgb: 251, 250, 247;
+  --rose: 150, 92, 122;
+  position: fixed;
+  inset: 0;
+  background: var(--paper);
+  color: rgb(var(--ink));
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  outline: none;
+}
+
+.mark {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 1.15rem;
+  letter-spacing: 0.01em;
+  color: rgba(var(--ink), 0.62);
+  transition: color 200ms ease;
+}
+
+.mark:hover,
+.mark:focus-visible {
+  color: rgba(var(--ink), 0.95);
+}
+
+.mode {
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: rgba(var(--ink), 0.45);
+  border-bottom: 1px solid transparent;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+
+.me {
+  position: absolute;
+  top: 46px;
+  right: 22px;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: rgba(var(--rose), 0.8);
+}
+
+.me:hover,
+.me:focus-visible,
+.mode:hover,
+.mode:focus-visible {
+  color: rgba(var(--ink), 0.9);
+  border-bottom-color: rgba(var(--ink), 0.25);
+}
+
+.trail {
+  position: absolute;
+  left: 20px;
+  bottom: 18px;
+  right: 40%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.98rem;
+  color: rgba(var(--ink), 0.5);
+}
+
+/* the trail's empty space lets a swipe through to the Canvas */
+.trail {
+  pointer-events: none;
+}
+
+.crumb,
+.here {
+  pointer-events: auto;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.crumb:hover,
+.crumb:focus-visible {
+  color: rgba(var(--ink), 0.9);
+}
+
+.here {
+  color: rgba(var(--ink), 0.85);
+  cursor: default;
+}
+
+.sep {
+  color: rgba(var(--ink), 0.25);
+}
+
+.actions {
+  position: absolute;
+  right: 20px;
+  bottom: 16px;
+  display: flex;
+  gap: 18px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 60%;
+}
+
+.quiet,
+.following {
+  background: none;
+  border: none;
+  padding: 4px 0;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: rgba(var(--ink), 0.52);
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+
+.quiet:hover,
+.quiet:focus-visible {
+  color: rgba(var(--ink), 0.92);
+  border-bottom-color: rgba(var(--ink), 0.25);
+}
+
+.following {
+  color: rgb(var(--rose));
+}
+
+.tip {
+  position: absolute;
+  pointer-events: none;
+  padding: 2px 0;
+  max-width: 280px;
+  animation: tipIn 180ms ease-out;
+}
+
+.tipTitle {
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.98rem;
+  color: rgba(var(--ink), 0.85);
+  text-shadow: 0 0 6px var(--paper), 0 0 2px var(--paper);
+}
+
+.tipLine {
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  letter-spacing: 0;
+  color: rgba(var(--ink), 0.5);
+  text-shadow: 0 0 6px var(--paper);
+}
+
+@keyframes tipIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+
+.composer {
+  position: absolute;
+  width: 290px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.composer input,
+.composer textarea {
+  width: 100%;
+  resize: none;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(var(--ink), 0.3);
+  padding: 4px 0;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 1.1rem;
+  color: rgb(var(--ink));
+  outline: none;
+}
+
+.composer textarea {
+  font-size: 1rem;
+  line-height: 1.45;
+  border: 1px solid rgba(var(--ink), 0.2);
+  padding: 8px 10px;
+}
+
+.composer input::placeholder,
+.composer textarea::placeholder {
+  color: rgba(var(--ink), 0.35);
+}
+
+.composer.wide {
+  width: min(460px, calc(100vw - 32px));
+  padding: 12px;
+  background: rgba(var(--paper-rgb), 0.94);
+  box-shadow: 0 0 40px 20px rgba(var(--paper-rgb), 0.94);
+}
+
+.composer.wide textarea {
+  background: var(--paper);
+}
+
+.composerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.composerSend {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: rgb(var(--rose));
+}
+
+.composerHint {
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: rgba(var(--ink), 0.4);
+}
+
+.hint {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  transform: translateX(-50%);
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: rgba(var(--ink), 0.4);
+  pointer-events: none;
+  animation: hintIn 1.2s 2.5s both, breathe 5s 3.7s ease-in-out infinite;
+}
+
+@keyframes hintIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.srNav {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.srNav:focus-within {
+  width: auto;
+  height: auto;
+  clip: auto;
+  left: 20px;
+  top: 56px;
+  padding: 10px 12px;
+  background: rgba(var(--paper-rgb), 0.96);
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+}
+
+.srNav ul {
+  list-style: none;
+}
+
+.srNav button {
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+@media (max-width: 640px) {
+  .trail {
+    right: 20px;
+    bottom: 64px;
+    font-size: 0.9rem;
+  }
+  /* one swipeable row under the trail, so actions never cover it */
+  .actions {
+    max-width: none;
+    left: 0;
+    right: 0;
+    bottom: 14px;
+    padding: 0 20px;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+    gap: 16px;
+    /* the row fades at the edge, so it is plain there is more to swipe to */
+    mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+    padding-right: 40px;
+  }
+  .actions::-webkit-scrollbar {
+    display: none;
+  }
+  .privacy {
+    bottom: 92px;
+  }
+  .give {
+    right: 12px;
+    left: 12px;
+    bottom: 104px;
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hint {
+    animation: none;
+  }
+}
+
+.replay {
+  position: absolute;
+  left: 50%;
+  bottom: 54px;
+  transform: translateX(-50%);
+  width: min(360px, 70vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.replayTrack {
+  width: 100%;
+  height: 18px;
+  cursor: ew-resize;
+  position: relative;
+  touch-action: none;
+  outline: none;
+}
+
+.replayTrack::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 9px;
+  height: 1px;
+  background: rgba(var(--ink), 0.14);
+}
+
+.replayFill {
+  position: absolute;
+  left: 0;
+  top: 8.5px;
+  height: 2px;
+  background: rgba(var(--ink), 0.55);
+}
+
+.replayTrack:focus-visible::before {
+  background: rgba(var(--ink), 0.4);
+}
+
+.news {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  animation: tipIn 400ms ease-out;
+}
+
+.news .quiet {
+  color: rgb(var(--rose));
+}
+
+.newsClose {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: rgba(var(--ink), 0.35);
+  cursor: pointer;
+}
+
+.model {
+  position: absolute;
+  background: transparent;
+  --poster-color: transparent;
+  touch-action: pan-y;
+  transition: opacity 120ms linear;
+}
+
+/* on a private preview only: says plainly that what is shown includes sample content */
+.samples {
+  position: absolute;
+  left: 20px;
+  top: 78px;
+  z-index: 3;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.8rem;
+  color: rgba(var(--rose), 0.8);
+  pointer-events: none;
+}
+
+.privacy {
+  position: absolute;
+  left: 20px;
+  bottom: 44px;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  letter-spacing: 0;
+  color: rgba(var(--rose), 0.8);
+  pointer-events: none;
+}
+
+.give {
+  position: absolute;
+  right: 20px;
+  /* above the row of actions (which can wrap to two lines), on its own paper, never over them */
+  bottom: 84px;
+  z-index: 4;
+  max-width: min(440px, calc(100% - 40px));
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 12px 14px;
+  background: var(--paper);
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px rgba(var(--ink), 0.08);
+  /* its words take whole lines; its buttons sit in a row with room between them */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 18px;
+  animation: tipIn 250ms ease-out;
+}
+
+.give > :not(button):not(a) {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.giveFor {
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  letter-spacing: 0;
+  color: rgba(var(--rose), 0.85);
+  margin-bottom: 6px;
+}
+
+/* the buttons and names step back while you move, and while you linger */
+.mark,
+.mode,
+.me,
+.trail,
+.actions,
+.privacy {
+  transition: opacity 400ms ease;
+}
+
+.field[data-flow='moving'] :is(.mark, .mode, .me, .night, .compass, .trail, .actions, .privacy) {
+  opacity: 0.12;
+}
+
+.field[data-flow='rest'] :is(.mark, .mode, .me, .night, .compass, .trail, .actions, .privacy) {
+  opacity: 0.35;
+}
+
+/* a control reached with the keyboard is always fully there */
+.field[data-flow] :is(.mark, .mode, .me, .night, .compass, .trail, .actions, .privacy):focus-within {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mark,
+  .mode,
+  .trail,
+  .actions,
+  .privacy {
+    transition: none;
+  }
+}
+
+/* notes left at a seal, read by the maker */
+.notes {
+  position: absolute;
+  right: 20px;
+  bottom: 60px;
+  width: min(340px, calc(100vw - 40px));
+  max-height: 50vh;
+  overflow: auto;
+  padding: 12px 14px;
+  background: rgba(var(--paper-rgb), 0.96);
+  border-left: 1px solid rgba(var(--rose), 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: tipIn 250ms ease-out;
+}
+
+.notesHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: rgba(var(--rose), 0.85);
+}
+
+.noteText {
+  margin: 0;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: rgba(var(--ink), 0.8);
+  white-space: pre-wrap;
+}
+
+/* night: pale ink on dark paper */
+.field[data-night] {
+  --ink: 232, 228, 238;
+  --paper: #121116;
+  --paper-rgb: 18, 17, 22;
+  --rose: 214, 160, 186;
+  color-scheme: dark;
+}
+
+.night {
+  position: absolute;
+  top: 46px;
+  left: 20px;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: rgba(var(--ink), 0.45);
+}
+
+.night:hover,
+.night:focus-visible {
+  color: rgba(var(--ink), 0.9);
+}
+
+/* the compass: which way is up in space, where you are, where the next thing lies */
+.compass {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  margin-top: -23px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  touch-action: none;
+  color: rgb(var(--ink));
+  opacity: 0.7;
+  transition: opacity 160ms ease;
+}
+
+.compass:hover,
+.compass:focus-visible {
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  .compass {
+    right: 8px;
+    top: 38%;
+  }
+}
+
+/* Primary actions stay visible; secondary controls live in one contextual sheet. */
+.actions { z-index: 30; gap: 20px; overflow: visible; mask-image: none; }
+.moreTools > summary { cursor: pointer; list-style: none; padding: 8px 14px; border: 1px solid rgba(var(--ink), .16); border-radius: 20px; font: 500 13px system-ui, sans-serif; color: rgba(var(--ink), .85); }
+.moreTools > summary::-webkit-details-marker { display: none; }
+.toolPanel { position: absolute; right: 0; bottom: calc(100% + 14px); width: min(300px, calc(100vw - 32px)); max-height: min(65vh, 520px); overflow-y: auto; display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 12px; border-radius: 18px; background: var(--bg-primary, #111115); border: 1px solid rgba(var(--ink), .16); box-shadow: 0 16px 50px #0004; white-space: normal; }
+.toolPanel .quiet, .toolPanel .following { text-align: left; font: 400 14px/1.4 system-ui, sans-serif; padding: 10px 12px; border-radius: 8px; color: rgba(var(--ink), .8); }
+.toolPanel button:hover { background: rgba(var(--ink), .06); }
+.mediaTools { padding: 10px 12px; font: 400 14px/1.5 system-ui, sans-serif; }
+.mediaTools button { display: block; }
+.replay { bottom: 105px; z-index: 20; padding: 12px 18px; background: var(--bg-primary); border: 1px solid rgba(var(--ink), .12); border-radius: 16px; }
+.replayHeading { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; font: 12px system-ui, sans-serif; }
+@media(max-width: 640px) { .actions { left: 16px; right: 16px; padding: 0; overflow: visible; mask-image: none; justify-content: flex-end; } }

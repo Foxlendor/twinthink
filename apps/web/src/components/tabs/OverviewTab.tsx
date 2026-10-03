@@ -2,16 +2,16 @@
 
 import React from 'react';
 import { TwinData } from '@/lib/types';
-import { 
-  Zap, 
-  Flame, 
-  ShieldCheck, 
-  Sparkles, 
-  Layers, 
-  Compass, 
-  CheckCircle2, 
-  Camera, 
-  RefreshCw, 
+import {
+  Zap,
+  Flame,
+  ShieldCheck,
+  Sparkles,
+  Layers,
+  Compass,
+  CheckCircle2,
+  Camera,
+  RefreshCw,
   ChevronRight,
   Droplets
 } from 'lucide-react';
@@ -47,7 +47,7 @@ const FEATURED_PHOTOS = [
 export default function OverviewTab({ twin }: TabProps) {
   return (
     <div className={styles.tabContentContainer}>
-      
+
       {/* Hero Overview Banner */}
       <div style={{
         background: 'linear-gradient(135deg, rgba(14, 20, 30, 0.95) 0%, rgba(8, 11, 18, 0.98) 100%)',
@@ -113,7 +113,7 @@ export default function OverviewTab({ twin }: TabProps) {
             <div>
               <strong style={{ color: '#fff', fontSize: '0.875rem', display: 'block' }}>3. Camp Stove Boil Reset</strong>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.4, display: 'block', marginTop: '0.2rem' }}>
-                Submerge in boiling water over a Jetboil or campfire for 8–10 minutes to melt the crystal matrix back to a liquid state with infinite recharge cycles.
+                Submerge in boiling water over a Jetboil or campfire for 8-10 minutes to melt the crystal matrix back to a liquid state with infinite recharge cycles.
               </span>
             </div>
           </div>
@@ -166,9 +166,9 @@ export default function OverviewTab({ twin }: TabProps) {
               overflow: 'hidden'
             }}>
               <div style={{ width: '100%', height: '160px', background: '#000', overflow: 'hidden' }}>
-                <img 
-                  src={p.src} 
-                  alt={p.title} 
+                <img
+                  src={p.src}
+                  alt={p.title}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               </div>

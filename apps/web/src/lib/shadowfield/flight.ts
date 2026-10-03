@@ -1,0 +1,764 @@
+// The flight: the Canvas as one endless stream that you move through in depth.
+//
+// Scrolling does not move a page past you; it moves you. Every idea, song,
+// object and thought is a station on a track that runs away from the viewer.
+// Ahead, things are small and gathered near the vanishing point; moving toward
+// them they grow, resolve into what they are, and slide out past the edges of
+// the screen, behind you.
+//
+// The track walks the Canvas's own structure: an idea, then everything inside
+// it, then the next idea. An idea that holds others is a ring you pass through.
+// Newest comes first, so moving forward is also moving back through time, and
+// the distance between two things is the time between them: a burst of work is
+// a dense stretch, a long silence is a long empty one. After the oldest thing on
+// the Canvas the track reaches the Canvas again, so there is no end either way.
+
+import { IdeaNode, lastActivity } from './model';
+
+/** Distance ahead (track units) at which a thing is in focus: fully itself. */
+export const FOCUS = 1;
+/** Nearest distance still drawn; nearer than this a thing is behind you. */
+export const NEAR = 0.06;
+/** Farthest distance drawn: beyond it things are finer than the ink's grain. */
+export const FAR = 14;
+/** Where a visitor arrives: the Canvas's own ring, a little ahead. */
+export const ARRIVE = 1.6;
+
+const DAY = 86400000;
+
+/** Radius of the Canvas's own ring, and of an idea that holds others (depth 1). */
+const ROOT_R = 0.8;
+const GATE_R = 0.5;
+/** Each ring inside another is this much narrower. */
+const NEST = 0.8;
+/** A plain idea, and one carrying something to see or hear, take different room. */
+const LEAF_R = 0.2;
+const CONTENT_R = 0.3;
+/** How far from the line of travel things float, and how far the camera leans toward them. */
+const ORBIT = 0.32;
+const LEAN = 0.55;
+/** A pause entering and leaving a ring, so a ring never sits on what it holds. */
+const ENTER_GAP = 0.5;
+const EXIT_GAP = 0.45;
+
+/** His own clock (the offset his work is stamped with), for the clock face. */
+const HIS_CLOCK_MS = -6 * 3600000;
+
+/** Where a moment sits on a 12-hour clock face: twelve at the top, turning clockwise. */
+export function clockAngle(t: number): number {
+  const hours = (((t + HIS_CLOCK_MS) / 3600000) % 12 + 12) % 12;
+  return (hours / 12) * Math.PI * 2 - Math.PI / 2;
+}
+
+/** A quarter of the clock face: 0 around 12, 1 around 3, 2 around 6, 3 around 9. */
+export type Quarter = 0 | 1 | 2 | 3;
+
+/** Which quarter a moment falls in: 12 holds 10:30 to 1:30, 3 holds 1:30 to 4:30, and so on. */
+export function quarterOf(t: number): Quarter {
+  const hours = (((t + HIS_CLOCK_MS) / 3600000) % 12 + 12) % 12;
+  return Math.floor(((hours + 1.5) % 12) / 3) as Quarter;
+}
+
+/** Which quarter a direction on screen faces (x right, y down; `roll` is the clock's own turn). */
+/**
+ * The topic lens: the groups already on the Slate (as made), evenly around the face from 12, in the
+ * Slate's own order. It infers, classifies and renames nothing.
+ */
+export function topicAngles(groups: { id: string }[]): Map<string, number> {
+  return new Map(groups.map((g, i) => [g.id, -Math.PI / 2 + (i / groups.length) * Math.PI * 2]));
+}
+
+export function quarterFacing(x: number, y: number, roll = 0): Quarter {
+  const a = Math.atan2(y, x) - roll + Math.PI / 2;
+  return ((((Math.round(a / (Math.PI / 2)) % 4) + 4) % 4) as Quarter);
+}
+
+export interface Station {
+  i: number;
+  node: IdeaNode;
+  /** Root first. */
+  path: IdeaNode[];
+  depth: number;
+  /** Holds other ideas: a ring you pass through into what it holds. */
+  gate: boolean;
+  z: number;
+  /** For rings: where what it holds ends. */
+  end: number;
+  x: number;
+  y: number;
+  r: number;
+  /** When this thing began. */
+  t: number;
+  /** Silence before it (ms): the thread thins across long quiet stretches. */
+  quiet: number;
+}
+
+export interface Stream {
+  stations: Station[];
+  /** One lap: after it, the track begins again. */
+  length: number;
+  byId: Map<string, number>;
+}
+
+/** Children that can be travelled to: never the Canvas-again portals or empty frames. */
+export function travelled(node: IdeaNode): IdeaNode[] {
+  return node.children.filter((c) => !c.portal && !c.void);
+}
+
+/** Distance between two neighbours on the track: the time between them. */
+export function spacing(gapMs: number): number {
+  const days = Math.abs(gapMs) / DAY;
+  return Math.min(3, 1.1 + 0.25 * Math.log2(1 + days));
+}
+
+function hasContent(n: IdeaNode) {
+  return !!(n.media?.length || n.artifact);
+}
+
+/**
+ * The real silence between two things: the time between their lives, which is
+ * nothing if one was still being worked on when the other began.
+ */
+export function silence(a: IdeaNode, b: IdeaNode): number {
+  const a1 = Math.max(a.began, lastActivity(a));
+  const b1 = Math.max(b.began, lastActivity(b));
+  return Math.max(0, Math.max(a.began, b.began) - Math.min(a1, b1));
+}
+
+const cache = new WeakMap<IdeaNode, Map<string, Stream>>();
+
+/**
+ * The stream through everything, in order (newest first; order and depth never change). `topics`
+ * is the topic lens: each group's direction around the face (radians, 12 at the top), so the same
+ * things sit around you by what they belong to instead of the hour they were made. Without it,
+ * by the hour.
+ */
+export function buildStream(root: IdeaNode, topics?: Map<string, number> | null): Stream {
+  const key = topics ? `topic:${[...topics].map(([id, a]) => `${id}=${a.toFixed(3)}`).join(',')}` : 'time';
+  const hit = cache.get(root)?.get(key);
+  if (hit) return hit;
+  const stations: Station[] = [];
+  const rootStation: Station = {
+    i: 0,
+    node: root,
+    path: [root],
+    depth: 0,
+    gate: true,
+    z: 0,
+    end: 0,
+    x: 0,
+    y: 0,
+    r: ROOT_R,
+    t: 0,
+    quiet: 0,
+  };
+  stations.push(rootStation);
+  let z = 0;
+  let prev: IdeaNode | null = null;
+
+  const walk = (node: IdeaNode, path: IdeaNode[], depth: number) => {
+    // newest first; ties keep their order
+    const kids = travelled(node)
+      .map((c, k) => ({ c, k }))
+      .sort((a, b) => b.c.began - a.c.began || a.k - b.k)
+      .map(({ c }) => c);
+
+    kids.forEach((c, k) => {
+      const gap = prev === null ? 0 : silence(prev, c);
+      z += spacing(gap) + (k === 0 ? ENTER_GAP : 0);
+      const gate = travelled(c).length > 0;
+      // around the stream, a thing sits at the hour it was made, like a clock face (or, by topic,
+      // in the direction of its group, spread a little so neighbours do not sit on each other)
+      const topic = topics?.get(path[1]?.id ?? c.id);
+      const ang = topic !== undefined ? topic + ((Math.abs(c.seed) % 1000) / 1000 - 0.5) * 0.5 : clockAngle(c.began) + (k % 2 ? 0.08 : -0.08);
+      const s: Station = {
+        i: stations.length,
+        node: c,
+        path: [...path, c],
+        depth,
+        gate,
+        z,
+        end: z,
+        x: gate ? 0 : Math.cos(ang) * ORBIT,
+        y: gate ? 0 : Math.sin(ang) * ORBIT,
+        r: gate ? GATE_R * Math.pow(NEST, depth - 1) : hasContent(c) ? CONTENT_R : LEAF_R,
+        t: c.began,
+        quiet: gap,
+      };
+      stations.push(s);
+      prev = c;
+      if (gate) {
+        walk(c, s.path, depth + 1);
+        z += EXIT_GAP;
+        s.end = z;
+      }
+    });
+  };
+  walk(root, [root], 1);
+  const length = z + spacing(0) + ENTER_GAP;
+  rootStation.end = length;
+  const byId = new Map<string, number>();
+  for (const s of stations) if (!byId.has(s.node.id)) byId.set(s.node.id, s.i);
+  const stream = { stations, length, byId };
+  const byKey = cache.get(root) ?? new Map<string, Stream>();
+  byKey.set(key, stream);
+  cache.set(root, byKey);
+  return stream;
+}
+
+// ---------------------------------------------------------------------------
+// Positions on a loop. The camera's z is any real number; stations repeat
+// every lap.
+
+export function mod(a: number, n: number) {
+  return ((a % n) + n) % n;
+}
+
+/** Signed distance from `from` to the nearest repeat of `z`, in (-L/2, L/2]. */
+export function wrapDelta(z: number, from: number, L: number) {
+  let d = mod(z - from, L);
+  if (d > L / 2) d -= L;
+  return d;
+}
+
+/** Every distance ahead of the camera, within [lo, hi], at which a repeat of `z` sits. */
+export function aheadCopies(z: number, camZ: number, L: number, lo: number, hi: number): number[] {
+  const out: number[] = [];
+  const k0 = Math.ceil((camZ + lo - z) / L);
+  const k1 = Math.floor((camZ + hi - z) / L);
+  for (let k = k0; k <= k1; k++) out.push(z + k * L - camZ);
+  return out;
+}
+
+/** Index of the last station at or before z (mod L). */
+function indexAt(stream: Stream, z: number) {
+  const zm = mod(z, stream.length);
+  const st = stream.stations;
+  let lo = 0;
+  let hi = st.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (st[mid].z <= zm) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo;
+}
+
+function smooth(t: number) {
+  const u = Math.max(0, Math.min(1, t));
+  return u * u * (3 - 2 * u);
+}
+
+/** How far the camera leans toward a thing: a film settles centred, a picture or object nearly so. */
+function hasFilm(s: Station) {
+  return !!s.node.media?.some((m) => m.kind === 'video');
+}
+
+function leanOf(s: Station) {
+  const media = s.node.media ?? [];
+  if (media.some((m) => m.kind === 'video')) return 1;
+  // words are read, so they arrive in the middle too
+  if (s.node.artifact) return 1;
+  if (media.some((m) => m.kind === 'image' || m.kind === 'model')) return 0.85;
+  return LEAN;
+}
+
+/**
+ * Where the camera leans, sideways, at track position camZ: toward whatever is
+ * coming into focus, so it arrives near the middle and then slides away.
+ */
+export function leanAt(stream: Stream, camZ: number, skip?: (s: Station) => boolean): [number, number] {
+  const st = stream.stations;
+  const L = stream.length;
+  // neighbours that exist for this viewer (the Canvas itself is never skipped)
+  let i = indexAt(stream, camZ + FOCUS);
+  while (i > 0 && skip?.(st[i])) i--;
+  let j = i + 1;
+  while (j < st.length && skip?.(st[j])) j++;
+  const a = st[i];
+  const b = st[j % st.length];
+  const za = a.z;
+  const zb = j < st.length ? b.z : b.z + L;
+  const u = smooth((mod(camZ + FOCUS, L) - za) / Math.max(1e-6, zb - za));
+  // a ring is flown through at its middle, unless it carries a film: then the film is what you came to see
+  const la = a.gate && !hasFilm(a) ? 0 : leanOf(a);
+  const lb = b.gate && !hasFilm(b) ? 0 : leanOf(b);
+  const ax = a.x * la;
+  const ay = a.y * la;
+  const bx = b.x * lb;
+  const by = b.y * lb;
+  return [ax + (bx - ax) * u, ay + (by - ay) * u];
+}
+
+// ---------------------------------------------------------------------------
+// The camera.
+
+export interface FlightCam {
+  /** Position along the track. */
+  z: number;
+  /** Speed along the track (units per second); positive is forward. */
+  v: number;
+  /**
+   * Where the viewer has slid the view (track units), set at panZ. It stays where
+   * they leave it while they stay there, and eases back to centre as they travel on.
+   */
+  wx: number;
+  wy: number;
+  panZ: number;
+  /** A place being flown to (camera z), if any. */
+  target: number | null;
+  /** Seconds since the viewer last moved it. */
+  idle: number;
+  /** A finger or button is holding it. */
+  held: boolean;
+  /** Which way the viewer last pushed (1 forward, -1 back, 0 not yet): where it comes to rest. */
+  dir: number;
+  /** How fast it is actually moving (flights included): what the ink streaks with. */
+  shown: number;
+  /** Where a push began, if it began at rest in front of something. */
+  from: number | null;
+  /** The clock's own slow turning (radians), on top of the turn that travel gives. */
+  spin: number;
+  /** A hop under way: a spring pulling the camera onto the next thing. */
+  hop: Hop | null;
+  /** How far the view is pulled out right now (a fraction of its scale), and how fast that changes. */
+  pull: number;
+  pullV: number;
+  /** Counts: hops begun, and landings (a landing is when a hop settles exactly on its thing). */
+  hops: number;
+  landed: number;
+  /**
+   * Steering, on screen (x right, y down, within the unit circle): how far the way ahead bends
+   * toward where the viewer is heading. You stay at the middle; the vortex swings around you.
+   */
+  bx: number;
+  by: number;
+}
+
+export type HopKind = 'step' | 'touch' | 'skim' | 'back' | 'catch' | 'threshold';
+
+/**
+ * How each kind of hop feels, as a spring: w is its stiffness (angular
+ * frequency, 1/s), zeta its damping (1 settles without overshoot, less
+ * overshoots a little and settles, like a magnet taking hold), breath how far
+ * the view pulls out wide on the way (only at thresholds).
+ */
+export const HOP_KINDS: Record<HopKind, { w: number; zeta: number; breath: number }> = {
+  step: { w: 12, zeta: 0.82, breath: 0 },
+  touch: { w: 16, zeta: 0.8, breath: 0 },
+  skim: { w: 20, zeta: 1, breath: 0 },
+  back: { w: 18, zeta: 0.9, breath: 0 },
+  catch: { w: 15, zeta: 0.7, breath: 0 },
+  threshold: { w: 7.5, zeta: 0.9, breath: 0.18 },
+};
+
+export interface Hop {
+  to: number;
+  kind: HopKind;
+  w: number;
+  zeta: number;
+  breath: number;
+  /** The distance it began with (for how far through it is). */
+  e0: number;
+}
+
+/**
+ * One step of a damped spring pulling x toward `to`, solved exactly, so it
+ * moves the same however often it is stepped. Returns the new [x, v].
+ */
+export function springStep(x: number, v: number, to: number, w: number, zeta: number, dt: number): [number, number] {
+  const e0 = x - to;
+  if (zeta >= 1) {
+    const B = v + w * e0;
+    const k = Math.exp(-w * dt);
+    const e = (e0 + B * dt) * k;
+    return [to + e, (B - w * (e0 + B * dt)) * k];
+  }
+  const wd = w * Math.sqrt(1 - zeta * zeta);
+  const k = Math.exp(-zeta * w * dt);
+  const c = Math.cos(wd * dt);
+  const sn = Math.sin(wd * dt);
+  const B = (v + zeta * w * e0) / wd;
+  const e = k * (e0 * c + B * sn);
+  const ve = k * (-zeta * w * (e0 * c + B * sn) + (-e0 * wd * sn + B * wd * c));
+  return [to + e, ve];
+}
+
+/**
+ * Hop to camera z `to`. The camera keeps its position and speed, so changing
+ * where it is going mid-hop keeps its momentum. `gap` is the seconds since the
+ * last hop began: quick successive hops grow lighter and faster; `v` is the
+ * speed a hand threw it with.
+ */
+export function hopTo(cam: FlightCam, to: number, kind: HopKind = 'step', opts: { v?: number; gap?: number } = {}) {
+  const base = HOP_KINDS[kind];
+  const D = Math.abs(to - cam.z);
+  // cadence: in a quick run of hops each is lighter, quicker, and never breathes out
+  const s = 1 - smoothstep01(0.25, 0.9, opts.gap ?? 10);
+  let w = base.w + (20 - base.w) * s;
+  let zeta = base.zeta + (1 - base.zeta) * s;
+  const breath = base.breath * (1 - s);
+  // a long way is a little softer, so it does not whip
+  w *= Math.pow(Math.min(1, 1.6 / Math.max(D, 1e-6)), 0.35);
+  // a throw keeps the hand's speed toward the thing (never away from it), and damps harder the harder it is
+  const dir = Math.sign(to - cam.z) || 1;
+  let v = cam.hop ? cam.v : 0;
+  if (opts.v !== undefined) v = Math.max(0, Math.min(w * D, opts.v * dir)) * dir;
+  zeta = Math.min(1, zeta + 0.2 * smoothstep01(0.3, 1, Math.abs(v) / Math.max(w * D, 1e-6)));
+  cam.v = v;
+  cam.hop = { to, kind, w, zeta, breath, e0: Math.max(D, 1e-6) };
+  cam.target = null;
+  cam.from = null;
+  cam.hops++;
+}
+
+function smoothstep01(a: number, b: number, x: number) {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+/** Where a hop is headed (or the camera, if none): the base for the next step. */
+export function hopBase(cam: FlightCam) {
+  return cam.hop ? cam.hop.to : cam.target ?? cam.z;
+}
+
+/** Camera z where a station is in front of you (the Canvas itself is met from further back). */
+export function stopZ(stream: Stream, s: Station, camZ: number) {
+  const f = s.z - (s.depth === 0 ? ARRIVE : FOCUS);
+  return camZ + wrapDelta(f, camZ, stream.length);
+}
+
+/**
+ * Let go between things: go on to the thing ahead if it is within one step,
+ * otherwise back to the nearest. The camera always comes to rest on something.
+ */
+export function settle(cam: FlightCam, stream: Stream, skip?: (s: Station) => boolean) {
+  if (cam.hop) return;
+  // resting where the Canvas itself is met is resting
+  const root = stream.stations.find((s) => s.depth === 0);
+  if (root && Math.abs(stopZ(stream, root, cam.z) - cam.z) < 1e-3) return;
+  const [back, ahead] = focusAround(stream, cam.z, skip);
+  if (back === null && ahead === null) return;
+  if (back !== null && Math.abs(back - cam.z) < 1e-4) return;
+  if (ahead !== null && Math.abs(ahead - cam.z) < 1e-4) return;
+  const gap = back !== null && ahead !== null ? ahead - back : Infinity;
+  const toAhead = cam.dir > 0 && ahead !== null && ahead - cam.z < gap;
+  const to = toAhead ? ahead! : back === null ? ahead! : ahead === null ? back : cam.z - back <= ahead - cam.z ? back : ahead;
+  hopTo(cam, to, to === back ? 'back' : 'step');
+}
+
+export function newFlightCam(): FlightCam {
+  return {
+    z: -ARRIVE,
+    v: 0,
+    wx: 0,
+    wy: 0,
+    panZ: -ARRIVE,
+    target: null,
+    idle: 0,
+    held: false,
+    dir: 0,
+    shown: 0,
+    from: null,
+    spin: 0,
+    hop: null,
+    pull: 0,
+    pullV: 0,
+    hops: 0,
+    landed: 0,
+    bx: 0,
+    by: 0,
+  };
+}
+
+/** Called as the viewer starts to push: remembers the thing they were resting on. */
+export function beginPush(cam: FlightCam, stream: Stream, skip?: (s: Station) => boolean) {
+  if (cam.target !== null || Math.abs(cam.v) > 0.02) return;
+  const f = nearestFocus(stream, cam.z, skip);
+  cam.from = f !== null && Math.abs(f - cam.z) < 0.02 ? f : cam.from;
+}
+
+/** Speed is let go of gradually: a flick carries you through many things. */
+const FRICTION = 2.6;
+const MAX_V = 60;
+
+/** Camera z that puts a station in focus, nearest to where the camera is. */
+export function focusZ(stream: Stream, s: Station, camZ: number) {
+  const f = s.z - FOCUS;
+  return camZ + wrapDelta(f, camZ, stream.length);
+}
+
+/** Camera z of the nearest place where something is in focus. */
+export function nearestFocus(stream: Stream, camZ: number, skip?: (s: Station) => boolean): number | null {
+  let best: number | null = null;
+  let bestD = Infinity;
+  for (const s of stream.stations) {
+    if (skip?.(s)) continue;
+    const d = wrapDelta(s.z - FOCUS, camZ, stream.length);
+    if (Math.abs(d) < bestD) {
+      bestD = Math.abs(d);
+      best = camZ + d;
+    }
+  }
+  return best;
+}
+
+/** The next (dir 1) or previous (dir -1) place where something is in focus. */
+export function stepFocus(stream: Stream, camZ: number, dir: 1 | -1, skip?: (s: Station) => boolean): number | null {
+  let best: number | null = null;
+  let bestD = Infinity;
+  for (const s of stream.stations) {
+    if (skip?.(s)) continue;
+    let d = wrapDelta(s.z - FOCUS, camZ, stream.length);
+    if (dir > 0 && d <= 0.05) d += stream.length;
+    if (dir < 0 && d >= -0.05) d -= stream.length;
+    if (Math.abs(d) < bestD) {
+      bestD = Math.abs(d);
+      best = camZ + d;
+    }
+  }
+  return best;
+}
+
+/** The nearest places behind and ahead of z where something is in focus. */
+export function focusAround(stream: Stream, camZ: number, skip?: (s: Station) => boolean): [number | null, number | null] {
+  let back = -Infinity;
+  let ahead = Infinity;
+  for (const s of stream.stations) {
+    if (skip?.(s)) continue;
+    const d = wrapDelta(s.z - FOCUS, camZ, stream.length);
+    if (d <= 0 && d > back) back = d;
+    if (d >= 0 && d < ahead) ahead = d;
+  }
+  return [back === -Infinity ? null : camZ + back, ahead === Infinity ? null : camZ + ahead];
+}
+
+/**
+ * Where a coasting camera comes to rest: the next thing in the direction it
+ * was pushed, if that is near; otherwise whatever is very near; in a long
+ * empty stretch, nowhere (the silence is left as it is).
+ */
+export function restingPlace(stream: Stream, camZ: number, dir: number, skip?: (s: Station) => boolean): number | null {
+  const [back, ahead] = focusAround(stream, camZ, skip);
+  const db = back === null ? Infinity : camZ - back;
+  const da = ahead === null ? Infinity : ahead - camZ;
+  const REACH = 0.9;
+  const NEARBY = 0.55;
+  // (a push that lands exactly at the edge of reach still arrives: float error must not decide)
+  const EPS = 1e-9;
+  if (dir > 0) return da < REACH + EPS ? ahead : db < NEARBY ? back : null;
+  if (dir < 0) return db < REACH + EPS ? back : da < NEARBY ? ahead : null;
+  if (db <= da) return db < NEARBY ? back : null;
+  return da < NEARBY ? ahead : null;
+}
+
+export function stepFlightCam(cam: FlightCam, stream: Stream, dt: number, skip?: (s: Station) => boolean) {
+  cam.idle += dt;
+  // every flight to somewhere is a hop (one that crosses into somewhere breathes out)
+  if (cam.target !== null) hopTo(cam, cam.target, Math.abs(cam.target - cam.z) > 2.5 ? 'threshold' : 'step');
+  // the view's pull springs toward how far the hop wants it pulled out, so it never jumps
+  const h0 = cam.hop;
+  const want = h0 && h0.breath > 0 ? h0.breath * Math.sin(Math.PI * (1 - Math.min(1, Math.abs(cam.z - h0.to) / h0.e0))) : 0;
+  [cam.pull, cam.pullV] = springStep(cam.pull, cam.pullV, want, 12, 1, dt);
+  if (Math.abs(cam.pull) < 1e-5 && Math.abs(cam.pullV) < 1e-5) cam.pull = cam.pullV = 0;
+  if (cam.hop) {
+    const h = cam.hop;
+    [cam.z, cam.v] = springStep(cam.z, cam.v, h.to, h.w, h.zeta, dt);
+    cam.shown = cam.v;
+    // landed: close enough that the rest could not be seen, and nearly still (then exactly there)
+    if (Math.abs(cam.z - h.to) < 0.004 && Math.abs(cam.v) < 0.08) {
+      cam.z = h.to;
+      cam.v = 0;
+      cam.hop = null;
+      cam.shown = 0;
+      cam.landed++;
+    }
+    return;
+  }
+  if (cam.target !== null) {
+    cam.from = null;
+    const d = cam.target - cam.z;
+    const k = 1 - Math.exp(-dt * 4.5);
+    cam.z += d * k;
+    cam.v = 0;
+    cam.shown = dt > 0 ? (d * k) / dt : 0;
+    if (Math.abs(d) < 0.002) {
+      cam.z = cam.target;
+      cam.target = null;
+      cam.shown = 0;
+    }
+    return;
+  }
+  if (!cam.held) {
+    cam.v = Math.max(-MAX_V, Math.min(MAX_V, cam.v));
+    cam.z += cam.v * dt;
+    cam.v *= Math.exp(-dt * FRICTION);
+    if (Math.abs(cam.v) < 0.02) cam.v = 0;
+    // coming to rest, something settles into focus (a soft pull, never a snap)
+    if (Math.abs(cam.v) < 0.45 && cam.idle > 0.2) {
+      const f = restingPlace(stream, cam.z, cam.dir, skip);
+      // a real push that began at rest always arrives at the next thing, never springs back
+      const from = cam.from;
+      if (from !== null && cam.dir !== 0 && !cam.held) {
+        cam.from = null;
+        const next = stepFocus(stream, from, cam.dir > 0 ? 1 : -1, skip);
+        // it springs back if it would rest where it began, or stalls short of the next thing;
+        // a push that already went further is left where it went
+        const short = next !== null && (cam.dir > 0 ? cam.z < next : cam.z > next);
+        const springsBack = (f !== null && Math.abs(f - from) < 1e-3) || (f === null && short);
+        if (springsBack && Math.abs(cam.z - from) > 0.15) {
+          if (next !== null) {
+            cam.target = next;
+            cam.shown = cam.v;
+            return;
+          }
+        }
+      }
+      if (f !== null) {
+        cam.z += (f - cam.z) * (1 - Math.exp(-dt * 3));
+        // arrive exactly, so the page can be still
+        if (Math.abs(f - cam.z) < 1e-4) cam.z = f;
+      }
+    }
+  }
+  cam.shown = cam.v;
+}
+
+// ---------------------------------------------------------------------------
+// Seeing.
+
+export interface View {
+  /** Camera position along the track and sideways. */
+  z: number;
+  x: number;
+  y: number;
+  /** Pixels per track unit at distance 1. */
+  F: number;
+  /** Vanishing point on screen. */
+  cx: number;
+  cy: number;
+  /** How far the view has turned (radians), and its cosine and sine. */
+  roll: number;
+  rc: number;
+  rs: number;
+  /** Steering (see FlightCam.bx): the farther ahead, the further it swings that way. */
+  bx: number;
+  by: number;
+}
+
+/**
+ * How far the way ahead swings toward the steering, on screen, per track unit ahead, as a
+ * fraction of the view's scale: nothing at your feet, a third of the view at the far end.
+ */
+const BEND = 0.024;
+
+/**
+ * How far the view has turned: only the clock's own slow turning, when it is on. Travel never
+ * turns the view (rotation tied to moving forward is what makes a fall nauseating), so `z` is
+ * kept only so callers need not change.
+ */
+export function rollAt(_z: number, spin: number) {
+  return spin;
+}
+
+/**
+ * Pixels per track unit at distance 1: the shorter side, but on a tall phone
+ * (or a wide screen) enough of the longer side that things in focus fill it.
+ */
+export function flightScale(w: number, h: number) {
+  return Math.max(Math.min(w, h), 0.6 * Math.max(w, h));
+}
+
+/** How far to travel before a slid view is fully centred again. */
+const PAN_HOLD = 0.7;
+
+/** The slide still in effect at z: all of it where it was set, none once you have travelled on. */
+export function panAt(cam: FlightCam, L: number): [number, number] {
+  const d = Math.abs(wrapDelta(cam.z, cam.panZ, L));
+  const k = 1 - smooth(d / PAN_HOLD);
+  return [cam.wx * k, cam.wy * k];
+}
+
+/** The largest slide either way (track units): far enough to read anything wide or long. */
+export const PAN_MAX = 2.5;
+
+/**
+ * Slide the view by a finger's movement on screen (pixels), so what is under the
+ * finger follows it, whichever way the clock has turned the view.
+ */
+export function panBy(cam: FlightCam, stream: Stream, dx: number, dy: number, w: number, h: number) {
+  const [px, py] = panAt(cam, stream.length);
+  const F = flightScale(w, h);
+  const roll = rollAt(cam.z, cam.spin);
+  const c = Math.cos(roll);
+  const s = Math.sin(roll);
+  // screen = R(roll) * (world - camera) * F at the focus distance, so the camera moves by -R(-roll) * d / F
+  const ux = (dx * c + dy * s) / F;
+  const uy = (-dx * s + dy * c) / F;
+  cam.wx = Math.max(-PAN_MAX, Math.min(PAN_MAX, px - ux * FOCUS));
+  cam.wy = Math.max(-PAN_MAX, Math.min(PAN_MAX, py - uy * FOCUS));
+  cam.panZ = cam.z;
+}
+
+export function viewOf(stream: Stream, cam: FlightCam, w: number, h: number, skip?: (s: Station) => boolean): View {
+  const M = flightScale(w, h);
+  const [lx, ly] = leanAt(stream, cam.z, skip);
+  // at speed the field of view widens a little, as if pulled forward
+  const rush = smooth((Math.abs(cam.shown) - 6) / 18);
+  const roll = rollAt(cam.z, cam.spin);
+  const [px, py] = panAt(cam, stream.length);
+  // crossing a threshold the view breathes out wide, then zooms back in as it arrives
+  const F = M * (1 - 0.16 * rush) * (1 - cam.pull);
+  return {
+    z: cam.z,
+    x: lx + px,
+    y: ly + py,
+    F,
+    cx: w / 2,
+    cy: h * 0.47,
+    roll,
+    rc: Math.cos(roll),
+    rs: Math.sin(roll),
+    bx: cam.bx,
+    by: cam.by,
+  };
+}
+
+/** Screen position and scale (pixels per unit) of a point dz ahead of the camera. */
+export function project(v: View, x: number, y: number, dz: number): [number, number, number] {
+  const k = v.F / dz;
+  const dx = x - v.x;
+  const dy = y - v.y;
+  // steering: the way ahead swings toward where you are heading, more the farther it is
+  const bend = BEND * dz * v.F;
+  return [v.cx + (dx * v.rc - dy * v.rs) * k + v.bx * bend, v.cy + (dx * v.rs + dy * v.rc) * k + v.by * bend, k];
+}
+
+/**
+ * The thing in focus: whatever sits nearest the focus distance ahead. Between
+ * things, the innermost ring you are inside.
+ */
+export function focusOf(stream: Stream, camZ: number, skip?: (s: Station) => boolean): Station {
+  const L = stream.length;
+  let best: Station | null = null;
+  let bestD = Infinity;
+  for (const s of stream.stations) {
+    if (s.depth === 0 || skip?.(s)) continue;
+    const dz = mod(s.z - camZ, L);
+    if (dz < 0.42 || dz > 1.75) continue;
+    const d = Math.abs(dz - FOCUS) * (s.gate ? 1.25 : 1);
+    if (d < bestD) {
+      bestD = d;
+      best = s;
+    }
+  }
+  if (best) return best;
+  // inside: the deepest ring already passed whose contents are still ahead
+  let inside: Station = stream.stations[0];
+  for (const s of stream.stations) {
+    if (!s.gate || s.depth === 0 || skip?.(s)) continue;
+    const zm = mod(camZ + FOCUS, L);
+    if (s.z <= zm && zm < s.end && s.depth > inside.depth) inside = s;
+  }
+  return inside;
+}

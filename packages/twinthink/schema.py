@@ -1,107 +1,140 @@
 """
-TwinThink Authoritative Twin Data Schema
-Defines the core data model for living digital twins (.twin / twin.json)
+TwinThink Authoritative Twin Data Schema (v0.1)
+Defines the 8-node core schema for living digital twins (.twin / twin.json).
 """
 
-from typing import List, Dict, Any, Optional, Literal
+from typing import List, Dict, Any, Optional, Literal, Union
 from pydantic import BaseModel, Field
 import datetime
 
-EpistemicStatus = Literal["VERIFIED", "EXPERIMENTAL", "ESTIMATED", "ASSUMED", "UNKNOWN", "LITERATURE", "MEASURED", "CALIBRATED"]
+EpistemicStatus = Literal[
+    "VERIFIED",
+    "ESTABLISHED",
+    "EXPERIMENTAL",
+    "PARTIALLY_ESTABLISHED",
+    "ESTIMATED",
+    "ASSUMED",
+    "CONCEPTUAL",
+    "UNKNOWN",
+    "LITERATURE",
+    "MEASURED",
+    "CALIBRATED"
+]
 
-class Claim(BaseModel):
-    key: str
-    name: str
-    value: Any
-    unit: Optional[str] = None
-    status: EpistemicStatus = "UNKNOWN"
-    confidence_pct: int = 50
-    origin: str = "Extracted from source document"
-    source_file: Optional[str] = None
-    evidence_paths: List[str] = Field(default_factory=list)
-    relationships: List[str] = Field(default_factory=list)
-    improvement_action: Optional[str] = None
+class Author(BaseModel):
+    name: str = "John Troy Thompson"
+    handle: str = "foxlendor"
 
-class ComponentItem(BaseModel):
-    name: str
-    description: str
-    material: str
-    qty: int = 1
-    unit_cost_usd: Optional[float] = None
-    supplier: Optional[str] = None
-    cad_body_name: Optional[str] = None
-
-class RealityDimensionState(BaseModel):
-    status: Literal["Verified", "Experimental", "Partial", "Unvalidated", "Concept", "Unknown"]
-    score_pct: int
-    evidence_count: int
-    rationale: str
-
-class RealityState(BaseModel):
-    structural: RealityDimensionState
-    thermal: RealityDimensionState
-    material: RealityDimensionState
-    safety: RealityDimensionState
-    manufacturing: RealityDimensionState
-    overall_score_pct: int
-
-class TwinIdentity(BaseModel):
-    title: str
-    summary: str
-    classification: str = "PhysicalObject"
-    creator: str = "Anonymous"
-    license: str = "CERN-OHL-S-2.0"
+class Identity(BaseModel):
+    twin_id: str = "twin_0001"
+    slug: str = "resip-thermal-straw"
+    title: str = "RESIP™"
+    subtitle: str = "Thermal Drink Straw"
     version: str = "1.0.0"
+    author: Author = Field(default_factory=Author)
+    license: str = "CERN-OHL-S-2.0"
     created_at: str = Field(default_factory=lambda: datetime.datetime.utcnow().isoformat())
 
-class TwinObjectGeometry(BaseModel):
-    cad_step_path: Optional[str] = None
-    cad_preview_glb_path: Optional[str] = None
-    bounding_box_mm: Optional[List[float]] = None
-    mass_grams: Optional[float] = None
+class RealityDimension(BaseModel):
+    status: str
+    confidence: float
+    reason: str
+
+class RealityState(BaseModel):
+    composite_score: float
+    derived_dimensions: Dict[str, RealityDimension]
+
+class ClaimSource(BaseModel):
+    type: str
+    reference: str
+
+class ClaimValue(BaseModel):
+    magnitude: Union[float, int, str]
+    unit: Optional[str] = None
+    tolerance: Optional[str] = None
+    currency: Optional[str] = None
+
+class Claim(BaseModel):
+    id: str
+    target_node: str
+    statement: str
+    value: Optional[Union[ClaimValue, Dict[str, Any], Any]] = None
+    epistemic_status: EpistemicStatus = "UNKNOWN"
+    confidence: float = 0.5
+    source: ClaimSource
+    evidence_ids: List[str] = Field(default_factory=list)
+    relationships: List[str] = Field(default_factory=list)
+
+class ObjectLayer(BaseModel):
+    id: str
+    name: str
+    role: str
+
+class TwinObject(BaseModel):
+    primary_3d: str = "assets/cad/preview.glb"
+    cad_source: str = "assets/cad/primary.step"
+    layers: List[ObjectLayer] = Field(default_factory=list)
+
+class Component(BaseModel):
+    id: str
+    name: str
+    qty: int = 1
+    unit_cost: float = 0.0
+    material: str
+    supplier: Optional[str] = None
 
 class TwinStructure(BaseModel):
-    components: List[ComponentItem] = Field(default_factory=list)
-    materials: List[str] = Field(default_factory=list)
-    estimated_bom_usd: Optional[float] = None
-    target_msrp_usd: Optional[float] = None
+    bom_file: str = "structure/bom.csv"
+    component_count: int = 0
+    components: List[Component] = Field(default_factory=list)
 
 class TwinBehavior(BaseModel):
-    engine_name: Optional[str] = None
-    entrypoint_script: Optional[str] = None
-    parameters_path: Optional[str] = None
-    simulation_results_path: Optional[str] = None
-    operating_envelope: Dict[str, Any] = Field(default_factory=dict)
+    solver: str = "Euler-4Node-ODE"
+    governing_equations: List[str] = Field(default_factory=list)
+    parameters: Dict[str, Any] = Field(default_factory=dict)
+
+class EvidenceTestRun(BaseModel):
+    id: str
+    date: str
+    file: str
+    type: str
+    rmse: Optional[float] = None
 
 class TwinEvidence(BaseModel):
-    test_runs_count: int = 0
-    calibration_rmse: Optional[float] = None
-    sensor_channels: List[str] = Field(default_factory=list)
-    verified_files: List[str] = Field(default_factory=list)
+    test_runs: List[EvidenceTestRun] = Field(default_factory=list)
 
-class TwinHistoryEntry(BaseModel):
-    page: Optional[int] = None
-    year: Optional[str] = None
+class HistoryEstablishedNode(BaseModel):
+    date: str
     title: str
-    caption: str
-    asset_path: str
-    relationship_to_twin: Literal["not_established", "ancestor_candidate", "verified_prototype"] = "not_established"
+    source: str
+    provenance_level: str = "ESTABLISHED"
+
+class TwinHistory(BaseModel):
+    curated_manifest: str = "history/journal_manifest.json"
+    established_nodes: List[HistoryEstablishedNode] = Field(default_factory=list)
 
 class TwinLineage(BaseModel):
-    parent_twin_id: Optional[str] = None
-    parent_version: Optional[str] = None
-    mutation_notes: Optional[str] = None
-    forks: List[str] = Field(default_factory=list)
+    parent: Optional[str] = None
+    forks_count: int = 0
+    mutations: List[Dict[str, Any]] = Field(default_factory=list)
+
+class UnknownRisk(BaseModel):
+    id: str
+    category: str
+    issue: str
 
 class TwinDocument(BaseModel):
-    schema_version: str = "1.0.0"
-    identity: TwinIdentity
-    object: TwinObjectGeometry
+    schema_url: str = Field(default="https://twinth.ink/schemas/twin.v0.1.json", alias="$schema")
+    identity: Identity
+    reality_state: RealityState
+    claims: List[Claim] = Field(default_factory=list)
+    object: TwinObject
     structure: TwinStructure
     behavior: TwinBehavior
     evidence: TwinEvidence
-    history: List[TwinHistoryEntry] = Field(default_factory=list)
+    history: TwinHistory
     lineage: TwinLineage
-    claims: List[Claim] = Field(default_factory=list)
-    reality_state: RealityState
-    unknowns_and_assumptions: List[str] = Field(default_factory=list)
+    unknowns: List[UnknownRisk] = Field(default_factory=list)
+
+    class Config:
+        populate_by_name = True
