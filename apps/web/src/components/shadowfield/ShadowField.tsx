@@ -135,6 +135,8 @@ const HINT_KEY = 'twinthink.hinted.v1';
 const LEAN_REACH = 0.3;
 /** How long a lean rests on a neighbour before you cross into it. */
 const HOLD_MS = 600;
+/** A left-handed mouse: the two buttons swap (right forward, left back). Kept on this device. */
+const MIRROR_KEY = 'twinthink.mouse.mirror.v1';
 
 function readSet(key: string): Set<string> {
   try {
@@ -301,6 +303,9 @@ export default function ShadowField({ serif }: Props) {
   const storeRef = useRef<ShadowStore | null>(null);
   // whether the last change can be undone or redone: refreshed by rebuild, never read from the ref while rendering
   const [edits, setEdits] = useState({ undo: false, redo: false });
+  // mirrored for a left hand: right click forward, left click back
+  const [mirror, setMirror] = useState(false);
+  const mirrorRef = useRef(false);
   const worldRef = useRef<IdeaNode | null>(null);
   const camRef = useRef<Camera | null>(null);
   const lensRef = useRef<Lens>({ closeness: () => 0.5, visited: new Set(), followed: new Set() });
@@ -460,6 +465,7 @@ export default function ShadowField({ serif }: Props) {
   const neighbourAimRef = useRef<Neighbour | null>(null);
   const leanHoldRef = useRef({ id: null as string | null, ms: 0 });
   const crossRef = useRef<(n: Neighbour) => void>(() => {});
+  const goToRef = useRef<(path: IdeaNode[]) => void>(() => {});
   // steering by touch: the finger's own run (a tap, or a drag that aims), and a pinch that carries you
   const steerTouchRef = useRef({ moved: 0, pinched: false, d0: 0, d: 0 });
   // steering by touch: where the thumb has pushed the heading (the phone itself stays still: how it
@@ -871,6 +877,13 @@ export default function ShadowField({ serif }: Props) {
     setFollowed(new Set(followedSet));
     setHinted(wasHinted);
     setCoarse(window.matchMedia('(pointer: coarse)').matches);
+    try {
+      const m = window.localStorage.getItem(MIRROR_KEY) === '1';
+      mirrorRef.current = m;
+      setMirror(m);
+    } catch {
+      // optional
+    }
     setLocalList(storeRef.current.list());
     const mono = getComputedStyle(document.documentElement).getPropertyValue('--font-jetbrains-mono').trim();
     monoRef.current = mono ? `${mono}, monospace` : 'monospace';
@@ -2138,12 +2151,13 @@ export default function ShadowField({ serif }: Props) {
         aheadAimRef.current = aimed?.node.id ?? null;
         // a lean held on a neighbour crosses into it; easing back toward the middle before then lets it go
         const hold = leanHoldRef.current;
-        if (facingN && (hovered || m > 0.45)) {
-          if (hold.id !== facingN.current.id) Object.assign(hold, { id: facingN.current.id, ms: 0 });
+        const held = facingN && (hovered || m > 0.45) ? { id: facingN.current.id, go: () => crossRef.current(facingN) } : aimed && m > 0.45 ? { id: aimed.node.id, go: () => goToRef.current(aimed.path) } : null;
+        if (held) {
+          if (hold.id !== held.id) Object.assign(hold, { id: held.id, ms: 0 });
           hold.ms += dt * 1000;
           if (hold.ms >= HOLD_MS) {
             Object.assign(hold, { id: null, ms: 0 });
-            crossRef.current(facingN);
+            held.go();
           }
         } else Object.assign(hold, { id: null, ms: 0 });
         // on the rim, always: the currents beside you (first), then the ways on at a branch
@@ -2765,7 +2779,8 @@ export default function ShadowField({ serif }: Props) {
   );
   useEffect(() => {
     crossRef.current = crossInto;
-  }, [crossInto]);
+    goToRef.current = goTo;
+  }, [crossInto, goTo]);
 
   const steerTap = () => {
     // the neighbour you are leaning toward: a tap crosses at once
@@ -3017,7 +3032,40 @@ export default function ShadowField({ serif }: Props) {
     velRef.current = { x: (dx / dtm) * 16, y: (dy / dtm) * 16 };
   };
 
+  /** A click with a mouse: left is a step forward along the current, right is a step back. Simple as that. */
+  const clickStep = (dir: 1 | -1) => {
+    const stream = streamRef.current;
+    const fc = flightCamRef.current;
+    if (!stream) return;
+    const z = stepFocus(stream, hopBase(fc), dir, skipRef.current);
+    if (z !== null) {
+      hopFlight(z, dir < 0 ? 'back' : 'step');
+      fc.dir = dir;
+    }
+  };
+
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerType === 'mouse' && (e.button === 0 || e.button === 2) && modeRef.current === 'flight' && !sketchRef.current?.stroke) {
+      const dr = dragRef.current;
+      const dragged = dr.active && dr.moved > 6;
+      if (!dragged) {
+        pointersRef.current.delete(e.pointerId);
+        if (pointersRef.current.size < 2) pinchRef.current = null;
+        dr.active = false;
+        const fc = flightCamRef.current;
+        fc.held = false;
+        fc.idle = 0;
+        window.clearTimeout(holdRef.current.timer);
+        // the release after plucking the web is only a release
+        if (holdRef.current.consumed) {
+          holdRef.current.consumed = false;
+          return;
+        }
+        const forward = mirrorRef.current ? e.button === 2 : e.button === 0;
+        clickStep(forward ? 1 : -1);
+        return;
+      }
+    }
     if (steerRef.current.on && steerRef.current.touch) {
       pointersRef.current.delete(e.pointerId);
       if (pointersRef.current.size < 2) pinchRef.current = null;
@@ -3692,6 +3740,7 @@ export default function ShadowField({ serif }: Props) {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onContextMenu={(e) => e.preventDefault()}
         onPointerCancel={(e) => {
           pointersRef.current.delete(e.pointerId);
           pinchRef.current = null;
@@ -3826,6 +3875,27 @@ export default function ShadowField({ serif }: Props) {
           <summary>{ownedHere ? 'Edit' : 'More'}</summary>
           <div className={styles.toolPanel}>
             {path.length <= 1 && <button type="button" className={styles.quiet} onClick={(e) => { e.currentTarget.closest('details')?.removeAttribute('open'); setRecalled(true); }}>how to move</button>}
+            {!coarse && (
+              <button
+                type="button"
+                className={mirror ? styles.following : styles.quiet}
+                aria-pressed={mirror}
+                title="swap the mouse buttons for a left hand: right click forward, left click back"
+                onClick={() => {
+                  const next = !mirror;
+                  mirrorRef.current = next;
+                  setMirror(next);
+                  try {
+                    window.localStorage.setItem(MIRROR_KEY, next ? '1' : '0');
+                  } catch {
+                    // optional
+                  }
+                  setNotice(next ? 'left-handed mouse: right click forward, left click back' : 'right-handed mouse: left click forward, right click back');
+                }}
+              >
+                {mirror ? 'left-handed mouse' : 'right-handed mouse'}
+              </button>
+            )}
             {edits.redo && <button type="button" className={styles.quiet} onClick={() => { if (storeRef.current?.redo()) { rebuild(); setNotice('Redone'); } }}>Redo</button>}
         {path.length <= 1 && (
           <>
@@ -4625,7 +4695,7 @@ export default function ShadowField({ serif }: Props) {
       )}
       {steering ? (
         <div className={`${styles.hint} ${styles.hintLean}`}>
-          {coarse ? 'lean toward a ring beside you and hold to cross · tap to go in · pinch to move on' : 'rest the pointer on a ring beside you to cross · click to go in · esc to stop'}
+          {coarse ? 'lean toward a ring and hold to go through it · tap to go in · pinch to move on' : mirror ? 'rest the pointer on a ring to go through it · right click forward, left click back · esc to stop' : 'rest the pointer on a ring to go through it · click forward, right click back · esc to stop'}
         </div>
       ) : (!hinted || recalled) && path.length <= 1 && (
         <div className={styles.hint}>
