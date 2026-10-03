@@ -552,10 +552,14 @@ current is beside crosses left and right, and what holds it, or it holds,
 crosses up and down (`defaultDimension`). Only these face-to-face crossings
 exist; whether diagonal ones ever behave the same is a separate decision.
 
-While leaning, the currents beside you join the rim as openings, each at its
-hour within its dimension's sides. Leaning toward one names it; holding the
-lean on it for half a second crosses, as does a click or a tap; easing back
-toward the middle first lets it go. After a crossing the lean is spent, the new
+With a mouse, a left click is a step forward along the current and a right
+click a step back; nothing else. A left hand swaps them ("left-handed mouse"
+under More, kept on the device). The currents beside you are always on the rim
+as openings, each at its hour within its dimension's sides, faint while falling
+and fuller once still. Leaning toward one names it; resting the pointer (or holding a thumb's lean)
+on it for a moment crosses, and on a way on at a branch goes in; easing back
+toward the middle first lets it go. Lean never locks the pointer: the cursor
+stays visible, and what it rests on is what you aim at. After a crossing the lean is spent, the new
 current is your perspective, and its own neighbours are the ones that matter.
 Aiming at an hour is orientation only: it no longer filters the fall or moves
 it forward.
