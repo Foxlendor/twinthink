@@ -285,6 +285,17 @@
   animation: hintIn 1.2s 2s both, breathe 5s 3.2s ease-in-out infinite;
 }
 
+/* while leaning: a line that stays, quieter, and never breathes (the heading is the thing that moves) */
+.hintLean {
+  bottom: 12%;
+  font-size: 0.95rem;
+  color: rgba(var(--ink), 0.45);
+  animation: hintIn 500ms both;
+  white-space: normal;
+  text-align: center;
+  max-width: min(440px, 86vw);
+}
+
 /* the drop that the hint names: it falls, as you will */
 .hintCue {
   width: 6px;

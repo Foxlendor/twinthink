@@ -2697,7 +2697,7 @@ export default function ShadowField({ serif }: Props) {
     Object.assign(s, { on: true, touch: true, x: 0, y: 0, well: null });
     steerHandRef.current = { dx: 0, dy: 0 };
     setSteering(true);
-    setNotice('drag to steer, tap to go in, pinch to move');
+    setNotice('leaning');
   };
   const startSteering = () => {
     const c = canvasRef.current;
@@ -2705,7 +2705,7 @@ export default function ShadowField({ serif }: Props) {
     dismissHint();
     const mouse = window.matchMedia('(pointer: fine)').matches && 'requestPointerLock' in HTMLElement.prototype;
     if (!mouse) return startTouchSteering();
-    setNotice('move to steer. esc to stop');
+    setNotice('leaning');
     try {
       void Promise.resolve(c.requestPointerLock()).catch(startTouchSteering);
     } catch {
@@ -3768,7 +3768,7 @@ export default function ShadowField({ serif }: Props) {
 
       <div className={styles.actions}>
         {/* steering is for after the first travel: one fewer thing to wonder about on arrival */}
-        {mode === 'flight' && canSteer && hinted && <button type="button" className={styles.quiet} onClick={steering ? stopSteering : startSteering}>{steering ? 'Stop' : 'Lean'}</button>}
+        {mode === 'flight' && canSteer && hinted && <button type="button" className={styles.quiet} onClick={steering ? stopSteering : startSteering}>{steering ? 'stop leaning' : 'Lean'}</button>}
         {path.length <= 1 && <button type="button" className={styles.quiet} onClick={() => { const c = camRef.current; if (c) openComposerAt(c.w / 2, c.h / 2); }}>Create</button>}
         {edits.undo && <button type="button" className={styles.quiet} onClick={() => { if (storeRef.current?.undo()) { rebuild(); setNotice('Undone'); } else setNotice('Could not undo this change.'); }}>Undo</button>}
         {replayView && <button type="button" className={styles.quiet} onClick={stopReplay}>Return to now</button>}
@@ -3817,11 +3817,6 @@ export default function ShadowField({ serif }: Props) {
         {mode === 'flight' && (
           <button type="button" className={recap ? styles.following : styles.quiet} onClick={recap ? () => setRecap(null) : openRecap}>
             your Fall
-          </button>
-        )}
-        {mode === 'flight' && canSteer && (
-          <button type="button" className={steering ? styles.following : styles.quiet} onClick={steering ? stopSteering : startSteering}>
-            {steering ? 'stop steering' : 'steer'}
           </button>
         )}
         {shareable && (
@@ -4578,7 +4573,11 @@ export default function ShadowField({ serif }: Props) {
           <p className={styles.introSub}>songs, dances, drawings and inventions, kept by the people who made them.</p>
         </div>
       )}
-      {(!hinted || recalled) && path.length <= 1 && (
+      {steering ? (
+        <div className={`${styles.hint} ${styles.hintLean}`}>
+          {coarse ? 'drag to lean toward an hour or an opening. tap to go in. pinch to move on.' : 'move to lean toward an hour or an opening. click to go in. esc to stop.'}
+        </div>
+      ) : (!hinted || recalled) && path.length <= 1 && (
         <div className={styles.hint}>
           <span className={styles.hintCue} aria-hidden />
           {mode === 'flight' ? (coarse ? 'swipe up to fall in' : 'scroll to fall in') : coarse ? 'pinch toward anything' : 'scroll toward anything'}
