@@ -287,13 +287,22 @@
 
 /* while leaning: a line that stays, quieter, and never breathes (the heading is the thing that moves) */
 .hintLean {
-  bottom: 12%;
+  bottom: 6.5%;
   font-size: 0.95rem;
   color: rgba(var(--ink), 0.45);
   animation: hintIn 500ms both;
-  white-space: normal;
+  white-space: nowrap;
   text-align: center;
-  max-width: min(440px, 86vw);
+  max-width: 92vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .hintLean {
+    bottom: 11%;
+    font-size: 0.9rem;
+  }
 }
 
 /* the drop that the hint names: it falls, as you will */

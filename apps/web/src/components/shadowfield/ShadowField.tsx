@@ -57,6 +57,7 @@ import {
   turnedIn,
 } from '@/lib/shadowfield/web';
 import { aheadFacing, aheadPaths, edgePaths, openingsOf, usesInnerLean, renderFlight } from '@/lib/shadowfield/flightRender';
+import { crossZ, currentAt, currentsOf, fractionOf, neighbourFacing, neighboursOf, type Current, type Neighbour } from '@/lib/shadowfield/currents';
 import { relatedTo } from '@/lib/shadowfield/relate';
 import { buildSamples, isSample, samplesAllowed } from '@/lib/shadowfield/sources/samples';
 import { addStep, beginJourney, forgetJourneys, recapOf, writeJourneys, type Journeys, type Recap } from '@/lib/shadowfield/journey';
@@ -448,6 +449,13 @@ export default function ShadowField({ serif }: Props) {
   const topicTurnRef = useRef<string | null>(null);
   const timeWellRef = useRef<Quarter | null>(null);
   const steerRef = useRef({ on: false, touch: false, x: 0, y: 0, endedAt: 0, well: null as Quarter | null });
+  // the current you are in and the ones beside it (by relationship, never by time), as last found
+  const currentsRef = useRef<{ stream: Stream | null; map: Map<string, Current> }>({ stream: null, map: new Map() });
+  const neighboursRef = useRef<Neighbour[]>([]);
+  // leaning toward a neighbour: which one, and for how long the lean has been held on it
+  const neighbourAimRef = useRef<Neighbour | null>(null);
+  const leanHoldRef = useRef({ id: null as string | null, ms: 0 });
+  const crossRef = useRef<(n: Neighbour) => void>(() => {});
   // steering by touch: the finger's own run (a tap, or a drag that aims), and a pinch that carries you
   const steerTouchRef = useRef({ moved: 0, pinched: false, d0: 0, d: 0 });
   // steering by touch: where the thumb has pushed the heading (the phone itself stays still: how it
@@ -1843,48 +1851,12 @@ export default function ShadowField({ serif }: Props) {
           setSteering(false);
         }
       }
-      if (!flying || !steer.on) {
-        steer.well = null;
-        topicTurnRef.current = null;
-      }
-      else {
-        const m = Math.hypot(steer.x, steer.y);
-        const q = quarterFacing(steer.x, steer.y, fc.spin);
-        const topics = topicsRef.current;
-        // Once inside, the visible openings own Lean; outer titles are context only.
-        if (usesInnerLean(insideRef.current)) {
-          steer.well = null;
-          topicTurnRef.current = null;
-        } else if (topics) {
-          // by topic, leaning hard toward a group turns into it: the fall holds that group
-          let nearest: string | null = null;
-          let d = Infinity;
-          const a = Math.atan2(steer.y, steer.x) - fc.spin;
-          for (const t of topics) {
-            const dd = Math.abs(Math.atan2(Math.sin(a - t.angle), Math.cos(a - t.angle)));
-            if (dd < d) [nearest, d] = [t.id, dd];
-          }
-          const cur = topicTurnRef.current;
-          const next = m < 0.3 ? null : m > 0.5 && (cur === null || nearest !== cur) && d < Math.PI / topics.length + 0.1 ? nearest : cur;
-          if (next !== cur) {
-            topicTurnRef.current = next;
-            if (next) {
-              insideRef.current = next;
-              const idx = stream.byId.get(next);
-              const first = idx !== undefined ? stream.stations[idx + 1] : undefined;
-              const to = first && first.depth === 2 ? first : idx !== undefined ? stream.stations[idx] : null;
-              if (to) fc.target = focusZ(stream, to, fc.z);
-            }
-          }
-        } else if (steer.well === null) {
-          if (m > 0.5) steer.well = q;
-        } else if (m < 0.3) steer.well = null;
-        else if (q !== steer.well) {
-          // a little past the line between two hours before it gives way (no flicker on the line)
-          const mid = -Math.PI / 2 + steer.well * (Math.PI / 2) + fc.spin;
-          const off = Math.abs(mod(Math.atan2(steer.y, steer.x) - mid + Math.PI, Math.PI * 2) - Math.PI);
-          if (off > Math.PI / 4 + 0.14) steer.well = q;
-        }
+      // the hour a lean faces is orientation only: it never filters the fall, never moves it forward
+      let faceQ: Quarter | null = null;
+      steer.well = null;
+      topicTurnRef.current = null;
+      if (flying && steer.on) {
+        if (Math.hypot(steer.x, steer.y) > 0.5) faceQ = quarterFacing(steer.x, steer.y, fc.spin);
         // held by the page, the pointer is the drop: whatever is at the middle is what it points at
         pointerRef.current = { x: cam.w / 2, y: cam.h * 0.47, inside: true, t: nowMs };
       }
@@ -2140,9 +2112,35 @@ export default function ShadowField({ serif }: Props) {
         };
         edgesRef.current = edgePaths(here, mayOpen);
         const ahead = (aheadRef.current = openingsOf(aheadPaths(here, mayOpen), edgesRef.current));
-        // steering, a lean (not yet into an hour) toward one of them aims at it
-        const aimed = steer.on && (usesInnerLean(insideRef.current) || steer.well === null) && Math.hypot(steer.x, steer.y) > 0.2 ? aheadFacing(ahead, steer.x, steer.y, fc.spin) : null;
+        // the current you are in, and the ones beside it: there from anywhere along it, not only at a branch
+        const cc = currentsRef.current;
+        if (cc.stream !== stream) {
+          cc.stream = stream;
+          cc.map = currentsOf(stream);
+        }
+        const current = currentAt(cc.map, here);
+        // a neighbour is open to this viewer by its disclosure and their lens, never by the group lens (crossing is what changes that)
+        const mayCross = (n: Neighbour) =>
+          n.current.station.depth === 0 || (!hiddenStation(n.current.station) && n.current.holder.disclosure <= lensRef.current.closeness(n.current.path[1]));
+        const neighbours = (neighboursRef.current = current && steer.on ? neighboursOf(stream, cc.map, current, stream.stations[0].node).filter(mayCross) : []);
+        // leaning toward a neighbour faces it (within the dimension of the lean); otherwise toward a way on at a branch
+        const m = Math.hypot(steer.x, steer.y);
+        const facingN = steer.on && m > 0.2 ? neighbourFacing(neighbours, steer.x, steer.y, fc.spin) : null;
+        neighbourAimRef.current = facingN;
+        const aimed = steer.on && !facingN && m > 0.2 ? aheadFacing(ahead, steer.x, steer.y, fc.spin) : null;
         aheadAimRef.current = aimed?.node.id ?? null;
+        // a lean held on a neighbour crosses into it; easing back toward the middle before then lets it go
+        const hold = leanHoldRef.current;
+        if (facingN && m > 0.5) {
+          if (hold.id !== facingN.current.id) Object.assign(hold, { id: facingN.current.id, ms: 0 });
+          hold.ms += dt * 1000;
+          if (hold.ms >= 500) {
+            Object.assign(hold, { id: null, ms: 0 });
+            crossRef.current(facingN);
+          }
+        } else Object.assign(hold, { id: null, ms: 0 });
+        // on the rim: the ways on at a branch, and, while leaning, the currents beside you (those first)
+        const shown = steer.on ? [...neighbours.map((n) => ({ node: n.current.holder, path: n.current.path, angle: n.angle })), ...ahead.filter((p) => !neighbours.some((n) => n.current.id === p.node.id))] : ahead;
         // the openings directly inside the frame you are in: the children of what is in front of you when it
         // holds several, otherwise the children of what holds it (never its siblings' children, nor the Slate)
         const topicOpenings = (() => {
@@ -2170,11 +2168,11 @@ export default function ShadowField({ serif }: Props) {
             return r && r.width > 0 ? { x0: r.left - rect.left, y0: r.top - rect.top, x1: r.right - rect.left, y1: r.bottom - rect.top } : undefined;
           })(),
           topicFacing: topicsRef.current && usesInnerLean(insideRef.current) ? aheadAimRef.current : topicTurnRef.current,
-          steer: { on: steer.on, facing: steer.well, turned: steer.on ? turnedIn(webMemRef.current, insideRef.current) : undefined },
+          steer: { on: steer.on, facing: faceQ, turned: steer.on ? turnedIn(webMemRef.current, insideRef.current) : undefined },
           explored: here && here.path.length > 1 ? exploredFrom(webMemRef.current, here.path[here.path.length - 2].id) : undefined,
-          ahead,
+          ahead: shown,
           hereZ: here?.z,
-          aheadAim: aheadAimRef.current,
+          aheadAim: neighbourAimRef.current?.current.id ?? aheadAimRef.current,
           leanedAhead: here ? leanedChildOf(webMemRef.current, here.node.id) : null,
           exploredAhead: here ? exploredFrom(webMemRef.current, here.node.id) : undefined,
           dt,
@@ -2722,7 +2720,45 @@ export default function ShadowField({ serif }: Props) {
     setSteering(false);
   };
   /** Steering, a click or tap: into the opening you lean toward, a group you face, or the thing you are on. */
+  /**
+   * Cross into a neighbouring current: the same fraction of the way along it as you were along
+   * this one. Depth is kept; no progress is made; the view swings toward the strand you crossed.
+   */
+  const crossInto = useCallback(
+    (n: Neighbour) => {
+      const stream = streamRef.current;
+      const fc = flightCamRef.current;
+      const cc = currentsRef.current;
+      const here = hereRef.current;
+      const from = stream ? currentAt(cc.map, here) : null;
+      if (!stream || !from || from.id === n.current.id) return;
+      const t = fractionOf(stream, from, fc.z);
+      const z = crossZ(stream, n.current, t, fc.z);
+      const turn = n.angle + fc.spin;
+      diveRef.current = { x: Math.cos(turn), y: Math.sin(turn), until: performance.now() + 650 };
+      fc.hop = null;
+      fc.target = null;
+      fc.v = 0;
+      fc.panZ += z - fc.z;
+      fc.z = z;
+      insideRef.current = n.current.station.depth === 0 ? null : n.current.path[1].id;
+      // the lean is spent by the crossing: a new one is needed for the next
+      Object.assign(steerRef.current, { x: 0, y: 0 });
+      steerHandRef.current = { dx: 0, dy: 0 };
+      neighbourAimRef.current = null;
+      choose(n.current.path);
+      setNotice(`across, into ${n.current.holder.title ?? 'untitled'}`);
+    },
+    [choose]
+  );
+  useEffect(() => {
+    crossRef.current = crossInto;
+  }, [crossInto]);
+
   const steerTap = () => {
+    // the neighbour you are leaning toward: a tap crosses at once
+    const n = neighbourAimRef.current;
+    if (n) return crossInto(n);
     const c = camRef.current;
     // about the thing you are on, never whatever happens to lie far behind it
     const on = hereRef.current;
@@ -4575,7 +4611,7 @@ export default function ShadowField({ serif }: Props) {
       )}
       {steering ? (
         <div className={`${styles.hint} ${styles.hintLean}`}>
-          {coarse ? 'drag to lean toward an hour or an opening. tap to go in. pinch to move on.' : 'move to lean toward an hour or an opening. click to go in. esc to stop.'}
+          {coarse ? 'hold a lean to cross into what is beside you · tap to go in · pinch to move on' : 'hold a lean to cross into what is beside you · click to go in · esc to stop'}
         </div>
       ) : (!hinted || recalled) && path.length <= 1 && (
         <div className={styles.hint}>
