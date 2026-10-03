@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { describeShared } from '@/lib/shadowfield/share';
 
-// The card a shared link unfolds into: its name in ink on paper, and a still
+// The card a shared link unfolds into: its name in pale ink on dark paper, and a still
 // from its film when it has one. Nothing else.
 
 let serif: Promise<ArrayBuffer | null> | null = null;
@@ -40,8 +40,8 @@ export async function GET(req: Request) {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#fbfaf7',
-          color: 'rgb(30,28,36)',
+          background: '#121116',
+          color: 'rgb(232,228,238)',
           fontFamily: font ? 'Cormorant' : 'serif',
           padding: 80,
           position: 'relative',
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
               left: 600 - r,
               top: 315 - r,
               borderRadius: r,
-              border: `2px dashed rgba(30,28,36,${0.1 + i * 0.04})`,
+              border: `2px dashed rgba(232,228,238,${0.1 + i * 0.04})`,
             }}
           />
         ))}

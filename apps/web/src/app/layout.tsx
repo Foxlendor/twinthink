@@ -21,8 +21,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#FAFAFA",
-  colorScheme: "light",
+  themeColor: "#0F0F13",
+  colorScheme: "dark",
 };
 
 export const metadata: Metadata = {
@@ -57,15 +57,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${plusJakartaSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
       style={{ background: 'var(--bg-primary)' }}
-      suppressHydrationWarning
     >
       <head>
-        {/* day or night before the first paint: the visitor's choice (shared with the Canvas), else their system */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `try{var s=localStorage.getItem('twinthink.night.v1');var d=s?s==='1':matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.setAttribute('data-theme','dark')}catch(e){}`,
-          }}
-        />
         <link rel="icon" href="/favicon.ico?v=20260921" sizes="any" />
         <link rel="icon" href="/icon.png?v=20260921" type="image/png" />
         <link rel="icon" href="/icon.svg?v=20260921" type="image/svg+xml" />

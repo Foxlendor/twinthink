@@ -50,7 +50,7 @@ export default function TransitionScreen() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #FAFAFA;
+          background: var(--bg-primary);
           animation: tt-fade ${DURATION_MS}ms ease forwards;
         }
         .tt-word {
@@ -58,7 +58,7 @@ export default function TransitionScreen() {
           font-weight: 700;
           font-size: clamp(1.6rem, 4vw, 2.4rem);
           letter-spacing: -0.03em;
-          color: #111827;
+          color: var(--text-primary);
           display: flex;
           align-items: baseline;
         }
@@ -68,7 +68,7 @@ export default function TransitionScreen() {
           height: 0.2em;
           margin: 0 0.06em;
           border-radius: 50%;
-          background: #111827;
+          background: var(--text-primary);
           animation: tt-bounce 620ms cubic-bezier(0.3, 0, 0.3, 1) both;
         }
         @keyframes tt-bounce {

@@ -1,8 +1,9 @@
 .field {
-  --ink: 30, 28, 36;
-  --paper: #fbfaf7;
-  --paper-rgb: 251, 250, 247;
-  --rose: 150, 92, 122;
+  --ink: 232, 228, 238;
+  --paper: #121116;
+  --paper-rgb: 18, 17, 22;
+  --rose: 214, 160, 186;
+  color-scheme: dark;
   position: fixed;
   inset: 0;
   background: var(--paper);
@@ -516,16 +517,16 @@
   transition: opacity 400ms ease;
 }
 
-.field[data-flow='moving'] :is(.mark, .mode, .me, .night, .compass, .trail, .actions, .privacy) {
+.field[data-flow='moving'] :is(.mark, .mode, .me, .compass, .trail, .actions, .privacy) {
   opacity: 0.12;
 }
 
-.field[data-flow='rest'] :is(.mark, .mode, .me, .night, .compass, .trail, .actions, .privacy) {
+.field[data-flow='rest'] :is(.mark, .mode, .me, .compass, .trail, .actions, .privacy) {
   opacity: 0.35;
 }
 
 /* a control reached with the keyboard is always fully there */
-.field[data-flow] :is(.mark, .mode, .me, .night, .compass, .trail, .actions, .privacy):focus-within {
+.field[data-flow] :is(.mark, .mode, .me, .compass, .trail, .actions, .privacy):focus-within {
   opacity: 1;
 }
 
@@ -573,34 +574,6 @@
   font-size: 1rem;
   color: rgba(var(--ink), 0.8);
   white-space: pre-wrap;
-}
-
-/* night: pale ink on dark paper */
-.field[data-night] {
-  --ink: 232, 228, 238;
-  --paper: #121116;
-  --paper-rgb: 18, 17, 22;
-  --rose: 214, 160, 186;
-  color-scheme: dark;
-}
-
-.night {
-  position: absolute;
-  top: 46px;
-  left: 20px;
-  background: none;
-  border: none;
-  padding: 2px 0;
-  cursor: pointer;
-  font-family: var(--font-serif), Georgia, serif;
-  font-style: italic;
-  font-size: 0.9rem;
-  color: rgba(var(--ink), 0.45);
-}
-
-.night:hover,
-.night:focus-visible {
-  color: rgba(var(--ink), 0.9);
 }
 
 /* the compass: which way is up in space, where you are, where the next thing lies */

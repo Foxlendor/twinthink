@@ -25,7 +25,7 @@ export default function HomePage() {
       style={{ position: 'relative', minHeight: 'calc(100vh - 64px)', display: 'grid', placeItems: 'center', padding: '48px 24px', textAlign: 'center', overflow: 'hidden' }}
     >
       {/* his ink film, behind the words */}
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', opacity: 0.85 }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
         <BrandVideoBanner />
       </div>
       <div

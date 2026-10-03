@@ -14,28 +14,15 @@ import { getPeaks } from './audio';
 import { PLOT, Plot } from './plots';
 import { clamp, hash01, noise1, smoothstep } from './rng';
 
-// The palette. Day is ink on paper; night is the same page inverted: pale
-// ink on dark paper. Exported as live bindings, so every drawing follows.
-export let PAPER = '#fbfaf7';
-export let PAPER_RGB = '251,250,247';
-export let INK = '30,28,36';
-export let ROSE = '176,118,146';
+// The palette: pale ink on dark paper. Exported as live bindings, so every drawing follows.
+export const PAPER = '#121116';
+export const PAPER_RGB = '18,17,22';
+export const INK = '232,228,238';
+export const ROSE = '214,160,186';
 /** Another person's presence, in a shared Fall: cool, so it never reads as resonance's own warm glint. */
-export let PRESENCE = '92,126,168';
-export let TINT_WARM = '238,231,219';
-export let TINT_COOL = '233,229,236';
-export let NIGHT = false;
-
-export function setNight(on: boolean) {
-  NIGHT = on;
-  PAPER = on ? '#121116' : '#fbfaf7';
-  PAPER_RGB = on ? '18,17,22' : '251,250,247';
-  INK = on ? '232,228,238' : '30,28,36';
-  ROSE = on ? '214,160,186' : '176,118,146';
-  PRESENCE = on ? '150,180,214' : '92,126,168';
-  TINT_WARM = on ? '44,40,36' : '238,231,219';
-  TINT_COOL = on ? '36,34,44' : '233,229,236';
-}
+export const PRESENCE = '150,180,214';
+export const TINT_WARM = '44,40,36';
+export const TINT_COOL = '36,34,44';
 
 export interface Lens {
   /** Viewer closeness p in [0, 1] for a top-level Twin. */
@@ -760,15 +747,15 @@ export function drawVideo(
   if (!frame) {
     ctx.fillStyle = `rgba(${INK},0.05)`;
     ctx.fillRect(x0, y0, W, H);
-  } else if (NIGHT && !m.round && m.drawing) {
-    // at night a drawing is printed as its negative, pale lines on the dark page:
+  } else if (!m.round && m.drawing) {
+    // a drawing is printed as its negative, pale lines on the dark page:
     // inverted whole on a sheet of its own, then only its light is laid down, so
-    // its paper leaves the night's paper as it was (no pale box around it)
+    // its paper leaves the page as it was (no pale box around it)
     const neg = negative(frame, W, H);
     ctx.globalCompositeOperation = 'lighten';
     ctx.drawImage(neg, x0, y0, W, H);
   } else {
-    ctx.globalCompositeOperation = NIGHT ? 'source-over' : 'multiply';
+    ctx.globalCompositeOperation = 'source-over';
     ctx.drawImage(frame, x0, y0, W, H);
   }
   ctx.globalCompositeOperation = 'source-over';

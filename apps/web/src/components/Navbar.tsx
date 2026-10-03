@@ -1,32 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import BrandLogo from './BrandLogo';
 
-// A few words at the top of the page: where you are, the way in, and day or night.
+// A few words at the top of the page: where you are, and the way in.
 export default function Navbar() {
   const pathname = usePathname();
-
-  // day or night, shared with the Canvas's own night switch
-  const [dark, setDark] = useState(false);
-  useEffect(() => {
-    // read what the pre-paint script already chose
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDark(document.documentElement.getAttribute('data-theme') === 'dark');
-  }, []);
-  const toggleDark = () => {
-    const on = !dark;
-    setDark(on);
-    if (on) document.documentElement.setAttribute('data-theme', 'dark');
-    else document.documentElement.removeAttribute('data-theme');
-    try {
-      localStorage.setItem('twinthink.night.v1', on ? '1' : '0');
-    } catch {
-      // optional
-    }
-  };
 
   // The Slate has its own quiet chrome.
   if (pathname?.startsWith('/slate')) return null;
@@ -37,10 +18,6 @@ export default function Navbar() {
     fontSize: '1.1rem',
     color: 'var(--text-secondary)',
     textDecoration: 'none',
-    background: 'none',
-    border: 'none',
-    padding: 0,
-    cursor: 'pointer',
   };
   return (
     <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', height: 64 }}>
@@ -54,9 +31,6 @@ export default function Navbar() {
         <Link href="/support" style={word}>
           support
         </Link>
-        <button type="button" onClick={toggleDark} style={word} aria-pressed={dark}>
-          {dark ? 'day' : 'night'}
-        </button>
       </nav>
     </header>
   );
