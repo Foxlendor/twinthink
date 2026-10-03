@@ -566,7 +566,17 @@ current is your perspective, and its own neighbours are the ones that matter.
 Aiming at an hour is orientation only: it no longer filters the fall or moves
 it forward.
 
-Intent, not built: creators author the dimensions of their own Slate
+Intent, not built: structure stays deterministic enough to mean something,
+revelation varies enough to feel alive. The relationships decide what is
+possible around you; the Slate may vary how those possibilities disclose
+themselves on a visit (which valid opening becomes noticeable first, how
+strongly it glints, how close two currents drift, what is glimpsed through a
+wall), seeded by the relationship and the visit, never by popularity or anyone's
+history. Possibilities are passed, not pushed: falling past one records
+nothing, and a Lean is the only choice. An opening need not hold a finished
+thing: a fork open to you, a story asking to be built on, a dead end Rabi has
+marked are openings too, and crossing into one lands you where you can make.
+Creators author the dimensions of their own Slate
 separately and visitors meet them together; Rabi proposes where a new Twin's
 relationships could open a strand, and the creator accepts, moves, reshapes or
 refuses it. The invisible coordinates that keep this coherent are engineering,
