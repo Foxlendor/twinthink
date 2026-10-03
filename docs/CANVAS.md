@@ -598,6 +598,36 @@ relationships could open a strand, and the creator accepts, moves, reshapes or
 refuses it. The invisible coordinates that keep this coherent are engineering,
 not something a visitor or a creator is ever shown.
 
+## The room sees you: your head at the window, your shadow in the Fall
+"let the room see you", under More, asks for the camera. Read on this device
+only: the picture is looked at in the browser, the models run in the browser
+(`lib/light/`), no frame is kept and nothing is sent anywhere. "stop" lets the
+camera go at once. Without a camera, or with it off, nothing changes.
+
+Your head moves the window. The screen is a window into the current: what is
+in front of you (the focus plane) holds still, what is beyond it slides with
+your head, what is nearer slides against it, and coming nearer shows a little
+more through the window (`flight.ts`: `View.ex`, `View.ey`, `project`). It is
+small, smoothed (quick to follow a real move, still on a still head), eased
+back to the centre when the camera loses you, and "set centre" makes where you
+are now straight ahead. Lean reads the pointer or the thumb, never the head:
+looking around never crosses.
+
+Your silhouette casts a shadow into the Fall. A light stands behind you on the
+eye's axis; your silhouette, from the camera's person map, stands between it
+and the Fall; its shadow falls forward onto whatever is there, by depth: large
+and near on what is near, small on what is far, as a shadow does. It is cast
+where the ink is laid: every dot, streak, ring and strand is shaded by where
+it is and how far it is (`Ink.shade`, `Ink.dz` in `flightRender.ts`), and a
+film, picture or object is shaded within its disc at its own depth. The mask
+has a clean edge and a small, deliberate penumbra; the camera's uncertainty
+is never the shadow's softness. No avatar, no cursor: the centre still belongs
+to the Fall; you are present by what your shadow does to the surrounding
+current.
+
+On a preview, `?presence=synthetic` shows all of this with a made-up person,
+so it can be checked without a camera; never in production.
+
 ## Next
 1. Switch lead is built: "let X lead" hands the Fall to someone still in it;
    the seat is overwritten in place, with no record of who led when.

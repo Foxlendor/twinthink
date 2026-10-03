@@ -644,6 +644,12 @@ export interface View {
   /** Steering (see FlightCam.bx): the farther ahead, the further it swings that way. */
   bx: number;
   by: number;
+  /**
+   * The eye, off the window's centre (track units at the focus plane): the screen is a window, so
+   * what is at focus holds still and what is beyond it slides with the head. Zero without a head.
+   */
+  ex: number;
+  ey: number;
 }
 
 /**
@@ -700,7 +706,14 @@ export function panBy(cam: FlightCam, stream: Stream, dx: number, dy: number, w:
   cam.panZ = cam.z;
 }
 
-export function viewOf(stream: Stream, cam: FlightCam, w: number, h: number, skip?: (s: Station) => boolean): View {
+/** A head at the window: where the eye is, and how near (1 at the calibrated distance). */
+export interface Eye {
+  ex: number;
+  ey: number;
+  near: number;
+}
+
+export function viewOf(stream: Stream, cam: FlightCam, w: number, h: number, skip?: (s: Station) => boolean, eye?: Eye | null): View {
   const M = flightScale(w, h);
   const [lx, ly] = leanAt(stream, cam.z, skip);
   // at speed the field of view widens a little, as if pulled forward
@@ -708,7 +721,8 @@ export function viewOf(stream: Stream, cam: FlightCam, w: number, h: number, ski
   const roll = rollAt(cam.z, cam.spin);
   const [px, py] = panAt(cam, stream.length);
   // crossing a threshold the view breathes out wide, then zooms back in as it arrives
-  const F = M * (1 - 0.16 * rush) * (1 - cam.pull);
+  // nearer the window, more of the world shows through it (a little: the window is a window, not a lens)
+  const F = M * (1 - 0.16 * rush) * (1 - cam.pull) * (eye ? 1 / (1 + 0.35 * (eye.near - 1)) : 1);
   return {
     z: cam.z,
     x: lx + px,
@@ -721,6 +735,8 @@ export function viewOf(stream: Stream, cam: FlightCam, w: number, h: number, ski
     rs: Math.sin(roll),
     bx: cam.bx,
     by: cam.by,
+    ex: eye?.ex ?? 0,
+    ey: eye?.ey ?? 0,
   };
 }
 
@@ -731,7 +747,11 @@ export function project(v: View, x: number, y: number, dz: number): [number, num
   const dy = y - v.y;
   // steering: the way ahead swings toward where you are heading, more the farther it is
   const bend = BEND * dz * v.F;
-  return [v.cx + (dx * v.rc - dy * v.rs) * k + v.bx * bend, v.cy + (dx * v.rs + dy * v.rc) * k + v.by * bend, k];
+  // the window: with the eye off its centre by (ex, ey), a point at the focus plane (dz = 1) stays
+  // where it was and everything beyond slides with the head, everything nearer against it
+  const rx = dx * v.rc - dy * v.rs;
+  const ry = dx * v.rs + dy * v.rc;
+  return [v.cx + v.F * v.ex + (rx - v.ex) * k + v.bx * bend, v.cy + v.F * v.ey + (ry - v.ey) * k + v.by * bend, k];
 }
 
 /**
