@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { edgePaths, mouthsOf, openingsOf } from './flightRender';
+import { aheadFacing, aheadPaths, edgePaths, mouthsOf, openingsOf, usesInnerLean } from './flightRender';
 import type { Station } from './flight';
 import type { IdeaNode } from './model';
 
@@ -87,3 +87,34 @@ describe('every way on is a side tunnel off the wall', () => {
     }
   });
 });
+
+// The screenshot regression: an entered HEX Lab must yield to its visible choices.
+describe('Lean follows the entered depth', () => {
+  it('leaves outer time/topic steering available only before entering a group', () => {
+    expect(usesInnerLean(null)).toBe(false);
+    expect(usesInnerLean('hex-lab')).toBe(true);
+  });
+
+  it('allows every displayed child to be aimed at, independent of its parent title', () => {
+    const children = Array.from({ length: 8 }, (_, i) => node(`choice-${i}`, [], { began: i * 90 * 60000 }));
+    const parent = node('hex-lab', children);
+    const root = node('slate', [parent]);
+    const here = { ...at([root, parent]), depth: 1 } as Station;
+    const openings = openingsOf(aheadPaths(here, all), []);
+    expect(openings).toHaveLength(8);
+    for (const opening of openings) {
+      for (const roll of [0, 1.4, -2]) {
+        const angle = opening.angle + roll;
+        expect(aheadFacing(openings, Math.cos(angle), Math.sin(angle), roll)?.node.id).toBe(opening.node.id);
+      }
+    }
+  });
+
+  it('keeps protected children out of the active choices', () => {
+    const parent = node('hex-lab', [node('public-a'), node('private'), node('public-b')]);
+    const root = node('slate', [parent]);
+    const here = { ...at([root, parent]), depth: 1 } as Station;
+    expect(aheadPaths(here, n => n.id !== 'private').map(p => p.node.id)).toEqual(['public-a', 'public-b']);
+  });
+});
+

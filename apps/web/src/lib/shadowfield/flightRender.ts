@@ -203,6 +203,11 @@ export function aheadPaths(here: Station | null | undefined, open: (n: IdeaNode,
   return out.slice(0, 8);
 }
 
+/** Outer time/topic steering yields to the choices inside the entered group. */
+export function usesInnerLean(inside: string | null): boolean {
+  return inside !== null;
+}
+
 /** The ahead path nearest a heading (x right, y down), or null. */
 export function aheadFacing(ahead: AheadPath[], x: number, y: number, roll: number): AheadPath | null {
   if (!ahead.length) return null;
@@ -1219,7 +1224,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   const speed = cam.shown;
   const ink = new Ink();
 
-  const born = (s: Station) => st.cut === null || s.depth === 0 || s.node.began <= st.cut;
+  const born = (s: Station) => st.cut === null || s.depth === 0 || s.node.id === fs.here || s.node.began <= st.cut;
   const gone = (s: Station) => !born(s) || fs.hidden(s);
 
   // at a branch, every way on is a side tunnel off the wall just ahead: faint while falling, fuller

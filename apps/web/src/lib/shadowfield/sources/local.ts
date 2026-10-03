@@ -53,6 +53,11 @@ export interface ShadowStore {
   /** Add content inside a Shadow (thoughtId null) or one of its thoughts. Returns false if storage is full. */
   addMedia(shadowId: string, thoughtId: string | null, media: Media): boolean;
   remove(shadowId: string): void;
+  removeMedia(shadowId: string, thoughtId: string | null, index: number): boolean;
+  undo(): boolean;
+  redo(): boolean;
+  canUndo(): boolean;
+  canRedo(): boolean;
 }
 
 const KEY = 'twinthink.shadows.v1';
@@ -74,25 +79,45 @@ export function createLocalStore(storage: Pick<Storage, 'getItem' | 'setItem'> |
     }
   };
   let lastWriteOk = true;
+  const past: string[] = [];
+  const future: string[] = [];
   const write = (list: LocalShadow[]) => {
-    memory = list;
     lastWriteOk = true;
-    if (!storage) return;
     try {
-      storage.setItem(KEY, JSON.stringify(list));
+      storage?.setItem(KEY, JSON.stringify(list));
+      memory = list;
     } catch {
-      // storage full or blocked: keep working in memory
       lastWriteOk = false;
     }
   };
-  const mutate = (fn: (list: LocalShadow[]) => void) => {
-    const list = read();
+  const mutate = (fn: (list: LocalShadow[]) => void, remember = true) => {
+    const before = JSON.stringify(read());
+    const list = JSON.parse(before) as LocalShadow[];
     fn(list);
+    if (JSON.stringify(list) === before) return;
     write(list);
+    if (lastWriteOk && remember) {
+      past.push(before);
+      if (past.length > 20) past.shift();
+      future.length = 0;
+    }
   };
-
+  const restore = (from: string[], to: string[]) => {
+    const snapshot = from.at(-1);
+    if (!snapshot) return false;
+    const current = JSON.stringify(read());
+    write(JSON.parse(snapshot));
+    if (!lastWriteOk) return false;
+    from.pop();
+    to.push(current);
+    return true;
+  };
   return {
     list: read,
+    canUndo: () => past.length > 0,
+    canRedo: () => future.length > 0,
+    undo: () => restore(past, future),
+    redo: () => restore(future, past),
     cast(text, x, y, from) {
       const now = Date.now();
       const s: LocalShadow = { id: uid(), text, created: now, x, y, visits: [now], revisions: [], thoughts: [], ...(from ? { from } : {}) };
@@ -142,16 +167,18 @@ export function createLocalStore(storage: Pick<Storage, 'getItem' | 'setItem'> |
         (holder.media ??= []).push(media);
         (thoughtId === null ? s.revisions : (holder as LocalThought).revisions).push(Date.now());
       });
-      if (!lastWriteOk) {
-        // roll back so the stored record stays consistent
-        mutate((l) => {
-          const s = l.find((v) => v.id === shadowId);
-          const holder = s && (thoughtId === null ? s : s.thoughts.find((t) => t.id === thoughtId));
-          holder?.media?.pop();
-        });
-        return false;
-      }
-      return true;
+      return lastWriteOk;
+    },
+    removeMedia(shadowId, thoughtId, index) {
+      let found = false;
+      mutate((list) => {
+        const shadow = list.find(s => s.id === shadowId);
+        const holder = shadow && (thoughtId === null ? shadow : shadow.thoughts.find(t => t.id === thoughtId));
+        if (!holder?.media || !Number.isInteger(index) || index < 0 || index >= holder.media.length) return;
+        holder.media.splice(index, 1);
+        found = true;
+      });
+      return found && lastWriteOk;
     },
     visit(shadowId) {
       mutate((l) => {
@@ -159,7 +186,7 @@ export function createLocalStore(storage: Pick<Storage, 'getItem' | 'setItem'> |
         if (!s) return;
         const last = s.visits[s.visits.length - 1] ?? 0;
         if (Date.now() - last > VISIT_GAP) s.visits.push(Date.now());
-      });
+      }, false);
     },
     remove(shadowId) {
       mutate((l) => {
