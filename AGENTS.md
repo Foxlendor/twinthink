@@ -27,6 +27,7 @@ Use only these terms for TwinThink concepts, in docs, UI, routes, comments and e
 | --- | --- |
 | TwinThink | The whole system: the internet with depth. |
 | Shadow Slate | The primary spatial interface. |
+| Lens | Controls or shapes what a particular viewer is permitted to perceive. Like a microscope changing its focal lens: the same underlying Twin, different magnification and focus depending on who is looking. |
 | The Fall | Moving through connected knowledge, human work and relationships. |
 | Whoeuvre | One person's accumulated body of work, ideas, history and contributions. |
 | Twin protocol | The infrastructure underneath: identity, provenance, signed history, evidence, rights, portability, continuity. |
