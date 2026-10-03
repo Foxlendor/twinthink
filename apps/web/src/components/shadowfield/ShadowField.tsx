@@ -464,6 +464,8 @@ export default function ShadowField({ serif }: Props) {
   // leaning toward a neighbour: which one, and for how long the lean has been held on it
   const neighbourAimRef = useRef<Neighbour | null>(null);
   const leanHoldRef = useRef({ id: null as string | null, ms: 0 });
+  // after a crossing the lean is spent: a new one begins only once the pointer has come back toward the drop
+  const leanSpentRef = useRef(false);
   const crossRef = useRef<(n: Neighbour) => void>(() => {});
   const goToRef = useRef<(path: IdeaNode[]) => void>(() => {});
   // steering by touch: the finger's own run (a tap, or a drag that aims), and a pinch that carries you
@@ -2151,7 +2153,9 @@ export default function ShadowField({ serif }: Props) {
         aheadAimRef.current = aimed?.node.id ?? null;
         // a lean held on a neighbour crosses into it; easing back toward the middle before then lets it go
         const hold = leanHoldRef.current;
-        const held = facingN && (hovered || m > 0.45) ? { id: facingN.current.id, go: () => crossRef.current(facingN) } : aimed && m > 0.45 ? { id: aimed.node.id, go: () => goToRef.current(aimed.path) } : null;
+        // across is the lean's job alone: resting the pointer (or holding a thumb's lean) on a current beside you crosses
+        if (leanSpentRef.current && m < 0.2) leanSpentRef.current = false;
+        const held = !leanSpentRef.current && facingN && (hovered || m > 0.45) ? { id: facingN.current.id, go: () => crossRef.current(facingN) } : null;
         if (held) {
           if (hold.id !== held.id) Object.assign(hold, { id: held.id, ms: 0 });
           hold.ms += dt * 1000;
@@ -2635,10 +2639,10 @@ export default function ShadowField({ serif }: Props) {
     lastTapRef.current = { t: now, x, y, n: taps };
 
     const hit = only !== undefined ? only : (hoverRef.current ?? hitsRef.current.find((h) => Math.hypot(h.x - x, h.y - y) < h.r) ?? null);
-    // the mouth of a current beside you: a tap crosses into it, at the same depth
-    if (hit && hit.kind === 'node' && hit.size >= 1e9) {
-      const n = neighboursRef.current.find((q) => q.current.id === hit.node.id);
-      if (n) return crossRef.current(n);
+    // a current beside you is crossed into by leaning, never by a click or tap
+    if (hit && hit.kind === 'node' && hit.size >= 1e9 && neighboursRef.current.some((q) => q.current.id === hit.node.id)) {
+      setNotice('lean toward it and rest there to cross');
+      return;
     }
     // touching something that was waiting is finding it
     if (hit?.kind === 'node') eatFood(hit.node.id);
@@ -2768,9 +2772,13 @@ export default function ShadowField({ serif }: Props) {
       fc.panZ += z - fc.z;
       fc.z = z;
       insideRef.current = n.current.station.depth === 0 ? null : n.current.path[1].id;
-      // the lean is spent by the crossing: a new one is needed for the next
-      Object.assign(steerRef.current, { x: 0, y: 0 });
-      steerHandRef.current = { dx: 0, dy: 0 };
+      // the lean is spent by the crossing: a new one begins only from back toward the drop. A thumb's lean
+      // is let go here (lifting is that return); a mouse's is its position, which the hand brings back itself
+      leanSpentRef.current = true;
+      if (steerRef.current.touch) {
+        Object.assign(steerRef.current, { x: 0, y: 0 });
+        steerHandRef.current = { dx: 0, dy: 0 };
+      }
       neighbourAimRef.current = null;
       choose(n.current.path);
       setNotice(`across, into ${n.current.holder.title ?? 'untitled'}`);
@@ -3045,6 +3053,15 @@ export default function ShadowField({ serif }: Props) {
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerType === 'mouse' && e.button === 1 && modeRef.current === 'flight' && !sketchRef.current?.stroke) {
+      // middle click: go through the ring the pointer is on (across into a current beside you, or in at a
+      // branch), or act on the thing it is on
+      pointersRef.current.delete(e.pointerId);
+      dragRef.current.active = false;
+      const rect = e.currentTarget.getBoundingClientRect();
+      tapAt(e.clientX - rect.left, e.clientY - rect.top);
+      return;
+    }
     if (e.pointerType === 'mouse' && (e.button === 0 || e.button === 2) && modeRef.current === 'flight' && !sketchRef.current?.stroke) {
       const dr = dragRef.current;
       const dragged = dr.active && dr.moved > 6;
@@ -3741,6 +3758,10 @@ export default function ShadowField({ serif }: Props) {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onContextMenu={(e) => e.preventDefault()}
+        onMouseDown={(e) => {
+          if (e.button === 1) e.preventDefault();
+        }}
+        onAuxClick={(e) => e.preventDefault()}
         onPointerCancel={(e) => {
           pointersRef.current.delete(e.pointerId);
           pinchRef.current = null;
@@ -4695,7 +4716,7 @@ export default function ShadowField({ serif }: Props) {
       )}
       {steering ? (
         <div className={`${styles.hint} ${styles.hintLean}`}>
-          {coarse ? 'lean toward a ring and hold to go through it · tap to go in · pinch to move on' : mirror ? 'rest the pointer on a ring to go through it · right click forward, left click back · esc to stop' : 'rest the pointer on a ring to go through it · click forward, right click back · esc to stop'}
+          {coarse ? 'lean toward a ring beside you and hold to cross · tap what you are on · pinch to move on' : mirror ? 'rest the pointer on a ring beside you to cross · middle click what you are on · right click forward, left click back · esc to stop' : 'rest the pointer on a ring beside you to cross · middle click what you are on · click forward, right click back · esc to stop'}
         </div>
       ) : (!hinted || recalled) && path.length <= 1 && (
         <div className={styles.hint}>
