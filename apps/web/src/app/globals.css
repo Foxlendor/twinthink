@@ -228,7 +228,8 @@ a {
   object-fit: contain;
   display: block;
 }
-/* a first visit: the film alone, and the words arrive as it ends */
+/* a first visit: the film alone, and the words arrive as it ends; the pointer stays out of the film */
+.tt-home[data-shown='no'] { cursor: none; }
 .tt-home[data-shown='no'] .tt-home-card {
   opacity: 0;
   transform: translateY(10px);
