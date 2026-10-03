@@ -291,6 +291,13 @@ function drawMouth(st: RenderState, v: View, m: Mouth, a: number, aimed: boolean
     if (dz < NEAR + 0.25) return null;
     return project(v, X, Y, dz);
   };
+  // the centre belongs to the Fall: an opening forms at the edge of vision, and fades as it nears the middle
+  const mouth = at(0, 0, 0);
+  if (!mouth) return null;
+  const M = Math.min(st.w, st.h);
+  const edge = smoothstep(0.14 * M, 0.26 * M, Math.hypot(mouth[0] - v.cx, mouth[1] - v.cy));
+  if (edge < 0.02) return null;
+  a *= edge;
   const lit = aimed ? 1 : 0;
   // its rings, from the mouth down to the far end, fainter the deeper they go
   let rimX = 0;
@@ -537,38 +544,6 @@ function drawHold(st: RenderState, x: number, y: number, reach: number, hold: nu
   ctx.strokeStyle = `rgba(${INK},0.9)`;
   ctx.lineWidth = 1.6;
   ctx.stroke();
-  ctx.restore();
-}
-
-function drawDrop(st: RenderState, v: View) {
-  const { ctx } = st;
-  const r = st.w < 640 ? 7 : 8.5;
-  const m = Math.min(1, Math.hypot(v.bx, v.by));
-  // the tail points away from where you are heading, and grows the harder you turn
-  const a = Math.atan2(-v.by, -v.bx);
-  const tail = r * (1 + 1.6 * m);
-  ctx.save();
-  ctx.translate(v.cx, v.cy);
-  ctx.beginPath();
-  if (m < 0.05) ctx.arc(0, 0, r, 0, Math.PI * 2);
-  else {
-    // a teardrop: round at the front, drawn to a point behind (the arc runs between the two
-    // points where lines from the tip just touch the circle, around the side away from the tip)
-    const touch = Math.acos(Math.min(1, r / tail));
-    ctx.arc(0, 0, r, a + touch, a - touch + Math.PI * 2);
-    ctx.lineTo(Math.cos(a) * tail, Math.sin(a) * tail);
-    ctx.closePath();
-  }
-  ctx.fillStyle = PAPER;
-  ctx.fill();
-  ctx.strokeStyle = `rgba(${INK},0.85)`;
-  ctx.lineWidth = 1.3;
-  ctx.stroke();
-  // a single catch of light, where a drop holds it
-  ctx.fillStyle = `rgba(${INK},0.55)`;
-  ctx.beginPath();
-  ctx.arc(-r * 0.3, -r * 0.35, r * 0.18, 0, Math.PI * 2);
-  ctx.fill();
   ctx.restore();
 }
 
@@ -1463,7 +1438,6 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
     if (fs.aim && fs.aim.id === h.node.id && fs.aim.hold > 0) drawHold(st, h.x, h.y, h.reach, fs.aim.hold);
   }
   ink.flush(st.ctx);
-  if (fs.steer?.on) drawDrop(st, v);
 }
 
 /** Hits this frame carry station paths; the viewer's pointer picks the nearest. */

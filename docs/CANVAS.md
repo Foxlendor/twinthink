@@ -566,6 +566,13 @@ current is your perspective, and its own neighbours are the ones that matter.
 Aiming at an hour is orientation only: it no longer filters the fall or moves
 it forward.
 
+A hard visual rule: the centre belongs to the Fall, and possibilities emerge
+around the traveller. The camera is the traveller; nothing is drawn in the
+middle to stand for you, not a drop, not a pointer, not a reticle. Openings
+form at the edge of vision and fade as they near the middle; nothing flies to
+the centre to be looked at. Falling may leave the web abstract; stillness
+gives what is near enough definition to inspect.
+
 Intent, not built: structure stays deterministic enough to mean something,
 revelation varies enough to feel alive. The relationships decide what is
 possible around you; the Slate may vary how those possibilities disclose
