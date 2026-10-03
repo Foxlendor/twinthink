@@ -706,7 +706,7 @@ export async function logNoticeShown(q: Query, forkId: string, ownerSub: string,
   const f = await getForkRaw(q, forkId);
   if (!f || f.owner_sub !== ownerSub) return { error: 'Not yours.' } as const;
   const today = new Date().toISOString().slice(0, 10);
-  const [already] = await q(`SELECT 1 FROM tt_rabi_log WHERE fork_id = $1 AND event = 'notice_shown' AND created_at::date = $2::date`, [forkId, today]);
+  const [already] = await q(`SELECT 1 FROM tt_rabi_log WHERE fork_id = $1 AND event = 'notice_shown' AND (created_at AT TIME ZONE 'UTC')::date = $2::date`, [forkId, today]);
   if (!already) await q(`INSERT INTO tt_rabi_log (id, fork_id, owner_sub, event, pressure_state) VALUES ($1, $2, $3, 'notice_shown', $4)`, [newId(), forkId, ownerSub, pressureState]);
   return { ok: true } as const;
 }

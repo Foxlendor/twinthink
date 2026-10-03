@@ -1,4 +1,5 @@
 'use client';
+import { recordedRange } from '@/lib/shadowfield/replay';
 
 import Link from 'next/link';
 import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
@@ -55,7 +56,7 @@ import {
   exploredFrom,
   turnedIn,
 } from '@/lib/shadowfield/web';
-import { aheadFacing, aheadPaths, edgePaths, openingsOf, renderFlight } from '@/lib/shadowfield/flightRender';
+import { aheadFacing, aheadPaths, edgePaths, openingsOf, usesInnerLean, renderFlight } from '@/lib/shadowfield/flightRender';
 import { relatedTo } from '@/lib/shadowfield/relate';
 import { buildSamples, isSample, samplesAllowed } from '@/lib/shadowfield/sources/samples';
 import { addStep, beginJourney, forgetJourneys, recapOf, writeJourneys, type Journeys, type Recap } from '@/lib/shadowfield/journey';
@@ -293,6 +294,8 @@ function zAlong(run: number[], u: number) {
 export default function ShadowField({ serif }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const storeRef = useRef<ShadowStore | null>(null);
+  // whether the last change can be undone or redone: refreshed by rebuild, never read from the ref while rendering
+  const [edits, setEdits] = useState({ undo: false, redo: false });
   const worldRef = useRef<IdeaNode | null>(null);
   const camRef = useRef<Camera | null>(null);
   const lensRef = useRef<Lens>({ closeness: () => 0.5, visited: new Set(), followed: new Set() });
@@ -375,7 +378,7 @@ export default function ShadowField({ serif }: Props) {
   } | null>(null);
   const playingRef = useRef<{ src: string; path: IdeaNode[]; silentFor: number } | null>(null);
   // replay: progress 0..1 through [from, to]; playing advances it over time
-  const replayRef = useRef<{ from: number; to: number; progress: number; playing: boolean; hold: number } | null>(null);
+  const replayRef = useRef<{ nodeId: string; group: string; from: number; to: number; progress: number; playing: boolean; hold: number } | null>(null);
   // the flight: the Canvas as one endless stream you move through (default);
   // the map: the Canvas seen whole, zooming into nested frames
   const modeRef = useRef<'flight' | 'map'>('flight');
@@ -535,6 +538,7 @@ export default function ShadowField({ serif }: Props) {
     const store = storeRef.current!;
     const list = store.list();
     setLocalList(list);
+    setEdits({ undo: store.canUndo(), redo: store.canRedo() });
     const world = buildWorld(list, postedRef.current, samplesRef.current ?? undefined);
     worldRef.current = world;
     // the flight keeps what is in front of you in front of you
@@ -1805,8 +1809,7 @@ export default function ShadowField({ serif }: Props) {
           if (rp.progress >= 1) {
             rp.hold += dt;
             if (rp.hold > 1.6) {
-              replayRef.current = null;
-              setReplayView(null);
+              rp.playing = false;
             }
           }
         }
@@ -1842,7 +1845,11 @@ export default function ShadowField({ serif }: Props) {
         const m = Math.hypot(steer.x, steer.y);
         const q = quarterFacing(steer.x, steer.y, fc.spin);
         const topics = topicsRef.current;
-        if (topics) {
+        // Once inside, the visible openings own Lean; outer titles are context only.
+        if (usesInnerLean(insideRef.current)) {
+          steer.well = null;
+          topicTurnRef.current = null;
+        } else if (topics) {
           // by topic, leaning hard toward a group turns into it: the fall holds that group
           let nearest: string | null = null;
           let d = Infinity;
@@ -1876,7 +1883,7 @@ export default function ShadowField({ serif }: Props) {
         pointerRef.current = { x: cam.w / 2, y: cam.h * 0.47, inside: true, t: nowMs };
       }
       // this fall's lens: what this viewer may see, a replay's moment, the hour turned into
-      const skip = lensOf(hiddenStation, replayLens(cut), groupLens(insideRef.current), hourLens(steer.well));
+      const skip = lensOf(hiddenStation, (station) => station.node.id === replayRef.current?.nodeId ? false : replayLens(cut)(station), groupLens(replayRef.current?.group ?? insideRef.current), hourLens(steer.well));
       // a sealed thing is seen (a closed mark) but can never be the thing in front of you
       const closed = (s: Station) => skip(s) || (s.depth > 1 && s.node.disclosure > lensRef.current.closeness(s.path[1]));
       skipRef.current = closed;
@@ -2128,8 +2135,16 @@ export default function ShadowField({ serif }: Props) {
         edgesRef.current = edgePaths(here, mayOpen);
         const ahead = (aheadRef.current = openingsOf(aheadPaths(here, mayOpen), edgesRef.current));
         // steering, a lean (not yet into an hour) toward one of them aims at it
-        const aimed = steer.on && steer.well === null && Math.hypot(steer.x, steer.y) > 0.2 ? aheadFacing(ahead, steer.x, steer.y, fc.spin) : null;
+        const aimed = steer.on && (usesInnerLean(insideRef.current) || steer.well === null) && Math.hypot(steer.x, steer.y) > 0.2 ? aheadFacing(ahead, steer.x, steer.y, fc.spin) : null;
         aheadAimRef.current = aimed?.node.id ?? null;
+        // the openings directly inside the frame you are in: the children of what is in front of you when it
+        // holds several, otherwise the children of what holds it (never its siblings' children, nor the Slate)
+        const topicOpenings = (() => {
+          if (!here) return [];
+          const within = (parent: IdeaNode | undefined) => (parent ? ahead.filter((p) => p.path[p.path.length - 2]?.id === parent.id) : []);
+          const inFront = within(here.node);
+          return inFront.length ? inFront : within(here.path[here.path.length - 2]);
+        })();
         const fstate: Parameters<typeof renderFlight>[3] = {
           frames: framesRef.current,
           closeness: (s) => (s.depth === 0 ? 1 : lensRef.current.closeness(s.path[1])),
@@ -2141,12 +2156,14 @@ export default function ShadowField({ serif }: Props) {
           resonance: resonanceRef.current,
           presence: presenceRef.current,
           leaned: leanedRef.current,
-          topics: topicsRef.current ?? undefined,
+          // by topic, inside a group the ring names only the openings directly inside the frame you are in
+          // (each where it physically lies): where you can Lean from here, not where you came from
+          topics: topicsRef.current && usesInnerLean(insideRef.current) ? topicOpenings.map((p) => ({ id: p.node.id, label: p.node.title ?? 'untitled', angle: p.angle })) : topicsRef.current ?? undefined,
           avoid: (() => {
             const r = topNoteRef.current?.getBoundingClientRect();
             return r && r.width > 0 ? { x0: r.left - rect.left, y0: r.top - rect.top, x1: r.right - rect.left, y1: r.bottom - rect.top } : undefined;
           })(),
-          topicFacing: topicTurnRef.current,
+          topicFacing: topicsRef.current && usesInnerLean(insideRef.current) ? aheadAimRef.current : topicTurnRef.current,
           steer: { on: steer.on, facing: steer.well, turned: steer.on ? turnedIn(webMemRef.current, insideRef.current) : undefined },
           explored: here && here.path.length > 1 ? exploredFrom(webMemRef.current, here.path[here.path.length - 2].id) : undefined,
           ahead,
@@ -2698,6 +2715,8 @@ export default function ShadowField({ serif }: Props) {
     // the side tunnel you are leaning toward is gone into (a Lean: chosen, not passed)
     const opening = aheadAimRef.current ? aheadRef.current.find((x) => x.node.id === aheadAimRef.current) : undefined;
     if (opening) goTo(opening.path);
+    // Aiming between openings must not activate the parent title behind them.
+    else if (usesInnerLean(insideRef.current) && aheadRef.current.length > 0) return;
     else if (!hit && on?.depth === 1 && on.gate && insideRef.current !== on.node.id) goTo(on.path);
     else if (c) tapAt(c.w / 2, c.h * 0.47, hit);
   };
@@ -3033,7 +3052,20 @@ export default function ShadowField({ serif }: Props) {
       // the Esc that lets go of steering is only that
       if (e.key === 'Escape' && (document.pointerLockElement || performance.now() - steerRef.current.endedAt < 400)) return;
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      // Cmd/Ctrl+Z undoes your last change (an added image, sketch or mark); Shift+Z or Ctrl+Y redoes it
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && ['z', 'y'].includes(e.key.toLowerCase())) {
+        const store = storeRef.current;
+        const redo = e.key.toLowerCase() === 'y' || e.shiftKey;
+        if (store && (redo ? store.canRedo() : store.canUndo())) {
+          e.preventDefault();
+          if (redo ? store.redo() : store.undo()) {
+            rebuild();
+            setNotice(redo ? 'Redone' : 'Undone');
+          } else setNotice(redo ? 'Could not redo this change.' : 'Could not undo this change.');
+        }
+        return;
+      }
       handRef.current = performance.now();
       const cam = camRef.current;
       if (!cam) return;
@@ -3087,7 +3119,7 @@ export default function ShadowField({ serif }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [composer, dismissHint, flyTo, focusPath, goTo, hiddenStation, hopFlight, goToFood, pluckWeb, toggleTopic]);
+  }, [composer, dismissHint, flyTo, focusPath, goTo, hiddenStation, hopFlight, goToFood, pluckWeb, toggleTopic, rebuild]);
 
   // ---------------------------------------------------------------- actions
   const wander = () => {
@@ -3101,12 +3133,21 @@ export default function ShadowField({ serif }: Props) {
   const startReplay = () => {
     const fp = focusPath();
     if (fp.length < 2) return;
-    const top = fp[1];
-    const to = Date.now();
-    replayRef.current = { from: top.began - 3600000, to, progress: 0, playing: true, hold: 0 };
-    setReplayView({ progress: 0, t: top.began, playing: true });
+    const node = fp[fp.length - 1];
+    const range = recordedRange(node, candidate => candidate.disclosure <= lensRef.current.closeness(fp[1]));
+    if (!range) {
+      setNotice('No earlier changes are recorded for this yet.');
+      return;
+    }
+    stopSteering();
+    const fc = flightCamRef.current;
+    fc.target = null;
+    fc.hop = null;
+    fc.v = 0;
+    // the replay plays from inside the group it belongs to, so what grows below it is not hidden as "not here yet"
+    replayRef.current = { nodeId: node.id, group: fp[1].id, ...range, progress: 0, playing: true, hold: 0 };
+    setReplayView({ progress: 0, t: range.from, playing: true });
   };
-
   const stopReplay = () => {
     replayRef.current = null;
     setReplayView(null);
@@ -3711,6 +3752,14 @@ export default function ShadowField({ serif }: Props) {
 
 
       <div className={styles.actions}>
+        {mode === 'flight' && canSteer && <button type="button" className={styles.quiet} onClick={steering ? stopSteering : startSteering}>{steering ? 'Stop' : 'Lean'}</button>}
+        {path.length <= 1 && <button type="button" className={styles.quiet} onClick={() => { const c = camRef.current; if (c) openComposerAt(c.w / 2, c.h / 2); }}>Create</button>}
+        {edits.undo && <button type="button" className={styles.quiet} onClick={() => { if (storeRef.current?.undo()) { rebuild(); setNotice('Undone'); } else setNotice('Could not undo this change.'); }}>Undo</button>}
+        {replayView && <button type="button" className={styles.quiet} onClick={stopReplay}>Return to now</button>}
+        <details className={styles.moreTools} key={current?.id ?? 'slate'}>
+          <summary>{ownedHere ? 'Edit' : 'More'}</summary>
+          <div className={styles.toolPanel}>
+            {edits.redo && <button type="button" className={styles.quiet} onClick={() => { if (storeRef.current?.redo()) { rebuild(); setNotice('Redone'); } }}>Redo</button>}
         {path.length <= 1 && (
           <>
             {(
@@ -3823,7 +3872,7 @@ export default function ShadowField({ serif }: Props) {
           </>
         )}
         {top && top.id !== 'throwaways' && (
-          <button type="button" className={styles.quiet} onClick={replayView ? stopReplay : startReplay}>
+          <button type="button" className={styles.quiet} onClick={(e) => { e.currentTarget.closest('details')?.removeAttribute('open'); if (replayView) stopReplay(); else startReplay(); }}>
             {replayView ? 'return to now' : 'watch it grow'}
           </button>
         )}
@@ -3988,6 +4037,7 @@ export default function ShadowField({ serif }: Props) {
             notes
           </button>
         )}
+        {ownedHere && current?.media && current.media.length > 0 && <details className={styles.mediaTools}><summary>Images and sketches</summary>{current.media.map((media, index) => <button type="button" key={index} className={styles.quiet} onClick={() => { if (storeRef.current?.removeMedia(ownedHere.shadowId, ownedHere.thoughtId, index)) { rebuild(); setNotice('Removed. You can undo this.'); } else setNotice('Could not remove this item.'); }}>Remove {media.kind === 'image' ? 'image' : media.kind === 'sketch' ? 'sketch' : media.kind} {index + 1}</button>)}</details>}
         {ownedHere && current && (
           <>
             <button
@@ -4078,10 +4128,16 @@ export default function ShadowField({ serif }: Props) {
             )}
           </>
         )}
+          </div>
+        </details>
       </div>
 
       {replayView && (
         <div className={styles.replay}>
+          <div className={styles.replayHeading}>
+            <button type="button" className={styles.quiet} onClick={() => { const r = replayRef.current; if (r) { if (r.progress >= 1) { r.progress = 0; r.hold = 0; } r.playing = !r.playing; } }}>{replayView.playing ? 'Pause' : replayView.progress >= 1 ? 'Replay' : 'Play'}</button>
+            <time>{new Date(replayView.t).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time>
+          </div>
           <div
             className={styles.replayTrack}
             role="slider"

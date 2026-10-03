@@ -605,3 +605,16 @@
     top: 38%;
   }
 }
+
+/* Primary actions stay visible; secondary controls live in one contextual sheet. */
+.actions { z-index: 30; gap: 20px; overflow: visible; mask-image: none; }
+.moreTools > summary { cursor: pointer; list-style: none; padding: 8px 14px; border: 1px solid rgba(var(--ink), .16); border-radius: 20px; font: 500 13px system-ui, sans-serif; color: rgba(var(--ink), .85); }
+.moreTools > summary::-webkit-details-marker { display: none; }
+.toolPanel { position: absolute; right: 0; bottom: calc(100% + 14px); width: min(300px, calc(100vw - 32px)); max-height: min(65vh, 520px); overflow-y: auto; display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 12px; border-radius: 18px; background: var(--bg-primary, #111115); border: 1px solid rgba(var(--ink), .16); box-shadow: 0 16px 50px #0004; white-space: normal; }
+.toolPanel .quiet, .toolPanel .following { text-align: left; font: 400 14px/1.4 system-ui, sans-serif; padding: 10px 12px; border-radius: 8px; color: rgba(var(--ink), .8); }
+.toolPanel button:hover { background: rgba(var(--ink), .06); }
+.mediaTools { padding: 10px 12px; font: 400 14px/1.5 system-ui, sans-serif; }
+.mediaTools button { display: block; }
+.replay { bottom: 105px; z-index: 20; padding: 12px 18px; background: var(--bg-primary); border: 1px solid rgba(var(--ink), .12); border-radius: 16px; }
+.replayHeading { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; font: 12px system-ui, sans-serif; }
+@media(max-width: 640px) { .actions { left: 16px; right: 16px; padding: 0; overflow: visible; mask-image: none; justify-content: flex-end; } }
