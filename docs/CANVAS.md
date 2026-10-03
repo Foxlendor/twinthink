@@ -132,10 +132,11 @@ out past the edges, behind you.
   harder to look at; the thumb steers). With reduced motion the way
   ahead never swings; the drop's tail, the darker hour and the openings'
   rings still show where you are heading.
-  On a phone (or anywhere without a mouse), "steer" works by touch: a finger
+  On a phone (or anywhere without a mouse), "Lean" works by touch: a finger
   drags the heading about and it stays where the finger leaves it, a tap goes
   in (as a click does), a pinch is one step on (spread) or back (squeeze), and
-  "stop steering" ends it. Hours you have turned into in a place get a small
+  "stop leaning" ends it. Lean is the one name for this, in the bar and in
+  the docs; "steer" was its earlier label. Hours you have turned into in a place get a small
   dot beside them, a way back to them; openings you have been through have a
   heavier outline. Both live on this device only.
   Not yet: the prototype's
