@@ -144,6 +144,8 @@ export interface FlightState {
   ahead?: AheadPath[];
   hereZ?: number;
   aheadAim?: string | null;
+  /** A lean held toward a neighbour's mouth: which, and how far (0..1) the hold has come; when it closes, you cross. */
+  aim?: { id: string; hold: number } | null;
   /** The ways on from the thing you are on, as last taken from here (for the ahead openings' rose). */
   leanedAhead?: string | null;
   exploredAhead?: Set<string>;
@@ -526,6 +528,18 @@ function drawTopics(
  * swings around you. Hollow, so it is never taken for a thing (ink) or for dew (beads of light).
  * Only while steering.
  */
+/** A hold toward a mouth, filling clockwise around it from the top: when it closes, you cross. */
+function drawHold(st: RenderState, x: number, y: number, reach: number, hold: number) {
+  const { ctx } = st;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, reach + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * hold);
+  ctx.strokeStyle = `rgba(${INK},0.9)`;
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawDrop(st: RenderState, v: View) {
   const { ctx } = st;
   const r = st.w < 640 ? 7 : 8.5;
@@ -1446,6 +1460,7 @@ export function renderFlight(st: RenderState, stream: Stream, cam: FlightCam, fs
   ctx.textAlign = 'left';
   for (const h of mouthHits) {
     if ((fs.aheadAim === h.node.id || st.hoverId === h.node.id) && h.node.title && !named.has(h.node.id)) drawMouthName(st, v, h.node.title, h.x, h.y, h.reach, 1);
+    if (fs.aim && fs.aim.id === h.node.id && fs.aim.hold > 0) drawHold(st, h.x, h.y, h.reach, fs.aim.hold);
   }
   ink.flush(st.ctx);
   if (fs.steer?.on) drawDrop(st, v);

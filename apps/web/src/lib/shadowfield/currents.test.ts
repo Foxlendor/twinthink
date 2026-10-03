@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildStream, FOCUS } from './flight';
 import type { IdeaNode } from './model';
-import { crossZ, currentAt, currentsOf, fractionOf, leanDimension, neighbourFacing, neighboursOf, rimAngle } from './currents';
+import { crossZ, currentAt, currentAtZ, currentsOf, fractionOf, leanDimension, neighbourFacing, neighboursOf, rimAngle } from './currents';
 
 const H = 3600000;
 const node = (id: string, children: IdeaNode[] = [], extra: Partial<IdeaNode> = {}): IdeaNode => ({
@@ -46,6 +46,16 @@ describe('currents', () => {
     // the things A holds lie within A's run
     for (const id of ['a1', 'a2', 'a3']) expect(at(id).z).toBeGreaterThanOrEqual(cA.z0);
     for (const id of ['a1', 'a2', 'a3']) expect(at(id).z).toBeLessThanOrEqual(cA.z1);
+  });
+
+  it('know which one you are in from where you are: at a group\'s ring you are already in its run', () => {
+    const cA = currents.get('A')!;
+    expect(currentAtZ(stream, currents, cA.z0 - FOCUS)?.id).toBe('A');
+    expect(currentAtZ(stream, currents, cA.z0 + 0.5 * (cA.z1 - cA.z0) - FOCUS)?.id).toBe('A');
+    // between two groups, in track order (newest first), you are on the Slate's own run
+    const gates = stream.stations.filter((st) => st.depth === 1 && st.gate);
+    const [first, second] = gates;
+    expect(currentAtZ(stream, currents, (first.end + second.z) / 2 - FOCUS)?.id).toBe('slate');
   });
 
   it('know which one you are in from the thing in front of you', () => {

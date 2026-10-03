@@ -57,7 +57,7 @@ import {
   turnedIn,
 } from '@/lib/shadowfield/web';
 import { aheadFacing, aheadPaths, edgePaths, openingsOf, usesInnerLean, renderFlight } from '@/lib/shadowfield/flightRender';
-import { crossZ, currentAt, currentsOf, fractionOf, neighbourFacing, neighboursOf, type Current, type Neighbour } from '@/lib/shadowfield/currents';
+import { crossZ, currentAtZ, currentsOf, fractionOf, neighbourFacing, neighboursOf, type Current, type Neighbour } from '@/lib/shadowfield/currents';
 import { relatedTo } from '@/lib/shadowfield/relate';
 import { buildSamples, isSample, samplesAllowed } from '@/lib/shadowfield/sources/samples';
 import { addStep, beginJourney, forgetJourneys, recapOf, writeJourneys, type Journeys, type Recap } from '@/lib/shadowfield/journey';
@@ -131,6 +131,10 @@ interface SharedFallState {
 const FOLLOW_KEY = 'twinthink.following.v1';
 const VISITED_KEY = 'twinthink.visited.v1';
 const HINT_KEY = 'twinthink.hinted.v1';
+/** How far from the drop, as a fraction of the screen's smaller side, a lean is all the way. */
+const LEAN_REACH = 0.3;
+/** How long a lean rests on a neighbour before you cross into it. */
+const HOLD_MS = 600;
 
 function readSet(key: string): Set<string> {
   try {
@@ -1857,8 +1861,8 @@ export default function ShadowField({ serif }: Props) {
       topicTurnRef.current = null;
       if (flying && steer.on) {
         if (Math.hypot(steer.x, steer.y) > 0.5) faceQ = quarterFacing(steer.x, steer.y, fc.spin);
-        // held by the page, the pointer is the drop: whatever is at the middle is what it points at
-        pointerRef.current = { x: cam.w / 2, y: cam.h * 0.47, inside: true, t: nowMs };
+        // leaning by thumb, the pointer is the drop: whatever is at the middle is what it points at
+        if (steer.touch) pointerRef.current = { x: cam.w / 2, y: cam.h * 0.47, inside: true, t: nowMs };
       }
       // this fall's lens: what this viewer may see, a replay's moment, the hour turned into
       const skip = lensOf(hiddenStation, (station) => station.node.id === replayRef.current?.nodeId ? false : replayLens(cut)(station), groupLens(replayRef.current?.group ?? insideRef.current), hourLens(steer.well));
@@ -2118,29 +2122,34 @@ export default function ShadowField({ serif }: Props) {
           cc.stream = stream;
           cc.map = currentsOf(stream);
         }
-        const current = currentAt(cc.map, here);
+        const current = currentAtZ(stream, cc.map, fc.z);
         // a neighbour is open to this viewer by its disclosure and their lens, never by the group lens (crossing is what changes that)
         const mayCross = (n: Neighbour) =>
           n.current.station.depth === 0 || (!hiddenStation(n.current.station) && n.current.holder.disclosure <= lensRef.current.closeness(n.current.path[1]));
-        const neighbours = (neighboursRef.current = current && steer.on ? neighboursOf(stream, cc.map, current, stream.stations[0].node).filter(mayCross) : []);
-        // leaning toward a neighbour faces it (within the dimension of the lean); otherwise toward a way on at a branch
+        const neighbours = (neighboursRef.current = current ? neighboursOf(stream, cc.map, current, stream.stations[0].node).filter(mayCross) : []);
+        // what the pointer is over comes first (a mouse sees what it hovers); a thumb's lean aims by its direction
         const m = Math.hypot(steer.x, steer.y);
-        const facingN = steer.on && m > 0.2 ? neighbourFacing(neighbours, steer.x, steer.y, fc.spin) : null;
+        const over = hoverRef.current;
+        // (resting on a ring counts only away from the drop: a mouth far ahead projects near the middle)
+        const hovered = (steer.on && m > 0.2 && over && neighbours.find((n) => n.current.id === over.node.id)) || null;
+        const facingN = steer.on ? hovered ?? (m > 0.2 ? neighbourFacing(neighbours, steer.x, steer.y, fc.spin) : null) : null;
         neighbourAimRef.current = facingN;
         const aimed = steer.on && !facingN && m > 0.2 ? aheadFacing(ahead, steer.x, steer.y, fc.spin) : null;
         aheadAimRef.current = aimed?.node.id ?? null;
         // a lean held on a neighbour crosses into it; easing back toward the middle before then lets it go
         const hold = leanHoldRef.current;
-        if (facingN && m > 0.5) {
+        if (facingN && (hovered || m > 0.45)) {
           if (hold.id !== facingN.current.id) Object.assign(hold, { id: facingN.current.id, ms: 0 });
           hold.ms += dt * 1000;
-          if (hold.ms >= 500) {
+          if (hold.ms >= HOLD_MS) {
             Object.assign(hold, { id: null, ms: 0 });
             crossRef.current(facingN);
           }
         } else Object.assign(hold, { id: null, ms: 0 });
-        // on the rim: the ways on at a branch, and, while leaning, the currents beside you (those first)
-        const shown = steer.on ? [...neighbours.map((n) => ({ node: n.current.holder, path: n.current.path, angle: n.angle })), ...ahead.filter((p) => !neighbours.some((n) => n.current.id === p.node.id))] : ahead;
+        // on the rim, always: the currents beside you (first), then the ways on at a branch
+        const shown = [...neighbours.map((n) => ({ node: n.current.holder, path: n.current.path, angle: n.angle })), ...ahead.filter((p) => !neighbours.some((n) => n.current.id === p.node.id))];
+        // the hold, shown on the ring itself: nothing else is drawn for the lean (the pointer is not a reticle)
+        const aim = hold.id ? { id: hold.id, hold: Math.min(1, hold.ms / HOLD_MS) } : null;
         // the openings directly inside the frame you are in: the children of what is in front of you when it
         // holds several, otherwise the children of what holds it (never its siblings' children, nor the Slate)
         const topicOpenings = (() => {
@@ -2171,6 +2180,7 @@ export default function ShadowField({ serif }: Props) {
           steer: { on: steer.on, facing: faceQ, turned: steer.on ? turnedIn(webMemRef.current, insideRef.current) : undefined },
           explored: here && here.path.length > 1 ? exploredFrom(webMemRef.current, here.path[here.path.length - 2].id) : undefined,
           ahead: shown,
+          aim,
           hereZ: here?.z,
           aheadAim: neighbourAimRef.current?.current.id ?? aheadAimRef.current,
           leanedAhead: here ? leanedChildOf(webMemRef.current, here.node.id) : null,
@@ -2611,6 +2621,11 @@ export default function ShadowField({ serif }: Props) {
     lastTapRef.current = { t: now, x, y, n: taps };
 
     const hit = only !== undefined ? only : (hoverRef.current ?? hitsRef.current.find((h) => Math.hypot(h.x - x, h.y - y) < h.r) ?? null);
+    // the mouth of a current beside you: a tap crosses into it, at the same depth
+    if (hit && hit.kind === 'node' && hit.size >= 1e9) {
+      const n = neighboursRef.current.find((q) => q.current.id === hit.node.id);
+      if (n) return crossRef.current(n);
+    }
     // touching something that was waiting is finding it
     if (hit?.kind === 'node') eatFood(hit.node.id);
     const focused = focusPath();
@@ -2701,14 +2716,12 @@ export default function ShadowField({ serif }: Props) {
     const c = canvasRef.current;
     if (!c) return;
     dismissHint();
-    const mouse = window.matchMedia('(pointer: fine)').matches && 'requestPointerLock' in HTMLElement.prototype;
+    const mouse = window.matchMedia('(pointer: fine)').matches;
     if (!mouse) return startTouchSteering();
+    // the pointer stays yours and visible: where it sits, relative to the drop, is where you lean
+    Object.assign(steerRef.current, { on: true, touch: false, x: 0, y: 0, well: null });
+    setSteering(true);
     setNotice('leaning');
-    try {
-      void Promise.resolve(c.requestPointerLock()).catch(startTouchSteering);
-    } catch {
-      startTouchSteering();
-    }
   };
   const stopSteering = () => {
     const s = steerRef.current;
@@ -2729,8 +2742,7 @@ export default function ShadowField({ serif }: Props) {
       const stream = streamRef.current;
       const fc = flightCamRef.current;
       const cc = currentsRef.current;
-      const here = hereRef.current;
-      const from = stream ? currentAt(cc.map, here) : null;
+      const from = stream ? currentAtZ(stream, cc.map, fc.z) : null;
       if (!stream || !from || from.id === n.current.id) return;
       const t = fractionOf(stream, from, fc.z);
       const z = crossZ(stream, n.current, t, fc.z);
@@ -2891,20 +2903,21 @@ export default function ShadowField({ serif }: Props) {
       steerTouchRef.current.moved += Math.abs(x - prev.x) + Math.abs(y - prev.y);
       return;
     }
-    if (steer.on) {
-      // the hand pushes the heading about, within reach: a third of the screen is all the way
-      const reach = 0.35 * Math.min(camRef.current?.w ?? 800, camRef.current?.h ?? 800);
-      steer.x += e.movementX / reach;
-      steer.y += e.movementY / reach;
-      const m = Math.hypot(steer.x, steer.y);
-      if (m > 1) {
-        steer.x /= m;
-        steer.y /= m;
-      }
-      handRef.current = performance.now();
-      return;
-    }
     const rect = e.currentTarget.getBoundingClientRect();
+    if (steer.on) {
+      // the lean is where the pointer sits, from the drop: a little way out is all the way
+      const w = camRef.current?.w ?? rect.width;
+      const h = camRef.current?.h ?? rect.height;
+      const reach = LEAN_REACH * Math.min(w, h);
+      let sx = (e.clientX - rect.left - w / 2) / reach;
+      let sy = (e.clientY - rect.top - h * 0.47) / reach;
+      const m = Math.hypot(sx, sy);
+      if (m > 1) [sx, sy] = [sx / m, sy / m];
+      steer.x = sx;
+      steer.y = sy;
+      handRef.current = performance.now();
+      // and the pointer goes on to hover whatever it is over, as it does when not leaning
+    }
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     const sk = sketchRef.current;
@@ -3102,6 +3115,7 @@ export default function ShadowField({ serif }: Props) {
       if (composer) return;
       // the Esc that lets go of steering is only that
       if (e.key === 'Escape' && (document.pointerLockElement || performance.now() - steerRef.current.endedAt < 400)) return;
+      if (e.key === 'Escape' && steerRef.current.on && !steerRef.current.touch) return stopSteering();
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
       // Cmd/Ctrl+Z undoes your last change (an added image, sketch or mark); Shift+Z or Ctrl+Y redoes it
@@ -4611,7 +4625,7 @@ export default function ShadowField({ serif }: Props) {
       )}
       {steering ? (
         <div className={`${styles.hint} ${styles.hintLean}`}>
-          {coarse ? 'hold a lean to cross into what is beside you · tap to go in · pinch to move on' : 'hold a lean to cross into what is beside you · click to go in · esc to stop'}
+          {coarse ? 'lean toward a ring beside you and hold to cross · tap to go in · pinch to move on' : 'rest the pointer on a ring beside you to cross · click to go in · esc to stop'}
         </div>
       ) : (!hinted || recalled) && path.length <= 1 && (
         <div className={styles.hint}>

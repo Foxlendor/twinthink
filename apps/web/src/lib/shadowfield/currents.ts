@@ -70,6 +70,22 @@ export function currentAt(currents: Map<string, Current>, here: Station | null |
   return (holder && currents.get(holder.id)) ?? null;
 }
 
+/**
+ * The current you are in, by where you are: the deepest run whose span holds the point in front of
+ * the camera. At a holder's own ring you are already in its run (the cell you occupy, not the one
+ * you look at), so its neighbours are the ones that matter.
+ */
+export function currentAtZ(stream: Stream, currents: Map<string, Current>, camZ: number): Current | null {
+  let best: Current | null = null;
+  for (const c of currents.values()) {
+    const span = c.z1 - c.z0;
+    const d = wrapDelta(camZ + FOCUS, c.z0, stream.length);
+    const inside = span <= 1e-9 ? Math.abs(d) < 1e-6 : d >= -1e-6 && d <= span + 1e-6;
+    if (inside && (!best || c.path.length > best.path.length)) best = c;
+  }
+  return best ?? currents.get(stream.stations[0].node.id) ?? null;
+}
+
 /** How far along a current the thing in front of the camera is, 0 at its ring, 1 at its end. */
 export function fractionOf(stream: Stream, current: Current, camZ: number): number {
   const span = current.z1 - current.z0;
