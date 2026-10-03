@@ -531,6 +531,41 @@ signal. That would need its own privacy design (this is a personal,
 on-device record, not even pseudonymous) and is a separate, later
 question from whether Lean itself is worth having at all.
 
+## Crossing: Lean changes current and keeps depth
+Falling changes your depth along the current you are in. Leaning crosses into a
+current beside it and keeps that depth: 43% of the way along one, you arrive 43%
+of the way along the other. Crossing is never progress, and it needs no branch,
+opening or end first: a neighbouring current can be crossed into from anywhere
+along the one you are in (`currents.ts`).
+
+A current is the run one holder's contents make: the Slate's own run of groups,
+a group's run of things, a fork's run inside a Shadow. Two currents are
+neighbours only for a relationship between them, never for a time: what a
+holder holds, what holds it, what sits beside it under the same holder, what its
+things go with elsewhere (a shared name or tag), a dialectic link. Creators'
+authored relationships will join these as further reasons; none is ever "made
+at a similar hour". The hour decides only where on the rim a neighbour waits.
+
+Each neighbour belongs to one dimension. Leaning left or right crosses one,
+leaning up or down the other. Until creators author their dimensions, what a
+current is beside crosses left and right, and what holds it, or it holds,
+crosses up and down (`defaultDimension`). Only these face-to-face crossings
+exist; whether diagonal ones ever behave the same is a separate decision.
+
+While leaning, the currents beside you join the rim as openings, each at its
+hour within its dimension's sides. Leaning toward one names it; holding the
+lean on it for half a second crosses, as does a click or a tap; easing back
+toward the middle first lets it go. After a crossing the lean is spent, the new
+current is your perspective, and its own neighbours are the ones that matter.
+Aiming at an hour is orientation only: it no longer filters the fall or moves
+it forward.
+
+Intent, not built: creators author the dimensions of their own Slate
+separately and visitors meet them together; Rabi proposes where a new Twin's
+relationships could open a strand, and the creator accepts, moves, reshapes or
+refuses it. The invisible coordinates that keep this coherent are engineering,
+not something a visitor or a creator is ever shown.
+
 ## Next
 1. Switch lead is built: "let X lead" hands the Fall to someone still in it;
    the seat is overwritten in place, with no record of who led when.
